@@ -26575,6 +26575,8 @@
               }
           }
           ctx.restore();
+          continue;
+      }
       else if (b.ownerBrawler === 'sera_eclipse') {
           const flarePulse = 0.85 + Math.sin(b.life * 25) * 0.15;
           const isHc = b.hyperVisual;
