@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+    <title>Arena Forge</title>
+    <style>
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: radial-gradient(circle at 20% 10%, #152744 0%, #08101d 48%, #04070f 100%);
+        color: #dff6ee;
+      }
+
+      body {
+        font-family: 'Trebuchet MS', 'Gill Sans', 'Verdana', sans-serif;
+      }
+      :root {
+        --af-panel: rgba(10, 20, 38, 0.9);
+        --af-border: rgba(130, 180, 250, 0.22);
+        --af-text: #dff2ff;
+      }
+      * { box-sizing: border-box; }
+      button, select, input {
+        font-family: inherit;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      #hud {
+        position: fixed;
+        inset: 0 auto auto 0;
+        z-index: 20;
+        width: 100%;
+        pointer-events: none;
+      }
+      #topbar {
+        pointer-events: auto;
+        margin: 10px 12px 8px;
+        padding: 9px 12px;
+        border-radius: 12px;
+        background: linear-gradient(160deg, rgba(10,20,38,0.9), rgba(7,14,28,0.92));
+        border: 1px solid var(--af-border);
+        color: var(--af-text);
+        font-weight: 800;
+        font-size: 13px;
+        letter-spacing: 0.02em;
+        width: fit-content;
+        max-width: calc(100vw - 24px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+        /* backdrop-filter removed — too expensive during gameplay */
+      }
+      #controls {
+        pointer-events: auto;
+        margin: 0 12px;
+        padding: 10px;
+        border-radius: 12px;
+        background: linear-gradient(160deg, rgba(10,20,38,0.86), rgba(7,14,28,0.88));
+        border: 1px solid var(--af-border);
+        box-shadow: 0 8px 22px rgba(0,0,0,0.25);
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      #controls > button,
+      #controls select {
+        border-radius: 10px !important;
+        border: 1px solid rgba(120,175,255,0.32) !important;
+        background: rgba(18,36,66,0.96) !important;
+        color: #dff2ff !important;
+        padding: 8px 11px !important;
+        font-weight: 700;
+      }
+      #controls > button#gadget { border-color: rgba(93,242,194,0.38) !important; }
+      #controls > button#super { border-color: rgba(255,209,102,0.4) !important; }
+      #controls > button#hypercharge { border-color: rgba(190,138,255,0.45) !important; }
+      #gadgetInfo {
+        color: #bcd8f5 !important;
+        background: rgba(7,15,30,0.74);
+        border: 1px solid rgba(120,175,255,0.2);
+        border-radius: 9px;
+        padding: 6px 8px;
+      }
+      #starSelect, #gadgetSelect {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        background: rgba(7,15,30,0.74);
+        border: 1px solid rgba(120,175,255,0.2);
+        border-radius: 9px;
+        padding: 6px 8px;
+      }
+      #starSelect label, #gadgetSelect label {
+        color: #cfe5ff;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      #homeTitle { text-shadow: 0 0 28px rgba(93,242,194,0.5); }
+
+      .home-mode-card {
+        appearance: none;
+        background: rgba(10,22,46,0.88);
+        border: 1px solid rgba(100,148,230,0.18);
+        border-radius: 12px;
+        padding: 11px 12px 10px 12px;
+        cursor: pointer;
+        transition: border-color 0.14s, background 0.14s;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .home-mode-card:hover {
+        border-color: rgba(110,190,255,0.45);
+        background: rgba(14,32,64,0.94);
+      }
+      .home-mode-card.active {
+        background: rgba(10,40,30,0.94);
+        border-color: #5df2c2 !important;
+      }
+      .home-currency-pill {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: rgba(10,22,44,0.88);
+        border: 1px solid rgba(140,190,255,0.2);
+        border-radius: 999px;
+        padding: 5px 12px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #dff2ff;
+        white-space: nowrap;
+      }
+      .home-action-btn {
+        padding: 9px 8px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12px;
+        border: 1px solid;
+        transition: opacity 0.12s;
+        text-align: center;
+      }
+      .home-action-btn:hover { opacity: 0.85; }
+      .home-utility-btn {
+        border: 1px solid rgba(130,180,250,0.25);
+        border-radius: 10px;
+        background: rgba(17,31,58,0.9);
+        color: #dbedff;
+        padding: 9px 12px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      @media (max-width: 680px) {
+        #homeMain { grid-template-columns: 1fr !important; }
+        #homePlaySection { order: 2; }
+        #homeModesSection { order: 1; }
+        #topbar, #controls { margin-left: 8px; margin-right: 8px; }
+      }
+
+      #gameCanvas {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+        background: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud" style="display:none">
+      <div id="topbar">Arena Forge — Showdown</div>
+      <div id="controls">
+        <button id="gadget">Gadget: Ready (Q)</button>
+        <button id="super">Super: 0% (E)</button>
+        <button id="hypercharge" disabled style="background:#5500aa;color:#fff;">Hypercharge (F)</button>
+        <select id="brawlerSelect" style="padding:6px;border-radius:4px;margin-left:12px;background:#334;color:#fff;border:none">
+          <option value="outlit" selected>Outlit</option>
+          <option value="echo">Echo</option>
+          <option value="cheseypuff">Cheseypuff</option>
+          <option value="decayer">Decayer</option>
+          <option value="unopcoloco">UnoPcoLoco</option>
+          <option value="dashaholic">Dashaholic</option>
+          <option value="trapper">Trapper</option>
+          <option value="classy">Classy</option>
+          <option value="minigunnin">Minigunnin</option>
+          <option value="bowlin_rida">Rida</option>
+          <option value="money_and_tax">Money & Tax</option>
+          <option value="hunter">Hunter</option>
+          <option value="chaird">Chaird</option>
+          <option value="forest">Forest</option>
+          <option value="bouncin_balls">Bouncin' Balls</option>
+          <option value="goonbob">Goonbob</option>
+          <option value="overlord">Overlord (Exotic)</option>
+        </select>
+        <select id="brawlerSortSelect" style="padding:6px;border-radius:4px;margin-left:12px;background:#334;color:#fff;border:none">
+          <option value="rarity-desc">⭐ Rarity (High)</option>
+          <option value="rarity-asc">⭐ Rarity (Low)</option>
+          <option value="power-level">💪 Power Level</option>
+          <option value="name">🔤 Name</option>
+          <option value="role">🎯 Role</option>
+        </select>
+        <div id="gadgetInfo" style="margin-left:12px;color:#ddd;font-size:12px;max-width:380px"></div>
+        <div id="starSelect">
+          <label><input type="radio" name="star" value="slow" checked/> Star: SP1</label>
+          <label><input type="radio" name="star" value="long"/> Star: SP2</label>
+        </div>
+        <div id="gadgetSelect" style="margin-left:12px;">
+          <label><input type="radio" name="gadget" value="g1" checked/> Gadget 1</label>
+          <label><input type="radio" name="gadget" value="g2"/> Gadget 2</label>
+        </div>
+      </div>
+    </div>
+    <div id="app" style="width:100%;height:100%;"></div>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="homeScreen" style="position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;padding:14px 16px 20px;z-index:30;background:linear-gradient(160deg,rgba(3,7,16,0.82),rgba(5,11,22,0.76));font-family:'Trebuchet MS','Gill Sans','Verdana',sans-serif;pointer-events:none;overflow-y:auto;">
+      <div id="homePanel" style="width:min(1060px,calc(100vw - 28px));display:flex;flex-direction:column;gap:12px;pointer-events:auto;background:linear-gradient(165deg,rgba(8,16,34,0.94),rgba(6,11,24,0.92));border:1px solid rgba(140,190,255,0.24);border-radius:18px;box-shadow:0 16px 40px rgba(0,0,0,0.35);padding:14px;">
+
+        <!-- Header -->
+        <div id="homeHeader" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(120,170,240,0.14);">
+          <div>
+            <h1 id="homeTitle" style="margin:0;font-size:32px;font-family:inherit;letter-spacing:0.03em;color:#e8f8ff;">⚡ Arena Forge</h1>
+            <div style="color:#6a9abf;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-top:3px;">Quick Play · Ranked · Duels · Training</div>
+          </div>
+          <div id="homeCurrencyBar" style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;"></div>
+        </div>
+
+        <!-- Main 2-column grid -->
+        <div id="homeMain" style="display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:12px;align-items:start;">
+
+          <!-- Left column: brawler card, rank card, play button, secondary actions -->
+          <div id="homePlaySection" style="display:flex;flex-direction:column;gap:9px;">
+            <div id="homeBrawlerCard" style="background:linear-gradient(145deg,rgba(8,18,42,0.96),rgba(6,13,30,0.92));border:1px solid rgba(140,190,255,0.2);border-radius:13px;padding:13px;min-height:78px;"></div>
+            <div id="homeRankCard" style="background:linear-gradient(145deg,rgba(28,20,6,0.96),rgba(18,13,4,0.92));border:1px solid rgba(255,209,100,0.24);border-radius:13px;padding:11px;"></div>
+            <button id="startMatch" style="padding:13px 16px;border-radius:12px;background:linear-gradient(135deg,#5df2c2,#29c996);border:none;font-weight:900;cursor:pointer;font-family:inherit;font-size:15px;color:#041810;width:100%;box-shadow:0 4px 20px rgba(93,242,194,0.26);letter-spacing:0.02em;">▶ Start Solo Showdown</button>
+            <div id="homeActionRow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+              <button id="brawlerBtn" class="home-action-btn" style="background:rgba(244,162,97,0.12);border-color:rgba(244,162,97,0.38);color:#f4a261;">👤 Brawler</button>
+            </div>
+          </div>
+
+          <!-- Right column: mode selection -->
+          <div id="homeModesSection" style="display:flex;flex-direction:column;gap:9px;">
+            <div style="font-weight:900;color:#cfeef7;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.85;">Select Mode</div>
+            <div id="homeModeCompactRow" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;"></div>
+            <div id="showdownModeRow" style="display:none;gap:8px;flex-wrap:wrap;"></div>
+          </div>
+
+        </div>
+
+        <!-- Utility drawer -->
+        <details id="homeUtilityDetails" style="background:rgba(5,11,22,0.84);border:1px solid rgba(110,160,220,0.2);border-radius:11px;padding:7px 11px;">
+          <summary style="cursor:pointer;font-weight:800;color:#a8c8e8;outline:none;font-size:11px;letter-spacing:0.05em;user-select:none;">⚙️ More tools</summary>
+          <div id="homeUtilityRow" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px;"></div>
+        </details>
+
+      </div>
+    </div>
+
+    <script>
+      const hud = document.getElementById('hud');
+      const homeScreen = document.getElementById('homeScreen');
+      const legacyCanvas = document.getElementById('gameCanvas');
+      const appRoot = document.getElementById('app');
+
+      if (location.protocol === 'file:') {
+        if (appRoot) appRoot.style.display = 'none';
+        if (legacyCanvas) legacyCanvas.style.display = 'block';
+        if (hud) hud.style.display = 'none';
+        if (homeScreen) homeScreen.style.display = '';
+
+        const script = document.createElement('script');
+        script.src = './game.js';
+        document.body.appendChild(script);
+      } else {
+        if (legacyCanvas) legacyCanvas.style.display = 'none';
+        if (hud) hud.style.display = 'none';
+        if (homeScreen) homeScreen.style.display = 'none';
+        if (appRoot) appRoot.style.display = 'block';
+
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.src = '/src/main.ts';
+        document.body.appendChild(script);
+      }
+    </script>
+  </body>
+</html>

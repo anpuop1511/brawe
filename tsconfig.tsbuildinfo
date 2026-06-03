@@ -1,0 +1,1 @@
+{"root":["./src/env.d.ts","./src/main.ts","./src/game/game.ts","./src/game/state.ts","./src/game/types.ts","./src/game/scenes/brawlerselectscene.ts","./src/game/scenes/homescene.ts","./src/game/scenes/resultsscene.ts","./src/game/scenes/showdownscene.ts","./src/game/scenes/starrdropscene.ts"],"version":"5.9.3"}

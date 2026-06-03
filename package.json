@@ -1,0 +1,28 @@
+{
+  "name": "arena-forge",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "postbuild": "node scripts/copy-gamejs-to-dist.mjs",
+    "preview": "vite preview",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "android:setup": "npm run build && npm run cap:add:android && npm run cap:sync",
+    "android": "npm run build && npm run cap:sync && npm run cap:open:android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}
