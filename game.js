@@ -1686,7 +1686,7 @@
             malakor: 'Legendary',
             beam: 'Mythic',
             paradox: 'Legendary',
-            sera_eclipse: 'Chromatic'
+            sera_eclipse: 'Legendary'
         };
         let brawlerSortMode = localStorage.getItem('brawl_arena_brawler_sort') || 'rarity-desc';
 
@@ -1968,7 +1968,7 @@
         }
 
         function getBrawlerSortOrder(mode, brawlerId) {
-            const rarityOrder = { Common: 0, Rare: 1, 'Super Rare': 2, Epic: 3, Mythic: 4, Legendary: 5, Exotic: 6, Chromatic: 7 };
+            const rarityOrder = { Common: 0, Rare: 1, 'Super Rare': 2, Epic: 3, Mythic: 4, Legendary: 5, Exotic: 6 };
             const rarity = brawlerRarities[brawlerId] || 'Common';
             const label = (brawlerData[brawlerId]?.name || brawlerId).toLowerCase();
             const role = (brawlerData[brawlerId]?.role || '').toLowerCase();
@@ -15694,7 +15694,6 @@
           'Mythic': '#ff7bd1',
           'Legendary': '#ff9b42',
           'Exotic': '#b983ff',
-          'Chromatic': '#ffd36b',
       };
       const rarityColor = rarityColors[rarity] || '#9fb4c7';
       const bars = Array.from({ length: 11 }, (_, i) => `<span style="display:inline-block;width:7px;height:5px;border-radius:3px;background:${i < level ? rarityColor : 'rgba(255,255,255,0.15)'}"></span>`).join('');
@@ -17269,7 +17268,6 @@
                 <option value="Epic">Epic</option>
                 <option value="Mythic">Mythic</option>
                 <option value="Legendary">Legendary</option>
-                <option value="Chromatic">Chromatic</option>
                 <option value="Exotic">Exotic</option>
             `;
             rarityFilter.value = modalSortState.rarity;
@@ -17309,7 +17307,6 @@
                 'Mythic': '#ff7bd1',
                 'Legendary': '#ff9b42',
                 'Exotic': '#b983ff',
-                'Chromatic': '#ffd36b',
             };
 
             const visibleBrawlers = [...allBrawlers]
