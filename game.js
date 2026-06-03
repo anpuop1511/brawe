@@ -1636,7 +1636,7 @@
         if (effect === 'slow') entity.slowUntil = Math.max(entity.slowUntil || 0, until);
         if (effect === 'stun') entity.stunUntil = Math.max(entity.stunUntil || 0, until);
     }
-    const allBrawlers = ['outlit', 'echo', 'cheseypuff', 'decayer', 'unopcoloco', 'dashaholic', 'trapper', 'classy', 'hyperorigin', 'heater_miser', 'minigunnin', 'steamer', 'bowlin_rida', 'money_and_tax', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'goonbob', 'tempo_maker', 'overlord', 'copyphase', 'fightnfire', 'beast', 'amplifier', 'skeleflying', 'crystila', 'hope', 'evil_doctor', 'splitter', 'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox'];
+    const allBrawlers = ['outlit', 'echo', 'cheseypuff', 'decayer', 'unopcoloco', 'dashaholic', 'trapper', 'classy', 'hyperorigin', 'heater_miser', 'minigunnin', 'steamer', 'bowlin_rida', 'money_and_tax', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'goonbob', 'tempo_maker', 'overlord', 'copyphase', 'fightnfire', 'beast', 'amplifier', 'skeleflying', 'crystila', 'hope', 'evil_doctor', 'splitter', 'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse'];
     const disabledBrawlers = new Set([]);
     const favoriteBrawlersKey = 'brawl_arena_favorites';
     let favoriteBrawlers = new Set(safeJsonParse(localStorage.getItem(favoriteBrawlersKey) || '[]', []));
@@ -1741,6 +1741,8 @@
                 playerData.unlockedBrawlers[bid] = !!playerData.unlockedBrawlers[bid];
             }
             playerData.unlockedBrawlers.outlit = true;
+            playerData.unlockedBrawlers.paradox = true;
+            playerData.unlockedBrawlers.sera_eclipse = true;
             if (!playerData.soulSummoner || typeof playerData.soulSummoner !== 'object') {
                 playerData.soulSummoner = {};
             }
