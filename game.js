@@ -20935,6 +20935,7 @@
       const isMoving = Math.hypot(vx, vy) > 0;
       let hcSpd = (isHypercharged ? 1.2 : 1.0) * (cheseySuperActive ? 1.5 : 1.0);
       if (player.moneySpeedUntil && performance.now() < player.moneySpeedUntil) hcSpd *= 1.15;
+      if (player.seraSpeedUntil && performance.now() < player.seraSpeedUntil) hcSpd *= 1.20;
       if (player.hunterSpeedUntil && performance.now() < player.hunterSpeedUntil) hcSpd *= (player.hunterHcMark ? 1.40 : 1.25);
       if (player.unopcolocoSpeedUntil && performance.now() < player.unopcolocoSpeedUntil) hcSpd *= 1.10;
       if (player.evilDoctorSpeedBoostUntil && now < player.evilDoctorSpeedBoostUntil) hcSpd *= 1.3;
@@ -21984,6 +21985,23 @@
          let ownerEntity = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
          if (ownerEntity && ownerEntity.team && player.team && ownerEntity.team === player.team && !b.isHeaterTetherStarter) {
              // skip friendly fire
+             if (b.ownerBrawler === 'sera_eclipse' && b.isSeraFlare) {
+                 const dx = b.x - player.x; const dy = b.y - player.y;
+                 if (Math.hypot(dx,dy) < player.radius + (b.hitboxMod || 1) * 4) {
+                     b.hitIds = b.hitIds || {};
+                     b.hitIds[player.id] = true;
+                     const cubes = ownerEntity ? (ownerEntity.powerCubes || 0) : 0;
+                     const levelMult = (b.ownerId === player.id) ? getPlayerDamageScale() : 1.0;
+                     const healAmt = Math.round((b.healAmt || 400) * (1 + cubes * 0.1) * levelMult);
+                     doHeal(player, healAmt);
+                     spawnFloatingText(player.x, player.y - 25, `+${healAmt}`, '#58f0cf');
+                     
+                     const sp1 = ownerEntity ? (ownerEntity.id === player.id ? (selectedStar === 'none' ? false : selectedStar !== 'long') : (ownerEntity.selectedStar === 'none' ? false : ownerEntity.selectedStar !== 'long')) : false;
+                     if (sp1 && ownerEntity) {
+                         ownerEntity.seraSpeedUntil = performance.now() + 2000;
+                     }
+                 }
+             }
          } else {
          const dx = b.x - player.x; const dy = b.y - player.y;
          if(Math.hypot(dx,dy) < player.radius + (b.hitboxMod || 1) * 4){ 
@@ -22063,7 +22081,26 @@
         if(b.ownerId === t.id || (t.ownerId && t.ownerId === b.ownerId) || t.isFlying || (b.hitIds && b.hitIds[t.id])) continue; // don't hit self, hit pets of owner, or hit twice
         
         let ownerEntity = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
-        if (ownerEntity && ownerEntity.team && t.team && ownerEntity.team === t.team && !b.isHeaterTetherStarter) continue; // skip friendly fire
+        if (ownerEntity && ownerEntity.team && t.team && ownerEntity.team === t.team && !b.isHeaterTetherStarter) {
+            if (b.ownerBrawler === 'sera_eclipse' && b.isSeraFlare) {
+                const dx = b.x - t.x; const dy = b.y - t.y;
+                if (Math.hypot(dx,dy) < t.radius + (b.hitboxMod || 1) * 4) {
+                    b.hitIds = b.hitIds || {};
+                    b.hitIds[t.id] = true;
+                    const cubes = ownerEntity ? (ownerEntity.powerCubes || 0) : 0;
+                    const levelMult = (b.ownerId === player.id) ? getPlayerDamageScale() : 1.0;
+                    const healAmt = Math.round((b.healAmt || 400) * (1 + cubes * 0.1) * levelMult);
+                    doHeal(t, healAmt);
+                    spawnFloatingText(t.x, t.y - 25, `+${healAmt}`, '#58f0cf');
+                    
+                    const sp1 = ownerEntity ? (ownerEntity.id === player.id ? (selectedStar === 'none' ? false : selectedStar !== 'long') : (ownerEntity.selectedStar === 'none' ? false : ownerEntity.selectedStar !== 'long')) : false;
+                    if (sp1 && ownerEntity) {
+                        ownerEntity.seraSpeedUntil = performance.now() + 2000;
+                    }
+                }
+            }
+            continue; // skip friendly fire
+        }
         
         const dx = b.x - t.x; const dy = b.y - t.y;
         if(Math.hypot(dx,dy) < t.radius + (b.hitboxMod || 1) * 4){
@@ -22799,6 +22836,7 @@
               activeBotSpeed += (100 - (t.minigunAmmo || 100)) * 0.5;
           }
           if (t.moneySpeedUntil && nowTarget < t.moneySpeedUntil) activeBotSpeed *= 1.15;
+          if (t.seraSpeedUntil && nowTarget < t.seraSpeedUntil) activeBotSpeed *= 1.20;
           if (t.hunterSpeedUntil && nowTarget < t.hunterSpeedUntil) activeBotSpeed *= (t.hunterHcMark ? 1.40 : 1.25);
           if (t.unopcolocoSpeedUntil && nowTarget < t.unopcolocoSpeedUntil) activeBotSpeed *= 1.10;
           if (t.evilDoctorSpeedBoostUntil && nowTarget < t.evilDoctorSpeedBoostUntil) activeBotSpeed *= 1.3;
