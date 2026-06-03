@@ -13234,17 +13234,23 @@
         }
         if (isHc) baseDmg = Math.round(baseDmg * 1.2);
         const bulletDmg = Math.round(baseDmg * ownerMult);
+        // Phase 1: travel 0.33s (~180px), then skip 110px, then phase 2: 0.17s (~90px)
+        const paradoxSpeed = speed * 0.6; // 540px/s
+        const skipAt = 0.33; // seconds before mid-flight warp
         bullets.push({
             ownerBrawler: 'paradox',
             x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 6),
             y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 6),
-            vx: Math.cos(ang) * speed * 0.6,
-            vy: Math.sin(ang) * speed * 0.6,
+            vx: Math.cos(ang) * paradoxSpeed,
+            vy: Math.sin(ang) * paradoxSpeed,
             life: 0,
-            maxLife: 0.85,
+            maxLife: skipAt + 0.17,
             damage: bulletDmg,
             pierce: false,
             isParadoxMain: true,
+            paradoxSkipAt: skipAt,
+            paradoxSkipDone: false,
+            paradoxSkipDist: isHc ? 150 : 110,
             paradoxSP1: star === 'slow',
             hyperVisual: isHc,
             ownerId: fromEntity.id,
@@ -21470,6 +21476,19 @@
         }
       }
       b.life += dt;
+      // Paradox mid-flight skip mechanic
+      if (b.isParadoxMain && !b.paradoxSkipDone && b.life >= b.paradoxSkipAt) {
+          b.paradoxSkipDone = true;
+          const skipAng = Math.atan2(b.vy, b.vx);
+          const skipDist = b.paradoxSkipDist || 110;
+          const preX = b.x; const preY = b.y;
+          b.x = clamp(b.x + Math.cos(skipAng) * skipDist, player.radius, WORLD_W - player.radius);
+          b.y = clamp(b.y + Math.sin(skipAng) * skipDist, player.radius, WORLD_H - player.radius);
+          b.hitIds = {}; // allow re-hitting after warp
+          const warpCol = b.hyperVisual ? 'rgba(168,0,255,0.65)' : 'rgba(0,230,220,0.65)';
+          explosions.push({ x: preX, y: preY, radius: 28, life: 0, maxLife: 0.22, color: warpCol });
+          explosions.push({ x: b.x, y: b.y, radius: 22, life: 0, maxLife: 0.18, color: warpCol });
+      }
       if (b.isTempoNote) {
           const tempoOwner = getEntityById(b.ownerId) || player;
           if (!b.tempoReturning) {
@@ -26726,80 +26745,74 @@
           const pAng = Math.atan2(b.vy, b.vx);
           const pNow = performance.now();
           const warpPulse = 0.6 + Math.sin(pNow / 55) * 0.4;
-          const col = b.hyperVisual ? '168, 0, 255' : '0, 230, 220';
-          const colBright = b.hyperVisual ? '220, 160, 255' : '160, 255, 252';
+          const col = b.hyperVisual ? '168, 0, 255' : '0, 225, 215';
+          const colBright = b.hyperVisual ? '220, 160, 255' : '160, 255, 250';
+          const postSkip = b.paradoxSkipDone;
 
           ctx.save();
           ctx.translate(b.x, b.y);
           ctx.rotate(pAng);
 
-          // === FRONT large center orb (x=+36) ===
-          ctx.shadowColor = `rgba(${col}, 0.95)`;
-          ctx.shadowBlur = 14;
+          // Formation shape:
+          // pre-skip: [back big orb] [gap] [front big orb] + side orbs
+          // post-skip: same shape but slightly brighter (just warped)
+          const bright = postSkip ? 1.0 : 0.88;
+
+          // === FRONT large center orb (x=+22) ===
+          ctx.shadowColor = `rgba(${col}, 0.9)`;
+          ctx.shadowBlur = 12;
           ctx.beginPath();
-          ctx.fillStyle = `rgba(${col}, 0.92)`;
-          ctx.arc(36, 0, 9, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${col}, ${bright})`;
+          ctx.arc(22, 0, 8, 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
-          ctx.fillStyle = 'rgba(255,255,255,0.9)';
-          ctx.arc(36, 0, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.88)';
+          ctx.arc(22, 0, 3, 0, Math.PI * 2);
           ctx.fill();
 
-          // === BACK large center orb (x=-36) ===
+          // === BACK large center orb (x=-22) ===
           ctx.beginPath();
-          ctx.fillStyle = `rgba(${col}, 0.92)`;
-          ctx.arc(-36, 0, 9, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${col}, ${bright})`;
+          ctx.arc(-22, 0, 8, 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
-          ctx.fillStyle = 'rgba(255,255,255,0.9)';
-          ctx.arc(-36, 0, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.88)';
+          ctx.arc(-22, 0, 3, 0, Math.PI * 2);
           ctx.fill();
           ctx.shadowBlur = 0;
 
-          // === WARP GAP in the middle (x=-22 to x=+22) ===
-          // Dark void fill behind the gap
-          ctx.fillStyle = `rgba(0, 0, 0, ${0.35 * warpPulse})`;
-          ctx.fillRect(-22, -6, 44, 12);
-
-          // Ripple border lines top & bottom
-          ctx.strokeStyle = `rgba(${colBright}, ${0.7 * warpPulse})`;
+          // === WARP GAP middle (-12 to +12, medium sized) ===
+          ctx.fillStyle = `rgba(0, 0, 0, ${0.4 * warpPulse})`;
+          ctx.fillRect(-12, -5, 24, 10);
+          // top/bottom edge glow
+          ctx.strokeStyle = `rgba(${colBright}, ${0.75 * warpPulse})`;
           ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(-22, -5); ctx.lineTo(22, -5);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(-22, 5); ctx.lineTo(22, 5);
-          ctx.stroke();
-
-          // Animated warp wisps inside gap
-          const wispOffset = (pNow / 80) % 22;
-          for (let w = -22 + wispOffset; w < 22; w += 10) {
-              const wispAlpha = 0.5 + Math.sin(pNow / 40 + w) * 0.3;
+          ctx.beginPath(); ctx.moveTo(-12, -4); ctx.lineTo(12, -4); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-12,  4); ctx.lineTo(12,  4); ctx.stroke();
+          // animated wisps inside
+          const wo = (pNow / 70) % 12;
+          for (let w = -12 + wo; w < 12; w += 8) {
               ctx.beginPath();
-              ctx.fillStyle = `rgba(${colBright}, ${wispAlpha * warpPulse})`;
-              ctx.arc(w, (Math.sin(pNow / 70 + w * 0.5)) * 2.5, 2, 0, Math.PI * 2);
+              ctx.fillStyle = `rgba(${colBright}, ${(0.55 + Math.sin(pNow/50+w)*0.3) * warpPulse})`;
+              ctx.arc(w, Math.sin(pNow/65+w*0.6)*2, 1.8, 0, Math.PI*2);
               ctx.fill();
           }
+          // edge sparks
+          ctx.fillStyle = `rgba(${colBright}, ${0.9 * warpPulse})`;
+          ctx.beginPath(); ctx.arc(-12, 0, 2.5, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc( 12, 0, 2.5, 0, Math.PI*2); ctx.fill();
 
-          // Edge energy sparks where orbs meet the gap
-          ctx.fillStyle = `rgba(${colBright}, ${0.85 * warpPulse})`;
-          ctx.beginPath(); ctx.arc(-22, 0, 3, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.arc(22, 0, 3, 0, Math.PI * 2); ctx.fill();
-
-          // === 2 small side orbs (perpendicular, centered on gap) ===
+          // === 2 small side orbs (perpendicular, centered) ===
           ctx.beginPath();
-          ctx.fillStyle = `rgba(${col}, 0.78)`;
-          ctx.arc(0, -26, 5.5, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.fillStyle = `rgba(${col}, 0.75)`;
+          ctx.arc(0, -20, 5, 0, Math.PI*2); ctx.fill();
           ctx.beginPath();
-          ctx.fillStyle = `rgba(${col}, 0.78)`;
-          ctx.arc(0, 26, 5.5, 0, Math.PI * 2);
-          ctx.fill();
-          // glow rings
-          ctx.strokeStyle = `rgba(${col}, 0.35)`;
+          ctx.fillStyle = `rgba(${col}, 0.75)`;
+          ctx.arc(0,  20, 5, 0, Math.PI*2); ctx.fill();
+          ctx.strokeStyle = `rgba(${col}, 0.32)`;
           ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(0, -26, 10, 0, Math.PI * 2); ctx.stroke();
-          ctx.beginPath(); ctx.arc(0, 26, 10, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, -20, 9, 0, Math.PI*2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0,  20, 9, 0, Math.PI*2); ctx.stroke();
 
           ctx.restore();
           continue;
