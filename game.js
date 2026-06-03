@@ -17331,7 +17331,7 @@
                     container.appendChild(dividerWrap);
                 }
                 const data = brawlerData[id];
-                const progress = playerData.brawlers[id];
+                const progress = getOrCreateProgress(id);
                 const isDisabled = disabledBrawlers.has(id);
                 const isLocked = !isBrawlerUnlocked(id);
                 const bLevel = progress.level;
@@ -17566,7 +17566,7 @@
         function showDetails(id) {
             overlay.innerHTML = '';
             const data = brawlerData[id];
-            const pData = playerData.brawlers[id];
+            const pData = getOrCreateProgress(id);
             if (!isBrawlerUnlocked(id)) {
                 const lockTitle = document.createElement('h1');
                 lockTitle.textContent = `${data.name} is locked`;
