@@ -1685,7 +1685,8 @@
             screener: 'Mythic',
             malakor: 'Legendary',
             beam: 'Mythic',
-            paradox: 'Legendary'
+            paradox: 'Legendary',
+            sera_eclipse: 'Chromatic'
         };
         let brawlerSortMode = localStorage.getItem('brawl_arena_brawler_sort') || 'rarity-desc';
 
@@ -1967,7 +1968,7 @@
         }
 
         function getBrawlerSortOrder(mode, brawlerId) {
-            const rarityOrder = { Common: 0, Rare: 1, 'Super Rare': 2, Epic: 3, Mythic: 4, Legendary: 5, Exotic: 6 };
+            const rarityOrder = { Common: 0, Rare: 1, 'Super Rare': 2, Epic: 3, Mythic: 4, Legendary: 5, Exotic: 6, Chromatic: 7 };
             const rarity = brawlerRarities[brawlerId] || 'Common';
             const label = (brawlerData[brawlerId]?.name || brawlerId).toLowerCase();
             const role = (brawlerData[brawlerId]?.role || '').toLowerCase();
@@ -13225,6 +13226,31 @@
                 updateGadgetButton();
             }
         }
+    } else if (brawler === 'sera_eclipse') {
+        const isHc = isBot ? fromEntity.isHypercharged : isHypercharged;
+        const ownerMult = 1.0 + ((fromEntity.powerCubes || 0) * 0.1);
+        const levelMult = isBot ? 1.0 : getPlayerDamageScale();
+        const baseDmg = isHc ? 850 : 700;
+        const finalDmg = Math.round(baseDmg * ownerMult * levelMult);
+        const baseHeal = isHc ? 500 : 400;
+        const finalHeal = Math.round(baseHeal * ownerMult * levelMult);
+        
+        bullets.push({
+            ownerBrawler: 'sera_eclipse',
+            isSeraFlare: true,
+            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 6),
+            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 6),
+            vx: Math.cos(ang) * 780,
+            vy: Math.sin(ang) * 780,
+            life: 0,
+            maxLife: 0.65,
+            damage: finalDmg,
+            healAmt: finalHeal,
+            pierce: true,
+            hyperVisual: isHc,
+            ownerId: fromEntity.id,
+            hitIds: {}
+        });
     } else if (brawler === 'paradox') {
         const isHc = isBot ? fromEntity.isHypercharged : isHypercharged;
         const ownerMult = 1.0 + ((fromEntity.powerCubes || 0) * 0.1);
@@ -15668,6 +15694,7 @@
           'Mythic': '#ff7bd1',
           'Legendary': '#ff9b42',
           'Exotic': '#b983ff',
+          'Chromatic': '#ffd36b',
       };
       const rarityColor = rarityColors[rarity] || '#9fb4c7';
       const bars = Array.from({ length: 11 }, (_, i) => `<span style="display:inline-block;width:7px;height:5px;border-radius:3px;background:${i < level ? rarityColor : 'rgba(255,255,255,0.15)'}"></span>`).join('');
@@ -17242,6 +17269,7 @@
                 <option value="Epic">Epic</option>
                 <option value="Mythic">Mythic</option>
                 <option value="Legendary">Legendary</option>
+                <option value="Chromatic">Chromatic</option>
                 <option value="Exotic">Exotic</option>
             `;
             rarityFilter.value = modalSortState.rarity;
@@ -17281,6 +17309,7 @@
                 'Mythic': '#ff7bd1',
                 'Legendary': '#ff9b42',
                 'Exotic': '#b983ff',
+                'Chromatic': '#ffd36b',
             };
 
             const visibleBrawlers = [...allBrawlers]
