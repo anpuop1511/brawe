@@ -26575,6 +26575,33 @@
               }
           }
           ctx.restore();
+      else if (b.ownerBrawler === 'sera_eclipse') {
+          const flarePulse = 0.85 + Math.sin(b.life * 25) * 0.15;
+          const isHc = b.hyperVisual;
+          const outerColor = isHc ? 'rgba(238, 0, 255, 0.8)' : 'rgba(209, 90, 255, 0.8)';
+          const innerColor = isHc ? 'rgba(255, 200, 255, 0.95)' : 'rgba(255, 230, 255, 0.95)';
+          const coreRadius = (isHc ? 12 : 9) * flarePulse;
+          const glowRadius = (isHc ? 20 : 15) * flarePulse;
+          
+          ctx.beginPath();
+          const grad = ctx.createRadialGradient(b.x, b.y, coreRadius * 0.2, b.x, b.y, glowRadius);
+          grad.addColorStop(0, innerColor);
+          grad.addColorStop(0.3, outerColor);
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = grad;
+          ctx.arc(b.x, b.y, glowRadius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.strokeStyle = isHc ? 'rgba(255, 120, 255, 0.6)' : 'rgba(225, 180, 255, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, coreRadius + 2, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          ctx.fillStyle = innerColor;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, coreRadius * 0.45, 0, Math.PI * 2);
+          ctx.fill();
           continue;
       }
       else if (b.ownerBrawler === 'outlit') {
