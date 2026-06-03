@@ -26723,83 +26723,88 @@
       }
       
       if (b.isParadoxMain) {
-          // Formation: 2 small side orbs + 2 large center orbs + warp gap in the middle
-          // All drawn relative to bullet center, rotated to travel direction
           const pAng = Math.atan2(b.vy, b.vx);
           const pNow = performance.now();
-          const warpPulse = 0.7 + Math.sin(pNow / 60) * 0.3;
+          const warpPulse = 0.6 + Math.sin(pNow / 55) * 0.4;
           const col = b.hyperVisual ? '168, 0, 255' : '0, 230, 220';
-          const colBright = b.hyperVisual ? '200, 120, 255' : '120, 255, 248';
+          const colBright = b.hyperVisual ? '220, 160, 255' : '160, 255, 252';
 
           ctx.save();
           ctx.translate(b.x, b.y);
           ctx.rotate(pAng);
 
-          // === 2 large center orbs (fore and aft of the gap) ===
-          // front large orb (ahead of gap)
+          // === FRONT large center orb (x=+36) ===
+          ctx.shadowColor = `rgba(${col}, 0.95)`;
+          ctx.shadowBlur = 14;
           ctx.beginPath();
-          ctx.fillStyle = `rgba(${col}, 0.88)`;
-          ctx.shadowColor = `rgba(${col}, 0.9)`;
-          ctx.shadowBlur = 10;
-          ctx.arc(18, 0, 8, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${col}, 0.92)`;
+          ctx.arc(36, 0, 9, 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
-          ctx.fillStyle = `rgba(255,255,255,0.85)`;
-          ctx.arc(18, 0, 3, 0, Math.PI * 2);
-          ctx.fill();
-
-          // back large orb (behind gap)
-          ctx.beginPath();
-          ctx.fillStyle = `rgba(${col}, 0.88)`;
-          ctx.arc(-18, 0, 8, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.fillStyle = `rgba(255,255,255,0.85)`;
-          ctx.arc(-18, 0, 3, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.arc(36, 0, 3.5, 0, Math.PI * 2);
           ctx.fill();
 
-          // === Warp gap in the middle ===
-          // Draw a warp shimmer across the gap
+          // === BACK large center orb (x=-36) ===
           ctx.beginPath();
-          ctx.strokeStyle = `rgba(${colBright}, ${0.55 * warpPulse})`;
-          ctx.lineWidth = 3;
-          ctx.setLineDash([5, 4]);
-          ctx.moveTo(-9, 0);
-          ctx.lineTo(9, 0);
+          ctx.fillStyle = `rgba(${col}, 0.92)`;
+          ctx.arc(-36, 0, 9, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.arc(-36, 0, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // === WARP GAP in the middle (x=-22 to x=+22) ===
+          // Dark void fill behind the gap
+          ctx.fillStyle = `rgba(0, 0, 0, ${0.35 * warpPulse})`;
+          ctx.fillRect(-22, -6, 44, 12);
+
+          // Ripple border lines top & bottom
+          ctx.strokeStyle = `rgba(${colBright}, ${0.7 * warpPulse})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(-22, -5); ctx.lineTo(22, -5);
           ctx.stroke();
-          ctx.setLineDash([]);
-          // small glint dots inside gap
-          for (let g = -6; g <= 6; g += 6) {
+          ctx.beginPath();
+          ctx.moveTo(-22, 5); ctx.lineTo(22, 5);
+          ctx.stroke();
+
+          // Animated warp wisps inside gap
+          const wispOffset = (pNow / 80) % 22;
+          for (let w = -22 + wispOffset; w < 22; w += 10) {
+              const wispAlpha = 0.5 + Math.sin(pNow / 40 + w) * 0.3;
               ctx.beginPath();
-              ctx.fillStyle = `rgba(${colBright}, ${0.6 * warpPulse})`;
-              ctx.arc(g, 0, 2, 0, Math.PI * 2);
+              ctx.fillStyle = `rgba(${colBright}, ${wispAlpha * warpPulse})`;
+              ctx.arc(w, (Math.sin(pNow / 70 + w * 0.5)) * 2.5, 2, 0, Math.PI * 2);
               ctx.fill();
           }
 
-          // === 2 small side orbs (perpendicular offset) ===
-          ctx.beginPath();
-          ctx.fillStyle = `rgba(${col}, 0.72)`;
-          ctx.arc(0, -22, 5, 0, Math.PI * 2);  // top side
-          ctx.fill();
-          ctx.beginPath();
-          ctx.fillStyle = `rgba(${col}, 0.72)`;
-          ctx.arc(0, 22, 5, 0, Math.PI * 2);   // bottom side
-          ctx.fill();
+          // Edge energy sparks where orbs meet the gap
+          ctx.fillStyle = `rgba(${colBright}, ${0.85 * warpPulse})`;
+          ctx.beginPath(); ctx.arc(-22, 0, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(22, 0, 3, 0, Math.PI * 2); ctx.fill();
 
-          // glow rings on side orbs
+          // === 2 small side orbs (perpendicular, centered on gap) ===
           ctx.beginPath();
-          ctx.strokeStyle = `rgba(${col}, 0.4)`;
+          ctx.fillStyle = `rgba(${col}, 0.78)`;
+          ctx.arc(0, -26, 5.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(${col}, 0.78)`;
+          ctx.arc(0, 26, 5.5, 0, Math.PI * 2);
+          ctx.fill();
+          // glow rings
+          ctx.strokeStyle = `rgba(${col}, 0.35)`;
           ctx.lineWidth = 1.5;
-          ctx.arc(0, -22, 9, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(0, 22, 9, 0, Math.PI * 2);
-          ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, -26, 10, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, 26, 10, 0, Math.PI * 2); ctx.stroke();
 
-          ctx.shadowBlur = 0;
           ctx.restore();
           continue;
       }
+
 
       ctx.fillStyle = b.hyperVisual ? '#e0f' : (b.super ? '#ffd166' : (b.ownerId===player.id ? '#ffffff' : '#ffb3b3'));
       if (b.isEchoRingProj) {

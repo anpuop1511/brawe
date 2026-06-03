@@ -270,26 +270,15 @@
       const legacyCanvas = document.getElementById('gameCanvas');
       const appRoot = document.getElementById('app');
 
-      if (location.protocol === 'file:') {
-        if (appRoot) appRoot.style.display = 'none';
-        if (legacyCanvas) legacyCanvas.style.display = 'block';
-        if (hud) hud.style.display = 'none';
-        if (homeScreen) homeScreen.style.display = '';
+      // Always load game.js directly
+      if (appRoot) appRoot.style.display = 'none';
+      if (legacyCanvas) legacyCanvas.style.display = 'block';
+      if (hud) hud.style.display = 'none';
+      if (homeScreen) homeScreen.style.display = '';
 
-        const script = document.createElement('script');
-        script.src = './game.js';
-        document.body.appendChild(script);
-      } else {
-        if (legacyCanvas) legacyCanvas.style.display = 'none';
-        if (hud) hud.style.display = 'none';
-        if (homeScreen) homeScreen.style.display = 'none';
-        if (appRoot) appRoot.style.display = 'block';
-
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.src = '/src/main.ts';
-        document.body.appendChild(script);
-      }
+      const script = document.createElement('script');
+      script.src = './game.js';
+      document.body.appendChild(script);
     </script>
   </body>
 </html>
