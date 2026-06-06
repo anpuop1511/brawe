@@ -7014,6 +7014,24 @@
               }
           }));
           grid.appendChild(makeCard({
+              titleText: '☀ Summer Launch Freebie! ☀',
+              accent: '#ff8800',
+              descText: 'Celebrate the launch of Summer! Claim your 1 FREE Hyper Tapper Upper.',
+              priceText: 'FREE',
+              buttonText: 'CLAIM',
+              buttonColor: '#ff8800',
+              isOwned: !!(playerData.shopClaims && playerData.shopClaims.summerHyperTapper),
+              footerText: 'Summer event exclusive offer.',
+              onBuy: () => {
+                  playerData.shopClaims = playerData.shopClaims || {};
+                  playerData.shopClaims.summerHyperTapper = true;
+                  playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
+                  saveProgress();
+                  ensureShopButtonRefresh();
+                  if (typeof refreshHomeUI === 'function') refreshHomeUI();
+              }
+          }));
+          grid.appendChild(makeCard({
               titleText: '🆓 Free Outlit Full Unlock',
               accent: '#ff4bd1',
               descText: 'Unlock Outlit\'s complete kit for free — Power 11, gadget, star power, and hypercharge.',
