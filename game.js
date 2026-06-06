@@ -4827,6 +4827,179 @@
   }
 
   
+  function openAllTappers() {
+      const regCount = playerData.starrDrops || 0;
+      const superCount = playerData.superTapperCount || 0;
+      const hyperCount = playerData.hyperTapperCount || 0;
+      const totalTappers = regCount + superCount + hyperCount;
+      if (totalTappers <= 0) return;
+
+      let totalCoins = 0;
+      let totalGems = 0;
+      let totalSouls = 0;
+      const unlockedHypers = [];
+      const pityBonusTexts = [];
+
+      const regRarities = [
+          { name: 'Rare', coinMin: 15, coinMax: 30 },
+          { name: 'Super Rare', coinMin: 40, coinMax: 80 },
+          { name: 'Epic', coinMin: 100, coinMax: 200 },
+          { name: 'Mythic', coinMin: 250, coinMax: 400 },
+          { name: 'Legendary', coinMin: 500, coinMax: 1000 },
+          { name: 'Ultra', coinMin: 1500, coinMax: 2500 }
+      ];
+
+      for (let i = 0; i < regCount; i++) {
+          let rarityScore = 0;
+          for (let t = 0; t < 4; t++) {
+              if (Math.random() < 0.48) rarityScore++;
+          }
+          rarityScore = Math.min(rarityScore, regRarities.length - 1);
+          const rInfo = regRarities[rarityScore];
+          const coins = Math.floor(Math.random() * (rInfo.coinMax - rInfo.coinMin + 1)) + rInfo.coinMin;
+          const gems = Math.max(1, Math.floor(coins / 400));
+          const souls = rollSoulReward(8, 18);
+          totalCoins += coins;
+          totalGems += gems;
+          totalSouls += souls;
+      }
+
+      const superRarities = [
+          { name: 'Rare', coinMin: 50, coinMax: 80 },
+          { name: 'Super Rare', coinMin: 100, coinMax: 160 },
+          { name: 'Epic', coinMin: 200, coinMax: 350 },
+          { name: 'Mythic', coinMin: 400, coinMax: 700 },
+          { name: 'Legendary', coinMin: 800, coinMax: 1500 },
+          { name: 'Ultra', coinMin: 2000, coinMax: 3500 }
+      ];
+
+      for (let i = 0; i < superCount; i++) {
+          const splits = Math.floor(Math.random() * 7) + 2;
+          let superCoins = 0;
+          for (let s = 0; s < splits; s++) {
+              const r = Math.random() * 100;
+              let choice;
+              if (r < 3) choice = superRarities[5];
+              else if (r < 12) choice = superRarities[4];
+              else if (r < 30) choice = superRarities[3];
+              else if (r < 55) choice = superRarities[2];
+              else if (r < 80) choice = superRarities[1];
+              else choice = superRarities[0];
+              superCoins += Math.floor(Math.random() * (choice.coinMax - choice.coinMin + 1)) + choice.coinMin;
+          }
+          const gems = Math.max(2, Math.floor(superCoins / 250));
+          const souls = rollSoulReward(20, 40);
+          totalCoins += superCoins;
+          totalGems += gems;
+          totalSouls += souls;
+          
+          const pity = grantTapperBonusWithPity('super');
+          if (pity) pityBonusTexts.push(pity.text);
+      }
+
+      for (let i = 0; i < hyperCount; i++) {
+          const isHyper = Math.random() < 0.65;
+          const souls = rollSoulReward(45, 80);
+          totalSouls += souls;
+
+          if (isHyper) {
+              const lockedHyperBrawlers = allBrawlers.filter((bid) => {
+                  const prog = getOrCreateProgress(bid);
+                  const isDisabled = (brawlerData && brawlerData[bid] && brawlerData[bid].disabled) || disabledBrawlers.has(bid);
+                  return !isDisabled && !prog.hyperchargeUnlocked;
+              });
+              if (lockedHyperBrawlers.length > 0) {
+                  const chosenId = lockedHyperBrawlers[Math.floor(Math.random() * lockedHyperBrawlers.length)];
+                  const chosenProg = getOrCreateProgress(chosenId);
+                  chosenProg.hyperchargeUnlocked = true;
+                  totalGems += 8;
+                  const chosenName = (brawlerData[chosenId] && brawlerData[chosenId].name) || chosenId;
+                  unlockedHypers.push(chosenName);
+              } else {
+                  totalCoins += 1000;
+              }
+          } else {
+              totalCoins += 1000;
+          }
+      }
+
+      playerData.starrDrops = 0;
+      playerData.superTapperCount = 0;
+      playerData.hyperTapperCount = 0;
+      playerData.coins += totalCoins;
+      playerData.gems += totalGems;
+      addSouls(totalSouls);
+      saveProgress();
+
+      if (selectedBrawler && typeof updateHyperButton === 'function') updateHyperButton();
+      if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
+      if (typeof refreshHomeUI === 'function') refreshHomeUI();
+
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed'; overlay.style.inset = '0';
+      overlay.style.background = 'rgba(4, 9, 22, 0.96)'; overlay.style.zIndex = '2500';
+      overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
+      overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center';
+      overlay.style.color = '#fff'; overlay.style.fontFamily = 'sans-serif';
+      overlay.style.padding = '24px';
+      
+      const title = document.createElement('h1');
+      title.textContent = '🌟 BULK OPEN COMPLETE 🌟';
+      title.style.color = '#ffd166';
+      title.style.textShadow = '0 0 24px rgba(255, 209, 102, 0.4)';
+      overlay.appendChild(title);
+
+      const subtitle = document.createElement('p');
+      subtitle.textContent = `Opened: ${regCount} Tappers, ${superCount} Supers, ${hyperCount} Hypers`;
+      subtitle.style.color = '#89aed2';
+      overlay.appendChild(subtitle);
+
+      const results = document.createElement('div');
+      results.style.background = 'rgba(255,255,255,0.03)';
+      results.style.border = '1px solid rgba(255,255,255,0.08)';
+      results.style.borderRadius = '16px';
+      results.style.padding = '20px 32px';
+      results.style.marginTop = '16px';
+      results.style.fontSize = '18px';
+      results.style.lineHeight = '1.8';
+      results.style.textAlign = 'center';
+
+      let hypersText = '';
+      if (unlockedHypers.length > 0) {
+          hypersText = `<div style="color: #d282ff; font-weight: bold; margin-top: 10px;">⚡ HYPERCHARGES UNLOCKED:<br>${unlockedHypers.join(', ')}</div>`;
+      }
+
+      let pityText = '';
+      if (pityBonusTexts.length > 0) {
+          pityText = `<div style="color: #ffd166; font-size: 14px; margin-top: 10px;">🎁 PITY REWARDS:<br>${[...new Set(pityBonusTexts)].join(', ')}</div>`;
+      }
+
+      results.innerHTML = `
+          <div style="font-size: 24px; font-weight: bold; color: #5df2c2; margin-bottom: 8px;">TOTAL REWARDS</div>
+          <div style="color: #ffd166; font-weight: 800;">🪙 +${totalCoins.toLocaleString()} COINS</div>
+          <div style="color: #6ee7ff; font-weight: 800;">💎 +${totalGems.toLocaleString()} GEMS</div>
+          <div style="color: #b983ff; font-weight: 800;">🧪 +${totalSouls.toLocaleString()} SOULS</div>
+          ${hypersText}
+          ${pityText}
+      `;
+      overlay.appendChild(results);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'AWESOME!';
+      closeBtn.style.marginTop = '24px';
+      closeBtn.style.padding = '12px 28px';
+      closeBtn.style.borderRadius = '12px';
+      closeBtn.style.border = 'none';
+      closeBtn.style.background = 'linear-gradient(135deg, #5df2c2, #29c996)';
+      closeBtn.style.color = '#041810';
+      closeBtn.style.fontWeight = '900';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.onclick = () => overlay.remove();
+      overlay.appendChild(closeBtn);
+
+      document.body.appendChild(overlay);
+  }
+
   function openStarrDrop() {
       if (playerData.starrDrops <= 0) return;
       playerData.starrDrops--;
@@ -17289,6 +17462,22 @@
                 hyperBtn.onclick = () => openHyperStarrDrop();
                 statsDiv.appendChild(hyperBtn);
             }
+            const totalTapperCount = (playerData.starrDrops || 0) + (playerData.superTapperCount || 0) + (playerData.hyperTapperCount || 0);
+            if (totalTapperCount > 1) {
+                const openAllBtn = document.createElement('button');
+                openAllBtn.textContent = `🎁 BULK OPEN (${totalTapperCount})`;
+                openAllBtn.style.background = 'linear-gradient(135deg, #5df2c2, #29c996)';
+                openAllBtn.style.color = '#041810';
+                openAllBtn.style.border = 'none';
+                openAllBtn.style.padding = '10px 16px';
+                openAllBtn.style.borderRadius = '8px';
+                openAllBtn.style.cursor = 'pointer';
+                openAllBtn.style.fontWeight = '900';
+                openAllBtn.onclick = () => {
+                    openAllTappers();
+                };
+                statsDiv.appendChild(openAllBtn);
+            }
 
             headerRow.appendChild(title);
             headerRow.appendChild(statsDiv);
@@ -18214,8 +18403,23 @@
             hyperBtn.style.background = '#ff8800'; hyperBtn.style.color = '#08101d'; hyperBtn.style.padding='8px 12px'; hyperBtn.style.borderRadius='8px';
             hyperBtn.disabled = !(playerData.hyperTapperCount > 0);
             hyperBtn.onclick = ()=>{ openHyperStarrDrop(); };
+
+            const allBtn = document.createElement('button');
+            const totalDrops = (playerData.starrDrops || 0) + (playerData.superTapperCount || 0) + (playerData.hyperTapperCount || 0);
+            allBtn.textContent = `BULK OPEN (${totalDrops})`;
+            allBtn.style.background = 'linear-gradient(135deg, #5df2c2, #29c996)';
+            allBtn.style.color = '#041810';
+            allBtn.style.padding = '8px 12px';
+            allBtn.style.borderRadius = '8px';
+            allBtn.style.fontWeight = '900';
+            allBtn.style.border = 'none';
+            allBtn.style.cursor = 'pointer';
+            allBtn.disabled = totalDrops <= 1;
+            allBtn.onclick = () => { openAllTappers(); showDetails(id); };
+            
             tapperRow.appendChild(regularBtn); tapperRow.appendChild(superBtn);
             tapperRow.appendChild(hyperBtn);
+            tapperRow.appendChild(allBtn);
             controlRow.appendChild(tapperRow);
 
             detailsContainer.appendChild(controlRow);
