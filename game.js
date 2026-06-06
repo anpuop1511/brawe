@@ -15685,7 +15685,7 @@
       if (!card) return;
       const data = brawlerData[selectedBrawler] || brawlerData.outlit || { name: 'Outlit', role: 'Fighter', rarity: 'Common' };
       const level = Math.max(1, Math.min(11, playerData?.brawlers?.[selectedBrawler]?.level || 1));
-      const rarity = data.rarity || 'Common';
+      const rarity = brawlerRarities[selectedBrawler] || 'Common';
       const rarityColors = {
           'Common': '#9fb4c7',
           'Rare': '#5df2c2',
@@ -15696,17 +15696,38 @@
           'Exotic': '#b983ff',
       };
       const rarityColor = rarityColors[rarity] || '#9fb4c7';
-      const bars = Array.from({ length: 11 }, (_, i) => `<span style="display:inline-block;width:7px;height:5px;border-radius:3px;background:${i < level ? rarityColor : 'rgba(255,255,255,0.15)'}"></span>`).join('');
+      const stats = getScaledStats(selectedBrawler);
+      const bColor = data.color || '#fff';
+      
+      card.style.background = `linear-gradient(135deg, ${rarityColor}1a 0%, rgba(8, 20, 42, 0.45) 45%, rgba(4, 9, 20, 0.85) 100%)`;
+      card.style.border = `1px solid ${rarityColor}33`;
+      card.style.boxShadow = `0 8px 24px rgba(0,0,0,0.2), inset 0 0 12px ${rarityColor}0d`;
+      card.style.transition = 'all 0.25s ease';
+
+      const bars = Array.from({ length: 11 }, (_, i) => `<span style="display:inline-block;width:7px;height:5px;border-radius:3px;background:${i < level ? rarityColor : 'rgba(255,255,255,0.12)'}"></span>`).join('');
+      
       card.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <div style="min-width:0">
-              <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#89aed2;">Current Brawler</div>
-              <div style="font-size:17px;font-weight:900;color:#e8f8ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${data.name || selectedBrawler}</div>
-              <div style="font-size:11px;color:${rarityColor};font-weight:700">${rarity} • ${data.role || 'Fighter'}</div>
+            <div style="min-width:0;display:flex;align-items:center;gap:10px;">
+              <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg, ${bColor}dd, ${bColor}44);display:flex;align-items:center;justify-content:center;font-weight:900;color:#050b16;font-size:18px;box-shadow: 0 4px 10px ${bColor}44;">
+                ${(data.name || selectedBrawler).substring(0,2).toUpperCase()}
+              </div>
+              <div style="min-width:0">
+                <div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#89aed2;">Current Brawler</div>
+                <div style="font-size:16px;font-weight:900;color:#e8f8ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${data.name || selectedBrawler}</div>
+                <div style="font-size:11px;color:${rarityColor};font-weight:700">${rarity.toUpperCase()} • ${data.role || 'Fighter'}</div>
+              </div>
             </div>
-            <div style="font-size:12px;font-weight:900;color:#dff2ff;background:rgba(93,242,194,0.14);border:1px solid rgba(93,242,194,0.36);border-radius:9px;padding:5px 8px;">P${level}</div>
+            <div style="font-size:11px;font-weight:900;color:#ffffff;background:linear-gradient(135deg, ${rarityColor}dd, ${rarityColor}55);border-radius:8px;padding:4px 8px;box-shadow: 0 2px 8px ${rarityColor}33;text-shadow: 0 1px 2px rgba(0,0,0,0.5);">P${level}</div>
           </div>
-          <div style="display:flex;gap:3px;margin-top:7px;">${bars}</div>
+          <div style="display:flex;gap:3px;margin-top:9px;justify-content:space-between;align-items:center;">
+            <div style="display:flex;gap:3px;">${bars}</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:11px;color:#a2c4e6;background:rgba(0,0,0,0.22);padding:5px 8px;border-radius:8px;font-weight:600;border: 1px solid rgba(255,255,255,0.03);">
+            <span style="display:flex;align-items:center;gap:3px;">❤️ ${stats.hp}</span>
+            <span style="display:flex;align-items:center;gap:3px;">⚔️ ${stats.dmg}</span>
+            <span style="display:flex;align-items:center;gap:3px;">⚡ ${stats.speed}</span>
+          </div>
       `;
   }
 
@@ -15718,16 +15739,32 @@
       const nextThreshold = info.nextThreshold || (currentFloor + RANKED_POINTS_PER_DIVISION);
       const span = Math.max(1, nextThreshold - currentFloor);
       const progress = clamp((info.points - currentFloor) / span, 0, 1);
+      
+      card.style.background = `linear-gradient(135deg, ${info.color}18 0%, rgba(18, 15, 8, 0.45) 45%, rgba(9, 7, 4, 0.85) 100%)`;
+      card.style.border = `1px solid ${info.color}26`;
+      card.style.boxShadow = `0 8px 24px rgba(0,0,0,0.2), inset 0 0 12px ${info.color}08`;
+      card.style.transition = 'all 0.25s ease';
+
       card.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#c8a96b;">Ranked Tier</div>
-            <div style="font-size:12px;font-weight:800;color:#e8c573">${info.points} RP</div>
+            <div style="min-width:0;display:flex;align-items:center;gap:10px;">
+              <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg, ${info.color}dd, ${info.color}44);display:flex;align-items:center;justify-content:center;font-weight:900;color:#0d0a04;font-size:16px;box-shadow: 0 4px 10px ${info.color}33;">
+                ${info.label.split(' ').map(w => w[0]).join('').substring(0,3).toUpperCase()}
+              </div>
+              <div style="min-width:0">
+                <div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#c8a96b;">Ranked League</div>
+                <div style="font-size:16px;font-weight:900;color:${info.color};">${info.label}</div>
+              </div>
+            </div>
+            <div style="font-size:11px;font-weight:900;color:#ffffff;background:rgba(255, 211, 117, 0.12);border: 1px solid rgba(255, 211, 117, 0.3);border-radius:8px;padding:4px 8px;">${info.points} RP</div>
           </div>
-          <div style="margin-top:3px;font-size:16px;font-weight:900;color:${info.color};">${info.label}</div>
-          <div style="margin-top:8px;height:7px;border-radius:999px;background:rgba(0,0,0,0.32);overflow:hidden;">
-            <div style="height:100%;width:${Math.round(progress * 100)}%;background:linear-gradient(90deg,${info.color},#ffe29b);"></div>
+          <div style="margin-top:10px;height:6px;border-radius:999px;background:rgba(0,0,0,0.4);overflow:hidden;border: 1px solid rgba(255,255,255,0.02);">
+            <div style="height:100%;width:${Math.round(progress * 100)}%;background:linear-gradient(90deg,${info.color},#ffebc2);box-shadow: 0 0 8px ${info.color}aa;border-radius:999px;"></div>
           </div>
-          <div style="margin-top:4px;font-size:10px;color:#a38554;">${info.nextLabel ? `Next: ${info.nextLabel}` : 'Max rank reached'}</div>
+          <div style="margin-top:5px;font-size:10px;color:#a8916b;display:flex;justify-content:space-between;">
+            <span>${info.points - currentFloor} / ${span} division pts</span>
+            <span>${info.nextLabel ? `Next: ${info.nextLabel}` : 'Max division'}</span>
+          </div>
       `;
   }
 
@@ -15738,9 +15775,9 @@
       const gems = Math.floor(playerData?.gems || 0).toLocaleString();
       const souls = Math.floor(playerData?.souls || 0).toLocaleString();
       bar.innerHTML = `
-          <div class="home-currency-pill">🪙 ${coins}</div>
-          <div class="home-currency-pill">💎 ${gems}</div>
-          <div class="home-currency-pill">🧪 ${souls}</div>
+          <div class="home-currency-pill coins">🪙 ${coins}</div>
+          <div class="home-currency-pill gems">💎 ${gems}</div>
+          <div class="home-currency-pill souls">🧪 ${souls}</div>
       `;
   }
 
@@ -15764,18 +15801,52 @@
       homeModeCompactRow.innerHTML = '';
       Object.keys(homeModeCardMap).forEach((k) => delete homeModeCardMap[k]);
       homeModeSelect = null;
+
+      const modeColors = {
+          solo: '#ff5c5c',
+          duo: '#ff8552',
+          trio: '#ffb638',
+          objective: '#389eff',
+          construction: '#f2a25d',
+          knock_donate: '#ff7bd1',
+          brick_vault: '#ffd166',
+          arena_forge: '#5df2c2',
+          damage_filler: '#e63946',
+          mirror: '#d282ff',
+          power_gods: '#ffe066'
+      };
+
       HOME_MODE_CARDS.forEach(([id, emoji, name, subtitle]) => {
           const card = document.createElement('button');
           card.type = 'button';
           card.className = 'home-mode-card';
           card.style.width = '100%';
           card.style.textAlign = 'left';
+          card.style.position = 'relative';
+          card.style.overflow = 'hidden';
+          
+          const mColor = modeColors[id] || '#dff2ff';
+          let tag = '3V3';
+          if (id === 'solo') tag = 'FFA';
+          else if (id === 'duo') tag = 'DUO';
+          else if (id === 'trio') tag = 'TRIO';
+          else if (id === 'power_gods' || id === 'arena_forge' || id === 'damage_filler') tag = 'SOLO';
+          else if (id === 'mirror') tag = '5V5';
+
           card.innerHTML = `
-              <div style="display:flex;align-items:center;gap:7px;">
-                <span style="font-size:16px;">${emoji}</span>
-                <span style="font-size:12px;font-weight:800;color:#dff2ff;">${name}</span>
+              <div style="position:absolute;left:0;top:0;width:3px;height:100%;background:${mColor};"></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+                  <div style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">
+                    ${emoji}
+                  </div>
+                  <div style="min-width:0;">
+                    <div style="font-size:13px;font-weight:800;color:#e8f4ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+                    <div style="font-size:10px;color:#89b5d9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subtitle}</div>
+                  </div>
+                </div>
+                <div style="font-size:8px;font-weight:900;color:${mColor};background:${mColor}15;border:1px solid ${mColor}44;border-radius:5px;padding:2px 5px;letter-spacing:0.05em;flex-shrink:0;">${tag}</div>
               </div>
-              <div style="margin-top:5px;font-size:10px;color:#89b5d9;line-height:1.25;">${subtitle}</div>
           `;
           card.onclick = () => {
               showdownMode = id;
