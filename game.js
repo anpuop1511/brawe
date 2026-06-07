@@ -2209,7 +2209,7 @@
     const EVENT_END_MS = new Date(2026, 4, 31, 0, 0, 0).getTime(); // May 31, 2026
     const EVENT_SHOP_UNLOCK_MS = EVENT_END_MS + 60 * 24 * 60 * 60 * 1000; // 60 days after event ends (July 30, 2026)
     const ENABLE_EVENT_HUB = false;
-    const ENABLE_SEASON_PASS = true;
+    const ENABLE_SEASON_PASS = false;
     const ENABLE_SEASON_QUESTS = true;
     const ENABLE_DAILY_WEEKLY_QUESTS = true;
 
@@ -25496,6 +25496,39 @@
           ctx.fill();
           continue;
       }
+      if (activeSkinId === 'soda-pop-echo' && b.isEchoRingProj && !b.hyperVisual) {
+          // Draw bubbly blue traveling orb with small tail bubbles
+          ctx.save();
+          ctx.shadowColor = '#33ccff';
+          ctx.shadowBlur = 10;
+          ctx.fillStyle = 'rgba(51, 204, 255, 0.9)';
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.super ? 9 : 6, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Inner glowing core
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, (b.super ? 9 : 6) * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          
+          // Small tail particles
+          if (Math.random() < 0.35) {
+              explosions.push({
+                  x: b.x,
+                  y: b.y,
+                  vx: (Math.random() - 0.5) * 20,
+                  vy: (Math.random() - 0.5) * 20,
+                  radius: 1.5 + Math.random() * 2,
+                  life: 0,
+                  maxLife: 0.3 + Math.random() * 0.2,
+                  color: '#ffffff',
+                  isParticle: true
+              });
+          }
+          continue;
+      }
       if (activeSkinId === 'battle-decayer' && b.ownerBrawler === 'decayer') {
           // VILLAIN: Void Wraith - dark teal void energy (NOT purple)
           ctx.strokeStyle = b.super ? 'rgba(0, 255, 204, 0.85)' : 'rgba(0, 204, 170, 0.9)';
@@ -26778,7 +26811,11 @@
     for(const r of rings){
         ctx.beginPath();
         const a = (r.maxRadius - r.radius) / r.maxRadius;
-        if (r.sourceBullet && (r.sourceBullet.skinEffect === 'sodaBubble' || r.sourceBullet.skinEffect === 'sodaBlast')) {
+        const activeSkin = getActiveSkinForBrawler('echo');
+        const activeSkinId = activeSkin?.id || '';
+        const isHyperRing = r.sourceBullet && r.sourceBullet.hyperVisual;
+        
+        if (activeSkinId === 'soda-pop-echo' && !isHyperRing) {
             ctx.strokeStyle = `rgba(51, 204, 255, ${a})`;
             ctx.lineWidth = 5 + (a * 5);
             ctx.arc(r.x, r.y, r.radius, 0, Math.PI*2);
@@ -26793,7 +26830,6 @@
                 ctx.fill();
             }
         } else {
-            const isHyperRing = r.sourceBullet && r.sourceBullet.hyperVisual;
             ctx.strokeStyle = isHyperRing ? `rgba(238, 0, 255, ${a})` : `rgba(80, 210, 255, ${a})`;
             ctx.lineWidth = 4 + (a * 4);
             ctx.arc(r.x, r.y, r.radius, 0, Math.PI*2);
