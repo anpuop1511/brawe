@@ -2102,24 +2102,6 @@
             battlePassRewardTier: 10,
             battlePassRewardSeason: 'lava-stones-2026-05'
         },
-        'battle-echo': {
-            id: 'battle-echo', name: 'Sonic Knight', brawler: 'echo', rarity: 'epic', set: 'Heroes vs Villains', price: 0, currency: 'event', description: 'HERO: Fires crystalline sonic waves! Super: Releases a devastating shockwave that pierces all!', attackEffect: { type: 'heroSonic', color: '#00d4ff', glow: true }, superEffect: { type: 'heroSonicWave', color: '#00d4ff', glow: true }, eventOnly: true, dropOnly: true
-        },
-        'battle-decayer': {
-            id: 'battle-decayer', name: 'Void Wraith', brawler: 'decayer', rarity: 'epic', set: 'Heroes vs Villains', price: 0, currency: 'event', description: 'VILLAIN: Attacks corrupt with void energy! Super: Engulfs area with chaotic void forces.', attackEffect: { type: 'villainVoid', color: '#00ccaa', glow: true }, superEffect: { type: 'villainVoidAura', color: '#00ccaa', glow: true }, eventOnly: true, dropOnly: true
-        },
-        'battle-unop': {
-            id: 'battle-unop', name: 'Unity Guardian', brawler: 'unopcoloco', rarity: 'super-rare', set: 'Heroes vs Villains', price: 0, currency: 'event', description: 'HERO: Scarves bind allies together! Super: Calls forth unity clones to stand with you!', attackEffect: { type: 'heroUnity', color: '#ffd700', glow: true }, superEffect: { type: 'heroUnityClone', color: '#ffd700', glow: true }, eventOnly: true, dropOnly: true
-        },
-        'battle-dash': {
-            id: 'battle-dash', name: 'Neon Assassin', brawler: 'dashaholic', rarity: 'epic', set: 'Heroes vs Villains', price: 0, currency: 'event', description: 'VILLAIN: Strikes with neon blades! Super: Teleports in bursts of corrupted speed!', attackEffect: { type: 'villainNeon', color: '#ff00ff', glow: true }, superEffect: { type: 'villainNeonDash', color: '#ff00ff', glow: true }, eventOnly: true, dropOnly: true
-        },
-        'battle-moneytax': {
-            id: 'battle-moneytax', name: 'Chaos Broker', brawler: 'money_and_tax', rarity: 'super-rare', set: 'Heroes vs Villains', price: 0, currency: 'event', description: 'VILLAIN: Weaponizes greed and corruption! Super: Unleashes a surge of destructive wealth!', attackEffect: { type: 'villainChaos', color: '#ff1744', glow: true }, superEffect: { type: 'villainChaosBurst', color: '#ff1744', glow: true }, eventOnly: true, dropOnly: true
-        },
-        'battle-hunter': {
-            id: 'battle-hunter', name: 'Eagle Sentinel', brawler: 'hunter', rarity: 'epic', set: 'Heroes vs Villains', price: 0, currency: 'event', description: 'HERO: Hunts with precision and honor! Super: Commands predatory power across the arena!', attackEffect: { type: 'heroEagle', color: '#ffa500', glow: true }, superEffect: { type: 'heroEagleMark', color: '#ffa500', glow: true }, eventOnly: true, dropOnly: true
-        },
         'electified-forest': {
             id: 'electified-forest',
             name: 'Electified Forest',
