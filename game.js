@@ -25165,22 +25165,36 @@
           if (b.isCoin || b.isBoomerang) {
               const radius = b.isBoomerang ? 14 : 7;
               
+              ctx.save();
+              ctx.translate(b.x, b.y);
+              ctx.rotate(performance.now() * 0.024); // Spin coin fast
+              
               // Draw gold core
               ctx.fillStyle = '#f1c40f'; // Shiny Gold
               ctx.beginPath();
-              ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+              ctx.arc(0, 0, radius, 0, Math.PI * 2);
               ctx.fill();
               
               // Draw silver rim
               ctx.strokeStyle = '#e5e8e8'; // Metallic Silver
-              ctx.lineWidth = 2;
+              ctx.lineWidth = radius * 0.28;
+              ctx.stroke();
+              
+              // Draw ridges / stars inside the coin for detail
+              ctx.strokeStyle = '#d4ac0d';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(-radius * 0.5, 0); ctx.lineTo(radius * 0.5, 0);
+              ctx.moveTo(0, -radius * 0.5); ctx.lineTo(0, radius * 0.5);
               ctx.stroke();
               
               // Internal details (a small gold circle in the center)
-              ctx.fillStyle = '#d4ac0d'; // Darker Gold for detail
+              ctx.fillStyle = '#f39c12'; // Bright Gold for detail
               ctx.beginPath();
-              ctx.arc(b.x, b.y, radius * 0.4, 0, Math.PI * 2);
+              ctx.arc(0, 0, radius * 0.35, 0, Math.PI * 2);
               ctx.fill();
+              
+              ctx.restore();
           } else if (b.isTaxNote || b.isStickySuper) {
               // Custom super/tax visual: Silver banknote with gold borders
               const w = b.isStickySuper ? 24 : 14;
@@ -25188,7 +25202,9 @@
               
               ctx.save();
               ctx.translate(b.x, b.y);
-              ctx.rotate(Math.atan2(b.vy, b.vx));
+              // Base rotation towards velocity, plus wave/flutter swing
+              const wave = Math.sin(performance.now() / 60) * 0.38;
+              ctx.rotate(Math.atan2(b.vy, b.vx) + wave);
               
               // Draw silver body
               ctx.fillStyle = '#bdc3c7'; // Metallic Silver
