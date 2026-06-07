@@ -5993,7 +5993,22 @@
 
   function getSoulBalance() {
       return (playerData.souls || 0) + ((playerData.soulSummoner && playerData.soulSummoner.soulBank) || 0);
-function openGemShop() {
+  }
+
+  function deductSouls(amount) {
+      let toDeduct = amount;
+      if ((playerData.souls || 0) >= toDeduct) {
+          playerData.souls -= toDeduct;
+      } else {
+          toDeduct -= (playerData.souls || 0);
+          playerData.souls = 0;
+          if (playerData.soulSummoner) {
+              playerData.soulSummoner.soulBank = Math.max(0, (playerData.soulSummoner.soulBank || 0) - toDeduct);
+          }
+      }
+  }
+
+  function openGemShop() {
       syncShopState();
 
       const dailyCycle = getShopCycleBounds(1);
