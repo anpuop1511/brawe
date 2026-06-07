@@ -5919,1090 +5919,373 @@
               outlitGadget: false,
               coinsPack: false,
               starPowerSale: false,
-              echoHyperchargeSale: false,
+                  echoHyperchargeSale: false,
           };
       }
 
       const todayKey = getShopTodayKey();
-      if (playerData.shopDailyDate !== todayKey) {
+      if (playerData.shop !== todayKey) {
           playerData.shopDailyDate = todayKey;
           playerData.shopDailyOffer = buildDailyShopOffer(todayKey);
           saveProgress();
-      } else if (!playerData.shopDailyOffer) {
-          playerData.shopDailyOffer = buildDailyShopOffer(todayKey);
       }
   }
 
-  function openGemShop() {
+  function trySkinInTraining(skinId) {
+      const skin = skinsDatabase[skinId];
+      if (!skin) return;
+      selectedBrawler = skin.brawler;
+      playerData.selectedSkins[skin.brawler] = skin.id;
+      if (brawlerSelect) brawlerSelect.value = skin.brawler;
+      
+      isTraining = true;
+      isDamageFillerMode = false;
+      isKnockDonateMode = false;
+      isBrickVaultMode = false;
+      isTrioShowdownMode = false;
+      isSplitterPoweredMode = false;
+      isMirrorMode = false;
+      isSoloTrial = false;
+      soloTrialWave = 0;
+      soloTrialPending = false;
+      playing = true;
+      if (homeScreen) homeScreen.style.display = 'none';
+      if (brawlerSelect) brawlerSelect.disabled = true;
+      WORLD_W = 2400; WORLD_H = 2600;
+      cubes.length = 0;
+      powerups.length = 0;
+      amplifierToolboxes.length = 0;
+      amplifierScrewZones.length = 0;
+      skeleParachutes.length = 0;
+      skelePortals.length = 0;
+      waterZones.length = 0;
+      generatePowerBoxes();
+      initPlayerHP();
+      player.x = 1200;
+      player.y = 1100;
+      bots.length = 0;
+      
+      bots.push({ 
+          id: nextId++, x: 1200, y: 400, z:0, vx:0, vy:0, hp: 1000000, maxHp: 1000000, shield:0, shieldMax:0, 
+          shieldDecayTimer:0, reloadBuffUntil:0, radius: 35, speed: 0, slowUntil: 0, brawler: 'outlit', 
+          lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, 
+          isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, 
+          selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false, isDummy: true 
+      });
+      
+      allBrawlers.forEach((b, i) => {
+          const col = i % 3;
+          const row = Math.floor(i / 3);
+          const bx = 400 + col * 800;
+          const by = 800 + row * 600;
+          const tier = getHPTier(b);
+          bots.push({
+              id: nextId++, x: bx, y: by, baseX: bx, baseY: by, z:0, vx:0, vy:0,
+              hp: tier.hp, maxHp: tier.hp, powerCubes: 0, isDead: false, shield:0, shieldMax:0, 
+              shieldDecayTimer:0, reloadBuffUntil:0, radius: 16, speed: 0, slowUntil: 0, brawler: b, 
+              lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, 
+              isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, 
+              selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, 
+              isFlying: false, isDummy: true, isTrainingBot: true, moneyAndTaxMode: 'money'
+          });
+      });
+  }
+
+  function getSoulBalance() {
+      return (playerData.souls || 0) + ((playerData.soulSummoner && playerData.soulSummoner.soulBank) || 0);
+function openGemShop() {
       syncShopState();
+
+      const dailyCycle = getShopCycleBounds(1);
+      playerData.dailyClaims = playerData.dailyClaims || { soulsToCoins: 0, gemsToCoins: 0, lastResetKey: '' };
+      if (playerData.dailyClaims.lastResetKey !== dailyCycle.cycleKey) {
+          playerData.dailyClaims.soulsToCoins = 0;
+          playerData.dailyClaims.gemsToCoins = 0;
+          playerData.dailyClaims.lastResetKey = dailyCycle.cycleKey;
+          saveProgress();
+      }
 
       const overlay = document.createElement('div');
       overlay.style.position = 'fixed';
       overlay.style.inset = '0';
-      overlay.style.background = 'radial-gradient(circle at 20% 12%, rgba(93,242,194,0.2), rgba(7,12,26,0.9) 36%, rgba(2,5,12,0.98) 78%), linear-gradient(160deg, rgba(164,80,255,0.16), rgba(9,14,28,0.94))';
-      overlay.style.backdropFilter = 'blur(4px)';
+      overlay.style.background = 'rgba(7, 12, 26, 0.96)';
+      overlay.style.backdropFilter = 'blur(10px)';
       overlay.style.zIndex = '1300';
       overlay.style.display = 'flex';
       overlay.style.alignItems = 'center';
       overlay.style.justifyContent = 'center';
       overlay.style.color = '#fff';
-      overlay.style.fontFamily = '\'Trebuchet MS\', \'Gill Sans\', \'Verdana\', sans-serif';
+      overlay.style.fontFamily = "'Outfit', sans-serif";
       overlay.style.userSelect = 'none';
       overlay.style.padding = '14px';
 
       const panel = document.createElement('div');
-      panel.style.width = 'min(1360px, 96vw)';
-      panel.style.maxHeight = '95vh';
+      panel.style.width = 'min(1280px, 96vw)';
+      panel.style.height = '85vh';
       panel.style.background = 'linear-gradient(170deg, rgba(8,16,34,0.98), rgba(4,9,20,0.98))';
-      panel.style.border = '1px solid rgba(151, 203, 255, 0.22)';
+      panel.style.border = '1px solid rgba(130,190,255,0.14)';
       panel.style.borderRadius = '24px';
-      panel.style.padding = '18px';
-      panel.style.boxShadow = '0 28px 90px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(93,242,194,0.08)';
-      panel.style.position = 'relative';
+      panel.style.boxShadow = '0 24px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.06)';
+      panel.style.display = 'flex';
+      panel.style.flexDirection = 'column';
       panel.style.overflow = 'hidden';
+      panel.style.position = 'relative';
 
-      const shell = document.createElement('div');
-      shell.style.display = 'grid';
-      shell.style.gridTemplateRows = 'auto auto minmax(0, 1fr) auto';
-      shell.style.gap = '12px';
-      shell.style.maxHeight = 'calc(95vh - 36px)';
+      const header = document.createElement('div');
+      header.style.padding = '18px 24px';
+      header.style.borderBottom = '1px solid rgba(130,190,255,0.1)';
+      header.style.display = 'flex';
+      header.style.justifyContent = 'space-between';
+      header.style.alignItems = 'center';
+
+      const titleWrap = document.createElement('div');
+      const title = document.createElement('div');
+      title.textContent = 'STAR SHOP';
+      title.style.fontSize = '24px';
+      title.style.fontWeight = '900';
+      title.style.letterSpacing = '1px';
+      title.style.background = 'linear-gradient(135deg, #5df2c2, #7699ff)';
+      title.style.webkitBackgroundClip = 'text';
+      title.style.webkitTextFillColor = 'transparent';
+      titleWrap.appendChild(title);
+
+      const currencyWidget = document.createElement('div');
+      currencyWidget.style.display = 'flex';
+      currencyWidget.style.gap = '14px';
+      currencyWidget.style.background = 'rgba(8,16,32,0.6)';
+      currencyWidget.style.padding = '6px 16px';
+      currencyWidget.style.borderRadius = '14px';
+      currencyWidget.style.border = '1px solid rgba(130,190,255,0.12)';
+
+      const soulsWidget = document.createElement('div');
+      soulsWidget.style.fontWeight = '900';
+      soulsWidget.style.fontSize = '13px';
+      soulsWidget.style.color = '#caa6ff';
+      soulsWidget.innerHTML = `🧪 ${getSoulBalance()}`;
+
+      const gemsWidget = document.createElement('div');
+      gemsWidget.style.fontWeight = '900';
+      gemsWidget.style.fontSize = '13px';
+      gemsWidget.style.color = '#5df2c2';
+      gemsWidget.innerHTML = `💎 ${playerData.gems}`;
+
+      const coinsWidget = document.createElement('div');
+      coinsWidget.style.fontWeight = '900';
+      coinsWidget.style.fontSize = '13px';
+      coinsWidget.style.color = '#ffd166';
+      coinsWidget.innerHTML = `🪙 ${playerData.coins}`;
+
+      currencyWidget.appendChild(soulsWidget);
+      currencyWidget.appendChild(gemsWidget);
+      currencyWidget.appendChild(coinsWidget);
 
       const close = document.createElement('button');
       close.textContent = '✕';
-      close.style.position = 'absolute';
-      close.style.right = '14px';
-      close.style.top = '14px';
-      close.style.width = '38px';
-      close.style.height = '38px';
-      close.style.border = '1px solid rgba(255,255,255,0.18)';
+      close.style.width = '32px';
+      close.style.height = '32px';
+      close.style.border = 'none';
       close.style.borderRadius = '50%';
-      close.style.background = 'rgba(255,107,107,0.92)';
-      close.style.color = '#1d0910';
+      close.style.background = 'rgba(255,107,107,0.15)';
+      close.style.color = '#ff6b6b';
       close.style.fontWeight = 'bold';
       close.style.cursor = 'pointer';
-      close.onclick = () => {
-          if (shopTimerId) clearInterval(shopTimerId);
-          document.body.removeChild(overlay);
-      };
+      close.style.fontSize = '14px';
+      close.onclick = () => { overlay.remove(); };
 
-      const header = document.createElement('div');
-      header.style.display = 'grid';
-      header.style.gridTemplateColumns = 'minmax(0, 1fr)';
-      header.style.gap = '10px';
-      header.style.alignItems = 'start';
-      header.style.padding = '4px 40px 0 2px';
-      header.style.borderBottom = '1px solid rgba(130,190,255,0.18)';
-      header.style.paddingBottom = '12px';
+      const topActions = document.createElement('div');
+      topActions.style.display = 'flex';
+      topActions.style.alignItems = 'center';
+      topActions.style.gap = '16px';
+      topActions.appendChild(currencyWidget);
+      topActions.appendChild(close);
 
-      const titleWrap = document.createElement('div');
-      titleWrap.style.display = 'flex';
-      titleWrap.style.flexDirection = 'column';
-      titleWrap.style.gap = '8px';
+      header.appendChild(titleWrap);
+      header.appendChild(topActions);
+      panel.appendChild(header);
 
-      const title = document.createElement('h1');
-      title.textContent = 'NEON BAZAAR';
-      title.style.margin = '0';
-      title.style.color = '#f2fbff';
-      title.style.fontSize = '34px';
-      title.style.letterSpacing = '0.06em';
-      title.style.textShadow = '0 0 30px rgba(93,242,194,0.25)';
+      const shopBody = document.createElement('div');
+      shopBody.style.display = 'flex';
+      shopBody.style.flex = '1';
+      shopBody.style.gap = '20px';
+      shopBody.style.minHeight = '0';
+      shopBody.style.padding = '20px';
 
-      const subtitle = document.createElement('div');
-      subtitle.textContent = 'Fresh layout, fast browsing, and rotating deals with cleaner cards.';
-      subtitle.style.color = '#a6c5e8';
-      subtitle.style.fontWeight = '700';
-      subtitle.style.maxWidth = '760px';
+      const sidebar = document.createElement('div');
+      sidebar.style.width = '200px';
+      sidebar.style.display = 'flex';
+      sidebar.style.flexDirection = 'column';
+      sidebar.style.gap = '8px';
+      sidebar.style.flexShrink = '0';
 
-      const metaRow = document.createElement('div');
-      metaRow.style.display = 'flex';
-      metaRow.style.flexWrap = 'wrap';
-      metaRow.style.gap = '10px';
+      const shopContent = document.createElement('div');
+      shopContent.style.flex = '1';
+      shopContent.style.overflowY = 'auto';
+      shopContent.style.paddingRight = '6px';
+      shopContent.style.minHeight = '0';
 
-      const gemPill = document.createElement('div');
-      gemPill.textContent = `💎 ${playerData.gems}    🪙 ${playerData.coins}`;
-      gemPill.style.display = 'inline-flex';
-      gemPill.style.alignItems = 'center';
-      gemPill.style.padding = '10px 16px';
-      gemPill.style.borderRadius = '999px';
-      gemPill.style.background = 'linear-gradient(90deg, rgba(120,84,255,0.28), rgba(93,242,194,0.18))';
-      gemPill.style.border = '1px solid rgba(159,210,255,0.3)';
-      gemPill.style.color = '#f2fbff';
-      gemPill.style.fontWeight = '900';
-      gemPill.style.letterSpacing = '0.02em';
-
-      const cadencePill = document.createElement('div');
-      cadencePill.textContent = 'Daily • 2-Day • Weekly cycles';
-      cadencePill.style.display = 'inline-flex';
-      cadencePill.style.alignItems = 'center';
-      cadencePill.style.padding = '10px 16px';
-      cadencePill.style.borderRadius = '999px';
-      cadencePill.style.background = 'rgba(16,32,58,0.9)';
-      cadencePill.style.border = '1px solid rgba(130,190,255,0.26)';
-      cadencePill.style.color = '#d7ecff';
-      cadencePill.style.fontWeight = '800';
-
-      metaRow.appendChild(gemPill);
-      metaRow.appendChild(cadencePill);
-      titleWrap.appendChild(title);
-      titleWrap.appendChild(subtitle);
-      titleWrap.appendChild(metaRow);
-
-      const tabBar = document.createElement('div');
-      tabBar.style.display = 'grid';
-      tabBar.style.gridTemplateColumns = 'repeat(auto-fit, minmax(120px, 1fr))';
-      tabBar.style.flexWrap = 'wrap';
-      tabBar.style.gap = '8px';
-      tabBar.style.padding = '2px';
-      tabBar.style.background = 'rgba(8,18,36,0.7)';
-      tabBar.style.border = '1px solid rgba(120,176,240,0.22)';
-      tabBar.style.borderRadius = '14px';
-
-      const content = document.createElement('div');
-      content.style.display = 'flex';
-      content.style.flexDirection = 'column';
-      content.style.gap = '14px';
-      content.style.overflow = 'auto';
-      content.style.padding = '4px 6px 4px 2px';
-      content.style.minHeight = '0';
+      shopBody.appendChild(sidebar);
+      shopBody.appendChild(shopContent);
+      panel.appendChild(shopBody);
 
       let activeTab = 'featured';
-    let shopTimerId = null;
-    let shopRefreshPending = false;
-
-      const refreshShop = () => {
-          const currentTodayKey = getShopTodayKey();
-          playerData.shopDailyOffer = buildDailyShopOffer(currentTodayKey);
-          playerData.shopDailyDate = currentTodayKey;
-          saveProgress();
-          if (shopTimerId) clearInterval(shopTimerId);
-          if (overlay.isConnected) document.body.removeChild(overlay);
-          openGemShop();
-      };
 
       const ensureShopButtonRefresh = () => {
           saveProgress();
           if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
           if (brawlerSelect) brawlerSelect.value = selectedBrawler;
           if (typeof updateGadgetInfo === 'function') updateGadgetInfo();
-          refreshShop();
+          
+          soulsWidget.innerHTML = `🧪 ${getSoulBalance()}`;
+          gemsWidget.innerHTML = `💎 ${playerData.gems}`;
+          coinsWidget.innerHTML = `🪙 ${playerData.coins}`;
       };
 
-      const createTabButton = (label, tabId) => {
-          const button = document.createElement('button');
-          button.textContent = label;
-          button.dataset.tabId = tabId;
-          button.style.padding = '11px 10px';
-          button.style.border = '1px solid rgba(135,190,255,0.16)';
-          button.style.borderRadius = '10px';
-          button.style.fontWeight = '900';
-          button.style.cursor = 'pointer';
-          button.style.letterSpacing = '0.03em';
-          button.style.transition = 'transform 120ms ease, filter 120ms ease, background 120ms ease, border-color 120ms ease';
-          button.onmouseenter = () => { button.style.transform = 'translateY(-1px)'; button.style.filter = 'brightness(1.08)'; };
-          button.onmouseleave = () => { button.style.transform = 'translateY(0)'; };
-          button.onclick = () => {
+      const createSidebarButton = (label, tabId) => {
+          const btn = document.createElement('button');
+          btn.textContent = label;
+          btn.style.width = '100%';
+          btn.style.padding = '12px 16px';
+          btn.style.textAlign = 'left';
+          btn.style.border = 'none';
+          btn.style.borderRadius = '12px';
+          btn.style.fontWeight = '800';
+          btn.style.fontSize = '12px';
+          btn.style.cursor = 'pointer';
+          btn.style.background = activeTab === tabId ? 'rgba(93,242,194,0.1)' : 'transparent';
+          btn.style.color = activeTab === tabId ? '#5df2c2' : '#89b5d9';
+          btn.style.borderLeft = activeTab === tabId ? '3px solid #5df2c2' : '3px solid transparent';
+          btn.style.transition = 'all 0.2s';
+          
+          btn.onclick = () => {
               activeTab = tabId;
-              renderActiveTab();
+              Array.from(sidebar.children).forEach(child => {
+                  const id = child.dataset.tabId;
+                  child.style.background = id === tabId ? 'rgba(93,242,194,0.1)' : 'transparent';
+                  child.style.color = id === tabId ? '#5df2c2' : '#89b5d9';
+                  child.style.borderLeft = id === tabId ? '3px solid #5df2c2' : '3px solid transparent';
+              });
+              renderTabContent();
           };
-          return button;
+          btn.dataset.tabId = tabId;
+          return btn;
+      };
+
+      sidebar.appendChild(createSidebarButton('🎁 FEATURED', 'featured'));
+      sidebar.appendChild(createSidebarButton('🎭 SKIN CATALOGUE', 'skins'));
+      sidebar.appendChild(createSidebarButton('🎡 LUCKY WHEEL', 'wheel'));
+      sidebar.appendChild(createSidebarButton('🪙 CONVERSIONS', 'exchange'));
+
+      const makeShopCard = ({ titleText, accent, descText, priceText, buttonText, buttonColor, onBuy, isOwned, isLocked, lockedText = 'LOCKED', footerText }) => {
+          const card = document.createElement('div');
+          card.style.background = 'linear-gradient(145deg, rgba(16, 28, 54, 0.45) 0%, rgba(8, 16, 32, 0.55) 100%)';
+          card.style.border = `1px solid ${accent}33`;
+          card.style.borderRadius = '16px';
+          card.style.padding = '16px';
+          card.style.position = 'relative';
+          card.style.display = 'flex';
+          card.style.flexDirection = 'column';
+          card.style.gap = '8px';
+          card.style.justifyContent = 'space-between';
+
+          const cardHeader = document.createElement('div');
+          const title = document.createElement('div');
+          title.textContent = titleText;
+          title.style.fontSize = '16px';
+          title.style.fontWeight = '900';
+          title.style.color = '#fff';
+          cardHeader.appendChild(title);
+
+          const desc = document.createElement('div');
+          desc.textContent = descText;
+          desc.style.fontSize = '12px';
+          desc.style.color = '#89b5d9';
+          desc.style.marginTop = '4px';
+          desc.style.lineHeight = '1.3';
+          cardHeader.appendChild(desc);
+
+          const cardFooter = document.createElement('div');
+          cardFooter.style.display = 'flex';
+          cardFooter.style.flexDirection = 'column';
+          cardFooter.style.gap = '6px';
+
+          const price = document.createElement('div');
+          price.textContent = priceText;
+          price.style.fontSize = '13px';
+          price.style.fontWeight = '800';
+          price.style.color = '#ffd166';
+          cardFooter.appendChild(price);
+
+          const btn = document.createElement('button');
+          btn.textContent = isOwned ? 'OWNED' : (isLocked ? lockedText : buttonText);
+          btn.disabled = isOwned || isLocked;
+          btn.style.width = '100%';
+          btn.style.padding = '9px';
+          btn.style.borderRadius = '8px';
+          btn.style.border = 'none';
+          btn.style.fontWeight = '900';
+          btn.style.fontSize = '12px';
+          btn.style.cursor = (isOwned || isLocked) ? 'not-allowed' : 'pointer';
+          btn.style.background = (isOwned || isLocked) ? 'rgba(255,255,255,0.05)' : buttonColor;
+          btn.style.color = (isOwned || isLocked) ? 'rgba(255,255,255,0.2)' : '#08101d';
+          btn.onclick = onBuy;
+          cardFooter.appendChild(btn);
+
+          if (footerText) {
+              const foot = document.createElement('div');
+              foot.textContent = footerText;
+              foot.style.fontSize = '9px';
+              foot.style.color = '#507695';
+              foot.style.marginTop = '2px';
+              cardFooter.appendChild(foot);
+          }
+
+          card.appendChild(cardHeader);
+          card.appendChild(cardFooter);
+          return card;
       };
 
       const cardGrid = () => {
           const grid = document.createElement('div');
           grid.style.display = 'grid';
-          grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(280px, 1fr))';
-          grid.style.gap = '12px';
+          grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
+          grid.style.gap = '16px';
+          grid.style.padding = '8px';
           return grid;
       };
 
-      const addSection = (grid, text) => {
-          const label = document.createElement('div');
-          label.textContent = text.toUpperCase();
-          label.style.gridColumn = '1 / -1';
-          label.style.fontSize = '12px';
-          label.style.fontWeight = '900';
-          label.style.letterSpacing = '0.12em';
-          label.style.color = '#93ccff';
-          label.style.padding = '8px 10px';
-          label.style.border = '1px solid rgba(130,190,255,0.2)';
-          label.style.background = 'linear-gradient(90deg, rgba(9,19,37,0.9), rgba(8,16,31,0.68))';
-          label.style.borderRadius = '10px';
-          label.style.marginTop = '2px';
-          grid.appendChild(label);
+      const addSection = (grid, title) => {
+          const head = document.createElement('div');
+          head.textContent = title.toUpperCase();
+          head.style.gridColumn = '1 / -1';
+          head.style.color = '#5df2c2';
+          head.style.fontSize = '12px';
+          head.style.fontWeight = '900';
+          head.style.marginTop = '16px';
+          head.style.marginBottom = '4px';
+          grid.appendChild(head);
       };
-
-      const makeCard = ({ titleText, accent, descText, priceText, buttonText, buttonColor, onBuy, isOwned, isLocked, lockedText = 'LOCKED', footerText, timerText, timerEndsAt, timerLabel }) => {
-          const inactive = !!isOwned || !!isLocked;
-          const card = document.createElement('div');
-          card.style.background = 'linear-gradient(160deg, rgba(13,27,52,0.9), rgba(8,16,31,0.9))';
-          card.style.border = `1px solid ${accent}55`;
-          card.style.borderRadius = '14px';
-          card.style.padding = '14px';
-          card.style.boxShadow = `0 8px 20px ${accent}26, inset 0 0 0 1px rgba(255,255,255,0.04)`;
-          card.style.position = 'relative';
-          card.style.overflow = 'hidden';
-          card.style.display = 'flex';
-          card.style.flexDirection = 'column';
-          card.style.gap = '8px';
-          card.style.minHeight = '204px';
-
-          const accentLine = document.createElement('div');
-          accentLine.style.position = 'absolute';
-          accentLine.style.left = '0';
-          accentLine.style.right = '0';
-          accentLine.style.top = '0';
-          accentLine.style.height = '3px';
-          accentLine.style.background = `linear-gradient(90deg, ${accent}, rgba(255,255,255,0.8))`;
-          card.appendChild(accentLine);
-
-          const cardTitle = document.createElement('div');
-          cardTitle.textContent = titleText;
-          cardTitle.style.fontSize = '20px';
-          cardTitle.style.fontWeight = '900';
-          cardTitle.style.color = '#eef8ff';
-          cardTitle.style.textWrap = 'balance';
-
-          const cardDesc = document.createElement('div');
-          cardDesc.textContent = descText;
-          cardDesc.style.color = '#bdd9f6';
-          cardDesc.style.minHeight = '54px';
-          cardDesc.style.lineHeight = '1.4';
-          cardDesc.style.fontSize = '13px';
-
-          const price = document.createElement('div');
-          price.style.color = '#f7e27b';
-          price.style.fontWeight = '900';
-          let discountMatch = null;
-          try {
-              if (typeof priceText === 'string') {
-                  discountMatch = priceText.match(/^(.*?)(\d+(?:\.\d+)?)\s*(COINS|GEMS)\s*\/\s*(\d+(?:\.\d+)?)\s*\3(.*)$/i);
-              }
-          } catch (err) {
-              discountMatch = null;
-          }
-          if (discountMatch) {
-              const prefix = discountMatch[1] || '';
-              const globalValue = discountMatch[2];
-              const unit = discountMatch[3].toUpperCase();
-              const discountValue = discountMatch[4];
-              const suffix = discountMatch[5] || '';
-              price.innerHTML = `${prefix}<span style="text-decoration:line-through;opacity:0.72;">${globalValue} ${unit}</span> <span style="color:#fff;">${discountValue} ${unit}</span>${suffix}`;
-
-              const globalNum = Number(globalValue);
-              const discountNum = Number(discountValue);
-              const minNum = Math.min(globalNum, discountNum);
-              const maxNum = Math.max(globalNum, discountNum);
-              const offPct = maxNum > 0 ? Math.round((1 - (minNum / maxNum)) * 100) : 0;
-              if (offPct > 0) {
-                  const badge = document.createElement('div');
-                  badge.textContent = `${offPct}% OFF`;
-                  badge.style.position = 'absolute';
-                  badge.style.top = '12px';
-                  badge.style.right = '12px';
-                  badge.style.background = 'linear-gradient(135deg, #ff3b30 0%, #ff6b30 100%)';
-                  badge.style.color = '#fff';
-                  badge.style.fontWeight = '900';
-                  badge.style.fontSize = '13px';
-                  badge.style.padding = '6px 12px';
-                  badge.style.borderRadius = '999px';
-                  badge.style.letterSpacing = '0.8px';
-                  badge.style.boxShadow = '0 6px 16px rgba(255,59,48,0.5), 0 0 20px rgba(255,59,48,0.3)';
-                  badge.style.transform = 'rotate(12deg)';
-                  badge.style.fontStyle = 'italic';
-                  card.appendChild(badge);
-              }
-          } else {
-              price.textContent = priceText;
-          }
-
-          const button = document.createElement('button');
-          button.textContent = isOwned ? 'OWNED' : (isLocked ? lockedText : buttonText);
-          button.style.padding = '10px 12px';
-          button.style.border = '1px solid rgba(255,255,255,0.16)';
-          button.style.borderRadius = '9px';
-          button.style.fontWeight = '900';
-          button.style.cursor = inactive ? 'not-allowed' : 'pointer';
-          button.style.background = inactive ? 'rgba(84,94,112,0.85)' : buttonColor;
-          button.style.color = inactive ? '#d2dae6' : '#08101d';
-          button.style.boxShadow = inactive ? 'none' : '0 8px 18px rgba(0,0,0,0.3)';
-          button.disabled = inactive;
-          button.onclick = () => {
-              if (inactive) return;
-              onBuy();
-          };
-
-          card.appendChild(cardTitle);
-          card.appendChild(cardDesc);
-          card.appendChild(price);
-          card.appendChild(button);
-
-          if (timerEndsAt) {
-              const timer = document.createElement('div');
-              timer.dataset.shopEndsAt = String(timerEndsAt);
-              timer.dataset.shopTimerLabel = timerLabel || 'reset';
-              timer.style.color = '#93a7da';
-              timer.style.fontSize = '13px';
-              timer.style.fontWeight = '700';
-              timer.textContent = timerText || '';
-              card.appendChild(timer);
-          }
-
-          if (footerText) {
-              const footer = document.createElement('div');
-              footer.textContent = footerText;
-              footer.style.color = '#93a7da';
-              footer.style.fontSize = '13px';
-              card.appendChild(footer);
-          }
-
-          return card;
-      };
-
-      const renderTimers = () => {
-          const timerNodes = content.querySelectorAll('[data-shop-ends-at]');
-          let shouldRefresh = false;
-          timerNodes.forEach((node) => {
-              const endMs = Number(node.dataset.shopEndsAt || 0);
-              if (!endMs) return;
-              const remaining = endMs - Date.now();
-              if (remaining <= 0) {
-                  shouldRefresh = true;
-                  return;
-              }
-              const timerType = node.dataset.shopTimerLabel;
-              const timerPrefix = timerType === 'refresh'
-                  ? 'Refreshes'
-                  : timerType === 'featured'
-                      ? 'Featured ends'
-                      : timerType === 'pricing'
-                          ? 'Price changes'
-                          : 'Resets';
-              node.textContent = `${timerPrefix} in ${formatCountdown(remaining)}`;
-          });
-          if (shouldRefresh && !shopRefreshPending) {
-              shopRefreshPending = true;
-              setTimeout(() => { try { shopRefreshPending = false; refreshShop(); } catch(e){ shopRefreshPending = false; } }, 120);
-          }
-      };
-
-      const outlit = getOrCreateProgress('outlit');
-      const echoProgress = getOrCreateProgress('echo');
-      const selectedProgress = getOrCreateProgress(selectedBrawler);
-      const dailyOffer = playerData.shopDailyOffer;
-      const dailyCycle = getShopCycleBounds(1);
-      const biDailyCycle = getShopCycleBounds(2);
-      const weeklyCycle = getShopCycleBounds(7);
-
-      const dailyFreebieOptions = [
-          { accent: '#5df2c2', reward: { kind: 'gems', amount: 2 } },
-          { accent: '#9b59b6', reward: { kind: 'coins', amount: 350 } },
-          { accent: '#ffd700', reward: { kind: 'drop', amount: 1 } },
-      ];
-
-      const biDailyOptions = [
-          {
-              titleText: '⚡ Power Blitz',
-              accent: '#5df2c2',
-              descText: 'Instantly boost the selected brawler to Power 7. Great starting value.',
-              priceText: '4 GEMS',
-              buttonText: 'BOOST TO 7',
-              buttonColor: '#5df2c2',
-              footerText: 'Selected brawler only.',
-              purchase: () => {
-                  if (playerData.gems < 4) return false;
-                  playerData.gems -= 4;
-                  applyLevelOnly(getOrCreateProgress(selectedBrawler), 7);
-                  return true;
-              }
-          },
-          {
-              titleText: '🪙 Coin Rush',
-              accent: '#f1c40f',
-              descText: 'A rotating every-2-days coin bundle. Best rate on the market.',
-              priceText: '8 GEMS → 1200 COINS',
-              buttonText: 'BUY',
-              buttonColor: '#ffd766',
-              footerText: 'Resets every 2 days.',
-              purchase: () => {
-                  if (playerData.gems < 8) return false;
-                  playerData.gems -= 8;
-                  playerData.coins += 1200;
-                  return true;
-              }
-          },
-          {
-              titleText: '💎 Gem Refill',
-              accent: '#f39c12',
-              descText: 'Exchange some coins back into gems. Good rate for a quick top-up.',
-              priceText: '6 GEMS → 900 COINS',
-              buttonText: 'BUY',
-              buttonColor: '#ffd766',
-              footerText: 'Resets every 2 days.',
-              purchase: () => {
-                  if (playerData.gems < 6) return false;
-                  playerData.gems -= 6;
-                  playerData.coins += 900;
-                  return true;
-              }
-          },
-          {
-              titleText: '🎯 Quick Gadget',
-              accent: '#3498db',
-              descText: 'Unlock the gadget for the selected brawler at a fast price.',
-              priceText: '6 GEMS',
-              buttonText: 'UNLOCK GADGET',
-              buttonColor: '#5aafff',
-              footerText: 'Selected brawler only.',
-              purchase: () => {
-                  if (playerData.gems < 6) return false;
-                  playerData.gems -= 6;
-                  const p = applyLevelUnlocks(getOrCreateProgress(selectedBrawler), 7);
-                  p.gadgetUnlocked = true;
-                  return true;
-              }
-          },
-          {
-              titleText: '🌀 Tapper Pair',
-              accent: '#ff6bd9',
-              descText: 'Grab 2 Tapper Uppers at the two-day special rate.',
-              priceText: '3 GEMS',
-              buttonText: 'BUY 2',
-              buttonColor: '#ff6bd9',
-              footerText: 'Resets every 2 days.',
-              purchase: () => {
-                  if (playerData.gems < 3) return false;
-                  playerData.gems -= 3;
-                  playerData.starrDrops = (playerData.starrDrops || 0) + 2;
-                  return true;
-              }
-          },
-      ];
-
-      const weeklyOptions = [
-          {
-              titleText: '💰 Big Coin Haul',
-              accent: '#b8860b',
-              descText: 'The strongest weekly coin bundle. Best long-term value.',
-              priceText: '14 GEMS → 2200 COINS',
-              buttonText: 'BUY',
-              buttonColor: '#ffcf5a',
-              footerText: 'Resets weekly.',
-              purchase: () => {
-                  if (playerData.gems < 14) return false;
-                  playerData.gems -= 14;
-                  playerData.coins += 2200;
-                  return true;
-              }
-          },
-          {
-              titleText: '🌟 Coin & Gem Combo',
-              accent: '#ffd700',
-              descText: 'A mixed bundle — lots of coins and a small gem bonus rolled into one.',
-              priceText: '10 GEMS → 2500 COINS +5 GEMS',
-              buttonText: 'BUY',
-              buttonColor: '#ffd700',
-              footerText: 'Resets weekly.',
-              purchase: () => {
-                  if (playerData.gems < 10) return false;
-                  playerData.gems -= 10;
-                  playerData.coins += 2500;
-                  playerData.gems += 5;
-                  return true;
-              }
-          },
-          {
-              titleText: '📦 Tapper Triple',
-              accent: '#5df2c2',
-              descText: 'Stock up with 3 Tapper Uppers at a bulk discount.',
-              priceText: '3 GEMS',
-              buttonText: 'BUY 3',
-              buttonColor: '#5df2c2',
-              footerText: 'Weekly bundle.',
-              purchase: () => {
-                  if (playerData.gems < 3) return false;
-                  playerData.gems -= 3;
-                  playerData.starrDrops = (playerData.starrDrops || 0) + 3;
-                  return true;
-              }
-          },
-          {
-              titleText: '🔧 Gadget Pass',
-              accent: '#3498db',
-              descText: 'Unlock the gadget for any brawler you choose at a weekly discount.',
-              priceText: '12 GEMS',
-              buttonText: 'UNLOCK',
-              buttonColor: '#5aafff',
-              footerText: 'Selected brawler only.',
-              purchase: () => {
-                  if (playerData.gems < 12) return false;
-                  playerData.gems -= 12;
-                  const p = applyLevelUnlocks(getOrCreateProgress(selectedBrawler), 7);
-                  p.gadgetUnlocked = true;
-                  return true;
-              }
-          },
-          {
-              titleText: '⭐ Star Power Discount',
-              accent: '#ffd700',
-              descText: 'Unlock the star power for the selected brawler at a weekly discount rate.',
-              priceText: '600 COINS',
-              buttonText: 'UNLOCK STAR POWER',
-              buttonColor: '#ffd700',
-              isLocked: getOrCreateProgress(selectedBrawler).level < 9,
-              lockedText: 'POWER 9 NEEDED',
-              footerText: `Selected: ${selectedBrawler}.`,
-              purchase: () => {
-                  const p = getOrCreateProgress(selectedBrawler);
-                  if (p.level < 9 || playerData.coins < 600) return false;
-                  playerData.coins -= 600;
-                  applyLevelOnly(p, 9);
-                  p.starPowerUnlocked = true;
-                  return true;
-              }
-          },
-          {
-              titleText: '⚡ Super Tapper Deal',
-              accent: '#ba00d6',
-              descText: 'Grab a Super Tapper Upper at a steep weekly discount.',
-              priceText: '18 GEMS / 8 GEMS',
-              buttonText: 'BUY SUPER TAPPER',
-              buttonColor: '#dd88ff',
-              footerText: 'Resets weekly.',
-              purchase: () => {
-                  if (playerData.gems < 8) return false;
-                  playerData.gems -= 8;
-                  playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
-                  return true;
-              }
-          },
-      ];
-      // ── Chain-offer helper ─────────────────────────────────────────────────
-      const getChainStage = (chainId) => {
-          if (!playerData.shopChains) playerData.shopChains = {};
-          return playerData.shopChains[chainId] || 0;
-      };
-      const advanceChain = (chainId, maxStages) => {
-          if (!playerData.shopChains) playerData.shopChains = {};
-          playerData.shopChains[chainId] = Math.min((playerData.shopChains[chainId] || 0) + 1, maxStages);
-      };
-
-      // ── Daily flash deal pool ──────────────────────────────────────────────
-      const dailyFlashPool = [
-          {
-              titleText: '⚡ Coin Surge',
-              accent: '#ffd700',
-              descText: 'Flash deal — instant coin injection at a steep discount.',
-              priceText: '5 GEMS → 700 COINS',
-              buttonText: 'GRAB IT',
-              buttonColor: '#ffd766',
-              purchase: (claimKey) => {
-                  if (playerData.shopClaims[claimKey] || playerData.gems < 5) return false;
-                  playerData.gems -= 5; playerData.coins += 700;
-                  playerData.shopClaims[claimKey] = true; return true;
-              }
-          },
-          {
-              titleText: '🎯 Power Shot',
-              accent: '#5df2c2',
-              descText: 'Today only: boost selected brawler to Power 9 at a flash rate.',
-              priceText: '7 GEMS → POWER 9',
-              buttonText: 'POWER UP',
-              buttonColor: '#5df2c2',
-              purchase: (claimKey) => {
-                  if (playerData.shopClaims[claimKey] || playerData.gems < 7) return false;
-                  playerData.gems -= 7;
-                  applyLevelOnly(getOrCreateProgress(selectedBrawler), 9);
-                  playerData.shopClaims[claimKey] = true; return true;
-              }
-          },
-          {
-              titleText: '💜 Gem Burst',
-              accent: '#ba00d6',
-              descText: 'Exchange coins for gems at today\'s best rate.',
-              priceText: '1800 COINS → 8 GEMS',
-              buttonText: 'CONVERT',
-              buttonColor: '#dd88ff',
-              purchase: (claimKey) => {
-                  if (playerData.shopClaims[claimKey] || playerData.coins < 1800) return false;
-                  playerData.coins -= 1800; playerData.gems += 8;
-                  playerData.shopClaims[claimKey] = true; return true;
-              }
-          },
-          {
-              titleText: '📦 Tapper Stash',
-              accent: '#ff6bd9',
-              descText: 'Grab 4 Tapper Uppers in one click.',
-              priceText: '4 GEMS → 4 TAPPERS',
-              buttonText: 'STOCK UP',
-              buttonColor: '#ff6bd9',
-              purchase: (claimKey) => {
-                  if (playerData.shopClaims[claimKey] || playerData.gems < 4) return false;
-                  playerData.gems -= 4;
-                  playerData.starrDrops = (playerData.starrDrops || 0) + 4;
-                  playerData.shopClaims[claimKey] = true; return true;
-              }
-          },
-          {
-              titleText: '⭐ Flash Star Power',
-              accent: '#f7e27b',
-              descText: 'Flash unlock of the selected brawler\'s star power — coins only.',
-              priceText: '500 COINS',
-              buttonText: 'UNLOCK',
-              buttonColor: '#ffd700',
-              purchase: (claimKey) => {
-                  const p = getOrCreateProgress(selectedBrawler);
-                  if (playerData.shopClaims[claimKey] || p.level < 9 || playerData.coins < 500) return false;
-                  playerData.coins -= 500; applyLevelOnly(p, 9); p.starPowerUnlocked = true;
-                  playerData.shopClaims[claimKey] = true; return true;
-              }
-          },
-      ];
 
       const renderFeaturedTab = () => {
           const grid = cardGrid();
-          
-          // Use global fixed featured rotation start timestamp
-          const skinRotationMs = Date.now() - SKIN_FEATURED_GLOBAL_START;
-          const FEATURED_DURATION_MS = 5 * 24 * 60 * 60 * 1000; // 5 days
-          const isStillFeatured = skinRotationMs < FEATURED_DURATION_MS;
-          
-          // Populate up to 4 featured skins (deterministically seeded per day)
-          addSection(grid, 'featured skins');
-          const sectionTimer = document.createElement('div');
-          const timeRemaining = getNextShopRefreshAt() - Date.now();
-          const featuredEndTime = Date.now() + timeRemaining;
-          sectionTimer.textContent = `⏱️ Next rotation in ${formatCountdown(timeRemaining)}`;
-          sectionTimer.style.gridColumn = '1 / -1';
-          sectionTimer.style.fontSize = '13px';
-          sectionTimer.style.color = '#ffd700';
-          sectionTimer.style.padding = '0 12px 8px 12px';
-          sectionTimer.style.fontWeight = 'bold';
-          sectionTimer.dataset.shopEndsAt = String(featuredEndTime);
-          sectionTimer.dataset.shopTimerLabel = 'featured';
-          grid.appendChild(sectionTimer);
 
-          // Build candidate list
-          const featuredCandidates = Object.keys(skinsDatabase).filter(skinId => {
-              const skin = skinsDatabase[skinId];
-              if (!skin) return false;
-              if (skin.isAlwaysAvailable) return false;
-              if (skin.eventOnly && Date.now() < EVENT_SHOP_UNLOCK_MS) return false;
-              return true;
-          });
-
-          if (featuredCandidates.length === 0) {
-              const emptyNote = document.createElement('div');
-              emptyNote.textContent = 'No featured skins available right now.';
-              emptyNote.style.color = '#93a7da';
-              emptyNote.style.gridColumn = '1 / -1';
-              grid.appendChild(emptyNote);
-          } else {
-              const seed = hashShopKey(getShopTodayKey());
-              const pickCount = Math.min(4, featuredCandidates.length);
-              let pool = featuredCandidates.slice();
-              for (let i = 0; i < pickCount; i++) {
-                  const idx = Math.abs((seed >> (i * 3))) % pool.length;
-                  const skinId = pool.splice(idx, 1)[0];
-                  const skin = skinsDatabase[skinId];
-                  const isOwned = !!playerData.ownedSkins[skin.brawler]?.includes(skinId);
-                  const isSelected = playerData.selectedSkins[skin.brawler] === skinId;
-                  const rarityMeta = getSkinRarityMeta(skin.rarity);
-                  const featuredGemPrice = getFeaturedGemPrice(skin);
-
-                  const card = document.createElement('div');
-                  card.style.background = 'linear-gradient(160deg, rgba(13,27,52,0.9), rgba(8,16,31,0.9))';
-                  card.style.border = `1px solid ${rarityMeta.border}99`;
-                  card.style.borderRadius = '14px';
-                  card.style.padding = '14px';
-                  card.style.boxShadow = `0 8px 22px ${rarityMeta.glow}26, inset 0 0 0 1px rgba(255,255,255,0.04)`;
-                  card.style.display = 'flex';
-                  card.style.flexDirection = 'column';
-                  card.style.gap = '8px';
-
-                  const accentLine = document.createElement('div');
-                  accentLine.style.height = '3px';
-                  accentLine.style.borderRadius = '999px';
-                  accentLine.style.background = `linear-gradient(90deg, ${rarityMeta.glow}, rgba(255,255,255,0.8))`;
-                  card.appendChild(accentLine);
-
-                  const cardTitle = document.createElement('div');
-                  cardTitle.textContent = skin.name;
-                  cardTitle.style.fontSize = '20px';
-                  cardTitle.style.fontWeight = '900';
-                  cardTitle.style.color = '#eef8ff';
-
-                  const cardDesc = document.createElement('div');
-                  cardDesc.textContent = skin.description;
-                  cardDesc.style.color = '#bdd9f6';
-                  cardDesc.style.minHeight = '52px';
-                  cardDesc.style.lineHeight = '1.4';
-                  cardDesc.style.fontSize = '13px';
-
-                  const price = document.createElement('div');
-                  price.textContent = skin.featuredDiscount ? `${featuredGemPrice} GEMS (${Math.round(skin.featuredDiscount * 100)}% OFF)` : `${featuredGemPrice} GEMS`;
-                  price.style.color = '#f7e27b';
-                  price.style.fontWeight = '900';
-
-                  const buttonRow = document.createElement('div');
-                  buttonRow.style.display = 'flex';
-                  buttonRow.style.gap = '8px';
-                  buttonRow.style.marginTop = '8px';
-
-                  const mainButton = document.createElement('button');
-                  mainButton.textContent = isOwned ? (isSelected ? 'EQUIPPED' : 'EQUIP') : 'BUY';
-                  mainButton.style.flex = '1';
-                  mainButton.style.padding = '10px 12px';
-                  mainButton.style.border = '1px solid rgba(255,255,255,0.16)';
-                  mainButton.style.borderRadius = '9px';
-                  mainButton.style.fontWeight = '900';
-                  mainButton.style.cursor = !isOwned || isSelected ? 'not-allowed' : 'pointer';
-                  mainButton.style.background = isOwned && !isSelected ? '#ff88ff' : (isOwned && isSelected ? 'rgba(84,94,112,0.85)' : '#ffd700');
-                  mainButton.style.color = isOwned && isSelected ? '#d2dae6' : '#08101d';
-                  mainButton.disabled = isOwned && isSelected;
-                  mainButton.onclick = () => {
-                      if (isOwned) {
-                          playerData.selectedSkins[skin.brawler] = skinId;
-                          ensureShopButtonRefresh();
-                          return;
-                      }
-                      if (playerData.gems < featuredGemPrice) return;
-                      playerData.gems -= featuredGemPrice;
-                      if (!playerData.ownedSkins[skin.brawler]) playerData.ownedSkins[skin.brawler] = [];
-                      if (!playerData.ownedSkins[skin.brawler].includes(skinId)) {
-                          playerData.ownedSkins[skin.brawler].push(skinId);
-                      }
-                      playerData.selectedSkins[skin.brawler] = skinId;
-                      ensureShopButtonRefresh();
-                  };
-
-                  const tryButton = document.createElement('button');
-                  tryButton.textContent = 'TRY';
-                  tryButton.style.padding = '10px 16px';
-                  tryButton.style.border = '1px solid rgba(255,255,255,0.16)';
-                  tryButton.style.borderRadius = '9px';
-                  tryButton.style.fontWeight = '900';
-                  tryButton.style.cursor = 'pointer';
-                  tryButton.style.background = '#5df2c2';
-                  tryButton.style.color = '#08101d';
-                  tryButton.onclick = () => {
-                      selectedBrawler = skin.brawler;
-                      playerData.selectedSkins[skin.brawler] = skinId;
-                      if (brawlerSelect) brawlerSelect.value = skin.brawler;
-                      
-                      if (shopTimerId) clearInterval(shopTimerId);
-                      if (overlay.isConnected) document.body.removeChild(overlay);
-                      
-                      // Start training mode with full initialization
-                      isTraining = true;
-                      isDamageFillerMode = false;
-                      isKnockDonateMode = false;
-                      isBrickVaultMode = false;
-                      isTrioShowdownMode = false;
-                      isSplitterPoweredMode = false;
-                      isMirrorMode = false;
-                      isSoloTrial = false;
-                      soloTrialWave = 0;
-                      soloTrialPending = false;
-                      playing = true;
-                      if (homeScreen) homeScreen.style.display = 'none';
-                      if (brawlerSelect) brawlerSelect.disabled = true;
-                      WORLD_W = 2400; WORLD_H = 2600;
-                      cubes.length = 0;
-                      powerups.length = 0;
-                      amplifierToolboxes.length = 0;
-                      amplifierScrewZones.length = 0;
-                      skeleParachutes.length = 0;
-                      skelePortals.length = 0;
-                      waterZones.length = 0;
-                      generatePowerBoxes();
-                      initPlayerHP();
-                      player.x = 1200;
-                      player.y = 1100;
-                      bots.length = 0;
-                      
-                      // Add one massive dummy bot
-                      bots.push({ 
-                          id: nextId++, x: 1200, y: 400, z:0, vx:0, vy:0, hp: 1000000, maxHp: 1000000, shield:0, shieldMax:0, 
-                          shieldDecayTimer:0, reloadBuffUntil:0, radius: 35, speed: 0, slowUntil: 0, brawler: 'outlit', 
-                          lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, 
-                          isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, 
-                          selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false, isDummy: true 
-                      });
-                      
-                      // Add stationary bots of each brawler
-                      allBrawlers.forEach((b, i) => {
-                          const col = i % 3;
-                          const row = Math.floor(i / 3);
-                          const bx = 400 + col * 800;
-                          const by = 800 + row * 600;
-                          const tier = getHPTier(b);
-                          bots.push({
-                              id: nextId++, x: bx, y: by, baseX: bx, baseY: by, z:0, vx:0, vy:0,
-                              hp: tier.hp, maxHp: tier.hp, powerCubes: 0, isDead: false, shield:0, shieldMax:0, 
-                              shieldDecayTimer:0, reloadBuffUntil:0, radius: 16, speed: 0, slowUntil: 0, brawler: b, 
-                              lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, 
-                              isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, 
-                              selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, 
-                              isFlying: false, isDummy: true, isTrainingBot: true, moneyAndTaxMode: 'money'
-                          });
-                      });
-                  };
-
-                  buttonRow.appendChild(mainButton);
-                  buttonRow.appendChild(tryButton);
-
-                  card.appendChild(cardTitle);
-                  card.appendChild(cardDesc);
-                  card.appendChild(price);
-                  card.appendChild(buttonRow);
-
-                  const footer = document.createElement('div');
-                  footer.textContent = `${skin.rarity.toUpperCase()} | Moves to Skins tab after featured ends`;
-                  footer.style.color = '#93a7da';
-                  footer.style.fontSize = '13px';
-                  card.appendChild(footer);
-
-                  const timeRemaining = getFeaturedDurationMs(skin) - skinRotationMs;
-                  if (timeRemaining > 500) {
-                      const timer = document.createElement('div');
-                      const featuredEndTime = Date.now() + timeRemaining;
-                      timer.textContent = `Featured: ${formatCountdown(timeRemaining)}`;
-                      timer.style.color = '#ffd700';
-                      timer.style.fontSize = '12px';
-                      timer.style.marginTop = '6px';
-                      timer.style.fontWeight = 'bold';
-                      timer.dataset.shopEndsAt = String(featuredEndTime);
-                      timer.dataset.shopTimerLabel = 'featured';
-                      card.appendChild(timer);
-                  }
-
-                  grid.appendChild(card);
-              }
-              addSection(grid, 'other featured');
-              addSection(grid, 'skin rework chart');
-              Object.entries(SKIN_RARITY_META).forEach(([rarityKey, rarityInfo]) => {
-                  const chartCard = document.createElement('div');
-                  chartCard.style.background = 'rgba(4, 8, 16, 0.72)';
-                  chartCard.style.border = `2px solid ${rarityInfo.border}`;
-                  chartCard.style.borderRadius = '20px';
-                  chartCard.style.padding = '16px';
-                  chartCard.style.boxShadow = `0 0 20px ${rarityInfo.glow}33`;
-                  chartCard.style.display = 'flex';
-                  chartCard.style.flexDirection = 'column';
-                  chartCard.style.gap = '8px';
-
-                  const chartTitle = document.createElement('div');
-                  chartTitle.textContent = rarityInfo.label;
-                  chartTitle.style.color = rarityInfo.glow;
-                  chartTitle.style.fontSize = '20px';
-                  chartTitle.style.fontWeight = '900';
-
-                  const chartBody = document.createElement('div');
-                  chartBody.textContent = rarityInfo.effects;
-                  chartBody.style.color = '#cfeef7';
-                  chartBody.style.fontSize = '14px';
-                  chartBody.style.lineHeight = '1.5';
-
-                  const chartFooter = document.createElement('div');
-                  chartFooter.textContent = rarityKey === 'legendary' ? 'First Legendary skin: featured launch + spawn/death/takedown' : (rarityKey === 'mythic' ? 'Future mythics get takedown effects' : (rarityKey === 'epic' ? 'Epic keeps full combat visuals' : 'Attack-only skin identity'));
-                  chartFooter.style.color = '#93a7da';
-                  chartFooter.style.fontSize = '12px';
-
-                  chartCard.appendChild(chartTitle);
-                  chartCard.appendChild(chartBody);
-                  chartCard.appendChild(chartFooter);
-                  grid.appendChild(chartCard);
-              });
-          }
-          
-          // If Outlit is maxed (Power 11 with all unlocks), keep featured offers empty
-          const outlitMaxed = outlit.level >= 11 && outlit.gadgetUnlocked && outlit.starPowerUnlocked && outlit.hyperchargeUnlocked;
-          if (outlitMaxed) {
-              return grid;
-          }
-          
-          addSection(grid, 'featured offers');
-
-          grid.appendChild(makeCard({
-              titleText: 'Outlit Gadget Unlock',
-              accent: '#3498db',
-              descText: 'Unlock Outlit\'s gadget slot. If he is under Power 7, this brings him up to the unlock tier.',
-              priceText: '10 GEMS',
-              buttonText: 'BUY',
-              buttonColor: '#5df2c2',
-              isOwned: !!playerData.shopClaims.outlitGadget || !!outlit.gadgetUnlocked,
-              footerText: 'Outlit only.',
-              onBuy: () => {
-                  if (playerData.gems < 10) return;
-                  playerData.gems -= 10;
-                  const progress = applyLevelUnlocks(getOrCreateProgress('outlit'), 7);
-                  progress.gadgetUnlocked = true;
-                  playerData.shopClaims.outlitGadget = true;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          grid.appendChild(makeCard({
-              titleText: 'Free Outlit Hypercharge',
-              accent: '#ba00d6',
-              descText: 'Unlock Outlit\'s Hypercharge for free. It stays tied to the free Outlit path.',
-              priceText: 'FREE',
-              buttonText: 'CLAIM',
-              buttonColor: '#e0f',
-              isOwned: !!playerData.shopClaims.outlitHypercharge || !!outlit.hyperchargeUnlocked,
-              isLocked: outlit.level < 11,
-              lockedText: 'POWER 11 REQUIRED',
-              footerText: 'Requires Outlit to be Power 11.',
-              onBuy: () => {
-                  const progress = getOrCreateProgress('outlit');
-                  applyLevelUnlocks(progress, 11);
-                  progress.hyperchargeUnlocked = true;
-                  playerData.shopClaims.outlitHypercharge = true;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          grid.appendChild(makeCard({
-              titleText: 'Featured: Super Tapper Upper',
-              accent: '#ff6bd9',
-              descText: 'Limited featured offer: get one Super Tapper Upper at half price.',
-              priceText: '20 GEMS / 10 GEMS',
-              buttonText: 'BUY',
-              buttonColor: '#ff6bd9',
-              footerText: '50% off featured offer.',
-              onBuy: () => {
-                  if (playerData.gems < 10) return;
-                  playerData.gems -= 10;
-                  playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          addSection(grid, 'limited time flash deals');
-          
-          grid.appendChild(makeCard({
-              titleText: 'Gem Rush!',
-              accent: '#e0f',
-              descText: 'Flash sale on raw gems! Stock up quick before this deal expires.',
-              priceText: '3600 COINS / 1800 COINS',
-              buttonText: 'BUY 5 GEMS',
-              buttonColor: '#e0f',
-              footerText: 'Limited time flash deal.',
-              onBuy: () => {
-                  if (playerData.coins < 1800) return;
-                  playerData.coins -= 1800;
-                  playerData.gems += 5;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          grid.appendChild(makeCard({
-              titleText: 'Tapper Mega Bundle',
-              accent: '#ffc80f',
-              descText: 'Get 3 Tappers + 1 Super Tapper in one bundle at a crazy discount.',
-              priceText: '35 GEMS / 15 GEMS',
-              buttonText: 'GRAB BUNDLE',
-              buttonColor: '#ffc80f',
-              footerText: 'One-time mega bundle offer.',
-              onBuy: () => {
-                  if (playerData.gems < 15) return;
-                  playerData.gems -= 15;
-                  playerData.starrDrops = (playerData.starrDrops || 0) + 3;
-                  playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          grid.appendChild(makeCard({
-              titleText: 'Brick Jackpot',
-              accent: '#5df2c2',
-              descText: 'Convert your Bricks into instant coins! Great for clearing clutter.',
-              priceText: '1000 BRICKS / 2000 COINS',
-              buttonText: 'CONVERT',
-              buttonColor: '#5df2c2',
-              footerText: 'Exchange rate: 0.5 coins per brick.',
-              onBuy: () => {
-                  const totalBricks = getTotalBrickBonBricks();
-                  if (totalBricks < 1000) return;
-                  playerData.coins += 2000;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          grid.appendChild(makeCard({
-              titleText: 'Hypercharge Bundle',
-              accent: '#ba00d6',
-              descText: 'Get a free hypercharge reset + 500 bonus coins to celebrate!',
-              priceText: '30 GEMS / 12 GEMS',
-              buttonText: 'CLAIM BONUS',
-              buttonColor: '#ba00d6',
-              footerText: 'Limited bundle offer.',
-              onBuy: () => {
-                  if (playerData.gems < 12) return;
-                  playerData.gems -= 12;
-                  hyperChargeCharge = 100;
-                  playerData.coins += 500;
-                  if (typeof updateHyperButton === 'function') updateHyperButton();
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          const chainStage = playerData.shopChainStage || 0;
-          const chainSteps = [
-              { title: 'Outlit Kit Step 1', desc: 'Power 7 plus gadget unlock.', price: 8, level: 7, unlock: 'gadgetUnlocked', stageLabel: 'Stage 1 of 3' },
-              { title: 'Outlit Kit Step 2', desc: 'Power 9 plus star power unlock.', price: 12, level: 9, unlock: 'starPowerUnlocked', stageLabel: 'Stage 2 of 3' },
-              { title: 'Outlit Kit Step 3', desc: 'Power 11 plus hypercharge unlock.', price: 16, level: 11, unlock: 'hyperchargeUnlocked', stageLabel: 'Stage 3 of 3' },
+          const dailyFreebieOptions = [
+              { accent: '#5df2c2', reward: { kind: 'gems', amount: 2 }, label: 'Claim 2 Free Gems' },
+              { accent: '#ffd166', reward: { kind: 'coins', amount: 350 }, label: 'Claim 350 Free Coins' },
+              { accent: '#caa6ff', reward: { kind: 'drop', amount: 1 }, label: 'Claim Free Tapper' }
           ];
-          const activeChain = chainSteps[Math.min(chainStage, chainSteps.length - 1)];
-          grid.appendChild(makeCard({
-              titleText: activeChain.title,
-              accent: '#e0f',
-              descText: activeChain.desc,
-              priceText: `${activeChain.price} GEMS`,
-              buttonText: 'BUY STEP',
-              buttonColor: '#ff88ff',
-              isOwned: chainStage >= chainSteps.length,
-              footerText: activeChain.stageLabel,
-              onBuy: () => {
-                  if (playerData.gems < activeChain.price) return;
-                  playerData.gems -= activeChain.price;
-                  const outlitProgress = getOrCreateProgress('outlit');
-                  applyLevelOnly(outlitProgress, activeChain.level);
-                  outlitProgress[activeChain.unlock] = true;
-                  if (activeChain.unlock === 'gadgetUnlocked' && !outlitProgress.selectedGadget) outlitProgress.selectedGadget = 'g1';
-                  if (activeChain.unlock === 'starPowerUnlocked' && !outlitProgress.selectedStar) outlitProgress.selectedStar = 'slow';
-                  playerData.shopChainStage = Math.min(chainStage + 1, chainSteps.length);
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          return grid;
-      };
-
-      const renderRotatingTab = () => {
-          const grid = cardGrid();
-          const selectedShopBrawler = (selectedBrawler && brawlerData && brawlerData[selectedBrawler])
-              ? selectedBrawler
-              : ((brawlerData && Object.keys(brawlerData)[0]) || 'shelly');
-          const selectedShopBrawlerUpper = String(selectedShopBrawler || 'shelly').toUpperCase();
-
-          // ── FREEBIE ────────────────────────────────────────────────────────
-          addSection(grid, '🎁 daily freebie');
           const dailyFreebieChoice = pickTimedEntry(dailyFreebieOptions, `daily-freebie:${dailyCycle.cycleKey}`);
           const dailyFreebieClaimKey = getShopClaimKey('daily-freebie', dailyCycle.cycleKey);
           const dailyFreebieOwned = !!playerData.shopClaims[dailyFreebieClaimKey];
-          grid.appendChild(makeCard({
+
+          grid.appendChild(makeShopCard({
               titleText: '🎁 Daily Freebie',
               accent: dailyFreebieChoice.accent,
-              descText: dailyFreebieChoice.reward.kind === 'gems' ? `Claim ${dailyFreebieChoice.reward.amount} free gems today!` : dailyFreebieChoice.reward.kind === 'coins' ? `Claim ${dailyFreebieChoice.reward.amount} free coins today!` : 'Claim a free Tapper Upper.',
+              descText: dailyFreebieChoice.label,
               priceText: 'FREE',
               buttonText: 'CLAIM',
               buttonColor: dailyFreebieChoice.accent,
               isOwned: dailyFreebieOwned,
               footerText: 'Resets daily.',
-              timerText: `Refreshes in ${formatCountdown(dailyCycle.endMs - Date.now())}`,
-              timerEndsAt: dailyCycle.endMs,
-              timerLabel: 'refresh',
               onBuy: () => {
                   if (dailyFreebieOwned) return;
                   const reward = dailyFreebieChoice.reward;
@@ -7011,12 +6294,14 @@
                   if (reward.kind === 'drop') playerData.starrDrops = (playerData.starrDrops || 0) + reward.amount;
                   playerData.shopClaims[dailyFreebieClaimKey] = true;
                   ensureShopButtonRefresh();
+                  renderTabContent();
               }
           }));
-          grid.appendChild(makeCard({
+
+          grid.appendChild(makeShopCard({
               titleText: '☀ Summer Launch Freebie! ☀',
               accent: '#ff8800',
-              descText: 'Celebrate the launch of Summer! Claim your 1 FREE Hyper Tapper Upper.',
+              descText: 'Celebrate the launch of Summer! Claim 1 FREE Hyper Tapper Upper.',
               priceText: 'FREE',
               buttonText: 'CLAIM',
               buttonColor: '#ff8800',
@@ -7026,863 +6311,419 @@
                   playerData.shopClaims = playerData.shopClaims || {};
                   playerData.shopClaims.summerHyperTapper = true;
                   playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
-                  saveProgress();
                   ensureShopButtonRefresh();
-                  if (typeof refreshHomeUI === 'function') refreshHomeUI();
-              }
-          }));
-          grid.appendChild(makeCard({
-              titleText: '🆓 Free Outlit Full Unlock',
-              accent: '#ff4bd1',
-              descText: 'Unlock Outlit\'s complete kit for free — Power 11, gadget, star power, and hypercharge.',
-              priceText: 'FREE',
-              buttonText: 'CLAIM',
-              buttonColor: '#ff88ff',
-              isOwned: !!playerData.shopClaims.outlitPower11 || (() => { const op = getOrCreateProgress('outlit'); return op.level >= 11 && op.gadgetUnlocked && op.starPowerUnlocked && op.hyperchargeUnlocked; })(),
-              footerText: 'Permanent one-time freebie.',
-              onBuy: () => {
-                  const progress = getOrCreateProgress('outlit');
-                  applyLevelUnlocks(progress, 11);
-                  progress.hyperchargeUnlocked = true;
-                  progress.gadgetUnlocked = true;
-                  progress.starPowerUnlocked = true;
-                  if (!progress.selectedGadget) progress.selectedGadget = 'g1';
-                  if (!progress.selectedStar) progress.selectedStar = 'slow';
-                  playerData.shopClaims.outlitPower11 = true;
-                  playerData.shopClaims.outlitHypercharge = true;
-                  playerData.shopClaims.outlitGadget = true;
-                  ensureShopButtonRefresh();
+                  renderTabContent();
               }
           }));
 
-          // ── DAILY FLASH DEALS (3 rotating, individual claim keys) ─────────
-          addSection(grid, '⚡ daily flash deals');
-          const seed = hashShopKey(dailyCycle.cycleKey);
-          const flashPicks = [];
-          let flashPool = dailyFlashPool.slice();
-          for (let i = 0; i < Math.min(3, flashPool.length); i++) {
-              const idx = Math.abs((seed >> (i * 4)) & 0xffff) % flashPool.length;
-              flashPicks.push(flashPool.splice(idx, 1)[0]);
-          }
-          flashPicks.forEach((flash, fi) => {
-              const claimKey = `flash-${fi}:${dailyCycle.cycleKey}`;
-              grid.appendChild(makeCard({
-                  titleText: flash.titleText,
-                  accent: flash.accent,
-                  descText: flash.descText,
-                  priceText: flash.priceText,
-                  buttonText: flash.buttonText,
-                  buttonColor: flash.buttonColor,
-                  isOwned: !!playerData.shopClaims[claimKey],
-                  footerText: 'Resets daily.',
-                  timerText: `Refreshes in ${formatCountdown(dailyCycle.endMs - Date.now())}`,
-                  timerEndsAt: dailyCycle.endMs,
-                  timerLabel: 'refresh',
-                  onBuy: () => {
-                      flash.purchase(claimKey);
-                      ensureShopButtonRefresh();
-                  }
-              }));
-          });
-
-          // ── DAILY ROTATING OFFERS (from dailyOffer.offers) ────────────────
-          if (dailyOffer && dailyOffer.offers && dailyOffer.offers.length > 0) {
-              addSection(grid, '🔄 today\'s picks');
-              dailyOffer.offers.forEach((offer) => {
-                  let cardConfig = {};
-                  if (offer.type === 'power9') {
-                      const offerBrawlerId = offer.brawlerId || selectedShopBrawler;
-                      const dailyProgress = getOrCreateProgress(offerBrawlerId);
-                      cardConfig = {
-                          titleText: `⬆️ Power 9: ${String(offerBrawlerId).toUpperCase()}`,
-                          accent: '#5df2c2',
-                          descText: `Instantly upgrade ${offerBrawlerId} to Power 9 at today's rate.`,
-                          priceText: `${offer.gemCost} GEMS`,
-                          buttonText: 'BUY',
-                          buttonColor: '#5df2c2',
-                          isOwned: (dailyProgress.level || 1) >= 9,
-                          onBuy: () => {
-                              if (playerData.gems < offer.gemCost) return;
-                              playerData.gems -= offer.gemCost;
-                              applyLevelOnly(dailyProgress, 9);
-                              ensureShopButtonRefresh();
-                          }
-                      };
-                  } else if (offer.type === 'featured_skin') {
-                      const skin = skinsDatabase[offer.skinId];
-                      if (!skin) return;
-                      const isOwned = !!playerData.ownedSkins[skin.brawler]?.includes(offer.skinId);
-                      cardConfig = {
-                          titleText: `🎨 ${skin.name}`,
-                          accent: getSkinRarityMeta(skin.rarity).glow,
-                          descText: skin.description,
-                          priceText: `${offer.gemCost} GEMS`,
-                          buttonText: 'BUY SKIN',
-                          buttonColor: getSkinRarityMeta(skin.rarity).glow,
-                          isOwned,
-                          onBuy: () => {
-                              if (playerData.gems < offer.gemCost) return;
-                              playerData.gems -= offer.gemCost;
-                              if (!playerData.ownedSkins[skin.brawler]) playerData.ownedSkins[skin.brawler] = [];
-                              playerData.ownedSkins[skin.brawler].push(offer.skinId);
-                              ensureShopButtonRefresh();
-                          }
-                      };
-                  } else if (offer.type === 'currency_bundle') {
-                      cardConfig = {
-                          titleText: '🪙 Bonus Coins',
-                          accent: '#ffd700',
-                          descText: `Quick bundle of ${offer.coins} coins at today's daily rate.`,
-                          priceText: `${offer.gemCost} GEMS`,
-                          buttonText: 'BUY',
-                          buttonColor: '#ffd700',
-                          onBuy: () => {
-                              if (playerData.gems < offer.gemCost) return;
-                              playerData.gems -= offer.gemCost;
-                              playerData.coins += offer.coins;
-                              ensureShopButtonRefresh();
-                          }
-                      };
-                  } else if (offer.type === 'gadget_deal' || offer.type === 'starpower_deal') {
-                      const isGadget = offer.type === 'gadget_deal';
-                      const offerBrawlerId = offer.brawlerId || selectedShopBrawler;
-                      cardConfig = {
-                          titleText: isGadget ? '🔧 Gadget Unlock' : '⭐ Star Power Deal',
-                          accent: isGadget ? '#3498db' : '#ffd700',
-                          descText: `Unlock the ${isGadget ? 'gadget' : 'star power'} for ${String(offerBrawlerId).toUpperCase()} at a daily discount.`,
-                          priceText: offer.gemCost ? `${offer.gemCost} GEMS` : `${offer.coinCost} COINS`,
-                          buttonText: 'BUY',
-                          buttonColor: isGadget ? '#5aafff' : '#ffd700',
-                          onBuy: () => {
-                              if (offer.gemCost && playerData.gems < offer.gemCost) return;
-                              if (offer.coinCost && playerData.coins < offer.coinCost) return;
-                              if (offer.gemCost) playerData.gems -= offer.gemCost;
-                              if (offer.coinCost) playerData.coins -= offer.coinCost;
-                              const p = getOrCreateProgress(offerBrawlerId);
-                              if (isGadget) { p.gadgetUnlocked = true; applyLevelOnly(p, 7); }
-                              else { p.starPowerUnlocked = true; applyLevelOnly(p, 9); }
-                              ensureShopButtonRefresh();
-                          }
-                      };
-                  }
-                  if (cardConfig.titleText) {
-                      cardConfig.timerText = `Refreshes in ${formatCountdown((dailyOffer.refreshAtMs || getNextShopRefreshAt()) - Date.now())}`;
-                      cardConfig.timerEndsAt = dailyOffer.refreshAtMs || getNextShopRefreshAt();
-                      cardConfig.timerLabel = 'refresh';
-                      grid.appendChild(makeCard(cardConfig));
-                  }
-              });
-          }
-
-          // ── CHAIN: BRAWLER POWER CHAIN ────────────────────────────────────
-          addSection(grid, '🔗 chain: brawler power path');
-          {
-              const chainId = `power_${selectedShopBrawler}`;
-              const cStage = getChainStage(chainId);
-              const cSteps = [
-                  { title: `🔥 ${selectedShopBrawlerUpper} → Power 7`, desc: 'Step 1: Bring your brawler up to the gadget threshold.', price: 3, act: () => { applyLevelOnly(getOrCreateProgress(selectedShopBrawler), 7); } },
-                  { title: `🔥 ${selectedShopBrawlerUpper} → Power 9`, desc: 'Step 2: Reach the star power threshold.', price: 5, act: () => { applyLevelOnly(getOrCreateProgress(selectedShopBrawler), 9); } },
-                  { title: `🔥 ${selectedShopBrawlerUpper} → Power 11`, desc: 'Step 3: Max power — ready for hypercharge.', price: 8, act: () => { applyLevelOnly(getOrCreateProgress(selectedShopBrawler), 11); } },
-              ];
-              const cActive = cSteps[Math.min(cStage, cSteps.length - 1)];
-              grid.appendChild(makeCard({
-                  titleText: cActive.title,
-                  accent: '#5df2c2',
-                  descText: cActive.desc,
-                  priceText: `${cActive.price} GEMS`,
-                  buttonText: cStage >= cSteps.length ? 'CHAIN DONE' : 'BUY STEP',
-                  buttonColor: '#5df2c2',
-                  isOwned: cStage >= cSteps.length,
-                  footerText: `Stage ${Math.min(cStage + 1, cSteps.length)} of ${cSteps.length}`,
-                  onBuy: () => {
-                      if (cStage >= cSteps.length || playerData.gems < cActive.price) return;
-                      playerData.gems -= cActive.price;
-                      cActive.act();
-                      advanceChain(chainId, cSteps.length);
-                      ensureShopButtonRefresh();
-                  }
-              }));
-          }
-
-          // ── CHAIN: BRAWLER KIT CHAIN ──────────────────────────────────────
-          addSection(grid, '🔗 chain: brawler full kit');
-          {
-              const chainId = `kit_${selectedShopBrawler}`;
-              const cStage = getChainStage(chainId);
-              const cSteps = [
-                  { title: `🔧 ${selectedShopBrawlerUpper} Gadget`, desc: 'Step 1: Unlock the gadget slot.', price: 8, act: () => { const p = applyLevelUnlocks(getOrCreateProgress(selectedShopBrawler), 7); p.gadgetUnlocked = true; if (!p.selectedGadget) p.selectedGadget = 'g1'; } },
-                  { title: `⭐ ${selectedShopBrawlerUpper} Star Power`, desc: 'Step 2: Unlock the star power slot.', price: 10, act: () => { const p = applyLevelUnlocks(getOrCreateProgress(selectedShopBrawler), 9); p.starPowerUnlocked = true; } },
-                  { title: `⚡ ${selectedShopBrawlerUpper} Hypercharge`, desc: 'Step 3: Unlock hypercharge — maximum potential unlocked.', price: 14, act: () => { const p = applyLevelUnlocks(getOrCreateProgress(selectedShopBrawler), 11); p.hyperchargeUnlocked = true; } },
-              ];
-              const cActive = cSteps[Math.min(cStage, cSteps.length - 1)];
-              const stepAccents = ['#3498db', '#ffd700', '#ba00d6'];
-              grid.appendChild(makeCard({
-                  titleText: cActive.title,
-                  accent: stepAccents[Math.min(cStage, 2)],
-                  descText: cActive.desc,
-                  priceText: `${cActive.price} GEMS`,
-                  buttonText: cStage >= cSteps.length ? 'KIT COMPLETE' : 'BUY STEP',
-                  buttonColor: stepAccents[Math.min(cStage, 2)],
-                  isOwned: cStage >= cSteps.length,
-                  footerText: `Stage ${Math.min(cStage + 1, cSteps.length)} of ${cSteps.length}`,
-                  onBuy: () => {
-                      if (cStage >= cSteps.length || playerData.gems < cActive.price) return;
-                      playerData.gems -= cActive.price;
-                      cActive.act();
-                      advanceChain(chainId, cSteps.length);
-                      ensureShopButtonRefresh();
-                  }
-              }));
-          }
-
-          // ── CHAIN: COIN HOARD ─────────────────────────────────────────────
-          addSection(grid, '🔗 chain: coin hoard');
-          {
-              const chainId = 'coin_hoard';
-              const cStage = getChainStage(chainId);
-              const cSteps = [
-                  { title: '🪙 Hoard Step 1: Starter Stash', desc: 'Step 1: Grab 400 coins to kickstart your stash.', price: 4, coins: 400 },
-                  { title: '🪙 Hoard Step 2: Mid Stack', desc: 'Step 2: A bigger mid-tier bundle unlocked by buying Step 1.', price: 7, coins: 900 },
-                  { title: '🪙 Hoard Step 3: Mega Pile', desc: 'Step 3: The final bulk drop — only available after completing the chain.', price: 13, coins: 2200 },
-              ];
-              const cActive = cSteps[Math.min(cStage, cSteps.length - 1)];
-              grid.appendChild(makeCard({
-                  titleText: cActive.title,
-                  accent: '#f1c40f',
-                  descText: cActive.desc,
-                  priceText: `${cActive.price} GEMS → ${cActive.coins} COINS`,
-                  buttonText: cStage >= cSteps.length ? 'HOARD COMPLETE' : 'BUY STEP',
-                  buttonColor: '#ffd766',
-                  isOwned: cStage >= cSteps.length,
-                  footerText: `Stage ${Math.min(cStage + 1, cSteps.length)} of ${cSteps.length} — each step better value than the last`,
-                  onBuy: () => {
-                      if (cStage >= cSteps.length || playerData.gems < cActive.price) return;
-                      playerData.gems -= cActive.price;
-                      playerData.coins += cActive.coins;
-                      advanceChain(chainId, cSteps.length);
-                      ensureShopButtonRefresh();
-                  }
-              }));
-          }
-
-          // ── CHAIN: TAPPER STASH ───────────────────────────────────────────
-          addSection(grid, '🔗 chain: tapper stash');
-          {
-              const chainId = 'tapper_stash';
-              const cStage = getChainStage(chainId);
-              const cSteps = [
-                  { title: '📦 Tapper Step 1: Starter Pack', desc: 'Step 1: Pick up 2 Tapper Uppers to get rolling.', price: 2, act: () => { playerData.starrDrops = (playerData.starrDrops || 0) + 2; } },
-                  { title: '✨ Tapper Step 2: Super Upgrade', desc: 'Step 2: Unlocks a Super Tapper Upper + 150 coin bonus.', price: 5, act: () => { playerData.superTapperCount = (playerData.superTapperCount || 0) + 1; playerData.coins += 150; } },
-                  { title: '⚡ Tapper Step 3: Hyper Drop', desc: 'Step 3: Final chain reward — a Hyper Tapper + 400 coin bonus.', price: 9, act: () => { playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1; playerData.coins += 400; } },
-              ];
-              const cActive = cSteps[Math.min(cStage, cSteps.length - 1)];
-              const tapAccents = ['#5df2c2', '#ba00d6', '#ff6bd9'];
-              grid.appendChild(makeCard({
-                  titleText: cActive.title,
-                  accent: tapAccents[Math.min(cStage, 2)],
-                  descText: cActive.desc,
-                  priceText: `${cActive.price} GEMS`,
-                  buttonText: cStage >= cSteps.length ? 'STASH MAXED' : 'BUY STEP',
-                  buttonColor: tapAccents[Math.min(cStage, 2)],
-                  isOwned: cStage >= cSteps.length,
-                  footerText: `Stage ${Math.min(cStage + 1, cSteps.length)} of ${cSteps.length}`,
-                  onBuy: () => {
-                      if (cStage >= cSteps.length || playerData.gems < cActive.price) return;
-                      playerData.gems -= cActive.price;
-                      cActive.act();
-                      advanceChain(chainId, cSteps.length);
-                      ensureShopButtonRefresh();
-                  }
-              }));
-          }
-
-          // ── 2-DAY SPECIALS (show ALL, individual claim keys) ──────────────
-          addSection(grid, '🔄 2-day specials');
-          biDailyOptions.forEach((opt, bi) => {
-              const claimKey = `bi-${bi}:${biDailyCycle.cycleKey}`;
-              grid.appendChild(makeCard({
-                  titleText: opt.titleText,
-                  accent: opt.accent,
-                  descText: opt.descText,
-                  priceText: opt.priceText,
-                  buttonText: opt.buttonText,
-                  buttonColor: opt.buttonColor,
-                  isOwned: !!playerData.shopClaims[claimKey],
-                  isLocked: opt.isLocked,
-                  lockedText: opt.lockedText,
-                  footerText: opt.footerText || 'Resets every 2 days.',
-                  timerText: `Resets in ${formatCountdown(biDailyCycle.endMs - Date.now())}`,
-                  timerEndsAt: biDailyCycle.endMs,
-                  timerLabel: 'reset',
-                  onBuy: () => {
-                      if (playerData.shopClaims[claimKey]) return;
-                      if (!opt.purchase()) return;
-                      playerData.shopClaims[claimKey] = true;
-                      ensureShopButtonRefresh();
-                  }
-              }));
-          });
-
-          // ── WEEKLY BUNDLES (show ALL, individual claim keys) ───────────────
-          addSection(grid, '📅 weekly bundles');
-          weeklyOptions.forEach((opt, wi) => {
-              const claimKey = `weekly-${wi}:${weeklyCycle.cycleKey}`;
-              grid.appendChild(makeCard({
-                  titleText: opt.titleText,
-                  accent: opt.accent,
-                  descText: opt.descText,
-                  priceText: opt.priceText,
-                  buttonText: opt.buttonText,
-                  buttonColor: opt.buttonColor,
-                  isOwned: !!playerData.shopClaims[claimKey],
-                  isLocked: opt.isLocked,
-                  lockedText: opt.lockedText,
-                  footerText: opt.footerText || 'Resets weekly.',
-                  timerText: `Resets in ${formatCountdown(weeklyCycle.endMs - Date.now())}`,
-                  timerEndsAt: weeklyCycle.endMs,
-                  timerLabel: 'reset',
-                  onBuy: () => {
-                      if (playerData.shopClaims[claimKey]) return;
-                      if (!opt.purchase()) return;
-                      playerData.shopClaims[claimKey] = true;
-                      ensureShopButtonRefresh();
-                  }
-              }));
-          });
-
-          return grid;
-      };
-      const renderCurrencyTab = () => {
-          const grid = cardGrid();
-          addSection(grid, 'currency');
-          grid.appendChild(makeCard({
-              titleText: 'Coin Pack',
-              accent: '#f1c40f',
-              descText: 'A straightforward gem-to-coin bundle for players who want more upgrade currency.',
-              priceText: '12 GEMS -> 240 COINS / 1000 COINS',
+          grid.appendChild(makeShopCard({
+              titleText: 'Tapper Mega Bundle',
+              accent: '#ffd166',
+              descText: 'Get 3 Tappers + 1 Super Tapper in one bundle at a discount.',
+              priceText: '15 GEMS',
               buttonText: 'BUY',
-              buttonColor: '#ffd766',
-              footerText: 'One-time bundle.',
+              buttonColor: '#ffd166',
               onBuy: () => {
-                  if (playerData.gems < 12) return;
-                  playerData.gems -= 12;
-                  playerData.coins += 1000;
-                  playerData.shopClaims.coinsPack = true;
+                  if (playerData.gems < 15) return alert('Not enough Gems!');
+                  playerData.gems -= 15;
+                  playerData.starrDrops = (playerData.starrDrops || 0) + 3;
+                  playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
                   ensureShopButtonRefresh();
+                  renderTabContent();
               }
           }));
 
-          grid.appendChild(makeCard({
-              titleText: 'Big Coin Pack',
-              accent: '#b8860b',
-              descText: 'A larger gem-to-coin bundle with a stronger return.',
-              priceText: '14 GEMS -> 280 COINS / 1800 COINS',
-              buttonText: 'BUY',
-              buttonColor: '#ffcf5a',
-              isOwned: !!playerData.shopClaims.bigCoinPack,
-              footerText: 'One-time bundle.',
-              onBuy: () => {
-                  if (playerData.gems < 14) return;
-                  playerData.gems -= 14;
-                  playerData.coins += 1800;
-                  playerData.shopClaims.bigCoinPack = true;
-                  ensureShopButtonRefresh();
-              }
-          }));
+          const outlitProg = getOrCreateProgress('outlit');
+          const outlitMaxed = outlitProg.level >= 11 && outlitProg.gadgetUnlocked && outlitProg.starPowerUnlocked && outlitProg.hyperchargeUnlocked;
+          if (!outlitMaxed) {
+              grid.appendChild(makeShopCard({
+                  titleText: '🆓 Free Outlit Full Unlock',
+                  accent: '#ff4bd1',
+                  descText: 'Unlock Outlit\'s complete kit for free — Power 11, gadget, star power, and hypercharge.',
+                  priceText: 'FREE',
+                  buttonText: 'CLAIM',
+                  buttonColor: '#ff88ff',
+                  isOwned: !!playerData.shopClaims.outlitPower11,
+                  footerText: 'Permanent one-time freebie.',
+                  onBuy: () => {
+                      const progress = getOrCreateProgress('outlit');
+                      applyLevelUnlocks(progress, 11);
+                      progress.hyperchargeUnlocked = true;
+                      progress.gadgetUnlocked = true;
+                      progress.starPowerUnlocked = true;
+                      if (!progress.selectedGadget) progress.selectedGadget = 'g1';
+                      if (!progress.selectedStar) progress.selectedStar = 'slow';
+                      playerData.shopClaims.outlitPower11 = true;
+                      playerData.shopClaims.outlitHypercharge = true;
+                      playerData.shopClaims.outlitGadget = true;
+                      ensureShopButtonRefresh();
+                      renderTabContent();
+                  }
+              }));
+          }
 
-          grid.appendChild(makeCard({
-              titleText: 'Coin Exchange',
+          grid.appendChild(makeShopCard({
+              titleText: 'Brick Jackpot',
               accent: '#5df2c2',
-              descText: 'Convert coins back into gems when you need a little more flexibility.',
-              priceText: '2400 COINS -> +8 GEMS',
-              buttonText: 'EXCHANGE',
+              descText: 'Convert your Bricks into instant coins! Great for clearing clutter.',
+              priceText: '1000 BRICKS → 2000 COINS',
+              buttonText: 'CONVERT',
               buttonColor: '#5df2c2',
-              footerText: 'Repeatable exchange.',
+              isLocked: getTotalBrickBonBricks() < 1000,
+              lockedText: '1000 BRICKS NEEDED',
               onBuy: () => {
-                  if (playerData.coins < 2400) return;
-                  playerData.coins -= 2400;
-                  playerData.gems += 8;
+                  playerData.coins += 2000;
                   ensureShopButtonRefresh();
+                  renderTabContent();
               }
           }));
-
-          grid.appendChild(makeCard({
-              titleText: 'Small Coin Top-Up',
-              accent: '#ff88ff',
-              descText: 'A smaller repeatable bundle for quick top-ups between matches.',
-              priceText: '3 GEMS -> 60 COINS / 400 COINS',
-              buttonText: 'BUY',
-              buttonColor: '#ff88ff',
-              footerText: 'Repeatable micro-bundle.',
-              onBuy: () => {
-                  if (playerData.gems < 3) return;
-                  playerData.gems -= 3;
-                  playerData.coins += 400;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          addSection(grid, 'limited time');
-          grid.appendChild(makeCard({
-              titleText: 'Quick Coins!',
-              accent: '#ffd700',
-              descText: 'Flash deal! Get instant coins with a huge 25% bonus. Limited time only!',
-              priceText: '5 GEMS -> 100 COINS / 125 COINS',
-              buttonText: 'GRAB IT',
-              buttonColor: '#ffd700',
-              footerText: 'Repeatable limited offer.',
-              timerText: `Refreshes in ${formatCountdown(dailyCycle.endMs - Date.now())}`,
-              timerEndsAt: dailyCycle.endMs,
-              timerLabel: 'refresh',
-              onBuy: () => {
-                  if (playerData.gems < 5) return;
-                  playerData.gems -= 5;
-                  playerData.coins += 125;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          return grid;
-      };
-
-      const renderUpgradesTab = () => {
-          const grid = cardGrid();
-          addSection(grid, 'upgrades');
-          const currentSelectedProgress = getOrCreateProgress(selectedBrawler);
-
-          grid.appendChild(makeCard({
-              titleText: 'Power Boost to 7',
-              accent: '#5df2c2',
-              descText: 'Raise the selected brawler to Power 7 with gems. This changes level only.',
-              priceText: '5 GEMS (100 COINS)',
-              buttonText: 'BOOST',
-              buttonColor: '#5df2c2',
-              isOwned: currentSelectedProgress.level >= 7,
-              footerText: 'Selected brawler only.',
-              onBuy: () => {
-                  if (playerData.gems < 5) return;
-                  playerData.gems -= 5;
-                  applyLevelOnly(currentSelectedProgress, 7);
-                  playerData.shopClaims.power7Boost = true;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          grid.appendChild(makeCard({
-              titleText: 'Power Boost to 9',
-              accent: '#9b59b6',
-              descText: 'Raise the selected brawler to Power 9 with gems. Great for unlocking star power.',
-              priceText: '10 GEMS (200 COINS)',
-              buttonText: 'BOOST',
-              buttonColor: '#ba00d6',
-              isOwned: currentSelectedProgress.level >= 9,
-              footerText: 'Selected brawler only.',
-              onBuy: () => {
-                  if (playerData.gems < 10) return;
-                  playerData.gems -= 10;
-                  applyLevelOnly(currentSelectedProgress, 9);
-                  playerData.shopClaims.power9Boost = true;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          grid.appendChild(makeCard({
-              titleText: 'Selected Star Power Discount',
-              accent: '#ffd700',
-              descText: 'Unlock the selected brawler\'s star power with a weekly discount.',
-              priceText: '600 COINS',
-              buttonText: 'BUY STAR POWER',
-              buttonColor: '#ffd700',
-              isOwned: !!currentSelectedProgress.starPowerUnlocked,
-              isLocked: currentSelectedProgress.level < 9,
-              lockedText: 'POWER 9 REQUIRED',
-              footerText: `Selected brawler: ${selectedBrawler}.`,
-              onBuy: () => {
-                  if (currentSelectedProgress.level < 9 || playerData.coins < 600) return;
-                  playerData.coins -= 600;
-                  applyLevelOnly(currentSelectedProgress, 9);
-                  currentSelectedProgress.starPowerUnlocked = true;
-                  ensureShopButtonRefresh();
-              }
-          }));
-
-          // Removed Upgrade Token — discount tokens are deprecated to avoid duplication/abuse.
 
           return grid;
       };
 
       const renderSkinsTab = () => {
           const grid = cardGrid();
-          addSection(grid, 'skins by set');
+          Object.values(skinsDatabase).forEach(skin => {
+              const isOwned = !!(playerData.ownedSkins[skin.brawler] && playerData.ownedSkins[skin.brawler].includes(skin.id));
+              const isLocked = !playerData.unlockedBrawlers[skin.brawler];
+              
+              const rarityColors = {
+                  'rare': '#5df2c2',
+                  'super-rare': '#3498db',
+                  'epic': '#b983ff',
+                  'mythic': '#ff6b6b',
+                  'legendary': '#ffd700'
+              };
+              const color = rarityColors[skin.rarity] || '#fff';
 
-          // Group skins by set
-          const skinsBySet = {};
-          for (const skinId in skinsDatabase) {
-              const skin = skinsDatabase[skinId];
-              if (!skinsBySet[skin.set]) skinsBySet[skin.set] = [];
-              skinsBySet[skin.set].push(skin);
-          }
-
-          // Render each set
-          for (const setName in skinsBySet) {
-              const setLabel = document.createElement('div');
-              setLabel.style.gridColumn = '1 / -1';
-              setLabel.style.fontSize = '18px';
-              setLabel.style.fontWeight = '900';
-              setLabel.style.color = '#ffd700';
-              setLabel.style.marginTop = '16px';
-              setLabel.style.paddingBottom = '8px';
-              setLabel.style.borderBottom = '2px solid #ffd700';
-              setLabel.textContent = setName;
-              grid.appendChild(setLabel);
-
-              for (const skin of skinsBySet[setName]) {
-                  const isOwned = !!playerData.ownedSkins[skin.brawler]?.includes(skin.id);
-                  const isSelected = playerData.selectedSkins[skin.brawler] === skin.id;
-                  
-                  // Check if featured skin (gems currency only)
-                  const isFeaturedSkin = skin.currency === 'gems';
-                  const rarityMeta = getSkinRarityMeta(skin.rarity);
-                  const skinRotationMs = Date.now() - SKIN_FEATURED_GLOBAL_START;
-                  const FEATURED_DURATION_MS = getFeaturedDurationMs(skin);
-                  const featuredGemPrice = getFeaturedGemPrice(skin);
-                  const isStillFeatured = isFeaturedSkin && !skin.isAlwaysAvailable && skinRotationMs < FEATURED_DURATION_MS;
-                  
-                  // Get price based on rarity
-                  let gemPrice = skin.price;
-                  let coinPrice = skin.price * 25;
-                  if (isFeaturedSkin && isStillFeatured) gemPrice = featuredGemPrice;
-                  
-                  // Display pricing
-                  let priceText = '';
-                  // Prevent event-only skins from appearing in shop until unlock time
-                  const nowMs = Date.now();
-                  if (skin.eventOnly && nowMs < EVENT_SHOP_UNLOCK_MS) {
-                      // Hide purchase options and mark as locked
-                      priceText = 'EVENT ONLY - Shop locked';
-                  } else {
-                      if (isFeaturedSkin) {
-                          if (isStillFeatured) {
-                              // During featured rotation: ONLY gems
-                              priceText = `${gemPrice} GEMS`;
-                          } else {
-                              // After featured or always available: gems OR coins
-                              priceText = `${gemPrice} GEMS or ${coinPrice} COINS`;
-                          }
-                      } else {
-                          // Non-featured (coins only) - legacy
-                          priceText = `${skin.price} COINS`;
-                      }
-                  }
-                  
-                  const buttonText = isOwned ? (isSelected ? 'EQUIPPED' : 'EQUIP') : 'BUY';
-                  const buttonColor = isOwned ? (isSelected ? '#5df2c2' : '#ff88ff') : '#ffd700';
-
-              // Custom skin card with Try button
               const card = document.createElement('div');
-              card.style.background = 'linear-gradient(160deg, rgba(13,27,52,0.9), rgba(8,16,31,0.9))';
-              card.style.border = `1px solid ${rarityMeta.border}99`;
-              card.style.borderRadius = '14px';
-              card.style.padding = '14px';
-              card.style.boxShadow = `0 8px 22px ${rarityMeta.glow}26, inset 0 0 0 1px rgba(255,255,255,0.04)`;
+              card.style.background = 'linear-gradient(145deg, rgba(16,28,54,0.45), rgba(8,16,32,0.55))';
+              card.style.border = `1px solid ${color}44`;
+              card.style.borderRadius = '16px';
+              card.style.padding = '16px';
               card.style.display = 'flex';
               card.style.flexDirection = 'column';
+              card.style.justifyContent = 'space-between';
               card.style.gap = '8px';
 
-              const accentLine = document.createElement('div');
-              accentLine.style.height = '3px';
-              accentLine.style.borderRadius = '999px';
-              accentLine.style.background = `linear-gradient(90deg, ${rarityMeta.glow}, rgba(255,255,255,0.8))`;
-              card.appendChild(accentLine);
+              const body = document.createElement('div');
+              body.innerHTML = `
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                      <div style="font-weight:900;color:#fff;font-size:15px;">${skin.name}</div>
+                      <span style="font-size:9px;font-weight:900;background:${color}15;color:${color};border:1px solid ${color}33;padding:1px 5px;border-radius:4px;text-transform:uppercase;">${skin.rarity}</span>
+                  </div>
+                  <div style="font-size:11px;color:#89b5d9;margin-top:6px;line-height:1.35;">${skin.description}</div>
+                  <div style="font-size:10px;color:${color};margin-top:4px;font-weight:700;">Set: ${skin.set || 'Global'}</div>
+              `;
 
-              const cardTitle = document.createElement('div');
-              cardTitle.textContent = skin.name;
-              cardTitle.style.fontSize = '20px';
-              cardTitle.style.fontWeight = '900';
-              cardTitle.style.color = '#eef8ff';
+              const actions = document.createElement('div');
+              actions.style.display = 'flex';
+              actions.style.flexDirection = 'column';
+              actions.style.gap = '6px';
+              actions.style.marginTop = '8px';
 
-              const cardDesc = document.createElement('div');
-              cardDesc.textContent = skin.description;
-              cardDesc.style.color = '#bdd9f6';
-              cardDesc.style.minHeight = '52px';
-              cardDesc.style.lineHeight = '1.4';
-              cardDesc.style.fontSize = '13px';
-
-              const price = document.createElement('div');
-              price.textContent = priceText;
-              price.style.color = '#f7e27b';
-              price.style.fontWeight = '900';
-
-              const buttonRow = document.createElement('div');
-              buttonRow.style.display = 'flex';
-              buttonRow.style.gap = '8px';
-              buttonRow.style.marginTop = '8px';
-
-              // Helper to grant skin to player
-              const grantSkin = (useBrawler, skinId) => {
-                  if (!playerData.ownedSkins[useBrawler]) playerData.ownedSkins[useBrawler] = [];
-                  if (!playerData.ownedSkins[useBrawler].includes(skinId)) playerData.ownedSkins[useBrawler].push(skinId);
-                  playerData.selectedSkins[useBrawler] = skinId;
-                  ensureShopButtonRefresh();
-              };
-
-              // If owner, show equip button
               if (isOwned) {
                   const equipBtn = document.createElement('button');
-                  equipBtn.textContent = isSelected ? 'EQUIPPED' : 'EQUIP';
-                  equipBtn.style.flex = '1';
-                  equipBtn.style.padding = '10px 12px';
-                  equipBtn.style.border = '1px solid rgba(255,255,255,0.16)';
-                  equipBtn.style.borderRadius = '9px';
-                  equipBtn.style.fontWeight = '900';
-                  equipBtn.style.cursor = isSelected ? 'not-allowed' : 'pointer';
-                  equipBtn.style.background = isSelected ? 'rgba(84,94,112,0.85)' : '#ff88ff';
-                  equipBtn.style.color = isSelected ? '#d2dae6' : '#08101d';
-                  equipBtn.onclick = () => { if (!isSelected) { playerData.selectedSkins[skin.brawler] = skin.id; ensureShopButtonRefresh(); } };
-                  buttonRow.appendChild(equipBtn);
+                  const isEquipped = playerData.selectedSkins[skin.brawler] === skin.id;
+                  equipBtn.textContent = isEquipped ? 'EQUIPPED' : 'EQUIP SKIN';
+                  equipBtn.disabled = isEquipped;
+                  equipBtn.style.width = '100%';
+                  equipBtn.style.padding = '8px';
+                  equipBtn.style.borderRadius = '8px';
+                  equipBtn.style.border = 'none';
+                  equipBtn.style.fontWeight = 'bold';
+                  equipBtn.style.fontSize = '12px';
+                  equipBtn.style.background = isEquipped ? 'rgba(255,255,255,0.05)' : '#5df2c2';
+                  equipBtn.style.color = isEquipped ? '#555' : '#08101d';
+                  equipBtn.style.cursor = isEquipped ? 'not-allowed' : 'pointer';
+                  equipBtn.onclick = () => {
+                      playerData.selectedSkins[skin.brawler] = skin.id;
+                      ensureShopButtonRefresh();
+                      renderTabContent();
+                  };
+                  actions.appendChild(equipBtn);
+              } else if (isLocked) {
+                  const lockedBtn = document.createElement('button');
+                  lockedBtn.textContent = 'UNLOCKED BRAWLER REQUIRED';
+                  lockedBtn.disabled = true;
+                  lockedBtn.style.width = '100%';
+                  lockedBtn.style.padding = '8px';
+                  lockedBtn.style.borderRadius = '8px';
+                  lockedBtn.style.border = 'none';
+                  lockedBtn.style.fontWeight = 'bold';
+                  lockedBtn.style.fontSize = '11px';
+                  lockedBtn.style.background = 'rgba(255,255,255,0.03)';
+                  lockedBtn.style.color = '#555';
+                  actions.appendChild(lockedBtn);
               } else {
-                  // Not owned: show purchase options depending on availability
-                  const isShopLocked = skin.eventOnly && Date.now() < EVENT_SHOP_UNLOCK_MS;
-                  const showingGemOnly = !isShopLocked && isFeaturedSkin && isStillFeatured;
-                  const showingBoth = !isShopLocked && isFeaturedSkin && !isStillFeatured;
+                  const row = document.createElement('div');
+                  row.style.display = 'flex';
+                  row.style.gap = '6px';
 
-                  if (isShopLocked) {
-                      const lockedBtn = document.createElement('button');
-                      lockedBtn.textContent = 'EVENT ITEM - LOCKED';
-                      lockedBtn.style.flex = '1';
-                      lockedBtn.style.padding = '10px 12px';
-                       lockedBtn.style.border = '1px solid rgba(255,255,255,0.12)';
-                       lockedBtn.style.borderRadius = '9px';
-                      lockedBtn.style.fontWeight = '900';
-                      lockedBtn.style.cursor = 'not-allowed';
-                      lockedBtn.style.background = '#333';
-                      lockedBtn.style.color = '#bbb';
-                      buttonRow.appendChild(lockedBtn);
-                  } else if (showingGemOnly) {
-                      const gemBtn = document.createElement('button');
-                      gemBtn.textContent = `${gemPrice} GEMS`;
-                      gemBtn.style.flex = '1';
-                      gemBtn.style.padding = '10px 12px';
-                       gemBtn.style.border = '1px solid rgba(255,255,255,0.16)';
-                       gemBtn.style.borderRadius = '9px';
-                      gemBtn.style.fontWeight = '900';
-                      gemBtn.style.cursor = 'pointer';
-                      gemBtn.style.background = '#ffd700';
-                      gemBtn.style.color = '#08101d';
-                      gemBtn.onclick = () => {
-                          if (playerData.gems < gemPrice) return;
-                          playerData.gems -= gemPrice;
-                          grantSkin(skin.brawler, skin.id);
-                      };
-                      buttonRow.appendChild(gemBtn);
-                  } else if (showingBoth) {
-                      const gemBtn = document.createElement('button');
-                      gemBtn.textContent = `${gemPrice} GEMS`;
-                      gemBtn.style.padding = '10px 12px';
-                       gemBtn.style.border = '1px solid rgba(255,255,255,0.16)';
-                       gemBtn.style.borderRadius = '9px';
-                      gemBtn.style.fontWeight = '900';
-                      gemBtn.style.cursor = 'pointer';
-                      gemBtn.style.background = '#ffd700';
-                      gemBtn.style.color = '#08101d';
-                      gemBtn.onclick = () => { if (playerData.gems < gemPrice) return; playerData.gems -= gemPrice; grantSkin(skin.brawler, skin.id); };
+                  const buyBtn = document.createElement('button');
+                  buyBtn.textContent = `💎 ${skin.price}`;
+                  buyBtn.style.flex = '1';
+                  buyBtn.style.padding = '8px';
+                  buyBtn.style.borderRadius = '8px';
+                  buyBtn.style.border = 'none';
+                  buyBtn.style.fontWeight = '900';
+                  buyBtn.style.background = '#ffd166';
+                  buyBtn.style.color = '#08101d';
+                  buyBtn.style.cursor = 'pointer';
+                  buyBtn.onclick = () => {
+                      if (playerData.gems < skin.price) return alert('Not enough Gems!');
+                      playerData.gems -= skin.price;
+                      playerData.ownedSkins[skin.brawler] = playerData.ownedSkins[skin.brawler] || [];
+                      playerData.ownedSkins[skin.brawler].push(skin.id);
+                      playerData.selectedSkins[skin.brawler] = skin.id;
+                      ensureShopButtonRefresh();
+                      renderTabContent();
+                  };
 
-                      const coinBtn = document.createElement('button');
-                      coinBtn.textContent = `${coinPrice} COINS`;
-                      coinBtn.style.flex = '1';
-                      coinBtn.style.padding = '10px 12px';
-                       coinBtn.style.border = '1px solid rgba(255,255,255,0.16)';
-                       coinBtn.style.borderRadius = '9px';
-                      coinBtn.style.fontWeight = '900';
-                      coinBtn.style.cursor = 'pointer';
-                      coinBtn.style.background = '#5df2c2';
-                      coinBtn.style.color = '#08101d';
-                      coinBtn.onclick = () => { if (playerData.coins < coinPrice) return; playerData.coins -= coinPrice; grantSkin(skin.brawler, skin.id); };
+                  const tryBtn = document.createElement('button');
+                  tryBtn.textContent = 'TRY';
+                  tryBtn.style.padding = '8px 12px';
+                  tryBtn.style.borderRadius = '8px';
+                  tryBtn.style.border = '1px solid rgba(255,255,255,0.15)';
+                  tryBtn.style.background = 'rgba(255,255,255,0.05)';
+                  tryBtn.style.color = '#fff';
+                  tryBtn.style.fontWeight = 'bold';
+                  tryBtn.style.cursor = 'pointer';
+                  tryBtn.onclick = () => {
+                      trySkinInTraining(skin.id);
+                  };
 
-                      buttonRow.appendChild(coinBtn);
-                      buttonRow.appendChild(gemBtn);
-                  } else {
-                      // Coins-only
-                      const coinBtn = document.createElement('button');
-                      coinBtn.textContent = `${skin.price} COINS`;
-                      coinBtn.style.flex = '1';
-                      coinBtn.style.padding = '10px 12px';
-                       coinBtn.style.border = '1px solid rgba(255,255,255,0.16)';
-                       coinBtn.style.borderRadius = '9px';
-                      coinBtn.style.fontWeight = '900';
-                      coinBtn.style.cursor = 'pointer';
-                      coinBtn.style.background = '#ffd700';
-                      coinBtn.style.color = '#08101d';
-                      coinBtn.onclick = () => { if (playerData.coins < skin.price) return; playerData.coins -= skin.price; grantSkin(skin.brawler, skin.id); };
-                      buttonRow.appendChild(coinBtn);
-                  }
+                  row.appendChild(buyBtn);
+                  row.appendChild(tryBtn);
+                  actions.appendChild(row);
               }
 
-              const tryButton = document.createElement('button');
-              tryButton.textContent = 'TRY';
-              tryButton.style.padding = '10px 16px';
-               tryButton.style.border = '1px solid rgba(255,255,255,0.16)';
-               tryButton.style.borderRadius = '9px';
-              tryButton.style.fontWeight = '900';
-              tryButton.style.cursor = 'pointer';
-              tryButton.style.background = '#5df2c2';
-              tryButton.style.color = '#08101d';
-              tryButton.onclick = () => {
-                  // Switch to brawler with skin and start training
-                  selectedBrawler = skin.brawler;
-                  playerData.selectedSkins[skin.brawler] = skin.id;
-                  if (brawlerSelect) brawlerSelect.value = skin.brawler;
-                  
-                  if (shopTimerId) clearInterval(shopTimerId);
-                  if (overlay.isConnected) document.body.removeChild(overlay);
-                  
-                  // Start training mode with full initialization
-                  isTraining = true;
-                  isDamageFillerMode = false;
-                  isKnockDonateMode = false;
-                  isBrickVaultMode = false;
-                  isTrioShowdownMode = false;
-                  isSplitterPoweredMode = false;
-                  isMirrorMode = false;
-                  isSoloTrial = false;
-                  soloTrialWave = 0;
-                  soloTrialPending = false;
-                  playing = true;
-                  if (homeScreen) homeScreen.style.display = 'none';
-                  if (brawlerSelect) brawlerSelect.disabled = true;
-                  WORLD_W = 2400; WORLD_H = 2600;
-                  cubes.length = 0;
-                  powerups.length = 0;
-                  amplifierToolboxes.length = 0;
-                  amplifierScrewZones.length = 0;
-                  skeleParachutes.length = 0;
-                  skelePortals.length = 0;
-                  waterZones.length = 0;
-                  generatePowerBoxes();
-                  initPlayerHP();
-                  player.x = 1200;
-                  player.y = 1100;
-                  bots.length = 0;
-                  
-                  // Add one massive dummy bot
-                  bots.push({ 
-                      id: nextId++, x: 1200, y: 400, z:0, vx:0, vy:0, hp: 1000000, maxHp: 1000000, shield:0, shieldMax:0, 
-                      shieldDecayTimer:0, reloadBuffUntil:0, radius: 35, speed: 0, slowUntil: 0, brawler: 'outlit', 
-                      lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, 
-                      isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, 
-                      selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false, isDummy: true 
-                  });
-                  
-                  // Add stationary bots of each brawler
-                  allBrawlers.forEach((b, i) => {
-                      const col = i % 3;
-                      const row = Math.floor(i / 3);
-                      const bx = 400 + col * 800;
-                      const by = 800 + row * 600;
-                      const tier = getHPTier(b);
-                      bots.push({
-                          id: nextId++, x: bx, y: by, baseX: bx, baseY: by, z:0, vx:0, vy:0,
-                          hp: tier.hp, maxHp: tier.hp, powerCubes: 0, isDead: false, shield:0, shieldMax:0, 
-                          shieldDecayTimer:0, reloadBuffUntil:0, radius: 16, speed: 0, slowUntil: 0, brawler: b, 
-                          lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, 
-                          isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, 
-                          selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, 
-                          isFlying: false, isDummy: true, isTrainingBot: true, moneyAndTaxMode: 'money'
-                      });
-                  });
-              };
-
-              buttonRow.appendChild(tryButton);
-
-              card.appendChild(cardTitle);
-              card.appendChild(cardDesc);
-              card.appendChild(price);
-              card.appendChild(buttonRow);
-
-              const footer = document.createElement('div');
-              footer.textContent = `${skin.rarity.toUpperCase()} | ${skin.brawler.toUpperCase()}`;
-              footer.style.color = '#93a7da';
-              footer.style.fontSize = '13px';
-              card.appendChild(footer);
-
-              // Add timer showing when pricing changes
-              const timer = document.createElement('div');
-              if (isFeaturedSkin && isStillFeatured) {
-                  const timeRemaining = FEATURED_DURATION_MS - skinRotationMs;
-                  const featuredEndTime = Date.now() + timeRemaining;
-                  timer.textContent = skin.featuredDiscount ? `Launch discount for ${Math.round(skin.featuredDiscount * 100)}% off for ${formatCountdown(timeRemaining)}` : `Gem-only for ${formatCountdown(timeRemaining)}`;
-                  timer.dataset.shopEndsAt = String(featuredEndTime);
-              } else if (isFeaturedSkin) {
-                  timer.textContent = `Available for ${coinPrice} coins`;
-                  timer.style.opacity = '0.7';
-              } else {
-                  timer.textContent = `Permanently available for ${skin.price} coins`;
-                  timer.style.opacity = '0.7';
-              }
-              timer.style.color = '#5df2c2';
-              timer.style.fontSize = '12px';
-              timer.style.marginTop = '6px';
-              timer.style.fontWeight = 'bold';
-              timer.dataset.shopTimerLabel = 'pricing';
-              card.appendChild(timer);
-
+              card.appendChild(body);
+              card.appendChild(actions);
               grid.appendChild(card);
+          });
+          return grid;
+      };
+
+      const renderWheelTab = () => {
+          const wrap = document.createElement('div');
+          wrap.style.display = 'flex';
+          wrap.style.flexDirection = 'column';
+          wrap.style.alignItems = 'center';
+          wrap.style.justifyContent = 'center';
+          wrap.style.gap = '16px';
+          wrap.style.padding = '10px 0';
+
+          const canvas = document.createElement('canvas');
+          canvas.width = 320;
+          canvas.height = 320;
+          canvas.style.maxWidth = '100%';
+          canvas.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+          canvas.style.borderRadius = '50%';
+          wrap.appendChild(canvas);
+
+          const spinBtn = document.createElement('button');
+          spinBtn.textContent = 'SPIN WHEEL (🪙 100)';
+          spinBtn.style.padding = '12px 32px';
+          spinBtn.style.borderRadius = '12px';
+          spinBtn.style.border = 'none';
+          spinBtn.style.background = 'linear-gradient(135deg, #ffd166, #ffb300)';
+          spinBtn.style.color = '#041810';
+          spinBtn.style.fontWeight = '900';
+          spinBtn.style.fontSize = '14px';
+          spinBtn.style.cursor = 'pointer';
+          wrap.appendChild(spinBtn);
+
+          const segments = [
+              { text: '150 Coins', color: '#ffb300', value: { type: 'coins', amount: 150 } },
+              { text: '3 Gems', color: '#29c996', value: { type: 'gems', amount: 3 } },
+              { text: '1 Tapper', color: '#8a2be2', value: { type: 'tapper', amount: 1 } },
+              { text: '25 Souls', color: '#caa6ff', value: { type: 'souls', amount: 25 } },
+              { text: '1 Super Drop', color: '#ff00ff', value: { type: 'super_tapper', amount: 1 } },
+              { text: '100 Coins', color: '#e29b00', value: { type: 'coins', amount: 100 } },
+              { text: '2 Gems', color: '#16a085', value: { type: 'gems', amount: 2 } },
+              { text: '1 Hyper Drop', color: '#ff8800', value: { type: 'hyper_tapper', amount: 1 } }
+          ];
+
+          let currentAngle = 0;
+          let spinning = false;
+
+          const drawWheel = () => {
+              const ctx = canvas.getContext('2d');
+              const cx = canvas.width / 2;
+              const cy = canvas.height / 2;
+              const radius = canvas.width / 2 - 10;
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              const arc = (Math.PI * 2) / segments.length;
+              
+              ctx.beginPath();
+              ctx.arc(cx, cy, radius + 4, 0, Math.PI * 2);
+              ctx.strokeStyle = '#ffd700';
+              ctx.lineWidth = 6;
+              ctx.stroke();
+              
+              segments.forEach((seg, i) => {
+                  const start = currentAngle + i * arc;
+                  const end = start + arc;
+                  ctx.beginPath();
+                  ctx.moveTo(cx, cy);
+                  ctx.arc(cx, cy, radius, start, end);
+                  ctx.fillStyle = seg.color;
+                  ctx.fill();
+                  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+                  ctx.lineWidth = 2;
+                  ctx.stroke();
+                  
+                  ctx.save();
+                  ctx.translate(cx, cy);
+                  ctx.rotate(start + arc / 2);
+                  ctx.textAlign = 'right';
+                  ctx.fillStyle = '#fff';
+                  ctx.font = 'bold 11px sans-serif';
+                  ctx.fillText(seg.text, radius - 20, 4);
+                  ctx.restore();
+              });
+
+              ctx.beginPath();
+              ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+              ctx.fillStyle = '#08101d';
+              ctx.fill();
+              ctx.strokeStyle = '#ffd700';
+              ctx.lineWidth = 3;
+              ctx.stroke();
+
+              ctx.beginPath();
+              ctx.moveTo(cx - 10, cy - radius - 5);
+              ctx.lineTo(cx + 10, cy - radius - 5);
+              ctx.lineTo(cx, cy - radius + 15);
+              ctx.closePath();
+              ctx.fillStyle = '#ff3b30';
+              ctx.fill();
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+          };
+
+          drawWheel();
+
+          spinBtn.onclick = () => {
+              if (spinning) return;
+              if (playerData.coins < 100) return alert('Not enough Coins!');
+              playerData.coins -= 100;
+              spinning = true;
+              spinBtn.disabled = true;
+              ensureShopButtonRefresh();
+
+              let speed = 0.45 + Math.random() * 0.15;
+              const spin = () => {
+                  currentAngle += speed;
+                  speed *= 0.983;
+                  drawWheel();
+                  if (speed > 0.0018) {
+                      requestAnimationFrame(spin);
+                  } else {
+                      spinning = false;
+                      spinBtn.disabled = false;
+                      
+                      const arc = (Math.PI * 2) / segments.length;
+                      const norm = (1.5 * Math.PI - currentAngle) % (Math.PI * 2);
+                      const idx = Math.floor((norm < 0 ? norm + Math.PI * 2 : norm) / arc) % segments.length;
+                      const reward = segments[idx];
+
+                      if (reward.value.type === 'coins') playerData.coins += reward.value.amount;
+                      else if (reward.value.type === 'gems') playerData.gems += reward.value.amount;
+                      else if (reward.value.type === 'souls') addSouls(reward.value.amount);
+                      else if (reward.value.type === 'tapper') playerData.starrDrops = (playerData.starrDrops || 0) + 1;
+                      else if (reward.value.type === 'super_tapper') playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
+                      else if (reward.value.type === 'hyper_tapper') playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
+
+                      ensureShopButtonRefresh();
+                      
+                      const pop = document.createElement('div');
+                      pop.style.position = 'fixed'; pop.style.inset = '0';
+                      pop.style.background = 'rgba(0,0,0,0.85)'; pop.style.zIndex = '3000';
+                      pop.style.display = 'flex'; pop.style.flexDirection = 'column';
+                      pop.style.alignItems = 'center'; pop.style.justifyContent = 'center';
+                      pop.style.color = '#fff'; pop.style.fontFamily = 'sans-serif';
+                      pop.innerHTML = `
+                          <h1 style="color:#ffd166;text-shadow:0 0 20px #ffd166;font-size:36px;">🎉 WHEEL WINNER! 🎉</h1>
+                          <div style="font-size:24px;font-weight:bold;margin:16px 0;">RECEIVED: ${reward.text.toUpperCase()}</div>
+                          <button style="padding:10px 24px;border-radius:8px;border:none;background:#5df2c2;color:#08101d;font-weight:bold;cursor:pointer;">AWESOME</button>
+                      `;
+                      pop.querySelector('button').onclick = () => { pop.remove(); renderTabContent(); };
+                      document.body.appendChild(pop);
+                  }
+              };
+              spin();
+          };
+
+          return wrap;
+      };
+
+      const renderExchangeTab = () => {
+          const grid = cardGrid();
+
+          const soulsClaimed = playerData.dailyClaims.soulsToCoins || 0;
+          const soulsLimitReached = soulsClaimed >= 3;
+          grid.appendChild(makeShopCard({
+              titleText: 'Exchange: Souls to Coins',
+              accent: '#caa6ff',
+              descText: 'Convert Placement Souls directly into Upgrade Coins.',
+              priceText: '50 SOULS → 250 COINS',
+              buttonText: soulsLimitReached ? 'LIMIT REACHED' : 'EXCHANGE',
+              buttonColor: '#caa6ff',
+              isLocked: soulsLimitReached || getSoulBalance() < 50,
+              lockedText: soulsLimitReached ? 'DAILY LIMIT (3/3)' : '50 SOULS REQUIRED',
+              footerText: `Daily Limit: ${soulsClaimed}/3 conversions claimed today.`,
+              onBuy: () => {
+                  if (playerData.dailyClaims.soulsToCoins >= 3) return;
+                  if (getSoulBalance() < 50) return alert('Not enough Souls!');
+                  deductSouls(50);
+                  playerData.coins += 250;
+                  playerData.dailyClaims.soulsToCoins = (playerData.dailyClaims.soulsToCoins || 0) + 1;
+                  ensureShopButtonRefresh();
+                  renderTabContent();
               }
-          }
+          }));
+
+          const gemsClaimed = playerData.dailyClaims.gemsToCoins || 0;
+          const gemsLimitReached = gemsClaimed >= 3;
+          grid.appendChild(makeShopCard({
+              titleText: 'Exchange: Gems to Coins',
+              accent: '#ffd166',
+              descText: 'Convert Gems into instant Upgrade Coins.',
+              priceText: '10 GEMS → 500 COINS',
+              buttonText: gemsLimitReached ? 'LIMIT REACHED' : 'EXCHANGE',
+              buttonColor: '#ffd166',
+              isLocked: gemsLimitReached || playerData.gems < 10,
+              lockedText: gemsLimitReached ? 'DAILY LIMIT (3/3)' : '10 GEMS REQUIRED',
+              footerText: `Daily Limit: ${gemsClaimed}/3 conversions claimed today.`,
+              onBuy: () => {
+                  if (playerData.dailyClaims.gemsToCoins >= 3) return;
+                  if (playerData.gems < 10) return alert('Not enough Gems!');
+                  playerData.gems -= 10;
+                  playerData.coins += 500;
+                  playerData.dailyClaims.gemsToCoins = (playerData.dailyClaims.gemsToCoins || 0) + 1;
+                  ensureShopButtonRefresh();
+                  renderTabContent();
+              }
+          }));
 
           return grid;
       };
 
-      const tabs = [
-          { id: 'featured', label: 'Featured', render: renderFeaturedTab },
-          { id: 'rotating', label: 'Rotating', render: renderRotatingTab },
-          { id: 'skins', label: 'Skins', render: renderSkinsTab },
-          { id: 'currency', label: 'Currency', render: renderCurrencyTab },
-          { id: 'upgrades', label: 'Upgrades', render: renderUpgradesTab },
-      ];
-
-      const renderActiveTab = () => {
-          // Preserve vertical scroll position when re-rendering to avoid jump-to-top behavior
-          const prevScroll = content.scrollTop || 0;
-          content.innerHTML = '';
-          tabBar.querySelectorAll('button').forEach((button) => {
-              const isActive = button.dataset.tabId === activeTab;
-              button.style.background = isActive
-                  ? 'linear-gradient(135deg, rgba(93,242,194,0.95), rgba(118,153,255,0.95))'
-                  : 'linear-gradient(160deg, rgba(15,28,53,0.92), rgba(9,16,31,0.92))';
-              button.style.color = isActive ? '#041426' : '#cfe2fa';
-              button.style.borderColor = isActive ? 'rgba(174,255,235,0.72)' : 'rgba(130,190,255,0.16)';
-              button.style.boxShadow = isActive ? '0 10px 24px rgba(93,242,194,0.22)' : 'none';
-          });
-
-          const tab = tabs.find((entry) => entry.id === activeTab) || tabs[0];
-          try {
-              content.appendChild(tab.render());
-          } catch (e) {
-              const errDiv = document.createElement('div');
-              errDiv.style.cssText = 'color:#ff6b6b;padding:16px;font-size:13px;grid-column:1/-1;';
-              errDiv.textContent = `Tab error: ${e.message}`;
-              content.appendChild(errDiv);
-              console.error('Shop tab render error:', e);
+      const renderTabContent = () => {
+          shopContent.innerHTML = '';
+          if (activeTab === 'featured') {
+              shopContent.appendChild(renderFeaturedTab());
+          } else if (activeTab === 'skins') {
+              shopContent.appendChild(renderSkinsTab());
+          } else if (activeTab === 'wheel') {
+              shopContent.appendChild(renderWheelTab());
+          } else if (activeTab === 'exchange') {
+              shopContent.appendChild(renderExchangeTab());
           }
-
-          // Restore previous scroll after DOM changes
-          requestAnimationFrame(() => { content.scrollTop = prevScroll; });
-
-          if (shopTimerId) clearInterval(shopTimerId);
-          shopTimerId = setInterval(() => {
-              if (!overlay.isConnected) {
-                  clearInterval(shopTimerId);
-                  return;
-              }
-              renderTimers();
-          }, 1000);
-          renderTimers();
       };
-
-      tabs.forEach((tab) => {
-          tabBar.appendChild(createTabButton(tab.label, tab.id));
-      });
 
       const infoBar = document.createElement('div');
       infoBar.textContent = 'Tip: Daily freebies reset each day, and timed offers rotate automatically.';
@@ -7892,25 +6733,17 @@
       infoBar.style.border = '1px solid rgba(120,176,240,0.18)';
       infoBar.style.borderRadius = '10px';
       infoBar.style.background = 'rgba(8,16,32,0.72)';
-
-      header.appendChild(titleWrap);
-      header.appendChild(close);
-      shell.appendChild(header);
-      shell.appendChild(tabBar);
-      shell.appendChild(content);
-      shell.appendChild(infoBar);
-      panel.appendChild(shell);
-      overlay.appendChild(panel);
+      panel.appendChild(infoBar);
 
       overlay.onclick = (ev) => {
           if (ev.target === overlay) {
-              if (shopTimerId) clearInterval(shopTimerId);
-              document.body.removeChild(overlay);
+              overlay.remove();
           }
       };
 
       document.body.appendChild(overlay);
-      renderActiveTab();
+      overlay.appendChild(panel);
+      renderTabContent();
   }
 
   const baseSpread = 0.45; // shared base spread
