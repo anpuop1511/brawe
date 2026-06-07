@@ -25167,7 +25167,6 @@
               
               ctx.save();
               ctx.translate(b.x, b.y);
-              ctx.rotate(performance.now() * 0.024); // Spin coin fast
               
               // Draw gold core
               ctx.fillStyle = '#f1c40f'; // Shiny Gold
@@ -25193,6 +25192,19 @@
               ctx.beginPath();
               ctx.arc(0, 0, radius * 0.35, 0, Math.PI * 2);
               ctx.fill();
+              
+              // Shiny glint/shine stripe sweeping across the coin
+              const glintX = -radius * 1.5 + ((performance.now() / 8) % (radius * 4.5));
+              const glintGrad = ctx.createLinearGradient(glintX - radius * 0.4, 0, glintX + radius * 0.4, 0);
+              glintGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+              glintGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.7)');
+              glintGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+              
+              ctx.fillStyle = glintGrad;
+              ctx.beginPath();
+              ctx.arc(0, 0, radius, 0, Math.PI * 2);
+              ctx.clip(); // Keep within coin bounds
+              ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
               
               ctx.restore();
           } else if (b.isTaxNote || b.isStickySuper) {
