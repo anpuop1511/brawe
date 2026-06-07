@@ -25160,7 +25160,7 @@
                     ctx.arc(b.x, b.y, (b.super ? 11 : 8) * (b.hitboxMod || 1), 0, Math.PI * 2);
                     ctx.fill();
             }
-      if (activeSkinId === 'gold-silver-moneytax' && b.ownerBrawler === 'money_and_tax') {
+      if (activeSkinId === 'gold-silver-moneytax' && b.ownerBrawler === 'money_and_tax' && !b.hyperVisual) {
           // Custom attack visual: Gold coin with silver outer rim
           if (b.isCoin || b.isBoomerang) {
               const radius = b.isBoomerang ? 14 : 7;
@@ -25210,7 +25210,7 @@
           }
           continue;
       }
-      if (activeSkinId === 'icy-zapper-miser') {
+      if (activeSkinId === 'icy-zapper-miser' && !b.hyperVisual) {
           if (b.isHeaterTetherStarter) {
               // Icy Zapper main attack starter projectile
               const travelAng = Math.atan2(b.vy, b.vx);
@@ -25567,7 +25567,7 @@
           continue;
       }
       if (b.isClassyNote) {
-          if (activeSkinId === 'classic-classy') {
+          if (activeSkinId === 'classic-classy' && !b.hyperVisual) {
               const scale = (b.classySpeakerShot ? 1.25 : 1.0) * (b.hitboxMod || 1);
               const superShot = !!b.isClassySuperShot;
               
@@ -26803,9 +26803,10 @@
         ctx.save();
         const activeSkin = getActiveSkinForBrawler('heater_miser');
         const isIcy = activeSkin?.id === 'icy-zapper-miser';
+        const isHcActive = owner === player ? isHypercharged : owner.isHypercharged;
         ctx.strokeStyle = warning
             ? `rgba(255, 74, 74, ${0.45 + flashPulse * 0.5})`
-            : (isIcy ? `rgba(0, 255, 255, ${0.45 + pulse * 0.4})` : `rgba(255, 156, 96, ${0.45 + pulse * 0.4})`);
+            : (isHcActive ? `rgba(180, 0, 255, ${0.45 + pulse * 0.4})` : (isIcy ? `rgba(0, 255, 255, ${0.45 + pulse * 0.4})` : `rgba(255, 156, 96, ${0.45 + pulse * 0.4})`));
         ctx.lineWidth = isIcy ? 6 : 5;
         ctx.beginPath();
         ctx.moveTo(owner.x, owner.y - (owner.z || 0));
@@ -26813,7 +26814,7 @@
         ctx.stroke();
         ctx.strokeStyle = warning
             ? `rgba(255, 220, 170, ${0.3 + flashPulse * 0.4})`
-            : (isIcy ? `rgba(224, 255, 255, ${0.35 + pulse * 0.35})` : `rgba(255, 225, 190, ${0.35 + pulse * 0.35})`);
+            : (isHcActive ? `rgba(240, 180, 255, ${0.35 + pulse * 0.35})` : (isIcy ? `rgba(224, 255, 255, ${0.35 + pulse * 0.35})` : `rgba(255, 225, 190, ${0.35 + pulse * 0.35})`));
         ctx.lineWidth = isIcy ? 3 : 2;
         ctx.setLineDash(warning ? [5, 5] : (isIcy ? [12, 5, 3, 5] : [9, 7]));
         ctx.lineDashOffset = -(performance.now() / 30);
@@ -26830,29 +26831,36 @@
         const t = clamp((zone.expireAt - now) / 4000, 0, 1);
         const alpha = 0.2 + t * 0.28;
         const isIcy = zone.skinId === 'icy-zapper-miser';
+        const isHc = !!zone.hyperPull;
         
         ctx.save();
         ctx.beginPath();
-        ctx.fillStyle = isIcy 
-            ? `rgba(0, 180, 255, ${alpha * 0.35})`
-            : `rgba(255, 138, 91, ${alpha * 0.75})`;
+        ctx.fillStyle = isHc
+            ? `rgba(180, 0, 255, ${alpha * 0.35})`
+            : (isIcy 
+                ? `rgba(0, 180, 255, ${alpha * 0.35})`
+                : `rgba(255, 138, 91, ${alpha * 0.75})`);
         ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = isIcy
-            ? `rgba(163, 229, 255, ${alpha + 0.18})`
-            : `rgba(255, 199, 160, ${alpha + 0.18})`;
+        ctx.strokeStyle = isHc
+            ? `rgba(240, 180, 255, ${alpha + 0.18})`
+            : (isIcy
+                ? `rgba(163, 229, 255, ${alpha + 0.18})`
+                : `rgba(255, 199, 160, ${alpha + 0.18})`);
         ctx.lineWidth = 3;
         ctx.stroke();
         const ringR = 36 + (1 - t) * 40 + Math.sin(now / 100) * 4;
         ctx.beginPath();
-        ctx.strokeStyle = isIcy
-            ? `rgba(200, 255, 255, ${0.35 + t * 0.3})`
-            : `rgba(255, 235, 212, ${0.35 + t * 0.3})`;
+        ctx.strokeStyle = isHc
+            ? `rgba(255, 200, 255, ${0.35 + t * 0.3})`
+            : (isIcy
+                ? `rgba(200, 255, 255, ${0.35 + t * 0.3})`
+                : `rgba(255, 235, 212, ${0.35 + t * 0.3})`);
         ctx.lineWidth = 2.5;
         ctx.arc(zone.x, zone.y, ringR, 0, Math.PI * 2);
         ctx.stroke();
         
-        if (isIcy) {
+        if (isIcy && !isHc) {
             ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
             ctx.lineWidth = 1.5;
             for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 3) {
