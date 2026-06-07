@@ -2132,6 +2132,48 @@
             deathEffect: { type: 'spiceDeath', color: '#ff7b54', glow: false },
             featuredDurationDays: 3,
             featuredDiscount: 0.1
+        },
+        'gold-silver-moneytax': {
+            id: 'gold-silver-moneytax',
+            name: 'Gold and Silver',
+            brawler: 'money_and_tax',
+            rarity: 'mythic',
+            set: 'Precious Metals',
+            price: 49,
+            currency: 'gems',
+            description: 'A luxurious Mythic skin representing pure gold and silver wealth. Fires metallic gold coins and silver tax notes, with a dazzling takedown display.',
+            attackEffect: { type: 'goldSilverCoin', color: '#f1c40f', glow: true },
+            superEffect: { type: 'goldSilverSuper', color: '#bdc3c7', glow: true },
+            takedownEffect: { type: 'goldSilverTakedown', color: '#f1c40f', glow: true }
+        },
+        'classic-classy': {
+            id: 'classic-classy',
+            name: 'Classic Classy',
+            brawler: 'classy',
+            rarity: 'mythic',
+            set: 'Wild West',
+            price: 49,
+            currency: 'gems',
+            description: 'Ride into the sunset in style! Shoots brass sheriff stars, drops a vintage saloon speaker, and defeats enemies with a sheriff badge takedown.',
+            attackEffect: { type: 'revolverNote', color: '#c29d53', glow: true },
+            superEffect: { type: 'saloonSpeaker', color: '#c29d53', glow: true },
+            takedownEffect: { type: 'wildwestShowdown', color: '#ffd700', glow: true },
+            isAlwaysAvailable: true
+        },
+        'icy-zapper-miser': {
+            id: 'icy-zapper-miser',
+            name: 'Icy Zapper Miser',
+            brawler: 'heater_miser',
+            rarity: 'legendary',
+            set: 'Electric Adventures',
+            price: 59,
+            currency: 'gems',
+            description: 'An electric, freezing skin for Heater Miser. Features custom freezing tethers, shocking blizzard zones, and custom spawn, death, and takedown effects.',
+            attackEffect: { type: 'icyZapAttack', color: '#00ffff', glow: true },
+            superEffect: { type: 'icyZapSuper', color: '#a3e5ff', glow: true },
+            spawnEffect: { type: 'icyZapSpawn', color: '#e0ffff', glow: true },
+            takedownEffect: { type: 'icyZapTakedown', color: '#00bfff', glow: true },
+            deathEffect: { type: 'icyZapDeath', color: '#add8e6', glow: false }
         }
     };
     // Global fixed timestamp for Featured rotation (UTC).
@@ -2216,7 +2258,8 @@
             maxLife: life,
             color,
             fxKind: kind,
-            legendary: isLegendaryPulse,
+            legendary: isLegendaryPulse || skin.rarity === 'mythic',
+            skinId: skin.id,
             ringCount: kind === 'death' ? 4 : (kind === 'takedown' ? 3 : 2)
         });
 
@@ -2233,7 +2276,9 @@
                     radius: kind === 'death' ? 2.5 : 2,
                     life: 0,
                     maxLife: kind === 'death' ? 0.9 : 0.7,
-                    color: kind === 'spawn' ? '#ffb84d' : (kind === 'death' ? '#ff5a1f' : '#ff8c2d'),
+                    color: skin.id === 'icy-zapper-miser'
+                        ? (kind === 'spawn' ? '#e0ffff' : (kind === 'death' ? '#add8e6' : '#00bfff'))
+                        : (kind === 'spawn' ? '#ffb84d' : (kind === 'death' ? '#ff5a1f' : '#ff8c2d')),
                     isParticle: true,
                     legendary: true
                 });
@@ -3472,6 +3517,10 @@
     };
 
     function getBrawlerPortraitIcon(brawlerId) {
+        if (brawlerId === 'heater_miser') {
+            const activeSkin = getActiveSkinForBrawler('heater_miser');
+            if (activeSkin?.id === 'icy-zapper-miser') return '⚡';
+        }
         return brawlerPortraitIcons[brawlerId] || '⭐';
     }
 
@@ -10755,6 +10804,9 @@
       const now = performance.now();
       const star = getOwnerStarChoice(owner);
       const sp2 = star === 'long';
+      const activeSkin = getActiveSkinForBrawler('heater_miser');
+      const isIcy = activeSkin?.id === 'icy-zapper-miser';
+
       heaterZones.push({
           x,
           y,
@@ -10765,9 +10817,12 @@
           damageEndAt: now + 3000,
           nextTickAt: now + 500,
           tickDamage: sp2 ? 260 : 220,
-          hyperPull: !!hyperPull
+          hyperPull: !!hyperPull,
+          skinId: activeSkin?.id
       });
-      explosions.push({ x, y, radius: 120, life: 0, maxLife: 0.24, color: 'rgba(255, 138, 91, 0.62)' });
+
+      const explosionColor = isIcy ? 'rgba(0, 255, 255, 0.62)' : 'rgba(255, 138, 91, 0.62)';
+      explosions.push({ x, y, radius: 120, life: 0, maxLife: 0.24, color: explosionColor });
   }
 
   function traceRicochetPath(startX, startY, angle, maxDist, maxBounces = 4, step = 16) {
@@ -17877,13 +17932,13 @@
 
     if (target.hp <= 0 && b.ownerId === player.id && !target.isDummy) {
         const takedownSkin = getActiveSkinForBrawler(ownerEntity?.brawler || (b.ownerId === player.id ? selectedBrawler : null));
-        if (takedownSkin?.rarity === 'legendary' && !target._legendaryTakedownFxPlayed) {
+        if ((takedownSkin?.rarity === 'legendary' || takedownSkin?.rarity === 'mythic') && !target._legendaryTakedownFxPlayed) {
             triggerSkinPulse(target, takedownSkin, 'takedown');
             target._legendaryTakedownFxPlayed = true;
-            // Add screen shake for legendary takedowns
+            // Add screen shake for legendary and mythic takedowns
             const now = performance.now();
             screenShakeUntil = now + 150;
-            screenShakeAmount = 7;
+            screenShakeAmount = takedownSkin?.rarity === 'legendary' ? 7 : 4;
         }
         addEventQuestProgress('get_kills');
         progressSeasonPassQuest('get_kills');
@@ -22756,6 +22811,33 @@
       } else {
           drawBrawlerPortrait(t, drawY, false, botColor, !!t.isBoss);
       }
+
+      const activeSkinId = getActiveSkinForBrawler(t.brawler || (t === player ? selectedBrawler : ''))?.id;
+      if (activeSkinId === 'icy-zapper-miser') {
+          // Draw a frosty electric halo around the brawler
+          const pulse = 0.85 + Math.sin(performance.now() / 150) * 0.15;
+          ctx.strokeStyle = 'rgba(0, 255, 255, 0.45)';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.arc(t.x, drawY, t.radius + 6 * pulse, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          // Draw tiny frost stars / electric spark particles floating up
+          if (Math.random() < 0.05) {
+              explosions.push({
+                  x: t.x + (Math.random() - 0.5) * t.radius * 2,
+                  y: drawY + (Math.random() - 0.5) * t.radius * 2,
+                  vx: (Math.random() - 0.5) * 20,
+                  vy: -20 - Math.random() * 20,
+                  radius: 1.5 + Math.random() * 1.5,
+                  life: 0,
+                  maxLife: 0.5 + Math.random() * 0.3,
+                  color: Math.random() < 0.5 ? '#00ffff' : '#ffffff',
+                  isParticle: true
+              });
+          }
+      }
       
       if(t.shield > 0){
         ctx.beginPath(); ctx.fillStyle = 'rgba(123, 224, 255, 0.25)'; ctx.arc(t.x, drawY, t.radius + 6, 0, Math.PI*2); ctx.fill();
@@ -22981,6 +23063,45 @@
                             ctx.stroke();
                     }
             }
+
+            // Gold and Silver: Precious Metals rotating aura
+            if (t.brawler === 'money_and_tax' && tSkin?.id === 'gold-silver-moneytax' && (t === player ? (performance.now() < moneyTaxSuperUntil) : (performance.now() < (t.moneyTaxSuperUntil || 0)))) {
+                    ctx.save();
+                    ctx.translate(t.x, drawY);
+                    
+                    // Golden ring
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#f1c40f';
+                    ctx.lineWidth = 3;
+                    ctx.arc(0, 0, t.radius + 18, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Silver outer ring
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'rgba(189, 195, 199, 0.7)';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 6]);
+                    ctx.arc(0, 0, t.radius + 26, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    
+                    // Rotating coins/stars (one gold, one silver)
+                    const rot = performance.now() / 250;
+                    
+                    // Gold orbit particle
+                    ctx.beginPath();
+                    ctx.fillStyle = '#f39c12';
+                    ctx.arc(Math.cos(rot) * (t.radius + 22), Math.sin(rot) * (t.radius + 22), 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Silver orbit particle
+                    ctx.beginPath();
+                    ctx.fillStyle = '#ecf0f1';
+                    ctx.arc(Math.cos(rot + Math.PI) * (t.radius + 22), Math.sin(rot + Math.PI) * (t.radius + 22), 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.restore();
+            }
             
             // HERO: Eagle Sentinel - orange predatory aura
             if (t.brawler === 'hunter' && tSkin?.id === 'battle-hunter' && (t === player ? (performance.now() < hunterSuperUntil) : (performance.now() < (t.hunterSuperUntil || 0)))) {
@@ -23139,6 +23260,36 @@
       }
       
     drawBrawlerPortrait(player, drawY, true, '#9ef6d6', false);
+
+    {
+      const t = player;
+      const activeSkinId = getActiveSkinForBrawler(t.brawler || (t === player ? selectedBrawler : ''))?.id;
+      if (activeSkinId === 'icy-zapper-miser') {
+          // Draw a frosty electric halo around the brawler
+          const pulse = 0.85 + Math.sin(performance.now() / 150) * 0.15;
+          ctx.strokeStyle = 'rgba(0, 255, 255, 0.45)';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.arc(t.x, drawY, t.radius + 6 * pulse, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          // Draw tiny frost stars / electric spark particles floating up
+          if (Math.random() < 0.05) {
+              explosions.push({
+                  x: t.x + (Math.random() - 0.5) * t.radius * 2,
+                  y: drawY + (Math.random() - 0.5) * t.radius * 2,
+                  vx: (Math.random() - 0.5) * 20,
+                  vy: -20 - Math.random() * 20,
+                  radius: 1.5 + Math.random() * 1.5,
+                  life: 0,
+                  maxLife: 0.5 + Math.random() * 0.3,
+                  color: Math.random() < 0.5 ? '#00ffff' : '#ffffff',
+                  isParticle: true
+              });
+          }
+      }
+    }
       if(player.shield > 0){
         ctx.beginPath(); ctx.fillStyle = 'rgba(123, 224, 255, 0.25)'; ctx.arc(player.x, drawY, player.radius + 8, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = 'rgba(123, 224, 255, 0.6)'; ctx.lineWidth = 2; ctx.stroke();
@@ -23855,22 +24006,24 @@
             ctx.arc(player.x, player.y, radius, 0, Math.PI * 2);
             ctx.stroke();
         } else if (selectedBrawler === 'heater_miser') {
+            const activeSkin = getActiveSkinForBrawler('heater_miser');
+            const isIcy = activeSkin?.id === 'icy-zapper-miser';
             const range = 720;
             const dist = Math.min(range, Math.hypot(wm.x - player.x, wm.y - player.y));
             const tx = player.x + Math.cos(ang) * dist;
             const ty = player.y + Math.sin(ang) * dist;
             const zoneR = selectedStar === 'long' ? 275 : 245;
-            ctx.strokeStyle = 'rgba(255, 176, 120, 0.92)';
+            ctx.strokeStyle = isIcy ? 'rgba(0, 255, 255, 0.92)' : 'rgba(255, 176, 120, 0.92)';
             ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.moveTo(player.x, player.y);
             ctx.lineTo(tx, ty);
             ctx.stroke();
-            ctx.fillStyle = 'rgba(255, 150, 90, 0.13)';
+            ctx.fillStyle = isIcy ? 'rgba(163, 229, 255, 0.15)' : 'rgba(255, 150, 90, 0.13)';
             ctx.beginPath();
             ctx.arc(tx, ty, zoneR, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 210, 175, 0.78)';
+            ctx.strokeStyle = isIcy ? 'rgba(224, 255, 255, 0.85)' : 'rgba(255, 210, 175, 0.78)';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(tx, ty, zoneR, 0, Math.PI * 2);
@@ -24470,17 +24623,19 @@
                             ctx.fill();
                         }
                   } else if (selectedBrawler === 'heater_miser') {
+                        const activeSkin = getActiveSkinForBrawler('heater_miser');
+                        const isIcy = activeSkin?.id === 'icy-zapper-miser';
                         const range = 490;
                         const reach = Math.min(range, Math.hypot(wm.x - player.x, wm.y - player.y));
                         const tx = player.x + Math.cos(ang) * reach;
                         const ty = player.y + Math.sin(ang) * reach;
-                        ctx.strokeStyle = 'rgba(255, 210, 185, 0.84)';
+                        ctx.strokeStyle = isIcy ? 'rgba(0, 255, 255, 0.84)' : 'rgba(255, 210, 185, 0.84)';
                         ctx.lineWidth = 3;
                         ctx.beginPath();
                         ctx.moveTo(player.x, player.y);
                         ctx.lineTo(tx, ty);
                         ctx.stroke();
-                        ctx.fillStyle = 'rgba(255, 170, 120, 0.16)';
+                        ctx.fillStyle = isIcy ? 'rgba(163, 229, 255, 0.3)' : 'rgba(255, 170, 120, 0.16)';
                         ctx.beginPath();
                         ctx.arc(tx, ty, 9, 0, Math.PI * 2);
                         ctx.fill();
@@ -24669,32 +24824,91 @@
             if (pod.isClassySpeaker) {
                     const pulse = 0.92 + Math.sin(performance.now() / 140) * 0.08;
                     const zoneR = pod.classyAuraRadius || 220;
+                    
+                    const owner = [player, ...aliveBots].find(e => e.id === pod.ownerId);
+                    const ownerSkin = owner ? getActiveSkinForBrawler(owner.brawler || (owner === player ? selectedBrawler : '')) : null;
+                    const isClassicClassy = ownerSkin?.id === 'classic-classy';
+
+                    // 1. Draw Custom Outward Range Aura Line
                     ctx.beginPath();
-                    ctx.strokeStyle = pod.classyHyper ? 'rgba(255, 220, 90, 0.45)' : 'rgba(212, 175, 55, 0.35)';
+                    ctx.strokeStyle = isClassicClassy ? 'rgba(194, 157, 83, 0.45)' : (pod.classyHyper ? 'rgba(255, 220, 90, 0.45)' : 'rgba(212, 175, 55, 0.35)');
                     ctx.lineWidth = 2;
                     ctx.setLineDash([10, 7]);
                     ctx.arc(pod.x, pod.y, zoneR, 0, Math.PI * 2);
                     ctx.stroke();
                     ctx.setLineDash([]);
+
+                    // 2. Draw Soft Center Pulse Ground Shadow
                     ctx.beginPath();
-                    ctx.fillStyle = pod.classyHyper ? 'rgba(255, 210, 80, 0.35)' : 'rgba(212, 175, 55, 0.32)';
+                    ctx.fillStyle = isClassicClassy ? 'rgba(139, 90, 43, 0.25)' : (pod.classyHyper ? 'rgba(255, 210, 80, 0.35)' : 'rgba(212, 175, 55, 0.32)');
                     ctx.arc(pod.x, pod.y, (pod.radius || 34) * pulse, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.beginPath();
-                    ctx.fillStyle = pod.classyHyper ? '#ffd54f' : '#d4af37';
-                    ctx.arc(pod.x, pod.y, pod.radius || 34, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.strokeStyle = '#5f4a18';
-                    ctx.lineWidth = 3;
-                    ctx.arc(pod.x, pod.y, (pod.radius || 34) - 4, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.fillStyle = '#2b2b2b';
-                    ctx.fillRect(pod.x - 12, pod.y - 8, 24, 16);
-                    ctx.fillStyle = '#111';
-                    ctx.beginPath();
-                    ctx.arc(pod.x, pod.y, 6, 0, Math.PI * 2);
-                    ctx.fill();
+
+                    if (isClassicClassy) {
+                        const r = pod.radius || 34;
+                        
+                        // A. Wood Cabinet (saloon box style)
+                        ctx.fillStyle = '#8b5a2b'; // Dark wood mahogany
+                        ctx.strokeStyle = '#3e2510'; // Dark trim
+                        ctx.lineWidth = 3.5;
+                        ctx.beginPath();
+                        ctx.roundRect(pod.x - r, pod.y - r, r * 2, r * 2, 8);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // B. Brass Grille Circular Inlay
+                        ctx.fillStyle = '#c29d53'; // Brass grille
+                        ctx.beginPath();
+                        ctx.arc(pod.x, pod.y, r * 0.65, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // C. Saloon double-door parting line detail
+                        ctx.strokeStyle = '#3e2510';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(pod.x, pod.y - r);
+                        ctx.lineTo(pod.x, pod.y + r);
+                        ctx.stroke();
+
+                        // D. Center Black Speaker Cone
+                        ctx.fillStyle = '#1e1e1e';
+                        ctx.beginPath();
+                        ctx.arc(pod.x, pod.y, r * 0.35, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // E. Polished Gold Center Cap
+                        ctx.fillStyle = '#e5c158';
+                        ctx.beginPath();
+                        ctx.arc(pod.x, pod.y, r * 0.15, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // F. Tiny sheriff star emblem on the cabinet's header
+                        ctx.fillStyle = '#ffd700';
+                        ctx.strokeStyle = '#5f4a18';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.arc(pod.x, pod.y - r + 8, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    } else {
+                        // Fallback default speaker draw
+                        ctx.beginPath();
+                        ctx.fillStyle = pod.classyHyper ? '#ffd54f' : '#d4af37';
+                        ctx.arc(pod.x, pod.y, pod.radius || 34, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.strokeStyle = '#5f4a18';
+                        ctx.lineWidth = 3;
+                        ctx.arc(pod.x, pod.y, (pod.radius || 34) - 4, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.fillStyle = '#2b2b2b';
+                        ctx.fillRect(pod.x - 12, pod.y - 8, 24, 16);
+                        ctx.fillStyle = '#111';
+                        ctx.beginPath();
+                        ctx.arc(pod.x, pod.y, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                     ctx.fillStyle = 'rgba(0,0,0,0.5)';
                     ctx.fillRect(pod.x - pod.radius, pod.y - pod.radius - 8, pod.radius * 2, 4);
                     ctx.fillStyle = '#ffd54f';
@@ -24946,6 +25160,137 @@
                     ctx.arc(b.x, b.y, (b.super ? 11 : 8) * (b.hitboxMod || 1), 0, Math.PI * 2);
                     ctx.fill();
             }
+      if (activeSkinId === 'gold-silver-moneytax' && b.ownerBrawler === 'money_and_tax') {
+          // Custom attack visual: Gold coin with silver outer rim
+          if (b.isCoin || b.isBoomerang) {
+              const radius = b.isBoomerang ? 14 : 7;
+              
+              // Draw gold core
+              ctx.fillStyle = '#f1c40f'; // Shiny Gold
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+              ctx.fill();
+              
+              // Draw silver rim
+              ctx.strokeStyle = '#e5e8e8'; // Metallic Silver
+              ctx.lineWidth = 2;
+              ctx.stroke();
+              
+              // Internal details (a small gold circle in the center)
+              ctx.fillStyle = '#d4ac0d'; // Darker Gold for detail
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, radius * 0.4, 0, Math.PI * 2);
+              ctx.fill();
+          } else if (b.isTaxNote || b.isStickySuper) {
+              // Custom super/tax visual: Silver banknote with gold borders
+              const w = b.isStickySuper ? 24 : 14;
+              const h = b.isStickySuper ? 14 : 8;
+              
+              ctx.save();
+              ctx.translate(b.x, b.y);
+              ctx.rotate(Math.atan2(b.vy, b.vx));
+              
+              // Draw silver body
+              ctx.fillStyle = '#bdc3c7'; // Metallic Silver
+              ctx.fillRect(-w/2, -h/2, w, h);
+              
+              // Draw gold border
+              ctx.strokeStyle = '#f39c12'; // Bright Gold
+              ctx.lineWidth = 1.5;
+              ctx.strokeRect(-w/2, -h/2, w, h);
+              
+              // Center dollar/tax sign or pattern
+              ctx.fillStyle = '#7f8c8d'; // Dark silver/grey for print
+              ctx.font = `bold ${b.isStickySuper ? '10px' : '6px'} sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('$', 0, 0);
+              
+              ctx.restore();
+          }
+          continue;
+      }
+      if (activeSkinId === 'icy-zapper-miser') {
+          if (b.isHeaterTetherStarter) {
+              // Icy Zapper main attack starter projectile
+              const travelAng = Math.atan2(b.vy, b.vx);
+              ctx.save();
+              ctx.translate(b.x, b.y);
+              ctx.rotate(travelAng);
+              // Draw an icicle / ice shard crackling with electricity
+              ctx.fillStyle = 'rgba(163, 229, 255, 0.95)'; // Ice blue
+              ctx.beginPath();
+              ctx.moveTo(10, 0);
+              ctx.lineTo(-6, -4);
+              ctx.lineTo(-4, 0);
+              ctx.lineTo(-6, 4);
+              ctx.closePath();
+              ctx.fill();
+              
+              ctx.strokeStyle = '#00ffff'; // Neon cyan electric edge
+              ctx.lineWidth = 1.8;
+              ctx.stroke();
+              
+              // Inner glowing core
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.moveTo(6, 0);
+              ctx.lineTo(-2, -1.5);
+              ctx.lineTo(-2, 1.5);
+              ctx.closePath();
+              ctx.fill();
+              ctx.restore();
+              
+              // Frost trail particles
+              if (Math.random() < 0.35) {
+                  explosions.push({
+                      x: b.x,
+                      y: b.y,
+                      vx: -b.vx * 0.15 + (Math.random() - 0.5) * 35,
+                      vy: -b.vy * 0.15 + (Math.random() - 0.5) * 35,
+                      radius: 1.5 + Math.random() * 2,
+                      life: 0,
+                      maxLife: 0.3 + Math.random() * 0.2,
+                      color: Math.random() < 0.5 ? '#00ffff' : '#e0ffff',
+                      isParticle: true
+                  });
+              }
+              continue;
+          }
+          if (b.isHeaterFurnaceProj) {
+              // Icy Zapper Super projectile
+              const spin = performance.now() * 0.012;
+              ctx.save();
+              ctx.translate(b.x, b.y);
+              ctx.rotate(spin);
+              ctx.shadowColor = '#00ffff';
+              ctx.shadowBlur = 15;
+              ctx.fillStyle = 'rgba(0, 200, 255, 0.9)';
+              ctx.beginPath();
+              ctx.arc(0, 0, 10, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.shadowBlur = 0;
+              
+              // Surrounding icy spikes
+              ctx.fillStyle = 'rgba(224, 255, 255, 0.9)';
+              for (let j = 0; j < 4; j++) {
+                  ctx.rotate(Math.PI / 2);
+                  ctx.beginPath();
+                  ctx.moveTo(0, -14);
+                  ctx.lineTo(3, -9);
+                  ctx.lineTo(-3, -9);
+                  ctx.closePath();
+                  ctx.fill();
+              }
+              ctx.strokeStyle = '#00ffff';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.arc(0, 0, 9, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+              continue;
+          }
+      }
       if (b.isCheeseyPuff) {
           const cheesySkin = getActiveSkinForBrawler('cheseypuff');
           const isFlamminHot = cheesySkin?.id === 'flamin-hot-cheesypuff';
@@ -25222,6 +25567,57 @@
           continue;
       }
       if (b.isClassyNote) {
+          if (activeSkinId === 'classic-classy') {
+              const scale = (b.classySpeakerShot ? 1.25 : 1.0) * (b.hitboxMod || 1);
+              const superShot = !!b.isClassySuperShot;
+              
+              let color = '#c29d53'; // Classic brass/gold
+              let glowColor = 'rgba(194, 157, 83, 0.35)';
+              if (b.classySpeakerShot || superShot) {
+                  color = '#ffd700'; // Saloon boost shiny gold
+                  glowColor = 'rgba(255, 215, 0, 0.55)';
+              } else if (b.classyGolden) {
+                  color = '#e5c158'; // Symphony golden shot
+                  glowColor = 'rgba(229, 193, 88, 0.45)';
+              }
+              
+              ctx.save();
+              ctx.translate(b.x, b.y);
+              ctx.rotate(Math.atan2(b.vy, b.vx) + performance.now() * 0.012); // Spin star along movement
+              
+              // Draw glow aura
+              ctx.fillStyle = glowColor;
+              ctx.beginPath();
+              ctx.arc(0, 0, 11 * scale, 0, Math.PI * 2);
+              ctx.fill();
+              
+              // Draw 5-pointed sheriff star
+              ctx.fillStyle = color;
+              ctx.strokeStyle = '#5f4a18';
+              ctx.lineWidth = 1.6;
+              
+              ctx.beginPath();
+              const points = 5;
+              const outerRadius = 8.5 * scale;
+              const innerRadius = 3.8 * scale;
+              for (let idx = 0; idx < points * 2; idx++) {
+                  const r = idx % 2 === 0 ? outerRadius : innerRadius;
+                  const theta = (Math.PI / points) * idx;
+                  ctx.lineTo(Math.cos(theta) * r, Math.sin(theta) * r);
+              }
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+              
+              // Tiny rivet detail in the center
+              ctx.beginPath();
+              ctx.fillStyle = '#5f4a18';
+              ctx.arc(0, 0, 1.6 * scale, 0, Math.PI * 2);
+              ctx.fill();
+              
+              ctx.restore();
+              continue;
+          }
           const scale = (b.classySpeakerShot ? 1.25 : 1.0) * (b.hitboxMod || 1);
           const superShot = !!b.isClassySuperShot;
           const noteColor = (b.classySpeakerShot || superShot) ? 'rgba(77, 246, 255, 0.98)' : (b.classyGolden ? 'rgba(255, 215, 90, 0.95)' : (b.hyperVisual ? 'rgba(255, 170, 255, 0.9)' : 'rgba(212, 175, 55, 0.92)'));
@@ -26405,19 +26801,21 @@
         const pulse = 0.5 + Math.sin(performance.now() / 120) * 0.22;
         const flashPulse = 0.5 + 0.5 * Math.sin(performance.now() / 55);
         ctx.save();
+        const activeSkin = getActiveSkinForBrawler('heater_miser');
+        const isIcy = activeSkin?.id === 'icy-zapper-miser';
         ctx.strokeStyle = warning
             ? `rgba(255, 74, 74, ${0.45 + flashPulse * 0.5})`
-            : `rgba(255, 156, 96, ${0.45 + pulse * 0.4})`;
-        ctx.lineWidth = 5;
+            : (isIcy ? `rgba(0, 255, 255, ${0.45 + pulse * 0.4})` : `rgba(255, 156, 96, ${0.45 + pulse * 0.4})`);
+        ctx.lineWidth = isIcy ? 6 : 5;
         ctx.beginPath();
         ctx.moveTo(owner.x, owner.y - (owner.z || 0));
         ctx.lineTo(tx, ty - tz);
         ctx.stroke();
         ctx.strokeStyle = warning
             ? `rgba(255, 220, 170, ${0.3 + flashPulse * 0.4})`
-            : `rgba(255, 225, 190, ${0.35 + pulse * 0.35})`;
-        ctx.lineWidth = 2;
-        ctx.setLineDash(warning ? [5, 5] : [9, 7]);
+            : (isIcy ? `rgba(224, 255, 255, ${0.35 + pulse * 0.35})` : `rgba(255, 225, 190, ${0.35 + pulse * 0.35})`);
+        ctx.lineWidth = isIcy ? 3 : 2;
+        ctx.setLineDash(warning ? [5, 5] : (isIcy ? [12, 5, 3, 5] : [9, 7]));
         ctx.lineDashOffset = -(performance.now() / 30);
         ctx.beginPath();
         ctx.moveTo(owner.x, owner.y - (owner.z || 0));
@@ -26431,22 +26829,45 @@
         const now = performance.now();
         const t = clamp((zone.expireAt - now) / 4000, 0, 1);
         const alpha = 0.2 + t * 0.28;
+        const isIcy = zone.skinId === 'icy-zapper-miser';
+        
         ctx.save();
         ctx.beginPath();
-        ctx.fillStyle = `rgba(255, 138, 91, ${alpha * 0.75})`;
+        ctx.fillStyle = isIcy 
+            ? `rgba(0, 180, 255, ${alpha * 0.35})`
+            : `rgba(255, 138, 91, ${alpha * 0.75})`;
         ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = `rgba(255, 199, 160, ${alpha + 0.18})`;
+        ctx.strokeStyle = isIcy
+            ? `rgba(163, 229, 255, ${alpha + 0.18})`
+            : `rgba(255, 199, 160, ${alpha + 0.18})`;
         ctx.lineWidth = 3;
         ctx.stroke();
         const ringR = 36 + (1 - t) * 40 + Math.sin(now / 100) * 4;
         ctx.beginPath();
-        ctx.strokeStyle = `rgba(255, 235, 212, ${0.35 + t * 0.3})`;
+        ctx.strokeStyle = isIcy
+            ? `rgba(200, 255, 255, ${0.35 + t * 0.3})`
+            : `rgba(255, 235, 212, ${0.35 + t * 0.3})`;
         ctx.lineWidth = 2.5;
         ctx.arc(zone.x, zone.y, ringR, 0, Math.PI * 2);
         ctx.stroke();
+        
+        if (isIcy) {
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+            ctx.lineWidth = 1.5;
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 3) {
+                const rotAngle = angle + (now / 1000);
+                ctx.beginPath();
+                ctx.moveTo(zone.x, zone.y);
+                ctx.lineTo(zone.x + Math.cos(rotAngle) * zone.radius * 0.8, zone.y + Math.sin(rotAngle) * zone.radius * 0.8);
+                ctx.stroke();
+            }
+        }
+        
         ctx.beginPath();
-        ctx.fillStyle = zone.hyperPull ? 'rgba(255, 120, 90, 0.85)' : 'rgba(255, 170, 120, 0.7)';
+        ctx.fillStyle = isIcy
+            ? (zone.hyperPull ? 'rgba(0, 255, 255, 0.95)' : 'rgba(163, 229, 255, 0.85)')
+            : (zone.hyperPull ? 'rgba(255, 120, 90, 0.85)' : 'rgba(255, 170, 120, 0.7)');
         ctx.arc(zone.x, zone.y, 10 + Math.sin(now / 70) * 2, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
@@ -26613,27 +27034,135 @@
         if (ex.isParticle) {
             const alpha = Math.max(0, 1 - ex.life / ex.maxLife);
             const particleScale = ex.legendary ? 1.35 : 1.0;
-            ctx.fillStyle = ex.legendary ? `rgba(255, 180, 90, ${alpha * 0.85})` : `rgba(255, 100, 45, ${alpha * 0.7})`;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = ex.color || (ex.legendary ? 'rgba(255, 180, 90, 0.85)' : 'rgba(255, 100, 45, 0.7)');
             ctx.beginPath();
             ctx.arc(ex.x, ex.y, ex.radius * particleScale, 0, Math.PI*2);
             ctx.fill();
             if (ex.legendary) {
-                ctx.strokeStyle = `rgba(255, 80, 20, ${alpha * 0.45})`;
+                ctx.strokeStyle = ex.color || 'rgba(255, 80, 20, 0.45)';
                 ctx.lineWidth = 1;
                 ctx.stroke();
             }
+            ctx.restore();
             continue;
         }
         ctx.beginPath();
         const alpha = Math.max(0, 1 - ex.life/ex.maxLife);
+        if (ex.color === '#f1c40f' && ex.fxKind === 'takedown') {
+            // Custom takedown rendering for Gold and Silver
+            // We draw shiny gold and silver rotating rings/streaks!
+            ctx.save();
+            ctx.translate(ex.x, ex.y);
+            ctx.rotate((performance.now() / 400));
+            
+            // Gold Ring
+            ctx.strokeStyle = `rgba(241, 196, 15, ${alpha * 0.95})`;
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(0, 0, ex.radius * (0.8 + alpha * 0.6), 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Silver Ring
+            ctx.strokeStyle = `rgba(229, 232, 232, ${alpha * 0.8})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, ex.radius * (0.6 + alpha * 0.5), 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Alternating gold and silver rays/streaks
+            const streakCount = 12;
+            for (let i = 0; i < streakCount; i++) {
+                const angle = (i / streakCount) * Math.PI * 2;
+                ctx.strokeStyle = i % 2 === 0 ? `rgba(241, 196, 15, ${alpha * 0.7})` : `rgba(189, 195, 199, ${alpha * 0.7})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(angle) * (ex.radius * 0.2), Math.sin(angle) * (ex.radius * 0.2));
+                ctx.lineTo(Math.cos(angle) * (ex.radius * (1.1 + alpha * 0.3)), Math.sin(angle) * (ex.radius * (1.1 + alpha * 0.3)));
+                ctx.stroke();
+            }
+            
+            // Center flash
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.4})`;
+            ctx.beginPath();
+            ctx.arc(0, 0, ex.radius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+            continue;
+        }
         if (ex.color) {
             const isLegendary = !!ex.legendary || ex.radius > 45;
             if (isLegendary) {
                 const kind = ex.fxKind || 'pulse';
+                
+                if (ex.skinId === 'classic-classy' && kind === 'takedown') {
+                    ctx.save();
+                    ctx.translate(ex.x, ex.y);
+                    ctx.rotate((performance.now() / 460) * -1); // Slowly rotate counter-clockwise
+
+                    // A. Expanding Brass Rings
+                    ctx.strokeStyle = `rgba(194, 157, 83, ${alpha * 0.9})`;
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * (0.85 + alpha * 0.65), 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    for (let r = 1; r < 3; r++) {
+                        ctx.strokeStyle = `rgba(229, 193, 88, ${alpha * (0.82 - r * 0.2)})`;
+                        ctx.lineWidth = Math.max(1.5, 4 - r);
+                        ctx.beginPath();
+                        ctx.arc(0, 0, ex.radius * (0.85 + alpha * 0.65 - r * 0.15), 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    // B. Draw Sheriff Star (6-pointed badge)
+                    ctx.fillStyle = `rgba(194, 157, 83, ${alpha * 0.8})`;
+                    ctx.strokeStyle = '#5f4a18';
+                    ctx.lineWidth = 2.5;
+                    
+                    ctx.beginPath();
+                    const points = 6;
+                    const outerRadius = ex.radius * 0.7 * (1 - alpha * 0.15);
+                    const innerRadius = ex.radius * 0.32 * (1 - alpha * 0.15);
+                    for (let idx = 0; idx < points * 2; idx++) {
+                        const r = idx % 2 === 0 ? outerRadius : innerRadius;
+                        const theta = (Math.PI / points) * idx;
+                        ctx.lineTo(Math.cos(theta) * r, Math.sin(theta) * r);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // C. Tips/Bulbs of the Sheriff Badge
+                    ctx.fillStyle = '#ffd700';
+                    for (let idx = 0; idx < points; idx++) {
+                        const theta = (Math.PI / points) * idx * 2;
+                        ctx.beginPath();
+                        ctx.arc(Math.cos(theta) * outerRadius, Math.sin(theta) * outerRadius, 5 * (1 - alpha * 0.15), 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+
+                    // D. Inner Golden Sheriff Seal
+                    ctx.fillStyle = `rgba(255, 236, 178, ${alpha * 0.45})`;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * 0.22, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                    continue;
+                }
+
                 const ringCount = ex.ringCount || 3;
                 const streakCount = kind === 'death' ? 14 : (kind === 'takedown' ? 12 : 8);
                 const ringScale = kind === 'death' ? 1.25 + alpha * 0.45 : 0.9 + alpha * 0.55;
-                const ringColor = kind === 'spawn' ? '255, 176, 64' : (kind === 'death' ? '255, 90, 31' : '255, 122, 45');
+                const isIcyZapper = ex.skinId === 'icy-zapper-miser';
+                
+                const ringColor = isIcyZapper
+                    ? (kind === 'spawn' ? '224, 255, 255' : (kind === 'death' ? '173, 216, 230' : '0, 191, 255'))
+                    : (kind === 'spawn' ? '255, 176, 64' : (kind === 'death' ? '255, 90, 31' : '255, 122, 45'));
 
                 ctx.save();
                 ctx.translate(ex.x, ex.y);
@@ -26646,19 +27175,25 @@
                 ctx.stroke();
 
                 for (let r = 1; r < ringCount; r++) {
-                    ctx.strokeStyle = `rgba(255, ${120 - r * 10}, ${40 + r * 10}, ${alpha * (0.82 - r * 0.12)})`;
+                    ctx.strokeStyle = isIcyZapper
+                        ? `rgba(${r % 2 === 0 ? '0, 255, 255' : '224, 255, 255'}, ${alpha * (0.82 - r * 0.12)})`
+                        : `rgba(255, ${120 - r * 10}, ${40 + r * 10}, ${alpha * (0.82 - r * 0.12)})`;
                     ctx.lineWidth = Math.max(1.5, 4 - r);
                     ctx.beginPath();
                     ctx.arc(0, 0, ex.radius * (ringScale - r * 0.12), 0, Math.PI * 2);
                     ctx.stroke();
                 }
 
-                ctx.fillStyle = `rgba(255, 236, 178, ${alpha * 0.25})`;
+                ctx.fillStyle = isIcyZapper
+                    ? `rgba(224, 255, 255, ${alpha * 0.25})`
+                    : `rgba(255, 236, 178, ${alpha * 0.25})`;
                 ctx.beginPath();
                 ctx.arc(0, 0, ex.radius * 0.35, 0, Math.PI * 2);
                 ctx.fill();
 
-                ctx.strokeStyle = `rgba(255, 220, 130, ${alpha * 0.65})`;
+                ctx.strokeStyle = isIcyZapper
+                    ? `rgba(0, 255, 255, ${alpha * 0.65})`
+                    : `rgba(255, 220, 130, ${alpha * 0.65})`;
                 ctx.lineWidth = 2;
                 for (let i = 0; i < streakCount; i++) {
                     const startAngle = (i / streakCount) * Math.PI * 2;
@@ -26671,7 +27206,9 @@
                 }
 
                 if (kind === 'death') {
-                    ctx.fillStyle = `rgba(255, 80, 20, ${alpha * 0.18})`;
+                    ctx.fillStyle = isIcyZapper
+                        ? `rgba(173, 216, 230, ${alpha * 0.18})`
+                        : `rgba(255, 80, 20, ${alpha * 0.18})`;
                     ctx.beginPath();
                     ctx.arc(0, 0, ex.radius * (0.6 + (1 - alpha) * 0.35), 0, Math.PI * 2);
                     ctx.fill();
