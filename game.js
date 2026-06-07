@@ -2026,6 +2026,30 @@
 
     // Skin Database with Sets
     const skinsDatabase = {
+        'soda-pop-echo': {
+            id: 'soda-pop-echo',
+            name: 'Soda Pop Echo',
+            brawler: 'echo',
+            rarity: 'mythic',
+            set: 'Arena Forge x Summer Sips',
+            price: 199,
+            currency: 'gems',
+            description: 'Fires bubbly blue soda waves with splash rings and soda bubbles.',
+            attackEffect: { type: 'sodaBubble', color: '#33ccff', glow: true },
+            superEffect: { type: 'sodaBlast', color: '#0099ff', glow: true }
+        },
+        'forge-knight-dash': {
+            id: 'forge-knight-dash',
+            name: 'Forge Knight Dashaholic',
+            brawler: 'dashaholic',
+            rarity: 'mythic',
+            set: 'Arena Forge x Summer Sips',
+            price: 199,
+            currency: 'gems',
+            description: 'Slashes with blazing fire trails and leaves molten footprints.',
+            attackEffect: { type: 'moltenSlash', color: '#ff6600', glow: true },
+            superEffect: { type: 'forgeFire', color: '#ff3300', glow: true }
+        },
         'electrified-outlit': {
             id: 'electrified-outlit',
             name: 'Electrified Outlit',
@@ -2185,7 +2209,7 @@
     const EVENT_END_MS = new Date(2026, 4, 31, 0, 0, 0).getTime(); // May 31, 2026
     const EVENT_SHOP_UNLOCK_MS = EVENT_END_MS + 60 * 24 * 60 * 60 * 1000; // 60 days after event ends (July 30, 2026)
     const ENABLE_EVENT_HUB = false;
-    const ENABLE_SEASON_PASS = false;
+    const ENABLE_SEASON_PASS = true;
     const ENABLE_SEASON_QUESTS = true;
     const ENABLE_DAILY_WEEKLY_QUESTS = true;
 
@@ -2319,21 +2343,36 @@
       }
       const EVENT_QUEST_TOTAL = buildEventQuests().length;
 
-      const SEASON_PASS_SCHEMA_VERSION = 2;
-      const SEASON_PASS_ID = 'lava-stones-2026-05';
-      const SEASON_PASS_MAX_LEVEL = 10;
+      const SEASON_PASS_SCHEMA_VERSION = 3;
+      const SEASON_PASS_ID = 'summer-forge-2026-06';
+      const SEASON_PASS_MAX_LEVEL = 25;
       const SEASON_PASS_XP_PER_LEVEL = 100;
       const SEASON_PASS_TIERS = [
           { tier: 1, title: 'Kickoff', free: { type: 'coins', amount: 200 }, premium: { type: 'souls', amount: 20 } },
-          { tier: 2, title: 'Combat Boost', free: { type: 'tapper', amount: 1 }, premium: { type: 'coins', amount: 350 } },
-          { tier: 3, title: 'Soul Spark', free: { type: 'souls', amount: 30 }, premium: { type: 'superTapper', amount: 1 } },
-          { tier: 4, title: 'Arena Stockpile', free: { type: 'coins', amount: 380 }, premium: { type: 'souls', amount: 40 } },
-          { tier: 5, title: 'Midpoint Cache', free: { type: 'eventTapper', amount: 2 }, premium: { type: 'hyperTapper', amount: 1 } },
-          { tier: 6, title: 'Soul Engine', free: { type: 'souls', amount: 45 }, premium: { type: 'coins', amount: 600 } },
-          { tier: 7, title: 'Champion Kit', free: { type: 'coins', amount: 550 }, premium: { type: 'souls', amount: 55 } },
-          { tier: 8, title: 'Elite Supply', free: { type: 'superTapper', amount: 1 }, premium: { type: 'eventTapper', amount: 3 } },
-          { tier: 9, title: 'Soul Surge', free: { type: 'souls', amount: 65 }, premium: { type: 'coins', amount: 900 } },
-          { tier: 10, title: 'Final Ladder', free: { type: 'coins', amount: 1000 }, premium: { type: 'skin', id: 'molten-rock-chaird' } }
+          { tier: 2, title: 'Forge Embers', free: { type: 'tapper', amount: 1 }, premium: { type: 'coins', amount: 350 } },
+          { tier: 3, title: 'Glimmering Souls', free: { type: 'souls', amount: 30 }, premium: { type: 'superTapper', amount: 1 } },
+          { tier: 4, title: 'Cooling Soda', free: { type: 'coins', amount: 300 }, premium: { type: 'souls', amount: 40 } },
+          { tier: 5, title: 'Summer Supplies', free: { type: 'eventTapper', amount: 1 }, premium: { type: 'gems', amount: 5 } },
+          { tier: 6, title: 'Molten Ingot', free: { type: 'souls', amount: 40 }, premium: { type: 'coins', amount: 500 } },
+          { tier: 7, title: 'Hydration Station', free: { type: 'coins', amount: 400 }, premium: { type: 'souls', amount: 50 } },
+          { tier: 8, title: 'Sparkling Brew', free: { type: 'tapper', amount: 1 }, premium: { type: 'eventTapper', amount: 2 } },
+          { tier: 9, title: 'Deep Flame', free: { type: 'souls', amount: 50 }, premium: { type: 'coins', amount: 750 } },
+          { tier: 10, title: 'First Milestone', free: { type: 'gems', amount: 3 }, premium: { type: 'hyperTapper', amount: 1 } },
+          { tier: 11, title: 'Ice Pack', free: { type: 'coins', amount: 450 }, premium: { type: 'souls', amount: 60 } },
+          { tier: 12, title: 'Furnace Breath', free: { type: 'souls', amount: 60 }, premium: { type: 'superTapper', amount: 1 } },
+          { tier: 13, title: 'Gold Nuggets', free: { type: 'coins', amount: 500 }, premium: { type: 'gems', amount: 8 } },
+          { tier: 14, title: 'Breezy Breeze', free: { type: 'tapper', amount: 2 }, premium: { type: 'coins', amount: 900 } },
+          { tier: 15, title: 'Midpoint Cache', free: { type: 'souls', amount: 75 }, premium: { type: 'hyperTapper', amount: 1 } },
+          { tier: 16, title: 'Lava Flow', free: { type: 'coins', amount: 600 }, premium: { type: 'souls', amount: 80 } },
+          { tier: 17, title: 'Fizzy Can', free: { type: 'souls', amount: 90 }, premium: { type: 'gems', amount: 12 } },
+          { tier: 18, title: 'Iron Hammer', free: { type: 'superTapper', amount: 1 }, premium: { type: 'eventTapper', amount: 3 } },
+          { tier: 19, title: 'Heat Wave', free: { type: 'coins', amount: 700 }, premium: { type: 'souls', amount: 100 } },
+          { tier: 20, title: 'Apex Hoarder', free: { type: 'gems', amount: 5 }, premium: { type: 'coins', amount: 1200 } },
+          { tier: 21, title: 'Deep Depths', free: { type: 'coins', amount: 800 }, premium: { type: 'souls', amount: 120 } },
+          { tier: 22, title: 'Summer Sun', free: { type: 'souls', amount: 110 }, premium: { type: 'hyperTapper', amount: 1 } },
+          { tier: 23, title: 'Glacial Chill', free: { type: 'gems', amount: 8 }, premium: { type: 'coins', amount: 1500 } },
+          { tier: 24, title: 'Final Stretch', free: { type: 'eventTapper', amount: 3 }, premium: { type: 'gems', amount: 15 } },
+          { tier: 25, title: 'Grand Hoard', free: { type: 'coins', amount: 2000 }, premium: { type: 'souls', amount: 250 } }
       ];
       const SEASON_PREMIUM_UNLOCK_GEMS = 79;
       const SEASON_PREMIUM_UNLOCK_COINS = 6500;
@@ -2349,7 +2388,20 @@
           { id: 'season_09', stage: 9, kind: 'win_match', title: 'Clutch Series', desc: 'Win 5 matches.', target: 5, rewards: { coins: 500, souls: 30 }, xpReward: 100 },
           { id: 'season_10', stage: 10, kind: 'defeat_enemies', title: 'Final Sweep', desc: 'Defeat 40 enemies.', target: 40, rewards: { coins: 700, souls: 40, hyperTappers: 1 }, xpReward: 100 },
           { id: 'season_11', stage: 11, kind: 'deal_damage', title: 'Mega Quest I', desc: 'Deal 500,000 damage.', target: 500000, rewards: { souls: 100 }, xpReward: 100 },
-          { id: 'season_12', stage: 12, kind: 'deal_damage', title: 'Mega Quest II', desc: 'Deal 4,000,000 damage.', target: 4000000, rewards: { souls: 200 }, xpReward: 100 }
+          { id: 'season_12', stage: 12, kind: 'deal_damage', title: 'Mega Quest II', desc: 'Deal 1,500,000 damage.', target: 1500000, rewards: { souls: 150 }, xpReward: 100 },
+          { id: 'season_13', stage: 13, kind: 'play_match', title: 'Match Marathon', desc: 'Play 10 matches.', target: 10, rewards: { coins: 600, souls: 35 }, xpReward: 100 },
+          { id: 'season_14', stage: 14, kind: 'win_match', title: 'Victory Streak', desc: 'Win 8 matches.', target: 8, rewards: { coins: 800, gems: 5 }, xpReward: 100 },
+          { id: 'season_15', stage: 15, kind: 'defeat_enemies', title: 'Bounty Hunter', desc: 'Defeat 50 enemies.', target: 50, rewards: { souls: 80, hyperTappers: 1 }, xpReward: 100 },
+          { id: 'season_16', stage: 16, kind: 'collect_cubes', title: 'Cube Harvester', desc: 'Collect 50 power cubes.', target: 50, rewards: { coins: 700, souls: 45 }, xpReward: 100 },
+          { id: 'season_17', stage: 17, kind: 'use_gadget', title: 'Gadget Guru', desc: 'Use 20 gadgets.', target: 20, rewards: { coins: 750, souls: 50 }, xpReward: 100 },
+          { id: 'season_18', stage: 18, kind: 'perform_supers', title: 'Super Charger', desc: 'Use 35 supers.', target: 35, rewards: { souls: 90, superTappers: 1 }, xpReward: 100 },
+          { id: 'season_19', stage: 19, kind: 'deal_damage', title: 'Colossus', desc: 'Deal 3,000,000 damage.', target: 3000000, rewards: { coins: 1000 }, xpReward: 100 },
+          { id: 'season_20', stage: 20, kind: 'win_match', title: 'Champion Ascent', desc: 'Win 15 matches.', target: 15, rewards: { gems: 10 }, xpReward: 100 },
+          { id: 'season_21', stage: 21, kind: 'play_match', title: 'Endgame Prep', desc: 'Play 20 matches.', target: 20, rewards: { coins: 1200, souls: 80 }, xpReward: 100 },
+          { id: 'season_22', stage: 22, kind: 'defeat_enemies', title: 'Wrecking Ball', desc: 'Defeat 80 enemies.', target: 80, rewards: { souls: 120, eventTappers: 2 }, xpReward: 100 },
+          { id: 'season_23', stage: 23, kind: 'collect_cubes', title: 'Energy Eater', desc: 'Collect 100 power cubes.', target: 100, rewards: { coins: 1500, souls: 100 }, xpReward: 100 },
+          { id: 'season_24', stage: 24, kind: 'perform_supers', title: 'Super Hurricane', desc: 'Use 60 supers.', target: 60, rewards: { gems: 15 }, xpReward: 100 },
+          { id: 'season_25', stage: 25, kind: 'deal_damage', title: 'Godlike Force', desc: 'Deal 8,000,000 damage.', target: 8000000, rewards: { coins: 3000, souls: 300, hyperTappers: 2 }, xpReward: 100 }
       ];
       const SEASON_QUEST_STAGE_COUNT = SEASON_QUEST_DEFS.length;
 
@@ -2595,16 +2647,16 @@
           { id: 'daily_gadget_1', kind: 'use_gadget', title: 'Use 4 Gadgets', desc: 'Activate your gadget 4 times.', target: 4, rewards: { coins: 110 } }
       ];
       const WEEKLY_QUESTS = [
-          { id: 'weekly_stage_1', stage: 1, kind: 'play_match', title: 'Kickoff', desc: 'Play 4 matches.', target: 4, rewards: { coins: 200, souls: 8 } },
-          { id: 'weekly_stage_2', stage: 2, kind: 'win_match', title: 'First Blood', desc: 'Win 2 matches.', target: 2, rewards: { coins: 230, souls: 10 } },
-          { id: 'weekly_stage_3', stage: 3, kind: 'deal_damage', title: 'Arena Pressure', desc: 'Deal 30,000 damage.', target: 30000, rewards: { coins: 260, souls: 12 } },
-          { id: 'weekly_stage_4', stage: 4, kind: 'defeat_enemies', title: 'Hunter Run', desc: 'Defeat 18 enemies.', target: 18, rewards: { coins: 290, souls: 14 } },
-          { id: 'weekly_stage_5', stage: 5, kind: 'collect_cubes', title: 'Cube Surge', desc: 'Collect 25 power cubes.', target: 25, rewards: { coins: 320, souls: 16 } },
-          { id: 'weekly_stage_6', stage: 6, kind: 'perform_supers', title: 'Super Flow', desc: 'Use 10 supers.', target: 10, rewards: { coins: 350, souls: 18 } },
-          { id: 'weekly_stage_7', stage: 7, kind: 'use_gadget', title: 'Tech Master', desc: 'Use 8 gadgets.', target: 8, rewards: { coins: 380, souls: 20 } },
-          { id: 'weekly_stage_8', stage: 8, kind: 'win_match', title: 'Clutch Time', desc: 'Win 4 matches.', target: 4, rewards: { coins: 430, souls: 24 } },
-          { id: 'weekly_stage_9', stage: 9, kind: 'deal_damage', title: 'Damage Machine', desc: 'Deal 90,000 damage.', target: 90000, rewards: { coins: 500, souls: 30 } },
-          { id: 'weekly_stage_10', stage: 10, kind: 'win_match', title: 'Final Push', desc: 'Win 7 matches to finish the weekly run.', target: 7, rewards: { coins: 600, gems: 2, souls: 40 } }
+          { id: 'weekly_stage_1', stage: 1, kind: 'play_match', title: 'Summer Warmup', desc: 'Play 5 matches.', target: 5, rewards: { coins: 250, souls: 10 } },
+          { id: 'weekly_stage_2', stage: 2, kind: 'collect_soda', title: 'Summer Sipper', desc: 'Collect 20 Soda Cups in Summer Sips mode.', target: 20, rewards: { coins: 300, souls: 15 } },
+          { id: 'weekly_stage_3', stage: 3, kind: 'deal_damage', title: 'Forge Heat', desc: 'Deal 50,000 damage.', target: 50000, rewards: { coins: 350, souls: 20 } },
+          { id: 'weekly_stage_4', stage: 4, kind: 'defeat_enemies', title: 'Takedown Artist', desc: 'Defeat 25 enemies.', target: 25, rewards: { coins: 400, souls: 25 } },
+          { id: 'weekly_stage_5', stage: 5, kind: 'collect_cubes', title: 'Cube Collector', desc: 'Collect 35 power cubes.', target: 35, rewards: { coins: 450, souls: 30 } },
+          { id: 'weekly_stage_6', stage: 6, kind: 'perform_supers', title: 'Super Dynamo', desc: 'Use 15 supers.', target: 15, rewards: { coins: 500, souls: 35 } },
+          { id: 'weekly_stage_7', stage: 7, kind: 'use_gadget', title: 'Gadget Specialist', desc: 'Use 12 gadgets.', target: 12, rewards: { coins: 550, souls: 40 } },
+          { id: 'weekly_stage_8', stage: 8, kind: 'survive_seconds', title: 'Survival Expert', desc: 'Survive for 180 seconds total in matches.', target: 180, rewards: { coins: 600, souls: 50 } },
+          { id: 'weekly_stage_9', stage: 9, kind: 'win_match', title: 'Champion Spirit', desc: 'Win 6 matches.', target: 6, rewards: { coins: 750, souls: 70 } },
+          { id: 'weekly_stage_10', stage: 10, kind: 'win_match', title: 'Weekly Apex', desc: 'Win 8 matches in any mode.', target: 8, rewards: { coins: 1000, gems: 5, souls: 100 } }
       ];
       const SOUL_STARTER_QUESTS = [
           { id: 'starter_play_1', kind: 'play_match', title: 'Soul Warmup', desc: 'Play 3 matches in any mode.', target: 3, rewards: { souls: 40 } },
@@ -2741,7 +2793,8 @@
       }
 
       function isQuestStageUnlocked(bucketName, bucket, quest) {
-          if (bucketName !== 'weekly' || !quest || typeof quest.stage !== 'number') return true;
+          if (bucketName === 'weekly') return true; // Weekly quests can be done in any order!
+          if (!quest || typeof quest.stage !== 'number') return true;
           if (quest.stage <= 1) return true;
           const previousStageQuest = Object.values(bucket || {}).find(q => q.stage === quest.stage - 1);
           return !previousStageQuest || !!previousStageQuest.completed;
@@ -2831,13 +2884,14 @@
               if (!bucket) continue;
               const candidates = Object.values(bucket).filter(q => !q.completed && q.kind === normalizedQuestKey && isQuestStageUnlocked(bucketName, bucket, q));
               if (candidates.length === 0) continue;
-              const quest = candidates[0];
-              quest.progress = (quest.progress || 0) + amount;
-              if (quest.progress >= quest.target) {
-                  quest.progress = quest.target;
-                  quest.completed = true;
+              for (const quest of candidates) {
+                  quest.progress = (quest.progress || 0) + amount;
+                  if (quest.progress >= quest.target) {
+                      quest.progress = quest.target;
+                      quest.completed = true;
+                  }
+                  changed = true;
               }
-              changed = true;
           }
           if (changed) {
               saveProgress();
@@ -25496,6 +25550,37 @@
           ctx.fill();
           continue;
       }
+      if (activeSkinId === 'forge-knight-dash' && b.ownerBrawler === 'dashaholic' && !b.hyperVisual) {
+          const a = Math.atan2(b.vy, b.vx);
+          ctx.strokeStyle = b.super || b.isSuperDash ? 'rgba(255, 68, 0, 0.95)' : 'rgba(255, 120, 0, 0.85)';
+          ctx.lineWidth = b.super || b.isSuperDash ? 10 : 6;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          const radius = b.hitboxMod >= 8 ? 30 : 20;
+          ctx.arc(b.x, b.y, radius, a - 0.8, a + 0.8);
+          ctx.stroke();
+          // Inner fiery/molten line
+          ctx.strokeStyle = 'rgba(255, 220, 0, 0.9)';
+          ctx.lineWidth = (b.hitboxMod >= 8 ? 10 : 6) * 0.45;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, radius - 10, a - 0.6, a + 0.6);
+          ctx.stroke();
+          // Leave some flame particles!
+          if (Math.random() < 0.45) {
+              explosions.push({
+                  x: b.x + (Math.random() - 0.5) * 15,
+                  y: b.y + (Math.random() - 0.5) * 15,
+                  vx: -b.vx * 0.15 + (Math.random() - 0.5) * 40,
+                  vy: -b.vy * 0.15 + (Math.random() - 0.5) * 40,
+                  radius: 2 + Math.random() * 3,
+                  life: 0,
+                  maxLife: 0.35 + Math.random() * 0.2,
+                  color: Math.random() < 0.5 ? '#ff3300' : '#ffaa00',
+                  isParticle: true
+              });
+          }
+          continue;
+      }
       if (activeSkinId === 'battle-moneytax' && b.ownerBrawler === 'money_and_tax') {
           // VILLAIN: Chaos Broker - bright red destructive wealth
           if (b.isCoin || b.isBoomerang) {
@@ -26689,17 +26774,31 @@
         ctx.restore();
     }
 
-    
-
     // draw rings (Echo mechanics)
     for(const r of rings){
         ctx.beginPath();
         const a = (r.maxRadius - r.radius) / r.maxRadius;
-        const isHyperRing = r.sourceBullet && r.sourceBullet.hyperVisual;
-        ctx.strokeStyle = isHyperRing ? `rgba(238, 0, 255, ${a})` : `rgba(80, 210, 255, ${a})`;
-        ctx.lineWidth = 4 + (a * 4);
-        ctx.arc(r.x, r.y, r.radius, 0, Math.PI*2);
-        ctx.stroke();
+        if (r.sourceBullet && (r.sourceBullet.skinEffect === 'sodaBubble' || r.sourceBullet.skinEffect === 'sodaBlast')) {
+            ctx.strokeStyle = `rgba(51, 204, 255, ${a})`;
+            ctx.lineWidth = 5 + (a * 5);
+            ctx.arc(r.x, r.y, r.radius, 0, Math.PI*2);
+            ctx.stroke();
+            // Draw a few small bubbles along the ring circumference
+            ctx.fillStyle = `rgba(255, 255, 255, ${a * 0.8})`;
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+                const bubbleX = r.x + Math.cos(angle) * r.radius;
+                const bubbleY = r.y + Math.sin(angle) * r.radius;
+                ctx.beginPath();
+                ctx.arc(bubbleX, bubbleY, 3 + Math.sin(performance.now()*0.01 + angle)*1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        } else {
+            const isHyperRing = r.sourceBullet && r.sourceBullet.hyperVisual;
+            ctx.strokeStyle = isHyperRing ? `rgba(238, 0, 255, ${a})` : `rgba(80, 210, 255, ${a})`;
+            ctx.lineWidth = 4 + (a * 4);
+            ctx.arc(r.x, r.y, r.radius, 0, Math.PI*2);
+            ctx.stroke();
+        }
     }
 
     for(const field of cheeseFields){
