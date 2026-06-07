@@ -14804,7 +14804,6 @@
       ['construction', '🧱', 'Brick Run 3v3', 'Build race'],
       ['knock_donate', '🎯', 'Knock n Donate', 'Ring-out battles'],
       ['brick_vault', '🔒', 'Brick Vault 3v3', 'Break enemy vaults'],
-      ['arena_forge', '🧪', 'Arena Forge', 'Souls + spawner waves'],
       ['damage_filler', '💥', 'Damage Filler', 'Pure DPS race'],
       ['mirror', '🪞', 'Mirror 5v5', 'One brawler for all'],
       ['power_gods', '⚡', 'Power of the Gods', 'Solo LTM'],
@@ -15522,9 +15521,8 @@
       setModeBtnState(trioShowdownBtn, showdownMode === 'trio');
       setModeBtnState(knockDonateBtn, showdownMode === 'knock_donate');
       setModeBtnState(brickVaultBtn, showdownMode === 'brick_vault');
-      setModeBtnState(arenaForgeBtn, showdownMode === 'arena_forge');
 
-      if (showdownMode === 'trio' || showdownMode === 'knock_donate' || showdownMode === 'brick_vault' || showdownMode === 'arena_forge') {
+      if (showdownMode === 'trio' || showdownMode === 'knock_donate' || showdownMode === 'brick_vault') {
           setModeBtnState(soloShowdownBtn, false);
           setModeBtnState(duoShowdownBtn, false);
           setModeBtnState(objectiveShowdownBtn, false);
@@ -15537,7 +15535,7 @@
                   ? 'Start Trio Showdown'
                   : (showdownMode === 'knock_donate'
                       ? 'Start Knock n Donate 3v3'
-                      : (showdownMode === 'arena_forge' ? 'Start Arena Forge' : 'Start Brick Vault 3v3'));
+                      : 'Start Brick Vault 3v3');
           }
       }
       if (homeModeSelect && homeModeSelect.value !== showdownMode) {
@@ -15557,7 +15555,6 @@
   trioShowdownBtn.onclick = () => { showdownMode = 'trio'; updateShowdownModeUI(); };
   knockDonateBtn.onclick = () => { showdownMode = 'knock_donate'; updateShowdownModeUI(); };
   brickVaultBtn.onclick = () => { showdownMode = 'brick_vault'; updateShowdownModeUI(); };
-  arenaForgeBtn.onclick = () => { showdownMode = 'arena_forge'; updateShowdownModeUI(); };
   if (showdownModeRow) {
       showdownModeRow.appendChild(soloShowdownBtn);
       showdownModeRow.appendChild(duoShowdownBtn);
@@ -15569,7 +15566,6 @@
       showdownModeRow.appendChild(trioShowdownBtn);
       showdownModeRow.appendChild(knockDonateBtn);
       showdownModeRow.appendChild(brickVaultBtn);
-      showdownModeRow.appendChild(arenaForgeBtn);
   }
   updateShowdownModeUI();
 
