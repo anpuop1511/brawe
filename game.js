@@ -22278,6 +22278,8 @@
            const isStunned = now < (player.stunUntil || 0);
            if ((mouse.down || mobileInput.attackActive) && !isStunned) currentReloadTime = 999999;
            else currentReloadTime = 12;
+       } else if (selectedBrawler === 'boom_arang') {
+           currentReloadTime = 9999999;
        }
        ammoReloadTimer += dt * 1000;
        if(ammoReloadTimer >= currentReloadTime){
