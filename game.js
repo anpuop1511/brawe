@@ -9166,6 +9166,7 @@
       if ((entity.poisonUntil || 0) > now) chips.push({ t: 'PSN', c: '#88d66b' });
       if ((entity.fireUntil || 0) > now) chips.push({ t: 'BRN', c: '#ff8c42' });
       if ((entity.shield || 0) > 0) chips.push({ t: 'SHD', c: '#7be0ff' });
+      if (entity.boomArangTaggedBy && (entity.boomArangTagUntil || 0) > now) chips.push({ t: 'TAG', c: '#ffaa00' });
       return chips;
   }
 
@@ -9194,7 +9195,8 @@
 
   function doHeal(entity, amount) {
       if(!entity || entity.hp <= 0 || entity.hp >= entity.maxHp) return;
-      if(entity.inStorm) amount *= 0.1; // 90% less healing in the storm
+      if(entity.inStorm) amount *= 0.1;
+      if(entity.healingReducedUntil && performance.now() < entity.healingReducedUntil) amount *= 0.5;
       let healed = Math.min(amount, entity.maxHp - entity.hp);
       entity.hp += healed;
       entity.healFlashUntil = performance.now() + 200;
@@ -13232,6 +13234,36 @@
         return;
     }
 
+    if(selectedBrawler === 'boom_arang') {
+        const hc = isHypercharged;
+        const spread = 0.35;
+        const angles = [ang - spread, ang, ang + spread];
+        angles.forEach((a, idx) => {
+            const speedMult = hc ? 1.5 : 1.0;
+            bullets.push({
+                ownerBrawler: 'boom_arang',
+                x: player.x + Math.cos(a) * (player.radius + 5),
+                y: player.y + Math.sin(a) * (player.radius + 5),
+                vx: Math.cos(a) * 720 * speedMult * 0.6,
+                vy: Math.sin(a) * 720 * speedMult * 0.6,
+                life: 0,
+                maxLife: 1.2,
+                damage: 800,
+                pierce: true,
+                ownerId: player.id,
+                isBoomArang: true,
+                super: true,
+                returning: false,
+                pullEnemies: true,
+                bounceCount: 0,
+                targetEnemyIndex: idx,
+                hitIds: {}
+            });
+        });
+        updateSuperButton();
+        return;
+    }
+
     if(selectedBrawler === 'heater_miser') {
         const hc = isHypercharged;
         const range = 720;
@@ -13367,6 +13399,20 @@
     else if (bot.brawler === 'outlit' && g === 'g2') {
       const ownerMult = 1.0 + ((bot.powerCubes || 0) * 0.1);
       healingPods.push({ x: bot.x, y: bot.y, hp: 2100, maxHp: 2100, radius: 25, healRadius: 300, healAmount: 150 * ownerMult, decayPerSec: 200, ownerId: bot.id, lastDecayTick: performance.now(), lastHealTick: performance.now() });
+    }
+    else if (bot.brawler === 'boom_arang' && g === 'g1') {
+        let count = 0;
+        for (const b of bullets) {
+            if (b.ownerId === bot.id && b.isBoomArang && !b.returning) {
+                b.returning = true;
+                b.isAcceleratedRecall = true;
+                count++;
+            }
+        }
+    }
+    else if (bot.brawler === 'boom_arang' && g === 'g2') {
+        bot.gadgetArmed = true;
+        bot.selectedGadget = 'g2';
     }
     else if (bot.brawler === 'unopcoloco' && g === 'g2') bot.unopcolocoG2Until = performance.now() + 4000;
     else if (bot.brawler === 'echo' && g === 'g2') { bot.defenseUntil = performance.now() + 4000; bot.defenseMult = 0.7; }
@@ -13652,6 +13698,34 @@
                 hyper: isHyper
             });
             explosions.push({ x: bot.x, y: bot.y, radius: rad, life: 0, maxLife: 0.35, color: isHyper ? 'rgba(168, 0, 255, 0.4)' : 'rgba(0, 255, 255, 0.4)' });
+            return;
+        }
+
+        if (botCombatBrawler === 'boom_arang') {
+            const spread = 0.35;
+            const angles = [ang - spread, ang, ang + spread];
+            angles.forEach((a, idx) => {
+                const speedMult = isHyper ? 1.5 : 1.0;
+                bullets.push({
+                    ownerBrawler: 'boom_arang',
+                    x: bot.x + Math.cos(a) * (bot.radius + 5),
+                    y: bot.y + Math.sin(a) * (bot.radius + 5),
+                    vx: Math.cos(a) * 720 * speedMult * 0.6,
+                    vy: Math.sin(a) * 720 * speedMult * 0.6,
+                    life: 0,
+                    maxLife: 1.2,
+                    damage: 800,
+                    pierce: true,
+                    ownerId: bot.id,
+                    isBoomArang: true,
+                    super: true,
+                    returning: false,
+                    pullEnemies: true,
+                    bounceCount: 0,
+                    targetEnemyIndex: idx,
+                    hitIds: {}
+                });
+            });
             return;
         }
 
@@ -14266,6 +14340,34 @@
       }
       gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
       updateGadgetButton();
+    } else if (curBrawler === 'boom_arang' && curGadget === 'g1') {
+      bullets.forEach(b => {
+          if (b.ownerBrawler === 'boom_arang' && b.ownerId === player.id && b.isBoomArang) {
+              b.returning = true;
+              b.isAcceleratedRecall = true;
+              b.hitIds = {};
+          }
+      });
+      spawnFloatingText(player.x, player.y - 20, "RECALL!", '#3498db');
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+      updateGadgetButton();
+    } else if (curBrawler === 'boom_arang' && curGadget === 'g2') {
+      let detonated = false;
+      bots.forEach(bot => {
+          if (bot.hp > 0 && bot.boomArangTaggedBy === player.id && (bot.boomArangTagUntil || 0) > now) {
+              tagBoomArangEnemy(bot, player, false, true);
+              detonated = true;
+          }
+      });
+      if (detonated) {
+          spawnFloatingText(player.x, player.y - 20, "STUN DETONATE!", '#f1c40f');
+          gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+          updateGadgetButton();
+      } else {
+          gadgetArmed = true;
+          spawnFloatingText(player.x, player.y - 20, "STUN ARMED!", '#f1c40f');
+          updateGadgetButton();
+      }
     } else if (curBrawler === 'cheseypuff' && curGadget === 'g1') {
       // Cheseypuff G1: enlarge puff (gadgetArmed)
       gadgetArmed = true;
@@ -14529,6 +14631,23 @@
             goonPuddles.push({ x: player.x + Math.cos(a)*60, y: player.y + Math.sin(a)*60, until: now + 5800, ownerId: player.id });
         }
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton();
+    } else if (curBrawler === 'boom_arang' && curGadget === 'g1') {
+        let count = 0;
+        for (const b of bullets) {
+            if (b.ownerId === player.id && b.isBoomArang && !b.returning) {
+                b.returning = true;
+                b.isAcceleratedRecall = true;
+                count++;
+            }
+        }
+        if (count > 0) {
+            spawnFloatingText(player.x, player.y - 25, "Recall Accelerate!", '#10B981');
+        }
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+    } else if (curBrawler === 'boom_arang' && curGadget === 'g2') {
+        gadgetArmed = true;
+        updateGadgetButton();
     } else {
       // fallback (shouldn't reach)
       gadgetArmed = true;
@@ -18309,6 +18428,12 @@
         }
     }
 
+    if (b.ownerBrawler === 'boom_arang') {
+        if (!b.super) {
+            tagBoomArangEnemy(target, ownerEntity, b.doubleExplode, b.instantStun);
+        }
+    }
+
     if (b.ownerBrawler === 'beam') {
         if (b.isBeamGolden) {
             applyStatusEffect(target, 'stun', 900);
@@ -20563,6 +20688,7 @@
 
     let activeSpeed = player.speed * (player.speedMult || 1.0); // Apply Chaird super speed mult
     activeSpeed *= getTerrainMoveMultiplier(player);
+    if (player.catchAndGoUntil && performance.now() < player.catchAndGoUntil) activeSpeed *= 1.30;
     if (selectedBrawler === 'overlord' && (player.overlordStage || 0) >= 1) activeSpeed *= 1.2;
       if (selectedBrawler === 'minigunnin' && selectedStar === 'long') {
           activeSpeed += (maxAmmo - ammo) * 0.5;
@@ -20784,6 +20910,64 @@
           if (b.boomerangPhase === 1 && !b.clearedHits) {
               b.hitIds = {};
               b.clearedHits = true;
+          }
+      } else if (b.isBoomArang) {
+          const owner = b.ownerId === player.id ? player : bots.find(bt => bt.id === b.ownerId);
+          if (!owner || owner.hp <= 0) {
+              bullets.splice(i, 1);
+              continue;
+          }
+          
+          if (!b.returning) {
+              let turnAround = false;
+              if (b.life >= b.maxLife * 0.45) turnAround = true;
+              
+              if (b.x < 15 || b.x > WORLD_W - 15 || b.y < 15 || b.y > WORLD_H - 15) turnAround = true;
+              
+              for (const wall of destructibleWalls) {
+                  if (wall.hp > 0 && Math.abs(b.x - wall.x) < wall.w/2 + 8 && Math.abs(b.y - wall.y) < wall.h/2 + 8) {
+                      turnAround = true;
+                      break;
+                  }
+              }
+              
+              if (turnAround) {
+                  b.returning = true;
+                  b.hitIds = {};
+              }
+          }
+          
+          if (b.returning) {
+              const steerDx = owner.x - b.x;
+              const steerDy = owner.y - b.y;
+              const dist = Math.hypot(steerDx, steerDy) || 1;
+              const speed = b.isAcceleratedRecall ? 1400 : 850;
+              b.vx = (steerDx / dist) * speed;
+              b.vy = (steerDy / dist) * speed;
+              
+              if (dist < owner.radius + 15) {
+                  if (b.isAcceleratedRecall) {
+                      doHeal(owner, 500);
+                  }
+                  bullets.splice(i, 1);
+                  continue;
+              }
+          }
+          
+          if (b.super && b.pullEnemies) {
+              const targets = [player, ...aliveBots];
+              for (const t of targets) {
+                  if (t.hp > 0 && t.id !== b.ownerId) {
+                      const dx = b.x - t.x;
+                      const dy = b.y - t.y;
+                      const d = Math.hypot(dx, dy);
+                      if (d < 75) {
+                          const pullForce = 320 * dt;
+                          t.x = clamp(t.x + (dx / d) * pullForce, t.radius, WORLD_W - t.radius);
+                          t.y = clamp(t.y + (dy / d) * pullForce, t.radius, WORLD_H - t.radius);
+                      }
+                  }
+              }
           }
       } else if (b.isStickySuper) {
         // Homing behavior
@@ -22494,6 +22678,7 @@
           if (t.scubaDiverOxygenSpeedUntil && nowTarget < t.scubaDiverOxygenSpeedUntil) activeBotSpeed *= 1.16;
           if (t.brawler === 'steamer' && nowTarget < (t.steamerExpressUntil || 0)) activeBotSpeed *= 1.25;
           if (t.trapperSpeedUntil && nowTarget < t.trapperSpeedUntil) activeBotSpeed *= 1.12;
+          if (t.catchAndGoUntil && nowTarget < t.catchAndGoUntil) activeBotSpeed *= 1.30;
           if (t.trapperFenceSpeedUntil && nowTarget < t.trapperFenceSpeedUntil) activeBotSpeed *= (t.trapperFenceSpeedMult || 1.0);
           if (t.amplifierScrewSpeedUntil && nowTarget < t.amplifierScrewSpeedUntil) activeBotSpeed *= (t.amplifierScrewSpeedMult || 1.0);
           if (t.amplifierGadgetSpeedUntil && nowTarget < t.amplifierGadgetSpeedUntil) activeBotSpeed *= AMPLIFIER_G2_SPEED_MULT;
@@ -25818,6 +26003,36 @@
           ctx.beginPath();
           ctx.arc(b.x, b.y, Math.max(4, drawRadius * 0.55), 0, Math.PI * 2);
           ctx.fill();
+          continue;
+      } else if (b.isBoomArang) {
+          const spinAngle = (performance.now() * 0.012) % (Math.PI * 2);
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(spinAngle);
+          
+          ctx.strokeStyle = b.super ? '#ff5500' : '#ffb300';
+          ctx.lineWidth = b.super ? 6 : 4;
+          ctx.lineCap = 'round';
+          
+          ctx.beginPath();
+          ctx.moveTo(-16, -8);
+          ctx.lineTo(0, 8);
+          ctx.lineTo(16, -8);
+          ctx.stroke();
+          
+          ctx.fillStyle = b.super ? 'rgba(255, 120, 0, 0.8)' : 'rgba(255, 220, 0, 0.8)';
+          ctx.beginPath();
+          ctx.arc(0, 0, 5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.restore();
+          
+          ctx.strokeStyle = b.super ? 'rgba(255, 85, 0, 0.35)' : 'rgba(255, 179, 0, 0.35)';
+          ctx.lineWidth = b.super ? 8 : 5;
+          ctx.beginPath();
+          ctx.moveTo(b.prevX || b.x, b.prevY || b.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
           continue;
       } else if (b.isChair) {
           if ((b.skinEffect === 'lavaChair' || b.skinEffect === 'moltenSpin' || b.skinEffect === 'lavaBurst' || activeSkinId === 'molten-rock-chaird') && b.ownerBrawler === 'chaird') {
@@ -29636,6 +29851,66 @@
       panel.appendChild(seasonBox);
       overlay.appendChild(panel);
       document.body.appendChild(overlay);
+  }
+
+  function tagBoomArangEnemy(target, owner, doubleExplode, instantStun) {
+      const now = performance.now();
+      if (target.boomArangTaggedBy === owner.id && (target.boomArangTagUntil || 0) > now) {
+          const isOwnerPlayer = owner.id === player.id;
+          const starPower = isOwnerPlayer ? selectedStar : (owner.selectedStar || 'slow');
+          const isHc = isOwnerPlayer ? isHypercharged : !!owner.isHypercharged;
+          const radius = starPower === 'slow' ? 140 : 100;
+          const damage = isHc ? 500 : 380;
+          
+          AOEDamage(target.x, target.y, radius, damage, owner.id, false);
+          target.healingReducedUntil = now + 4000;
+          
+          explosions.push({
+              x: target.x,
+              y: target.y,
+              radius: radius,
+              life: 0,
+              maxLife: 0.25,
+              color: 'rgba(255, 120, 0, 0.6)'
+          });
+          
+          spawnFloatingText(target.x, target.y - 20, "TAG BOOM!", '#ff5500');
+          
+          if (doubleExplode) {
+              setTimeout(() => {
+                  if (target.hp > 0) {
+                      AOEDamage(target.x, target.y, radius * 0.8, damage * 0.7, owner.id, false);
+                      explosions.push({
+                          x: target.x,
+                          y: target.y,
+                          radius: radius * 0.8,
+                          life: 0,
+                          maxLife: 0.2,
+                          color: 'rgba(255, 60, 0, 0.5)'
+                      });
+                      spawnFloatingText(target.x, target.y - 20, "DOUBLE BOOM!", '#ff3300');
+                  }
+              }, 200);
+          }
+          
+          if (instantStun || owner.selectedGadget === 'g2' && owner.gadgetArmed) {
+              applyStatusEffect(target, 'stun', 1200);
+              spawnFloatingText(target.x, target.y - 35, "STUNNED!", '#f1c40f');
+              if (isOwnerPlayer) {
+                  gadgetArmed = false;
+                  updateGadgetButton();
+              } else {
+                  owner.gadgetArmed = false;
+              }
+          }
+          
+          target.boomArangTaggedBy = null;
+          target.boomArangTagUntil = 0;
+      } else {
+          target.boomArangTaggedBy = owner.id;
+          target.boomArangTagUntil = now + 6000;
+          spawnFloatingText(target.x, target.y - 20, "TAGGED", '#ffbb00');
+      }
   }
 
   loop();
