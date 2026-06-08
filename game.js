@@ -1121,7 +1121,7 @@
         if (selectedBrawler === 'minigunnin' || selectedBrawler === 'steamer' || selectedBrawler === 'beam') {
       maxAmmo = 100;
       ammo = 100;
-    } else if (selectedBrawler === 'bowlin_rida') {
+    } else if (selectedBrawler === 'bowlin_rida' || selectedBrawler === 'boom_arang') {
       maxAmmo = 1;
       ammo = 1;
     } else {
@@ -11147,6 +11147,10 @@
         normalizeSelectedBrawler();
     const now = performance.now();
         const brawler = getCombatBrawler(fromEntity, isBot);
+        if (brawler === 'boom_arang') {
+            const hasActive = bullets.some(b => b.ownerId === fromEntity.id && b.isBoomArang && !b.super);
+            if (hasActive) return;
+        }
     let fireDelay = isBot ? 920 : getFireDelay(brawler, isBot ? fromEntity : null);
     if(isBot && brawler === 'decayer' && now < (fromEntity.reloadBuffUntil || 0)) fireDelay *= 0.5;
     if(isBot && fromEntity.reloadDebuffUntil && now < fromEntity.reloadDebuffUntil) fireDelay *= 1.4;
@@ -12461,6 +12465,39 @@
             damage: fromEntity.parrotDmg || 600, 
             pierce: false, hyperVisual: isHyper, ownerId: fromEntity.ownerId 
         });
+    } else if (brawler === 'boom_arang') {
+        const isHc = isBot ? fromEntity.isHypercharged : isHypercharged;
+        const doubleExplode = isHc;
+        const instantStun = isBot ? (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g2') : (gadgetArmed && selectedGadget === 'g2');
+        if (!isBot && gadgetArmed && selectedGadget === 'g2') {
+            gadgetArmed = false;
+            updateGadgetButton();
+        } else if (isBot && fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g2') {
+            fromEntity.gadgetArmed = false;
+        }
+
+        const ownerMult = 1.0 + ((fromEntity.powerCubes || 0) * 0.1);
+        const levelMult = isBot ? 1.0 : getPlayerDamageScale();
+        const bulletDmg = Math.round(600 * ownerMult * levelMult);
+
+        bullets.push({
+            ownerBrawler: 'boom_arang',
+            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 6),
+            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 6),
+            vx: Math.cos(ang) * 900 * 0.6,
+            vy: Math.sin(ang) * 900 * 0.6,
+            life: 0,
+            maxLife: 1.4,
+            damage: bulletDmg,
+            pierce: true,
+            isBoomArang: true,
+            super: false,
+            returning: false,
+            doubleExplode: doubleExplode,
+            instantStun: instantStun,
+            hitIds: {},
+            ownerId: fromEntity.id
+        });
     }
   }
 
@@ -13274,7 +13311,8 @@
                 pullEnemies: true,
                 bounceCount: 0,
                 targetEnemyIndex: idx,
-                hitIds: {}
+                hitIds: {},
+                hyperVisual: hc
             });
         });
         updateSuperButton();
@@ -13740,7 +13778,8 @@
                     pullEnemies: true,
                     bounceCount: 0,
                     targetEnemyIndex: idx,
-                    hitIds: {}
+                    hitIds: {},
+                    hyperVisual: isHyper
                 });
             });
             return;
@@ -20935,16 +20974,32 @@
               continue;
           }
           
+          if (b.super && b.hyperVisual && !b.returning) {
+              const targets = (b.ownerId === player.id) ? aliveBots.filter(bt => !bt.isDummy && bt.hp > 0) : [player];
+              if (targets.length > 0) {
+                  const target = targets[b.targetEnemyIndex % targets.length];
+                  if (target && target.hp > 0) {
+                      const targetAngle = Math.atan2(target.y - b.y, target.x - b.x);
+                      const speed = Math.hypot(b.vx, b.vy);
+                      b.vx = lerp(b.vx, Math.cos(targetAngle) * speed, 0.08);
+                      b.vy = lerp(b.vy, Math.sin(targetAngle) * speed, 0.08);
+                  }
+              }
+          }
+
           if (!b.returning) {
               let turnAround = false;
               if (b.life >= b.maxLife * 0.45) turnAround = true;
               
               if (b.x < 15 || b.x > WORLD_W - 15 || b.y < 15 || b.y > WORLD_H - 15) turnAround = true;
               
-              for (const wall of destructibleWalls) {
-                  if (wall.hp > 0 && Math.abs(b.x - wall.x) < wall.w/2 + 8 && Math.abs(b.y - wall.y) < wall.h/2 + 8) {
-                      turnAround = true;
-                      break;
+              let ignoresWalls = b.super && b.hyperVisual;
+              if (!ignoresWalls) {
+                  for (const wall of destructibleWalls) {
+                      if (wall.hp > 0 && Math.abs(b.x - wall.x) < wall.w/2 + 8 && Math.abs(b.y - wall.y) < wall.h/2 + 8) {
+                          turnAround = true;
+                          break;
+                      }
                   }
               }
               
@@ -20958,13 +21013,29 @@
               const steerDx = owner.x - b.x;
               const steerDy = owner.y - b.y;
               const dist = Math.hypot(steerDx, steerDy) || 1;
-              const speed = b.isAcceleratedRecall ? 1400 : 850;
+              const speed = b.isAcceleratedRecall ? 1400 : (b.super && b.hyperVisual ? 1200 : 850);
               b.vx = (steerDx / dist) * speed;
               b.vy = (steerDy / dist) * speed;
               
               if (dist < owner.radius + 15) {
                   if (b.isAcceleratedRecall) {
                       doHeal(owner, 500);
+                  }
+                  if (!b.super) {
+                      if (owner.id === player.id) {
+                          ammo = Math.min(maxAmmo, ammo + 1);
+                          const starChoice = selectedStar;
+                          if (starChoice === 'slow') {
+                              player.catchAndGoUntil = performance.now() + 2000;
+                              spawnFloatingText(player.x, player.y - 20, "CATCH & GO SPEED!", "#00ffcc");
+                          }
+                      } else {
+                          owner.lastShot = 0;
+                          const botStar = owner.selectedStar || 'slow';
+                          if (botStar === 'slow') {
+                              owner.catchAndGoUntil = performance.now() + 2000;
+                          }
+                      }
                   }
                   bullets.splice(i, 1);
                   continue;
@@ -20978,8 +21049,9 @@
                       const dx = b.x - t.x;
                       const dy = b.y - t.y;
                       const d = Math.hypot(dx, dy);
-                      if (d < 75) {
-                          const pullForce = 320 * dt;
+                      const pullRadius = b.hyperVisual ? 120 : 75;
+                      if (d < pullRadius) {
+                          const pullForce = (b.hyperVisual ? 450 : 320) * dt;
                           t.x = clamp(t.x + (dx / d) * pullForce, t.radius, WORLD_W - t.radius);
                           t.y = clamp(t.y + (dy / d) * pullForce, t.radius, WORLD_H - t.radius);
                       }
