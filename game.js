@@ -1637,7 +1637,7 @@
         if (effect === 'slow') entity.slowUntil = Math.max(entity.slowUntil || 0, until);
         if (effect === 'stun') entity.stunUntil = Math.max(entity.stunUntil || 0, until);
     }
-    const allBrawlers = ['outlit', 'echo', 'cheseypuff', 'decayer', 'unopcoloco', 'dashaholic', 'trapper', 'classy', 'hyperorigin', 'heater_miser', 'minigunnin', 'steamer', 'bowlin_rida', 'money_and_tax', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'goonbob', 'tempo_maker', 'overlord', 'copyphase', 'fightnfire', 'beast', 'amplifier', 'skeleflying', 'crystila', 'hope', 'evil_doctor', 'splitter', 'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse'];
+    const allBrawlers = ['outlit', 'echo', 'cheseypuff', 'decayer', 'unopcoloco', 'dashaholic', 'trapper', 'classy', 'hyperorigin', 'heater_miser', 'minigunnin', 'steamer', 'bowlin_rida', 'money_and_tax', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'goonbob', 'tempo_maker', 'overlord', 'copyphase', 'fightnfire', 'beast', 'amplifier', 'skeleflying', 'crystila', 'hope', 'evil_doctor', 'splitter', 'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse', 'boom_arang'];
     const disabledBrawlers = new Set([]);
     const favoriteBrawlersKey = 'brawl_arena_favorites';
     let favoriteBrawlers = new Set(safeJsonParse(localStorage.getItem(favoriteBrawlersKey) || '[]', []));
@@ -1687,7 +1687,8 @@
             malakor: 'Legendary',
             beam: 'Mythic',
             paradox: 'Legendary',
-            sera_eclipse: 'Legendary'
+            sera_eclipse: 'Legendary',
+            boom_arang: 'Legendary'
         };
         let brawlerSortMode = localStorage.getItem('brawl_arena_brawler_sort') || 'rarity-desc';
 
@@ -1745,6 +1746,7 @@
             playerData.unlockedBrawlers.outlit = true;
             playerData.unlockedBrawlers.paradox = true;
             playerData.unlockedBrawlers.sera_eclipse = true;
+            playerData.unlockedBrawlers.boom_arang = true;
             if (!playerData.soulSummoner || typeof playerData.soulSummoner !== 'object') {
                 playerData.soulSummoner = {};
             }
@@ -3527,6 +3529,21 @@
             'hoop': { name: 'Hoop', role: 'Controller', desc: 'Streetball playmaker with a SWISH/Bank-shot rhythm: direct hits power your next shot, wall bounces charge Heat Check.', color: '#ff9f43', attack: 'Bounce Breaker', attackDesc: 'Shoots a bouncing basketball that explodes in a small area on each impact. Direct hit before first bounce grants SWISH buff. Wall bounces build Bank Stacks; at 3 stacks your next shot becomes Heat Check.', super: 'Full-Court Crash', superDesc: 'Launches a giant slam ball that bounces multiple times, each bounce creating a heavy area blast.', hyper: 'Main attack throws an extra angle ball and first impact spawns mini-balls. Super gains extra bounce count, bigger blast radius, and stuns enemies in the blast.', g1: 'Backboard Bank (Next ball gets larger splash and extra bounce)', g2: 'Crossover Drive (Dash forward, gain shield, and speed burst)', sp1: 'Ankle Breaker (Main splash slows enemies briefly)', sp2: 'Deep Range (Main and super travel farther with faster arc)' },
             'screener': { name: 'Screener', role: 'Controller', desc: 'Battery-based projector brawler. Starts at 100% battery that drains over time; recharge by landing screen hits.', color: '#7ec8ff', attack: 'Projected Sweep', attackDesc: 'Fires a 360-degree radial burst of screen projectors around you. Each hit recharges battery.', super: 'Projected Charge', superDesc: 'Activates a static projector field for 4s. Incoming shots that touch the field are converted into projector blasts fired out at that angle.', hyper: 'Main attack spins with multiple rotating sweeps. Super gains an extra projector layer and stronger conversions.', g1: 'Power Cell (Instant battery refill + heal)', g2: 'Overclock Grid (Temporarily boost projector output and battery gain)', sp1: 'Efficient Panel (Battery decays slower)', sp2: 'Capacitor Bank (Larger battery capacity and stronger low-battery safety)' },
             'malakor': { name: 'Malakor', role: 'Controller', desc: 'The fallen red-staff child who commands infernal terrain and demon hands.', color: '#ff4a4a', attack: 'Putting You Down', attackDesc: 'Slams his staff and corrupts the ground into Hell around him. Enemies standing in Hell take constant damage. Hell terrain lasts until the match ends.', super: 'Hell Is Forever!', superDesc: 'Slam to create a huge Hell zone and summon demon hands that punish enemies standing in Hell.', hyper: 'UPSIDE DOWN!: Super corrupts the whole map into Hell and summons many more demon hands. Main attack corrupts a larger area.', g1: 'Crimson Surge (Create a bonus Hell pulse and heal)', g2: 'Damnation Mark (Next main attack also summons a demon hand)', sp1: 'Infernal Dominion (Hell terrain deals more damage)', sp2: 'Abyssal Grip (Demon hands strike wider and stun longer)' },
+            'boom_arang': {
+                name: 'Boom-Arang',
+                role: 'Marksman',
+                desc: 'A boomerang specialist whose projectiles return to steer back to him, detonating tags and pulling enemies.',
+                color: '#e67e22',
+                attack: 'Boomerang Toss',
+                attackDesc: 'Throws a spinning boomerang that returns to you. Hitting a tagged enemy triggers a small explosion that deals bonus damage and reduces healing.',
+                super: 'Gravity Recall',
+                superDesc: 'Fires a heavy boomerang that pulls nearby enemies toward its path.',
+                hyper: 'Infinite Orbit: Super moves faster, has larger pull radius, and tag damage is increased.',
+                g1: 'Quick Recall (Instantly recall all active boomerangs and heal)',
+                g2: 'Stun Tag (Stun tagged enemies for 1.2s)',
+                sp1: 'Catch & Go (Gain 30% speed boost upon catching a boomerang)',
+                sp2: 'Double Return (Return trip explodes twice)'
+            },
             'tower_core': { name: 'The Core', color: '#ffea00', role: 'Objective' },
             'turret': { name: 'Defensive Turret', color: '#00ffff', role: 'Defense' },
             'wall_structure': { name: 'Reinforced Wall', color: '#a8b8c8', role: 'Barrier' },
