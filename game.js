@@ -15705,14 +15705,13 @@
                 ? getConstructionSpawnPoint('player', 0, 3)
                 : (isMirrorMode
                     ? getMirrorSpawnPoint('player', 0, MIRROR_TEAM_SIZE)
-                : ((isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode)
+                    : ((isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode)
                         ? (isBrickVaultMode
                             ? getBrickVaultSpawnPoint('player', 0, BRICK_VAULT_TEAM_SIZE)
-                        : (isArenaForgeMode
-                            ? getArenaForgeSpawnPoint('player', 0, ARENA_FORGE_TEAM_SIZE)
-                        : getDamageFillerSpawnPoint('player', 0, isDamageFillerMode ? damageFillerTeamSize : 3))
-                        )
-                    : getShowdownSpawnPosition()));
+                            : (isArenaForgeMode
+                                ? getArenaForgeSpawnPoint('player', 0, ARENA_FORGE_TEAM_SIZE)
+                                : getDamageFillerSpawnPoint('player', 0, isDamageFillerMode ? damageFillerTeamSize : 3)))
+                        : getShowdownSpawnPosition())));
             player.x = spawnPos.x;
             player.y = spawnPos.y;
       player.team = 'player';
