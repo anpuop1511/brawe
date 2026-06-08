@@ -264,6 +264,7 @@
         if (mode === 'splitter_powered') return 'Splitter Powered 10v10';
         if (mode === 'objective') return 'Control Clash';
         if (mode === 'duo') return 'Duo Showdown';
+        if (mode === 'solo_td') return 'Solo Tower Defense';
         return 'Solo Showdown';
     }
     function getBrickOpponentLevel(progress) {
@@ -3525,7 +3526,11 @@
             'scuba_diver': { name: 'Scuba Diver', role: 'Epic Specialist', desc: 'Dual-mode diver: starts in submarine mode, can switch to scuba mode mid-match.', color: '#4fc3f7', attack: 'Bubble Barrage / Push Current', attackDesc: 'Submarine mode: fires 4 delayed bubbles in a left-to-right cone (520 close -> 320 far each; Hyper keeps at least 75% close damage). Scuba mode: pushes a rectangular bubble wave for 420 each.', super: 'Dash Underwater! / Transform', superDesc: 'Submarine mode: dash 5 tiles underwater, untargetable, and light post damages enemies hit. Scuba mode: transform back into submarine mode.', hyper: 'Under the Sea!: Main attacks keep at least 75% close-range damage and travel +30% farther. Super light post marks and slows. Scuba→Submarine transform grants a 3000 decaying shield.', g1: 'Depth Charge (Next main attack slows enemies)', g2: 'Emergency Oxygen (Heal and force scuba mode with speed burst)', sp1: 'Pressure Hull (Submarine death-swap grants extra shield)', sp2: 'Rip Current (Scuba mode attack is wider and lightly slows)' },
             'hoop': { name: 'Hoop', role: 'Controller', desc: 'Streetball playmaker with a SWISH/Bank-shot rhythm: direct hits power your next shot, wall bounces charge Heat Check.', color: '#ff9f43', attack: 'Bounce Breaker', attackDesc: 'Shoots a bouncing basketball that explodes in a small area on each impact. Direct hit before first bounce grants SWISH buff. Wall bounces build Bank Stacks; at 3 stacks your next shot becomes Heat Check.', super: 'Full-Court Crash', superDesc: 'Launches a giant slam ball that bounces multiple times, each bounce creating a heavy area blast.', hyper: 'Main attack throws an extra angle ball and first impact spawns mini-balls. Super gains extra bounce count, bigger blast radius, and stuns enemies in the blast.', g1: 'Backboard Bank (Next ball gets larger splash and extra bounce)', g2: 'Crossover Drive (Dash forward, gain shield, and speed burst)', sp1: 'Ankle Breaker (Main splash slows enemies briefly)', sp2: 'Deep Range (Main and super travel farther with faster arc)' },
             'screener': { name: 'Screener', role: 'Controller', desc: 'Battery-based projector brawler. Starts at 100% battery that drains over time; recharge by landing screen hits.', color: '#7ec8ff', attack: 'Projected Sweep', attackDesc: 'Fires a 360-degree radial burst of screen projectors around you. Each hit recharges battery.', super: 'Projected Charge', superDesc: 'Activates a static projector field for 4s. Incoming shots that touch the field are converted into projector blasts fired out at that angle.', hyper: 'Main attack spins with multiple rotating sweeps. Super gains an extra projector layer and stronger conversions.', g1: 'Power Cell (Instant battery refill + heal)', g2: 'Overclock Grid (Temporarily boost projector output and battery gain)', sp1: 'Efficient Panel (Battery decays slower)', sp2: 'Capacitor Bank (Larger battery capacity and stronger low-battery safety)' },
-            'malakor': { name: 'Malakor', role: 'Controller', desc: 'The fallen red-staff child who commands infernal terrain and demon hands.', color: '#ff4a4a', attack: 'Putting You Down', attackDesc: 'Slams his staff and corrupts the ground into Hell around him. Enemies standing in Hell take constant damage. Hell terrain lasts until the match ends.', super: 'Hell Is Forever!', superDesc: 'Slam to create a huge Hell zone and summon demon hands that punish enemies standing in Hell.', hyper: 'UPSIDE DOWN!: Super corrupts the whole map into Hell and summons many more demon hands. Main attack corrupts a larger area.', g1: 'Crimson Surge (Create a bonus Hell pulse and heal)', g2: 'Damnation Mark (Next main attack also summons a demon hand)', sp1: 'Infernal Dominion (Hell terrain deals more damage)', sp2: 'Abyssal Grip (Demon hands strike wider and stun longer)' }
+            'malakor': { name: 'Malakor', role: 'Controller', desc: 'The fallen red-staff child who commands infernal terrain and demon hands.', color: '#ff4a4a', attack: 'Putting You Down', attackDesc: 'Slams his staff and corrupts the ground into Hell around him. Enemies standing in Hell take constant damage. Hell terrain lasts until the match ends.', super: 'Hell Is Forever!', superDesc: 'Slam to create a huge Hell zone and summon demon hands that punish enemies standing in Hell.', hyper: 'UPSIDE DOWN!: Super corrupts the whole map into Hell and summons many more demon hands. Main attack corrupts a larger area.', g1: 'Crimson Surge (Create a bonus Hell pulse and heal)', g2: 'Damnation Mark (Next main attack also summons a demon hand)', sp1: 'Infernal Dominion (Hell terrain deals more damage)', sp2: 'Abyssal Grip (Demon hands strike wider and stun longer)' },
+            'tower_core': { name: 'The Core', color: '#ffea00', role: 'Objective' },
+            'turret': { name: 'Defensive Turret', color: '#00ffff', role: 'Defense' },
+            'wall_structure': { name: 'Reinforced Wall', color: '#a8b8c8', role: 'Barrier' },
+            'decoy_healer': { name: 'Decoy Healer', color: '#39ff14', role: 'Support' }
   };
 
     const brawlerPortraitIcons = {
@@ -3575,6 +3580,10 @@
             const activeSkin = getActiveSkinForBrawler('heater_miser');
             if (activeSkin?.id === 'icy-zapper-miser') return '⚡';
         }
+        if (brawlerId === 'tower_core') return '🏰';
+        if (brawlerId === 'turret') return '🤖';
+        if (brawlerId === 'wall_structure') return '🧱';
+        if (brawlerId === 'decoy_healer') return '💚';
         return brawlerPortraitIcons[brawlerId] || '⭐';
     }
 
@@ -4102,6 +4111,10 @@
     let isPowerGodsMode = false;
     let isKnockDonateMode = false;
     let isBrickVaultMode = false;
+    let isSoloTdMode = false;
+    let soloTdWave = 0;
+    let soloTdCurrency = 150;
+    let soloTdPending = true;
     let isArenaForgeMode = false;
     let isTrioShowdownMode = false;
     isSplitterPoweredMode = false;
@@ -6027,6 +6040,7 @@
       isDamageFillerMode = false;
       isKnockDonateMode = false;
       isBrickVaultMode = false;
+      isSoloTdMode = false;
       isTrioShowdownMode = false;
       isSplitterPoweredMode = false;
       isMirrorMode = false;
@@ -14807,6 +14821,7 @@
       ['damage_filler', '💥', 'Damage Filler', 'Pure DPS race'],
       ['mirror', '🪞', 'Mirror 5v5', 'One brawler for all'],
       ['power_gods', '⚡', 'Power of the Gods', 'Solo LTM'],
+      ['solo_td', '🛡️', 'Solo Tower Defense', 'Protect your tower!']
   ];
 
   function renderHomeBrawlerCard() {
@@ -14942,7 +14957,8 @@
           arena_forge: '#5df2c2',
           damage_filler: '#e63946',
           mirror: '#d282ff',
-          power_gods: '#ffe066'
+          power_gods: '#ffe066',
+          solo_td: '#5cf296'
       };
 
       HOME_MODE_CARDS.forEach(([id, emoji, name, subtitle]) => {
@@ -14959,7 +14975,7 @@
           if (id === 'solo') tag = 'FFA';
           else if (id === 'duo') tag = 'DUO';
           else if (id === 'trio') tag = 'TRIO';
-          else if (id === 'power_gods' || id === 'arena_forge' || id === 'damage_filler') tag = 'SOLO';
+          else if (id === 'power_gods' || id === 'arena_forge' || id === 'damage_filler' || id === 'solo_td') tag = 'SOLO';
           else if (id === 'mirror') tag = '5V5';
 
           card.innerHTML = `
@@ -15496,6 +15512,22 @@
           mirrorModeBtn.style.background = '#5df2c2';
           mirrorModeBtn.style.color = '#08101d';
           if (startBtn) startBtn.textContent = 'Start Mirror 5v5';
+      } else if (showdownMode === 'solo_td') {
+          soloShowdownBtn.style.background = '#1c3354';
+          soloShowdownBtn.style.color = '#d8e9ff';
+          duoShowdownBtn.style.background = '#1c3354';
+          duoShowdownBtn.style.color = '#d8e9ff';
+          objectiveShowdownBtn.style.background = '#1c3354';
+          objectiveShowdownBtn.style.color = '#d8e9ff';
+          constructionShowdownBtn.style.background = '#1c3354';
+          constructionShowdownBtn.style.color = '#d8e9ff';
+          damageFillerBtn.style.background = '#1c3354';
+          damageFillerBtn.style.color = '#d8e9ff';
+          splitterPoweredBtn.style.background = '#1c3354';
+          splitterPoweredBtn.style.color = '#d8e9ff';
+          mirrorModeBtn.style.background = '#1c3354';
+          mirrorModeBtn.style.color = '#d8e9ff';
+          if (startBtn) startBtn.textContent = 'Start Solo Tower Defense';
       } else {
           soloShowdownBtn.style.background = '#5df2c2';
           soloShowdownBtn.style.color = '#08101d';
@@ -15587,6 +15619,7 @@
       isMirrorMode = showdownMode === 'mirror';
       isKnockDonateMode = showdownMode === 'knock_donate';
       isBrickVaultMode = showdownMode === 'brick_vault';
+      isSoloTdMode = showdownMode === 'solo_td';
       isArenaForgeMode = showdownMode === 'arena_forge';
       isTrioShowdownMode = showdownMode === 'trio';
       isDamageFillerMode = showdownMode === 'damage_filler' || isSplitterPoweredMode;
@@ -15655,6 +15688,9 @@
       } else if (isPowerGodsMode) {
           WORLD_W = 2600;
           WORLD_H = 2600;
+      } else if (isSoloTdMode) {
+          WORLD_W = 2000;
+          WORLD_H = 2000;
       } else {
           WORLD_W = 4000;
           WORLD_H = 4000;
@@ -15663,13 +15699,15 @@
             generateCubes();
         applyShowdownModifierMapRules();
       initPlayerHP();
-        const spawnPos = isConstructionMode
-            ? getConstructionSpawnPoint('player', 0, 3)
-            : (isMirrorMode
-                ? getMirrorSpawnPoint('player', 0, MIRROR_TEAM_SIZE)
-            : ((isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode)
-                    ? (isBrickVaultMode
-                        ? getBrickVaultSpawnPoint('player', 0, BRICK_VAULT_TEAM_SIZE)
+        const spawnPos = isSoloTdMode
+            ? { x: 1000, y: 1600 }
+            : (isConstructionMode
+                ? getConstructionSpawnPoint('player', 0, 3)
+                : (isMirrorMode
+                    ? getMirrorSpawnPoint('player', 0, MIRROR_TEAM_SIZE)
+                : ((isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode)
+                        ? (isBrickVaultMode
+                            ? getBrickVaultSpawnPoint('player', 0, BRICK_VAULT_TEAM_SIZE)
                         : (isArenaForgeMode
                             ? getArenaForgeSpawnPoint('player', 0, ARENA_FORGE_TEAM_SIZE)
                         : getDamageFillerSpawnPoint('player', 0, isDamageFillerMode ? damageFillerTeamSize : 3))
@@ -15692,6 +15730,7 @@
       if (isArenaForgeMode) initArenaForgeModeState();
       spawnBots();
       if (isSplitterPoweredMode) spawnSplitterPoweredObjectiveDummy();
+      if (isSoloTdMode) initSoloTdMatch();
       if (AUTO_FULLSCREEN_ON_MATCH_START) {
           setTimeout(() => {
               try {
@@ -15823,6 +15862,7 @@
       isDamageFillerMode = false;
       isKnockDonateMode = false;
       isBrickVaultMode = false;
+      isSoloTdMode = false;
       isTrioShowdownMode = false;
       isSplitterPoweredMode = false;
       isPowerGodsMode = false;
@@ -15893,6 +15933,7 @@
       isDamageFillerMode = false;
       isKnockDonateMode = false;
       isBrickVaultMode = false;
+      isSoloTdMode = false;
       isTrioShowdownMode = false;
       isSplitterPoweredMode = false;
       isPowerGodsMode = false;
@@ -16120,6 +16161,266 @@
           gadgetCooldownUntil: 0, selectedStar: wave % 2 === 0 ? 'long' : 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {},
           isFlying: false, isDummy: false, isSoloTrialBot: true, moneyAndTaxMode: 'money'
       });
+  }
+
+  let soloTdPanel = null;
+  function initSoloTdMatch() {
+      soloTdWave = 0;
+      soloTdCurrency = 150;
+      soloTdPending = true;
+      bots.length = 0;
+      destructibleWalls.length = 0;
+
+      // Core Tower at (1000, 1800)
+      bots.push({
+          id: nextId++, x: 1000, y: 1800, baseX: 1000, baseY: 1800, z: 0, vx: 0, vy: 0,
+          hp: 15000, maxHp: 15000, radius: 30, speed: 0, brawler: 'tower_core',
+          isDead: false, isStructure: true, isCore: true, team: 'player', lastShot: 0
+      });
+
+      // Defensive Turret at (1000, 1400)
+      bots.push({
+          id: nextId++, x: 1000, y: 1400, baseX: 1000, baseY: 1400, z: 0, vx: 0, vy: 0,
+          hp: 5000, maxHp: 5000, radius: 20, speed: 0, brawler: 'turret',
+          isDead: false, isStructure: true, team: 'player', lastShot: 0
+      });
+
+      // Initial Walls at (900, 1500) and (1100, 1500)
+      bots.push({
+          id: nextId++, x: 900, y: 1500, baseX: 900, baseY: 1500, z: 0, vx: 0, vy: 0,
+          hp: 6000, maxHp: 6000, radius: 20, speed: 0, brawler: 'wall_structure',
+          isDead: false, isStructure: true, team: 'player'
+      });
+      bots.push({
+          id: nextId++, x: 1100, y: 1500, baseX: 1100, baseY: 1500, z: 0, vx: 0, vy: 0,
+          hp: 6000, maxHp: 6000, radius: 20, speed: 0, brawler: 'wall_structure',
+          isDead: false, isStructure: true, team: 'player'
+      });
+
+      initSoloTdUIPanel();
+      updateSoloTdUI();
+  }
+
+  function initSoloTdUIPanel() {
+      if (soloTdPanel && soloTdPanel.isConnected) {
+          soloTdPanel.remove();
+      }
+      soloTdPanel = document.createElement('div');
+      soloTdPanel.id = 'solo-td-panel';
+      soloTdPanel.style.position = 'fixed';
+      soloTdPanel.style.top = '10px';
+      soloTdPanel.style.left = '10px';
+      soloTdPanel.style.background = 'rgba(12, 16, 28, 0.9)';
+      soloTdPanel.style.border = '2px solid #ffea00';
+      soloTdPanel.style.borderRadius = '12px';
+      soloTdPanel.style.padding = '12px';
+      soloTdPanel.style.color = '#fff';
+      soloTdPanel.style.fontFamily = 'Outfit, Roboto, sans-serif';
+      soloTdPanel.style.zIndex = '3000';
+      soloTdPanel.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+      soloTdPanel.style.display = 'flex';
+      soloTdPanel.style.flexDirection = 'column';
+      soloTdPanel.style.gap = '8px';
+      
+      const stats = document.createElement('div');
+      stats.id = 'solo-td-stats';
+      stats.style.fontWeight = 'bold';
+      stats.style.fontSize = '16px';
+      stats.style.borderBottom = '1px solid #ffea00';
+      stats.style.paddingBottom = '6px';
+      soloTdPanel.appendChild(stats);
+
+      const btnContainer = document.createElement('div');
+      btnContainer.style.display = 'flex';
+      btnContainer.style.flexDirection = 'column';
+      btnContainer.style.gap = '6px';
+
+      const buyWallBtn = document.createElement('button');
+      buyWallBtn.id = 'btn-buy-wall';
+      buyWallBtn.innerText = '🧱 Buy Wall (⚙️40)';
+      buyWallBtn.style.padding = '6px 12px';
+      buyWallBtn.style.background = '#3a3d40';
+      buyWallBtn.style.border = 'none';
+      buyWallBtn.style.color = '#fff';
+      buyWallBtn.style.borderRadius = '6px';
+      buyWallBtn.style.cursor = 'pointer';
+      buyWallBtn.style.fontWeight = 'bold';
+      buyWallBtn.addEventListener('click', () => buyStructure('wall_structure', 40, 6000, 20));
+      btnContainer.appendChild(buyWallBtn);
+
+      const buyTurretBtn = document.createElement('button');
+      buyTurretBtn.id = 'btn-buy-turret';
+      buyTurretBtn.innerText = '🔫 Buy Turret (⚙️90)';
+      buyTurretBtn.style.padding = '6px 12px';
+      buyTurretBtn.style.background = '#007acc';
+      buyTurretBtn.style.border = 'none';
+      buyTurretBtn.style.color = '#fff';
+      buyTurretBtn.style.borderRadius = '6px';
+      buyTurretBtn.style.cursor = 'pointer';
+      buyTurretBtn.style.fontWeight = 'bold';
+      buyTurretBtn.addEventListener('click', () => buyStructure('turret', 90, 5000, 20));
+      btnContainer.appendChild(buyTurretBtn);
+
+      const buyHealerBtn = document.createElement('button');
+      buyHealerBtn.id = 'btn-buy-healer';
+      buyHealerBtn.innerText = '💚 Buy Decoy Healer (⚙️150)';
+      buyHealerBtn.style.padding = '6px 12px';
+      buyHealerBtn.style.background = '#28a745';
+      buyHealerBtn.style.border = 'none';
+      buyHealerBtn.style.color = '#fff';
+      buyHealerBtn.style.borderRadius = '6px';
+      buyHealerBtn.style.cursor = 'pointer';
+      buyHealerBtn.style.fontWeight = 'bold';
+      buyHealerBtn.addEventListener('click', () => buyStructure('decoy_healer', 150, 4000, 20));
+      btnContainer.appendChild(buyHealerBtn);
+
+      const nextWaveBtn = document.createElement('button');
+      nextWaveBtn.id = 'btn-next-wave';
+      nextWaveBtn.innerText = '🚀 START NEXT WAVE';
+      nextWaveBtn.style.padding = '8px 12px';
+      nextWaveBtn.style.background = '#dc3545';
+      nextWaveBtn.style.border = 'none';
+      nextWaveBtn.style.color = '#fff';
+      nextWaveBtn.style.borderRadius = '6px';
+      nextWaveBtn.style.cursor = 'pointer';
+      nextWaveBtn.style.fontWeight = 'bold';
+      nextWaveBtn.style.marginTop = '4px';
+      nextWaveBtn.addEventListener('click', () => {
+          if (soloTdPending) {
+              spawnSoloTdWave();
+          }
+      });
+      btnContainer.appendChild(nextWaveBtn);
+
+      soloTdPanel.appendChild(btnContainer);
+      document.body.appendChild(soloTdPanel);
+  }
+
+  function updateSoloTdUI() {
+      const stats = document.getElementById('solo-td-stats');
+      if (!stats) return;
+      const core = bots.find(b => b.isCore);
+      const coreHp = core ? core.hp : 0;
+      stats.innerHTML = `
+          <div style="color: #ffea00; font-size: 18px; margin-bottom: 4px;">🛡️ SOLO TD MODE</div>
+          <div>Wave: <span style="color: #00ffcc;">${soloTdWave}/5</span></div>
+          <div>Scrap: <span style="color: #28a745;">⚙️${soloTdCurrency}</span></div>
+          <div>Core HP: <span style="color: #ff4d4d;">❤️${coreHp}</span></div>
+      `;
+      const wallBtn = document.getElementById('btn-buy-wall');
+      if (wallBtn) wallBtn.disabled = soloTdCurrency < 40;
+      const turretBtn = document.getElementById('btn-buy-turret');
+      if (turretBtn) turretBtn.disabled = soloTdCurrency < 90;
+      const healerBtn = document.getElementById('btn-buy-healer');
+      if (healerBtn) healerBtn.disabled = soloTdCurrency < 150;
+      const nextBtn = document.getElementById('btn-next-wave');
+      if (nextBtn) {
+          nextBtn.disabled = !soloTdPending;
+          nextBtn.innerText = soloTdPending ? '🚀 START NEXT WAVE' : '⚔️ WAVE RUNNING...';
+      }
+  }
+
+  function buyStructure(brawler, cost, hp, radius) {
+      if (soloTdCurrency < cost) return;
+      soloTdCurrency -= cost;
+      bots.push({
+          id: nextId++, x: player.x, y: player.y, baseX: player.x, baseY: player.y, z: 0, vx: 0, vy: 0,
+          hp: hp, maxHp: hp, radius: radius, speed: 0, brawler: brawler,
+          isDead: false, isStructure: true, team: 'player', lastShot: 0
+      });
+      spawnFloatingText(player.x, player.y, `Bought ${brawler.replace('_', ' ')}!`, '#00ffcc');
+      updateSoloTdUI();
+  }
+
+  function spawnSoloTdWave() {
+      if (!isSoloTdMode) return;
+      soloTdWave++;
+      soloTdPending = false;
+      updateSoloTdUI();
+      
+      const brawlersPool = Object.keys(skinsDatabase);
+      const numEnemies = 3 + soloTdWave * 2;
+      for (let i = 0; i < numEnemies; i++) {
+          const brawlerName = brawlersPool[Math.floor(Math.random() * brawlersPool.length)] || 'heater_miser';
+          const spawnX = 400 + Math.random() * 1200;
+          const spawnY = 200 + Math.random() * 400;
+          
+          bots.push({
+              id: nextId++, x: spawnX, y: spawnY, baseX: spawnX, baseY: spawnY, z: 0, vx: 0, vy: 0,
+              hp: 4000 + soloTdWave * 2000, maxHp: 4000 + soloTdWave * 2000, radius: 18,
+              speed: 150 + Math.random() * 80, brawler: brawlerName, isDead: false,
+              shield: 0, shieldMax: 0, lastTargetId: null, targetLockUntil: 0, lastShot: 0,
+              team: 'enemy', isSoloTdBot: true
+          });
+      }
+      
+      spawnFloatingText(1000, 1000, `WAVE ${soloTdWave} STARTED!`, '#ff3333');
+  }
+
+  function updateTdStructureActions(t, dt, now) {
+      if (t.brawler === 'turret') {
+          if (now - (t.lastShot || 0) >= 1000) {
+              let closest = null;
+              let closestDist = 400;
+              for (const o of bots) {
+                  if (o.hp > 0 && o.team === 'enemy') {
+                      const d = Math.hypot(o.x - t.x, o.y - t.y);
+                      if (d < closestDist) {
+                          closest = o;
+                          closestDist = d;
+                      }
+                  }
+              }
+              if (closest) {
+                  t.lastShot = now;
+                  const angle = Math.atan2(closest.y - t.y, closest.x - t.x);
+                  bullets.push({
+                      ownerBrawler: 'turret_gun',
+                      x: t.x + Math.cos(angle) * (t.radius + 5),
+                      y: t.y + Math.sin(angle) * (t.radius + 5),
+                      vx: Math.cos(angle) * 700,
+                      vy: Math.sin(angle) * 700,
+                      life: 0,
+                      maxLife: 0.6,
+                      damage: 450,
+                      pierce: false,
+                      ownerId: t.id
+                  });
+              }
+          }
+      } else if (t.brawler === 'decoy_healer') {
+          if (now - (t.lastShot || 0) >= 1500) {
+              let bestTarget = null;
+              let bestDist = 400;
+              const candidates = [player, ...bots.filter(b => b.team === 'player' && b.id !== t.id)];
+              for (const o of candidates) {
+                  if (o.hp > 0 && o.hp < o.maxHp) {
+                      const d = Math.hypot(o.x - t.x, o.y - t.y);
+                      if (d < bestDist) {
+                          bestTarget = o;
+                          bestDist = d;
+                      }
+                  }
+              }
+              if (bestTarget) {
+                  t.lastShot = now;
+                  const angle = Math.atan2(bestTarget.y - t.y, bestTarget.x - t.x);
+                  bullets.push({
+                      ownerBrawler: 'decoy_healer_gun',
+                      x: t.x + Math.cos(angle) * (t.radius + 5),
+                      y: t.y + Math.sin(angle) * (t.radius + 5),
+                      vx: Math.cos(angle) * 600,
+                      vy: Math.sin(angle) * 600,
+                      life: 0,
+                      maxLife: 0.7,
+                      damage: 0,
+                      isDecoyHealProj: true,
+                      pierce: false,
+                      ownerId: t.id
+                  });
+              }
+          }
+      }
   }
 
     // Legacy event buttons removed from home menu.
@@ -18872,6 +19173,36 @@
                 }, 1000);
             }
         }
+    } else if (isSoloTdMode) {
+        const coreTower = bots.find(b => b.isCore);
+        const aliveEnemies = bots.filter(b => b.hp > 0 && b.team === 'enemy');
+        if ((!coreTower || coreTower.hp <= 0) && !gameOver) {
+            objectiveWon = false;
+            gameOver = true;
+        } else if (player.hp <= 0 && !gameOver) {
+            player.respawnTimer = (player.respawnTimer || 0) + dt;
+            if (player.respawnTimer >= 5.0) {
+                player.hp = player.maxHp;
+                player.x = 1000;
+                player.y = 1600;
+                player.isDead = false;
+                player.respawnTimer = 0;
+            }
+        }
+        if (aliveEnemies.length === 0 && !soloTdPending && soloTdWave > 0) {
+            soloTdPending = true;
+            if (soloTdWave >= 5) {
+                objectiveWon = true;
+                gameOver = true;
+            } else {
+                spawnFloatingText(WORLD_W/2, WORLD_H/2, "WAVE CLEARED!", "#ffea00");
+                setTimeout(() => {
+                    if (!gameOver && isSoloTdMode && soloTdPending) {
+                        spawnSoloTdWave();
+                    }
+                }, 5000);
+            }
+        }
     } else if (isDuoShowdown) {
         const teammate = bots.find(b => b.isTeammate);
         const playerAlive = player.hp > 0;
@@ -19256,6 +19587,12 @@
         if (e.hp <= 0 && !e.isDead && !e.isDummy) {
             e.isDead = true;
             if (isKnockDonateMode) handleKnockDonateEntityDeath(e);
+            if (isSoloTdMode && e.team === 'enemy') {
+                const scrapReward = 25 + (e.isBoss ? 150 : 0) + (e.powerCubes || 0) * 5;
+                soloTdCurrency += scrapReward;
+                spawnFloatingText(e.x, e.y, `+${scrapReward} ⚙️`, '#ffea00');
+                updateSoloTdUI();
+            }
             if (isMirrorMode && !e._mirrorDeathCounted) {
                 e._mirrorDeathCounted = true;
                 registerMirrorKill(e.lastDamagerId, e.id);
@@ -21242,6 +21579,17 @@
          let ownerEntity = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
          if (ownerEntity && ownerEntity.team && player.team && ownerEntity.team === player.team && !b.isHeaterTetherStarter) {
              // skip friendly fire
+             if (b.isDecoyHealProj) {
+                  const dx = b.x - player.x; const dy = b.y - player.y;
+                  if (Math.hypot(dx,dy) < player.radius + 8) {
+                      b.hitIds = b.hitIds || {};
+                      b.hitIds[player.id] = true;
+                      doHeal(player, 800);
+                      spawnFloatingText(player.x, player.y - 25, `+800`, '#58f0cf');
+                      bullets.splice(i, 1);
+                      consumed = true;
+                  }
+              }
              if (b.ownerBrawler === 'sera_eclipse' && b.isSeraFlare) {
                  const dx = b.x - player.x; const dy = b.y - player.y;
                  if (Math.hypot(dx,dy) < player.radius + (b.hitboxMod || 1) * 4) {
@@ -21339,6 +21687,17 @@
         
         let ownerEntity = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
         if (ownerEntity && ownerEntity.team && t.team && ownerEntity.team === t.team && !b.isHeaterTetherStarter) {
+            if (b.isDecoyHealProj) {
+                const dx = b.x - t.x; const dy = b.y - t.y;
+                if (Math.hypot(dx,dy) < t.radius + 8) {
+                    b.hitIds = b.hitIds || {};
+                    b.hitIds[t.id] = true;
+                    doHeal(t, 800);
+                    spawnFloatingText(t.x, t.y - 25, `+800`, '#58f0cf');
+                    bullets.splice(i, 1);
+                    consumed = true;
+                }
+            }
             if (b.ownerBrawler === 'sera_eclipse' && b.isSeraFlare) {
                 const dx = b.x - t.x; const dy = b.y - t.y;
                 if (Math.hypot(dx,dy) < t.radius + (b.hitboxMod || 1) * 4) {
@@ -21356,6 +21715,7 @@
                     }
                 }
             }
+            if (consumed) break;
             continue; // skip friendly fire
         }
         
@@ -21814,6 +22174,11 @@
 
       if(t.isDummy) continue; // Skip all AI logic for dummies
 
+      if (t.isStructure) {
+          updateTdStructureActions(t, dt, now);
+          continue;
+      }
+
       if (t.isBoss) {
           t.bossStage = t.bossStage || 1;
           t.isHypercharged = true;
@@ -21867,6 +22232,35 @@
       let target = null;
       let bestScore = 999999;
       const nowTarget = performance.now();
+
+      if (isSoloTdMode && t.team === 'enemy') {
+          let bestTdTarget = null;
+          let bestTdScore = 999999;
+          if (player.hp > 0 && !player.isDead) {
+              const d = Math.hypot(player.x - t.x, player.y - t.y);
+              bestTdTarget = player;
+              bestTdScore = d + 150;
+          }
+          for (const o of bots) {
+              if (o.hp > 0 && o.team === 'player' && (o.isStructure || o.isCore)) {
+                  const d = Math.hypot(o.x - t.x, o.y - t.y);
+                  let score = d;
+                  if (o.isCore) {
+                      score = d - 200;
+                  } else if (o.brawler === 'wall_structure') {
+                      score = d - 50;
+                  }
+                  if (score < bestTdScore) {
+                      bestTdScore = score;
+                      bestTdTarget = o;
+                  }
+              }
+          }
+          target = bestTdTarget;
+          if (target) {
+              bestScore = bestTdScore;
+          }
+      } else
 
       if(t.lastTargetId != null && nowTarget < t.targetLockUntil){
         const locked = (t.lastTargetId === player.id) ? player : bots.find(o => o.id === t.lastTargetId && o.hp > 0);
@@ -22152,7 +22546,7 @@
           
           // move in/out based on preferred combat spacing
           const stopDist = getBotCombatStopDistance(t, target);
-          const shouldRetreat = !!(target && !target.isPowerup && !target.isBox && distToTarget < stopDist * 0.62);
+          const shouldRetreat = isSoloTdMode ? false : !!(target && !target.isPowerup && !target.isBox && distToTarget < stopDist * 0.62);
           if(!isStunned && t.brawler !== 'egg' && !t.isJumping && !t.isDashing && !t.isTrainingBot && (distToTarget > stopDist || shouldRetreat)){
             const dir = shouldRetreat ? -1 : 1;
             const speedMult = shouldRetreat ? 0.78 : 1;
@@ -25199,6 +25593,26 @@
 
     // draw bullets 
     for(const b of bullets){ 
+      if (b.isDecoyHealProj) {
+          ctx.beginPath();
+          ctx.fillStyle = '#28a745';
+          ctx.arc(b.x, b.y, 7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          continue;
+      }
+      if (b.ownerBrawler === 'turret_gun') {
+          ctx.beginPath();
+          ctx.fillStyle = '#007acc';
+          ctx.arc(b.x, b.y, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          continue;
+      }
       ctx.beginPath(); 
             const activeSkin = getActiveSkinForBrawler(b.ownerBrawler);
             const activeSkinId = activeSkin?.id || '';
@@ -28120,6 +28534,13 @@
                 won = player.hp > 0 && soloTrialWave >= SOLO_TRIAL_MAX_WAVES && bots.every(b => b.hp <= 0 || b.isDead);
                 matchText = won ? "SOLO TRIAL COMPLETE!" : "SOLO TRIAL FAILED!";
                 rankText = `Waves Cleared: ${Math.min(soloTrialWave, SOLO_TRIAL_MAX_WAVES)}/${SOLO_TRIAL_MAX_WAVES}`;
+            } else if (isSoloTdMode) {
+                won = !!objectiveWon;
+                matchText = won ? "VICTORY! ALL WAVES CLEARED!" : "DEFEAT! CORE DESTROYED!";
+                rankText = `Waves Cleared: ${Math.min(soloTdWave, 5)}/5`;
+                if (soloTdPanel && soloTdPanel.isConnected) {
+                    soloTdPanel.remove();
+                }
             } else if (isDuels) {
                 won = playerScore >= 5;
                 matchText = won ? "YOU WON THE DUEL!" : "BOT WON THE DUEL!";
