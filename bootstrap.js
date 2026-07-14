@@ -11,5 +11,8 @@ if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
 const gameScript = document.createElement('script');
-gameScript.src = './game.js';
+// Keep this release token aligned with index.html. GitHub Pages and browsers
+// may cache the large runtime, so a versioned URL ensures new game content is
+// loaded immediately after a deployment.
+gameScript.src = './game.js?v=20260713-2';
 document.body.appendChild(gameScript);
