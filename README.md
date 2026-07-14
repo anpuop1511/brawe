@@ -1,154 +1,149 @@
-# Arena Forge
+# Arena Forge (Brawe)
 
-A cross-platform Brawl Stars-style arena showdown game. Play as one of 4 custom brawlers in a landscape-oriented 1920x1080 arena against 9 AI-controlled bots. Last player standing wins! Built with Phaser 3, TypeScript, and Capacitor for web and Android.
+Arena Forge is a browser-first, top-down arena combat game built around an original roster, fast matches, unusual character mechanics, and long-term progression. Fight AI opponents in Showdown and team modes, unlock and upgrade brawlers, assemble loadouts, climb Ranked, and collect limited-event powers.
 
-## Features
+> **Current status:** actively developed playable prototype. The game runs locally in a modern desktop browser and saves progress in browser storage.
 
-- **Complete Game Flow**: Home menu → Brawler selection → 10-player showdown → Results screen
-- **4 Unique Brawlers**: Ember Jet, Tide Crash, Violet Spark, Iron Mirth – each with different stats and abilities
-- **10-Player Showdown**: You vs 9 AI bots with realistic pathfinding and combat behavior
-- **Landscape Layout**: Optimized 1920x1080 resolution for desktop and mobile landscape viewing
-- **AI Opponents**: Bots hunt players, shoot back, and fight each other
-- **Touch Controls**: Full touch support for mobile gameplay
-- **Responsive Scaling**: Adapts to different screen sizes
+## Play locally
 
-## Skin Rework Chart
+No installation or build step is required.
 
-- **Super Rare**: Custom attack effects only.
-- **Epic**: Custom attack and custom super effects.
-- **Mythic**: Keeps current combat visuals, plus a takedown effect themed to the brawler.
-- **Legendary**: Everything above, plus spawn effect, takedown effect, and death animation.
-- **Launch Featured Legendary**: FightNSpice in the Spicy Set is the first Legendary skin, featured for 3 days with a 10% launch discount.
+1. Open [`index.html`](index.html) in Chrome, Edge, Firefox, or another modern browser.
+2. Choose a brawler and mode from the home screen.
+3. Select **Start** to play.
 
-## Game Modes
+Direct Windows path used by the current workspace:
 
-### Showdown Mode
-- 10 players total (you + 9 AI bots)
-- Defeat all AI bots to win
-- Be the last one standing
-- Score multiplier for eliminations
-- Leaderboard shows alive players
-
-## How to Play
-
-### Controls
-- **Movement**: WASD or Arrow Keys
-- **Shooting**: Click/Tap or press SPACE
-- **Mobile**: Use on-screen touch buttons
-
-### Game Flow
-1. Start at the Home screen
-2. Choose a brawler or use Quick Play for default brawler
-3. Enter the Showdown arena with 9 AI opponents
-4. Defeat enemies and avoid being defeated
-5. Win by eliminating all AI bots
-6. View results and play again
-
-## Customization
-
-### Brawler Stats
-Edit [src/game/types.ts](src/game/types.ts) to customize brawler properties:
-- `health`: Maximum HP
-- `speed`: Movement speed
-- `damage`: Projectile damage per hit
-- `reloadMs`: Time between shots
-- `projectileSpeed`: How fast projectiles travel
-- `superCharge`: Super ability charge rate
-
-### Arena
-- Arena size: `GAME_CONFIG.arenaWidth` and `GAME_CONFIG.arenaHeight`
-- Number of AI bots: `GAME_CONFIG.numAIBots`
-- Obstacle placement in `ShowdownScene.createWalls()`
-
-### AI Behavior
-Modify `AIBotBrain` class in [src/game/scenes/ShowdownScene.ts](src/game/scenes/ShowdownScene.ts):
-- Detection radius: `nearestDist = 600`
-- Bot speed multiplier: `speed * 0.8`
-- Reload time penalty: `* 1.2`
-
-## Project Structure
-
-```
-src/
-├── main.ts                    # Game initialization and scene setup
-├── styles.css                 # Landscape layout CSS
-├── game/
-│   ├── types.ts              # Brawler definitions and game config
-│   ├── state.ts              # Session state management
-│   └── scenes/
-│       ├── HomeScene.ts       # Landing page with navigation
-│       ├── BrawlerSelectScene.ts  # Character selection screen
-│       ├── ShowdownScene.ts   # Main 10-player game
-│       └── ResultsScene.ts    # Win/loss results screen
+```text
+C:\Users\test\Documents\Codex\2026-07-11\build\brawe\index.html
 ```
 
-## Run it on the web
+Because saves use `localStorage`, progress belongs to the browser and local file origin used to launch the game. Clearing site data can erase that progress.
 
-```bash
-npm install
-npm run dev
+## Current highlights
+
+- **44 playable brawlers**, each with a main attack, Super, two Gadgets, two Star Powers, and a Hypercharge.
+- **Power Levels 1–11** with stats that scale to their defined Power 11 values.
+- **Solo, duo, trio, objective, team, survival, and experimental modes.**
+- **AI opponents** that fight, pursue objectives, use brawler abilities, and use SlopSushi powers.
+- **Progression and economy:** Coins, Gems, Souls, Bricks, Soul Summoner unlocks, Starr Drops, Tappers, upgrades, skins, quests, and Ranked Points.
+- **Loadout progression:** unlock and select Gadgets, Star Powers, and Hypercharges per brawler.
+- **Rounded health, ammo, shield, status, Super, and Hypercharge displays** designed to remain readable during combat.
+- **Desktop and touch controls** with a responsive canvas.
+- **Local saves** with no account or server required.
+
+## Game modes
+
+The home screen currently exposes the following modes:
+
+| Mode | Format | Objective |
+| --- | --- | --- |
+| SlopSushi Solo | Solo event mode | Choose two Sushi powers before every match. |
+| Solo Showdown | 10-player free-for-all | Be the last fighter alive. |
+| Duo Showdown | Five teams of two | Keep your team alive and eliminate the others. |
+| Trio Showdown | Three teams of three | Outlast the other trios. |
+| Control Clash | Objective mode | Capture and control the central zone. |
+| Brick Run | 3v3 construction race | Gather and use bricks to complete the team objective. |
+| Knock n Donate | 3v3 ring-out battle | Knock opponents from the arena and win the rounds. |
+| Brick Vault | 3v3 objective attack | Defend your vault while breaking the enemy vault. |
+| Damage Filler | Rotating 2v2/3v3 damage race | Reach the damage goal before the enemy team. |
+| Mirror | 5v5 mirror match | Everyone uses the same randomly selected brawler. |
+| Power of the Gods | Limited solo mode | Survive a high-power ruleset. |
+| Solo Tower Defense | Solo defense | Protect the tower from incoming waves. |
+
+Ranked, Duels, Training, tutorials, trials, and additional limited experiences are available through the surrounding home-screen tools and progression flow.
+
+## Controls
+
+### Keyboard and mouse
+
+| Action | Control |
+| --- | --- |
+| Move | `WASD` or Arrow Keys |
+| Aim | Mouse cursor |
+| Main attack | Hold or click the left mouse button |
+| Gadget | `Q` |
+| Super | Hold/aim with `E`, then release |
+| Hypercharge | `F` |
+| Select Star Power 1/2 | `1` / `2` |
+| Start selected match | `Enter` |
+
+Some brawlers intentionally alter the normal controls. Examples include Teether's timed floss attack, Demon's one-second blade glide choice, Copyphase's stored identities, and Money & Tax's two combat modes.
+
+### Touch
+
+Touch devices receive on-screen movement, attack, Gadget, Super, and Hypercharge controls. Landscape orientation is recommended.
+
+## The roster
+
+The roster contains fighters across Damage Dealer, Tank, Assassin, Support, Controller, Marksman, Thrower, and Specialist roles. Arena Forge is especially focused on mechanics that change how a match is read or controlled, including:
+
+- **Copyphase:** stores enemy identities, transforms into one, and summons another.
+- **Paradox:** manipulates allied and enemy projectile speed inside time zones.
+- **Screener:** recharges a draining battery and converts incoming shots through a projector field.
+- **Xray:** reveals enemy ammunition through attacks and a deployable scanner.
+- **Malakor:** permanently corrupts the arena with damaging Hell terrain.
+- **Teether:** attaches teeth, then temporarily converts the ammo display into an optional floss grapple timer.
+- **Splitter:** creates recursively splitting projectile generations.
+- **Blobert:** creates and collects puddles as a resource for stronger attacks.
+- **Angel:** heals and briefly lifts allies while slowing enemies, with lethal-damage protection.
+- **Demon:** throws a blade and chooses between recalling it or gliding to its landing point.
+- **Warrior:** throws spears over walls and trades movement speed for an extreme reload burst.
+
+Open the **Brawlers** screen in-game for the complete current roster, exact Power 11 statistics, ability descriptions, loadouts, rarity, and ownership status.
+
+## Progression
+
+Arena Forge begins as a fresh local save and expands through several connected systems:
+
+- **Coins** upgrade brawler Power Levels and support shop purchases.
+- **Souls** progress the Soul Summoner and unlock new brawlers.
+- **Gems** purchase premium or limited rewards.
+- **Bricks** contribute to applicable upgrades and construction systems.
+- **Tappers** grant rewards, with specialized variants for Supers, Hypercharges, and events.
+- **Quests** track matches, victories, damage, eliminations, Supers, Gadgets, survival, and mode objectives.
+- **Ranked Points** move the player through ranked divisions.
+- **Skins** range from effect-focused variants to higher-rarity cosmetic packages.
+
+Normal matches use the selected brawler's current Power Level. Ranked and designated competitive or experimental modes can normalize brawlers to Power 11.
+
+## SlopSushi event
+
+SlopSushi is a 34-day, browser-clock limited event with personalized Sushi decks for every brawler.
+
+- A Sushi Tapper can unlock a deck even for a brawler that is still locked.
+- Each brawler has eight personalized powers rather than a shared generic deck.
+- Before a modified match, choose two cards from randomized choices.
+- Owned cards appear in the match HUD and can be hovered to review their effects.
+- Bots can use Sushi powers too.
+- After decks are collected, further rewards improve individual card Power Levels, up to level 5.
+- Multiple modes can receive the Sushi modifier on the hourly rotation while the dedicated SlopSushi mode remains available.
+- The Event Hub contains event quests, deck progress, rewards, and the event timer.
+
+Event timing uses the local browser date because the project does not currently have a server clock.
+
+## Project layout
+
+```text
+brawe/
+├── index.html            # Page structure and home-screen shell
+├── bootstrap.js          # Loads the active browser game runtime
+├── game.js               # Gameplay, UI, modes, AI, progression, and saves
+├── slopsushi-cards.js    # Personalized SlopSushi card definitions
+├── styles.css            # Main interface and responsive styling
+└── README.md             # Project overview and play instructions
 ```
 
-Visit `http://localhost:5173` in your browser (or your machine's IP for mobile testing)
+The active game is a JavaScript/HTML canvas build. The older Phaser, TypeScript, Vite, Capacitor, `src/game`, and Android instructions previously documented here do **not** describe this version.
 
-## Build for production
+## Development notes
 
-```bash
-npm run build
-```
+- Reload `index.html` after editing the JavaScript or CSS files.
+- Browser developer tools are the quickest way to inspect runtime errors.
+- Save data is stored under the `brawlGameProgress` local-storage key, with supporting keys for some preferences and event state.
+- Most gameplay definitions currently live in `game.js`; keep new isolated data tables in their own files when practical.
+- Test a change in Training before checking normal modes, team modes, AI behavior, and SlopSushi interactions.
 
-The built files are in the `dist/` directory.
+## Credits and positioning
 
-## Add Android
-
-```bash
-npm run cap:add:android
-npm run cap:sync
-```
-
-Then open the generated Android project in Android Studio and build/deploy from there.
-
-### Android now (quick start)
-
-```bash
-npm install
-npm run android:setup
-npm run cap:open:android
-```
-
-After first setup, use:
-
-```bash
-npm run android
-```
-
-This now always copies `game.js` into `dist/` after each web build, so the Capacitor `file://` app runtime can load your gameplay code correctly on Android.
-
-## Development
-
-### TypeScript Compilation
-```bash
-npm run build
-```
-
-### Dev Server with Hot Reload
-```bash
-npm run dev
-```
-
-## Scene Navigation
-
-- **HomeScene** → BrawlerSelectScene (Select Brawler button) or ShowdownScene (Quick Play)
-- **BrawlerSelectScene** → HomeScene (Back) or ShowdownScene (Start Match)
-- **ShowdownScene** → ResultsScene (Win or Loss condition)
-- **ResultsScene** → ShowdownScene (Play Again) or HomeScene (Home)
-
-## Technical Details
-
-- **Resolution**: 1920x1080 (landscape, responsive scaled)
-- **Game Engine**: Phaser 3
-- **Language**: TypeScript
-- **Platform Support**: Web, Android (via Capacitor)
-- **Physics**: Arcade (2D top-down)
-- **Build Tool**: Vite
-
+Arena Forge is an independent fan-made prototype inspired by top-down hero arena games. It is not affiliated with, endorsed by, or produced by Supercell. Brawl Stars and related names belong to their respective owners.
