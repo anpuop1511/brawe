@@ -9,6 +9,7 @@
   const starInputs = Array.from(document.querySelectorAll('input[name="star"]'));
   const gadgetInputs = Array.from(document.querySelectorAll('input[name="gadget"]'));
   const startBtn = document.getElementById('startMatch');
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
   const homeScreen = document.getElementById('homeScreen');
   const brawlerBtn = document.getElementById('brawlerBtn');
     const AUTO_FULLSCREEN_ON_MATCH_START = false;
@@ -115,21 +116,45 @@
             -webkit-user-select: none;
         }
         .mobile-action-btn:active { transform: scale(0.96); }
+        #mobileLandscapeHint { display:none;position:fixed;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);padding:6px 10px;border-radius:999px;background:rgba(5,13,28,.82);border:1px solid rgba(120,205,255,.45);color:#dff7ff;font:800 11px/1 sans-serif;white-space:nowrap;pointer-events:none; }
+        #mobileFullscreenBtn { position:fixed;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));width:46px;height:46px;border-radius:13px;border:1px solid rgba(120,205,255,.55);background:rgba(5,13,28,.82);color:#e8f8ff;font-size:24px;font-weight:900;pointer-events:auto;touch-action:manipulation; }
+        @media (pointer:coarse) and (max-width:760px) {
+            .mobile-stick { width:clamp(96px,25vw,120px);height:clamp(96px,25vw,120px); }
+            .mobile-stick-knob { width:48px;height:48px;left:calc(50% - 24px);top:calc(50% - 24px); }
+            #mobileMoveStick { left:max(10px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom)); }
+            #mobileAimStick { right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom)); }
+            #mobileActionButtons { right:max(12px,env(safe-area-inset-right));bottom:calc(max(10px,env(safe-area-inset-bottom)) + clamp(104px,27vw,128px));gap:7px; }
+            .mobile-action-btn { width:54px;height:54px;font-size:22px; }
+        }
+        @media (pointer:coarse) and (orientation:portrait) and (max-width:760px) {
+            #mobileLandscapeHint { display:block; }
+            .mobile-stick { width:94px;height:94px; }
+            #mobileActionButtons { bottom:calc(max(10px,env(safe-area-inset-bottom)) + 102px); }
+            .mobile-action-btn { width:48px;height:48px;font-size:19px; }
+        }
         `;
         document.head.appendChild(styleSheet);
 
     function getScaledStats(brawlerId, levelOverride) {
         const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
-        if (brawlerId === 'angel' || brawlerId === 'demon' || brawlerId === 'warrior') {
+        if (brawlerId === 'robber') {
             const scale = 0.55 + (level - 1) * 0.045;
-            const p11Hp = brawlerId === 'angel' ? 7200 : (brawlerId === 'demon' ? 8100 : 7600);
-            return { hp:Math.round(p11Hp*scale), dmg:brawlerId==='angel'?1700:(brawlerId==='demon'?2000:900), speed:brawlerId==='angel'?255:(brawlerId==='demon'?300:260) };
+            return { hp:Math.round(7200*scale), dmg:Math.round(280*scale), speed:285 };
+        }
+        if (brawlerId === 'fuser') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp:Math.round(7000*scale), dmg:Math.round(330*scale), speed:260 };
+        }
+        if (brawlerId === 'angel' || brawlerId === 'demon' || brawlerId === 'warrior' || brawlerId === 'relay' || brawlerId === 'upiedown' || brawlerId === 'chickpig' || brawlerId === 'jetpack' || brawlerId === 'snapper') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const p11Hp = brawlerId === 'angel' ? 7200 : (brawlerId === 'demon' ? 7700 : (brawlerId === 'relay' ? 5200 : (brawlerId === 'upiedown' ? 6800 : (brawlerId === 'chickpig' ? 7200 : (brawlerId === 'jetpack' ? 6600 : (brawlerId === 'snapper' ? 6500 : 7600))))));
+            return { hp:Math.round(p11Hp*scale), dmg:brawlerId==='angel'?1600:(brawlerId==='demon'?1900:(brawlerId==='relay'?1150:(brawlerId==='upiedown'?1700:(brawlerId==='chickpig'?1150:(brawlerId==='jetpack'?2550:(brawlerId==='snapper'?1500:950)))))), speed:brawlerId==='angel'?255:(brawlerId==='demon'?300:(brawlerId==='relay'?265:(brawlerId==='upiedown'?250:(brawlerId==='chickpig'?255:(brawlerId==='jetpack'?270:(brawlerId==='snapper'?250:260)))))) };
         }
         const data = brawlerData[brawlerId] || {};
         const role = String(data.role || '').toLowerCase();
-        const hpBase = role.includes('tank') ? 10000 : role.includes('assassin') ? 6200 : role.includes('marksman') ? 5200 : role.includes('thrower') ? 5600 : role.includes('support') ? 5800 : role.includes('controller') ? 6000 : 5400;
-        const dmgBase = role.includes('tank') ? 1200 : role.includes('assassin') ? 1800 : role.includes('marksman') ? 1500 : role.includes('thrower') ? 1650 : role.includes('support') ? 1450 : role.includes('controller') ? 1600 : 1500;
-        const speedBase = role.includes('tank') ? 220 : role.includes('assassin') ? 300 : role.includes('marksman') ? 260 : role.includes('thrower') ? 245 : role.includes('support') ? 255 : role.includes('controller') ? 250 : 260;
+        const hpBase = role.includes('tank') ? 10000 : role.includes('assassin') ? 6200 : role.includes('marksman') ? 5200 : role.includes('artillery') ? 5600 : role.includes('support') ? 5800 : role.includes('controller') ? 6000 : 5400;
+        const dmgBase = role.includes('tank') ? 1200 : role.includes('assassin') ? 1800 : role.includes('marksman') ? 1500 : role.includes('artillery') ? 1650 : role.includes('support') ? 1450 : role.includes('controller') ? 1600 : 1500;
+        const speedBase = role.includes('tank') ? 220 : role.includes('assassin') ? 300 : role.includes('marksman') ? 260 : role.includes('artillery') ? 245 : role.includes('support') ? 255 : role.includes('controller') ? 250 : 260;
         const hp = Math.round(hpBase + (level - 1) * (role.includes('tank') ? 850 : 500));
         const dmg = Math.round(dmgBase + (level - 1) * (role.includes('tank') ? 70 : 55));
         const speed = Math.round(speedBase + (level - 1) * (role.includes('assassin') ? 4 : 2));
@@ -1131,7 +1156,7 @@
         if (selectedBrawler === 'minigunnin' || selectedBrawler === 'steamer' || selectedBrawler === 'beam') {
       maxAmmo = 100;
       ammo = 100;
-    } else if (selectedBrawler === 'bowlin_rida' || selectedBrawler === 'boom_arang') {
+    } else if (selectedBrawler === 'bowlin_rida' || selectedBrawler === 'boom_arang' || selectedBrawler === 'jetpack') {
       maxAmmo = 1;
       ammo = 1;
     } else if (selectedBrawler === 'demon') {
@@ -1142,9 +1167,16 @@
       ammo = 3;
     }
     player.moneyAndTaxMode = 'money';
+    player.robberWaveCount = 1;
+    player.robberBonusMaxAmmo = 0;
+    player.robberSiphon = null;
     player.warriorStandUntil = 0;
     player.warriorStandHyper = false;
     player.warriorBattleRushUntil = 0;
+    player.jetpackChargeStartedAt = 0;
+    player.jetpackFlight = null;
+    player.isFlying = false;
+    player.z = 0;
     ensureScubaDiverState(player);
     player.scubaDiverMode = 'submarine';
     player.scubaDiverLastBreathShielded = false;
@@ -1170,7 +1202,9 @@
       moveY: 0,
       aimX: 1,
       aimY: 0,
-      attackActive: false
+      attackActive: false,
+      aimHeld: false,
+      releaseShotTimer: 0
   };
   let mobileControlsRoot = null;
   function isTouchInputEnvironment() {
@@ -1187,6 +1221,7 @@
           mobileInput.moveX = 0;
           mobileInput.moveY = 0;
           mobileInput.attackActive = false;
+          mobileInput.aimHeld = false;
           releaseSuper();
       }
   }
@@ -1256,19 +1291,36 @@
       actionButtons.id = 'mobileActionButtons';
       const gadgetTouchBtn = document.createElement('button');
       gadgetTouchBtn.className = 'mobile-action-btn';
-      gadgetTouchBtn.textContent = 'G';
+      gadgetTouchBtn.textContent = '⚙';
+      gadgetTouchBtn.title = 'Gadget';
+      gadgetTouchBtn.setAttribute('aria-label', 'Use Gadget');
       const superTouchBtn = document.createElement('button');
       superTouchBtn.className = 'mobile-action-btn';
-      superTouchBtn.textContent = 'S';
+      superTouchBtn.textContent = '★';
+      superTouchBtn.title = 'Super';
+      superTouchBtn.setAttribute('aria-label', 'Aim Super');
       const hyperTouchBtn = document.createElement('button');
       hyperTouchBtn.className = 'mobile-action-btn';
-      hyperTouchBtn.textContent = 'H';
+      hyperTouchBtn.textContent = '⚡';
+      hyperTouchBtn.title = 'Hypercharge';
+      hyperTouchBtn.setAttribute('aria-label', 'Activate Hypercharge');
       actionButtons.appendChild(gadgetTouchBtn);
       actionButtons.appendChild(superTouchBtn);
       actionButtons.appendChild(hyperTouchBtn);
       root.appendChild(moveStick);
       root.appendChild(aimStick);
       root.appendChild(actionButtons);
+      const landscapeHint = document.createElement('div');
+      landscapeHint.id = 'mobileLandscapeHint';
+      landscapeHint.textContent = '↻ Landscape recommended';
+      root.appendChild(landscapeHint);
+      const matchFullscreenBtn = document.createElement('button');
+      matchFullscreenBtn.id = 'mobileFullscreenBtn';
+      matchFullscreenBtn.textContent = '⛶';
+      matchFullscreenBtn.title = 'Fullscreen';
+      matchFullscreenBtn.setAttribute('aria-label', 'Toggle fullscreen');
+      matchFullscreenBtn.addEventListener('pointerdown', (event) => { event.preventDefault(); void toggleGameFullscreen(); });
+      root.appendChild(matchFullscreenBtn);
       document.body.appendChild(root);
       mobileControlsRoot = root;
       bindVirtualStick(moveStick, moveKnob, (x, y) => {
@@ -1279,14 +1331,21 @@
           mobileInput.moveY = 0;
       });
       bindVirtualStick(aimStick, aimKnob, (x, y) => {
-          mobileInput.attackActive = Math.hypot(x, y) > 0.08;
-          if (!mobileInput.attackActive) return;
+          if (Math.hypot(x, y) <= 0.08) return;
+          mobileInput.aimHeld = true;
+          mobileInput.attackActive = false;
           mobileInput.aimX = x;
           mobileInput.aimY = y;
           mouse.screenX = innerWidth * 0.5 + x * 180;
           mouse.screenY = innerHeight * 0.5 + y * 180;
       }, () => {
-          mobileInput.attackActive = false;
+          if (!mobileInput.aimHeld) return;
+          mobileInput.aimHeld = false;
+          // A short one-shot pulse lets the next animation frame fire toward
+          // the saved aim direction without auto-firing while the stick moves.
+          mobileInput.attackActive = true;
+          clearTimeout(mobileInput.releaseShotTimer);
+          mobileInput.releaseShotTimer = setTimeout(() => { mobileInput.attackActive = false; }, 80);
       });
       gadgetTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
@@ -1329,6 +1388,11 @@
 
   // Combat
   const bullets = [];
+  const snapperWaves = [];
+  const chickpigEggZones = [];
+  let upiedownPieUntil = 0;
+  let upiedownPieOwnerId = 0;
+  let upiedownPieHyper = false;
   const demonGlides = [];
   const rings = []; // used for Echo's spreading rings
   const powerups = []; // collectible power cubes
@@ -1391,7 +1455,7 @@
         const HOPE_HYPER_SUPER_STUN_MS = 2000;
         const HOPE_G2_MISSING_PCT = 0.25;
         const HOPE_G2_SHIELD_CAP = 3000;
-        const SPLITTER_MAX_HITS_PER_TARGET = 3;
+        const SPLITTER_MAX_HITS_PER_TARGET = 4;
         const SPLITTER_MAIN_CHILD_CAP = 18;
         const SPLITTER_SUPER_CHILD_CAP = 24;
         const SPLITTER_POWERED_MAIN_CHILD_CAP = 260;
@@ -1549,7 +1613,7 @@
         },
         reloadMsByBrawler: {
             warrior: 1650,
-            outlit: 1120,
+            outlit: 1060,
             echo: 1600,
             cheseypuff: 1100,
             unopcoloco: 1100,
@@ -1582,7 +1646,12 @@
             paradox: 1500,
             teether: 1350,
             fuel: 1550,
-            xray: 1500
+            xray: 1500,
+            upiedown: 1800,
+            chickpig: 1650,
+            jetpack: 2300,
+            snapper: 1700
+            ,robber: 1500
         },
         fireDelayMsByBrawler: {
             warrior: 260,
@@ -1620,7 +1689,11 @@
             paradox: 300,
             teether: 260,
             fuel: 250,
-            xray: 255
+            xray: 255,
+            upiedown: 330,
+            chickpig: 300,
+            jetpack: 300,
+            snapper: 280
         },
         status: {
             slowMultiplier: 0.35
@@ -1681,8 +1754,49 @@
         }
         return true;
     }
-    const allBrawlers = ['outlit', 'echo', 'cheseypuff', 'decayer', 'unopcoloco', 'dashaholic', 'trapper', 'classy', 'hyperorigin', 'heater_miser', 'minigunnin', 'steamer', 'bowlin_rida', 'money_and_tax', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'goonbob', 'tempo_maker', 'overlord', 'copyphase', 'fightnfire', 'beast', 'amplifier', 'skeleflying', 'crystila', 'hope', 'evil_doctor', 'splitter', 'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse', 'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior'];
-    const disabledBrawlers = new Set([]);
+    const deviceMode = ((navigator.maxTouchPoints || 0) > 0 || window.matchMedia?.('(pointer: coarse)').matches || ('ontouchstart' in window)) ? 'mobile' : 'desktop';
+    document.documentElement.classList.add(`${deviceMode}-device`);
+    document.documentElement.dataset.deviceMode = deviceMode;
+
+    async function toggleGameFullscreen() {
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+            const exit = document.exitFullscreen || document.webkitExitFullscreen;
+            if (exit) await exit.call(document);
+            return;
+        }
+        const target = document.documentElement;
+        const request = target.requestFullscreen || target.webkitRequestFullscreen;
+        if (!request) {
+            alert('Fullscreen is blocked by this browser. On iPhone, use Share then Add to Home Screen. On Android, use the browser menu and Add to Home screen.');
+            return;
+        }
+        await request.call(target);
+        if (deviceMode === 'mobile' && screen.orientation?.lock) {
+            try { await screen.orientation.lock('landscape'); } catch (err) {}
+        }
+    }
+    if (fullscreenBtn) fullscreenBtn.addEventListener('click', () => { void toggleGameFullscreen(); });
+    function applyRelayAllyHit(projectile, target, owner) {
+        if (!projectile?.isRelayOrb || !target || !owner || target === owner || !areAlliedEntities(owner, target)) return false;
+        projectile.hitIds = projectile.hitIds || {};
+        if (projectile.hitIds[target.id]) return false;
+        projectile.hitIds[target.id] = true;
+      const amount = projectile.relayShieldAmount || 1750;
+      const cap = projectile.relayShieldCap || 7500;
+        grantRelayShield(owner, amount, cap);
+        grantRelayShield(target, amount, cap);
+        if (projectile.relayHyperAttachie) {
+            target.relaySignalSpeedUntil = Math.max(target.relaySignalSpeedUntil || 0, performance.now() + 1500);
+            owner.relaySignalSpeedUntil = Math.max(owner.relaySignalSpeedUntil || 0, performance.now() + 1500);
+        }
+        spawnFloatingText(owner.x, owner.y - 34, `+${Math.round(amount)} SHIELD`, '#67e8ff');
+        spawnFloatingText(target.x, target.y - 34, `+${Math.round(amount)} SHIELD`, '#67e8ff');
+        return true;
+    }
+    const allBrawlers = ['outlit', 'fuser', 'echo', 'cheseypuff', 'decayer', 'unopcoloco', 'dashaholic', 'trapper', 'classy', 'hyperorigin', 'heater_miser', 'minigunnin', 'steamer', 'bowlin_rida', 'money_and_tax', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'goonbob', 'tempo_maker', 'overlord', 'copyphase', 'fightnfire', 'beast', 'amplifier', 'skeleflying', 'crystila', 'hope', 'evil_doctor', 'splitter', 'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse', 'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay', 'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber'];
+    // Emergency balance hold: preserve Jetpack's implementation and ownership,
+    // but prevent selection, matchmaking, bot rolls, and reward rolls.
+    const disabledBrawlers = new Set(['robber']);
     const favoriteBrawlersKey = 'brawl_arena_favorites';
     let favoriteBrawlers = new Set(safeJsonParse(localStorage.getItem(favoriteBrawlersKey) || '[]', []));
         const SOUL_UNLOCK_COST_BY_RARITY = {
@@ -1738,7 +1852,14 @@
             xray: 'Legendary',
             angel: 'Legendary',
             demon: 'Legendary',
-            warrior: 'Mythic'
+            warrior: 'Mythic',
+            relay: 'Legendary',
+            upiedown: 'Mythic',
+            chickpig: 'Legendary',
+            jetpack: 'Mythic',
+            snapper: 'Mythic',
+            robber: 'Legendary',
+            fuser: 'Common'
         };
         let brawlerSortMode = localStorage.getItem('brawl_arena_brawler_sort') || 'rarity-desc';
 
@@ -1788,15 +1909,13 @@
             if (playerData.souls == null) playerData.souls = 0;
             playerData.souls = Math.max(0, Math.floor(playerData.souls || 0));
             if (!playerData.unlockedBrawlers || typeof playerData.unlockedBrawlers !== 'object') {
-                playerData.unlockedBrawlers = { outlit: true };
+                playerData.unlockedBrawlers = { outlit: true, fuser: true };
             }
             for (const bid of allBrawlers) {
                 playerData.unlockedBrawlers[bid] = !!playerData.unlockedBrawlers[bid];
             }
             playerData.unlockedBrawlers.outlit = true;
-            playerData.unlockedBrawlers.paradox = true;
-            playerData.unlockedBrawlers.sera_eclipse = true;
-            playerData.unlockedBrawlers.boom_arang = true;
+            playerData.unlockedBrawlers.fuser = true;
             if (!playerData.soulSummoner || typeof playerData.soulSummoner !== 'object') {
                 playerData.soulSummoner = {};
             }
@@ -2164,7 +2283,7 @@
             superEffect: { type: 'legoHealing', color: '#ff6b6b', glow: true },
             isAlwaysAvailable: true
         },
-        'molten-rock-chaird': {
+'molten-rock-chaird': {
             id: 'molten-rock-chaird',
             name: 'Molten Rock Chaird',
             brawler: 'chaird',
@@ -2699,6 +2818,39 @@
           { id: 'daily_super_1', kind: 'perform_supers', title: 'Use 6 Supers', desc: 'Charge and fire your super 6 times.', target: 6, rewards: { coins: 120, gems: 1 } },
           { id: 'daily_gadget_1', kind: 'use_gadget', title: 'Use 4 Gadgets', desc: 'Activate your gadget 4 times.', target: 4, rewards: { coins: 110 } }
       ];
+      const DAILY_CONTRACT_POOL = [
+          { kind:'play_match', title:'Clock In', desc:'Finish matches.', targets:[2,3,4] },
+          { kind:'deal_damage', title:'Damage Shift', desc:'Deal damage.', targets:[18000,25000,35000] },
+          { kind:'defeat_enemies', title:'Cleanup Crew', desc:'Defeat enemies.', targets:[8,12,16] },
+          { kind:'perform_supers', title:'Supercharged Shift', desc:'Use Supers.', targets:[5,7,9] },
+          { kind:'use_gadget', title:'Tool Check', desc:'Use Gadgets.', targets:[3,5,7] },
+          { kind:'collect_cubes', title:'Cube Delivery', desc:'Collect power cubes.', targets:[8,12,16] }
+      ];
+      const WEEKLY_CONTRACT_POOL = [
+          { kind:'win_match', title:'Winning Contract', desc:'Win matches.', targets:[8,10,12] },
+          { kind:'play_match', title:'Arena Regular', desc:'Finish matches.', targets:[18,22,28] },
+          { kind:'deal_damage', title:'Heavy Industry', desc:'Deal damage.', targets:[120000,175000,240000] },
+          { kind:'defeat_enemies', title:'Enemy Removal', desc:'Defeat enemies.', targets:[40,55,70] },
+          { kind:'perform_supers', title:'Super Factory', desc:'Use Supers.', targets:[25,35,45] },
+          { kind:'use_gadget', title:'Gadget Engineer', desc:'Use Gadgets.', targets:[18,24,30] }
+      ];
+
+      function seededQuestNumber(key) {
+          return key.split('').reduce((n, ch) => ((n * 31) + ch.charCodeAt(0)) >>> 0, 2166136261);
+      }
+
+      function buildRandomContractBucket(pool, count, key, prefix, weekly=false) {
+          const copy = pool.slice();
+          let seed = seededQuestNumber(key + prefix);
+          for (let i=copy.length-1;i>0;i--) { seed=(seed*1664525+1013904223)>>>0; const j=seed%(i+1); [copy[i],copy[j]]=[copy[j],copy[i]]; }
+          const defs = copy.slice(0,count).map((base,index) => {
+              seed=(seed*1664525+1013904223)>>>0;
+              const target=base.targets[seed%base.targets.length];
+              return { id:`${prefix}_${index}_${base.kind}`, kind:base.kind, title:base.title, desc:`${base.desc} Goal: ${target.toLocaleString()}.`, target,
+                  rewards: weekly ? { coins:500+index*150, souls:35+index*10, questXP:35 } : { coins:150+index*40, questXP:20 } };
+          });
+          return buildQuestBucket(defs);
+      }
       const WEEKLY_QUESTS = [
           { id: 'weekly_stage_1', stage: 1, kind: 'play_match', title: 'Summer Warmup', desc: 'Play 5 matches.', target: 5, rewards: { coins: 250, souls: 10 } },
           { id: 'weekly_stage_2', stage: 2, kind: 'collect_soda', title: 'Summer Sipper', desc: 'Collect 20 Soda Cups in Summer Sips mode.', target: 20, rewards: { coins: 300, souls: 15 } },
@@ -2725,6 +2877,42 @@
           { id: 'limited_play_3', kind: 'play_match', title: 'Warmup Sprint', desc: 'Play 3 matches in any mode.', target: 3, rewards: { coins: 650, souls: 45 } },
           { id: 'limited_damage_1', kind: 'deal_damage', title: 'Damage Storm', desc: 'Deal 120,000 total damage.', target: 120000, rewards: { coins: 1400, souls: 90, superTappers: 1 } }
       ];
+      const MEGA_QUESTS = [
+          { id:'mega_damage', kind:'deal_damage', title:'MEGA Damage', desc:'Deal 250,000 damage this week.', target:250000, rewards:{ coins:1800, souls:120, superTappers:1, questXP:75 } },
+          { id:'mega_kos', kind:'defeat_enemies', title:'MEGA Takedowns', desc:'Defeat 75 enemies this week.', target:75, rewards:{ coins:1500, gems:8, souls:100, questXP:75 } },
+          { id:'mega_wins', kind:'win_match', title:'MEGA Champion', desc:'Win 15 matches this week.', target:15, rewards:{ coins:2500, souls:180, hyperTappers:1, questXP:100 } }
+      ];
+      const SNAPPER_JOURNEY_QUESTS = [
+          { id:'snapper_01', stage:1, kind:'play_match', title:'First Exposure', desc:'Play 5 matches.', target:5, rewards:{coins:750,gems:5} },
+          { id:'snapper_02', stage:2, kind:'deal_damage', title:'Focus the Lens', desc:'Deal 50,000 damage.', target:50000, rewards:{coins:750,gems:5} },
+          { id:'snapper_03', stage:3, kind:'defeat_enemies', title:'Target Practice', desc:'Defeat 15 enemies.', target:15, rewards:{coins:750,gems:5} },
+          { id:'snapper_04', stage:4, kind:'perform_supers', title:'Power Flash', desc:'Use 10 Supers.', target:10, rewards:{coins:750,gems:5} },
+          { id:'snapper_05', stage:5, kind:'win_match', title:'Perfect Picture', desc:'Win 3 matches.', target:3, rewards:{coins:750,gems:5} },
+          { id:'snapper_06', stage:6, kind:'use_gadget', title:'Equipment Check', desc:'Use 8 Gadgets.', target:8, rewards:{coins:750,gems:10} },
+          { id:'snapper_07', stage:7, kind:'play_match', title:'Long Session', desc:'Play 15 matches.', target:15, rewards:{coins:750,gems:10} },
+          { id:'snapper_08', stage:8, kind:'deal_damage', title:'High Exposure', desc:'Deal 200,000 damage.', target:200000, rewards:{coins:750,gems:10} },
+          { id:'snapper_09', stage:9, kind:'defeat_enemies', title:'Marked Targets', desc:'Defeat 50 enemies.', target:50, rewards:{coins:750,gems:10} },
+          { id:'snapper_10', stage:10, kind:'win_match', title:'Meet Snapper', desc:'Win 10 matches to recruit Snapper.', target:10, rewards:{coins:750,gems:10,brawlerUnlock:'snapper'} }
+      ];
+
+      function chooseBrawlerQuestTarget() {
+          const locked = allBrawlers.filter(id => !disabledBrawlers.has(id) && !playerData.unlockedBrawlers?.[id]);
+          if (!locked.length) return null;
+          const seed = getLocalWeekKey().split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+          return locked[seed % locked.length];
+      }
+
+      function buildBrawlerQuest() {
+          const targetBrawler = chooseBrawlerQuestTarget();
+          if (!targetBrawler) return {};
+          const name = brawlerData[targetBrawler]?.name || targetBrawler;
+          return buildQuestBucket([
+              { id:`hunt_${targetBrawler}_wins`, kind:'win_match', title:`${name} Hunt: Victories`, target:12, desc:'Win 12 matches in any mode.', targetBrawler, rewards:{ coins:700, questXP:45 } },
+              { id:`hunt_${targetBrawler}_damage`, kind:'deal_damage', title:`${name} Hunt: Power`, target:300000, desc:'Deal 300,000 total damage.', targetBrawler, rewards:{ souls:80, questXP:45 } },
+              { id:`hunt_${targetBrawler}_kos`, kind:'defeat_enemies', title:`${name} Hunt: Takedowns`, target:60, desc:'Defeat 60 enemies.', targetBrawler, rewards:{ superTappers:1, questXP:45 } },
+              { id:`hunt_${targetBrawler}_final`, kind:'brawler_contract', title:`Recruit ${name}`, target:1, desc:'Complete all three Hunt objectives.', targetBrawler, finalContract:true, rewards:{ coins:1250, souls:100, brawlerUnlock:targetBrawler } }
+          ]);
+      }
 
       function getLocalDayKey(ts = Date.now()) {
           return new Date(ts).toDateString();
@@ -2753,7 +2941,9 @@
               progress: 0,
               completed: false,
               claimed: false,
-              rewards: Object.assign({}, def.rewards)
+              rewards: Object.assign({}, def.rewards),
+              targetBrawler: def.targetBrawler || null,
+              finalContract: !!def.finalContract
           };
       }
 
@@ -2804,10 +2994,16 @@
                   schemaVersion: DAILY_WEEKLY_QUEST_SCHEMA_VERSION,
                   dailyKey: getLocalDayKey(),
                   weeklyKey: getLocalWeekKey(),
-                  daily: buildQuestBucket(DAILY_QUESTS),
-                  weekly: buildQuestBucket(WEEKLY_QUESTS),
+                  daily: buildRandomContractBucket(DAILY_CONTRACT_POOL, 3, getLocalDayKey(), 'daily'),
+                  weekly: buildRandomContractBucket(WEEKLY_CONTRACT_POOL, 4, getLocalWeekKey(), 'weekly', true),
                   starter: buildQuestBucket(SOUL_STARTER_QUESTS),
                   limited: buildQuestBucket(LIMITED_QUESTS),
+                  mega: buildQuestBucket(MEGA_QUESTS),
+                  brawler: buildBrawlerQuest(),
+                  snapperJourney: buildQuestBucket(SNAPPER_JOURNEY_QUESTS),
+                  megaKey: getLocalWeekKey(),
+                  questXP: 0,
+                  questLevel: 0,
                   limitedMeta: createLimitedQuestMeta()
               };
               return;
@@ -2816,6 +3012,12 @@
           if (!playerData.questBoard.weekly) playerData.questBoard.weekly = buildQuestBucket(WEEKLY_QUESTS);
           if (!playerData.questBoard.starter) playerData.questBoard.starter = buildQuestBucket(SOUL_STARTER_QUESTS);
           if (!playerData.questBoard.limited) playerData.questBoard.limited = buildQuestBucket(LIMITED_QUESTS);
+          if (!playerData.questBoard.mega) playerData.questBoard.mega = buildQuestBucket(MEGA_QUESTS);
+          if (!playerData.questBoard.brawler) playerData.questBoard.brawler = buildBrawlerQuest();
+          if (!playerData.questBoard.snapperJourney) playerData.questBoard.snapperJourney = buildQuestBucket(SNAPPER_JOURNEY_QUESTS);
+          if (!playerData.questBoard.megaKey) playerData.questBoard.megaKey = getLocalWeekKey();
+          if (!Number.isFinite(playerData.questBoard.questXP)) playerData.questBoard.questXP = 0;
+          if (!Number.isFinite(playerData.questBoard.questLevel)) playerData.questBoard.questLevel = 0;
           if (!playerData.questBoard.limitedMeta || playerData.questBoard.limitedMeta.eventId !== LIMITED_QUEST_EVENT_ID) {
               playerData.questBoard.limitedMeta = createLimitedQuestMeta();
           }
@@ -2828,12 +3030,20 @@
           const nowWeek = getLocalWeekKey();
           if (playerData.questBoard.dailyKey !== nowDay) {
               playerData.questBoard.dailyKey = nowDay;
-              playerData.questBoard.daily = buildQuestBucket(DAILY_QUESTS);
+              playerData.questBoard.daily = buildRandomContractBucket(DAILY_CONTRACT_POOL, 3, nowDay, 'daily');
           }
           if (playerData.questBoard.weeklyKey !== nowWeek) {
               playerData.questBoard.weeklyKey = nowWeek;
-              playerData.questBoard.weekly = buildQuestBucket(WEEKLY_QUESTS);
+              playerData.questBoard.weekly = buildRandomContractBucket(WEEKLY_CONTRACT_POOL, 4, nowWeek, 'weekly', true);
           }
+          if (playerData.questBoard.megaKey !== nowWeek) {
+              playerData.questBoard.megaKey = nowWeek;
+              playerData.questBoard.mega = buildQuestBucket(MEGA_QUESTS);
+              const target = Object.values(playerData.questBoard.brawler || {}).find(q => q.finalContract)?.rewards?.brawlerUnlock;
+              if (!target || playerData.unlockedBrawlers?.[target]) playerData.questBoard.brawler = buildBrawlerQuest();
+          }
+          const activeHuntTarget = Object.values(playerData.questBoard.brawler || {}).find(q => q.finalContract)?.rewards?.brawlerUnlock;
+          if (activeHuntTarget && playerData.unlockedBrawlers?.[activeHuntTarget]) playerData.questBoard.brawler = buildBrawlerQuest();
           if (!isLimitedQuestActive()) {
               playerData.questBoard.limitedMeta = createLimitedQuestMeta();
               playerData.questBoard.limited = buildQuestBucket(LIMITED_QUESTS);
@@ -2902,8 +3112,11 @@
                   const weeklyReady = getQuestProgressCount(playerData.questBoard.weekly);
                   const starterReady = getQuestProgressCount(playerData.questBoard.starter);
                   const limitedReady = isLimitedQuestActive() ? getQuestProgressCount(playerData.questBoard.limited) : 0;
+                  const megaReady = getQuestProgressCount(playerData.questBoard.mega);
+                  const brawlerReady = getQuestProgressCount(playerData.questBoard.brawler);
+                  const snapperReady = getQuestProgressCount(playerData.questBoard.snapperJourney);
                   const seasonReady = getClaimableSeasonRewardCount();
-                  el.textContent = String(dailyReady + weeklyReady + starterReady + limitedReady + seasonReady);
+                  el.textContent = String(dailyReady + weeklyReady + starterReady + limitedReady + megaReady + brawlerReady + snapperReady + seasonReady);
               }
           } catch (e) {}
       }
@@ -2978,6 +3191,46 @@
           return changed;
       }
 
+      function addMegaAndBrawlerQuestProgress(questKey, amount = 1) {
+          if (!ENABLE_DAILY_WEEKLY_QUESTS) return false;
+          refreshDailyWeeklyQuests();
+          const kind = normalizeQuestKey(questKey);
+          let changed = false;
+          for (const quest of Object.values(playerData.questBoard.mega || {})) {
+              if (!quest.completed && quest.kind === kind) {
+                  quest.progress = Math.min(quest.target, (quest.progress || 0) + amount);
+                  quest.completed = quest.progress >= quest.target;
+                  changed = true;
+              }
+          }
+          const brawlerQuests = Object.values(playerData.questBoard.brawler || {});
+          for (const quest of brawlerQuests) {
+              const target = quest.targetBrawler;
+              if (!quest.finalContract && !quest.completed && quest.kind === kind && target && !playerData.unlockedBrawlers?.[target]) {
+                  quest.progress = Math.min(quest.target, (quest.progress || 0) + amount);
+                  quest.completed = quest.progress >= quest.target;
+                  changed = true;
+              }
+          }
+          const objectives = brawlerQuests.filter(q => !q.finalContract);
+          const finalQuest = brawlerQuests.find(q => q.finalContract);
+          if (finalQuest && objectives.length && objectives.every(q => q.completed) && !finalQuest.completed) {
+              finalQuest.progress = 1;
+              finalQuest.completed = true;
+              changed = true;
+          }
+          const snapperBucket = playerData.questBoard.snapperJourney || {};
+          for (const quest of Object.values(snapperBucket)) {
+              if (!quest.completed && quest.kind === kind && isQuestStageUnlocked('snapperJourney', snapperBucket, quest)) {
+                  quest.progress = Math.min(quest.target, (quest.progress || 0) + amount);
+                  quest.completed = quest.progress >= quest.target;
+                  changed = true;
+              }
+          }
+          if (changed) { saveProgress(); updateQuestBadge(); }
+          return changed;
+      }
+
       function claimQuestReward(bucketName, questId) {
           if (!ENABLE_DAILY_WEEKLY_QUESTS) return false;
           refreshDailyWeeklyQuests();
@@ -2991,7 +3244,12 @@
           if (rewards.tappers) playerData.starrDrops = (playerData.starrDrops || 0) + rewards.tappers;
           if (rewards.superTappers) playerData.superTapperCount = (playerData.superTapperCount || 0) + rewards.superTappers;
           if (rewards.hyperTappers) playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + rewards.hyperTappers;
+          if (rewards.brawlerUnlock && !playerData.unlockedBrawlers[rewards.brawlerUnlock]) {
+              playerData.unlockedBrawlers[rewards.brawlerUnlock] = true;
+              spawnFloatingText(innerWidth / 2, 120, `${brawlerData[rewards.brawlerUnlock]?.name || rewards.brawlerUnlock} UNLOCKED!`, '#ffd166');
+          }
           quest.claimed = true;
+          if (bucketName === 'brawler' && rewards.brawlerUnlock) playerData.questBoard.brawler = buildBrawlerQuest();
           saveProgress();
           updateQuestBadge();
           return true;
@@ -3027,7 +3285,7 @@
           top.style.justifyContent = 'space-between';
           top.style.alignItems = 'center';
           const title = document.createElement('h1');
-          title.textContent = 'Quest Hub';
+          title.textContent = 'Contract Board';
           title.style.margin = '0';
           title.style.fontSize = '28px';
           title.style.color = '#8fd8ff';
@@ -3073,95 +3331,25 @@
                   const row = document.createElement('div');
                   const questUnlocked = isQuestStageUnlocked(bucketName, bucket, quest);
                   const showInProgressLabel = bucketName === 'weekly' && typeof quest.stage === 'number';
-                  const actionText = quest.claimed
-                      ? 'Claimed'
-                      : (quest.completed ? 'Claim' : (showInProgressLabel ? (questUnlocked ? 'In Progress' : 'Locked') : 'Locked'));
+                  const actionText = quest.claimed ? 'Claimed' : (quest.completed ? 'Claim' : (showInProgressLabel ? (questUnlocked ? 'In Progress' : 'Locked') : 'Locked'));
+                  const claimable = quest.completed && !quest.claimed;
+                  const rewardClaimed = !!quest.claimed;
+                  const done = !!quest.completed;
+                  const pct = Math.max(0, Math.min(100, Math.round(((quest.progress || 0) / Math.max(1, quest.target)) * 100)));
+                  const rewardParts = [];
+                  if (quest.rewards?.coins) rewardParts.push(`${quest.rewards.coins} Coins`);
+                  if (quest.rewards?.gems) rewardParts.push(`${quest.rewards.gems} Gems`);
+                  if (quest.rewards?.souls) rewardParts.push(`${quest.rewards.souls} Souls`);
+                  if (quest.rewards?.tappers) rewardParts.push(`${quest.rewards.tappers} Tapper Upper`);
+                  if (quest.rewards?.superTappers) rewardParts.push(`${quest.rewards.superTappers} Super Tapper`);
+                  if (quest.rewards?.hyperTappers) rewardParts.push(`${quest.rewards.hyperTappers} Hyper Tapper`);
+                  if (quest.rewards?.questXP) rewardParts.push(`${quest.rewards.questXP} Quest XP`);
+                  if (quest.rewards?.brawlerUnlock) rewardParts.push(`Unlock ${brawlerData[quest.rewards.brawlerUnlock]?.name || quest.rewards.brawlerUnlock}`);
+                  const reward = rewardParts.join(' / ') || 'None';
                   row.style.marginTop = '10px';
                   row.style.padding = '10px';
                   row.style.borderRadius = '10px';
-                  row.style.border = quest.claimed ? '1px solid #4e6c85' : (quest.completed ? '1px solid #58e4b6' : (questUnlocked ? '1px solid #27405b' : '1px solid #1e2f44'));
-                  row.style.background = quest.claimed ? 'rgba(54,75,95,0.25)' : (quest.completed ? 'rgba(88,228,182,0.08)' : (questUnlocked ? 'rgba(20,34,52,0.52)' : 'rgba(12,20,32,0.5)'));
-                  const pct = Math.max(0, Math.min(100, Math.round(((quest.progress || 0) / Math.max(1, quest.target)) * 100)));
-                  const reward = [];
-                  if (quest.rewards?.coins) reward.push(`${quest.rewards.coins} Coins`);
-                  if (quest.rewards?.gems) reward.push(`${quest.rewards.gems} Gems`);
-                  if (quest.rewards?.souls) reward.push(`${quest.rewards.souls} Souls`);
-                  if (quest.rewards?.tappers) reward.push(`${quest.rewards.tappers} Tapper Upper`);
-                  row.innerHTML = `
-                      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-                          <div>
-                              <div style="font-weight:800;color:#d7ecff;">${typeof quest.stage === 'number' ? `Stage ${quest.stage} • ` : ''}${quest.title}</div>
-                              <div style="font-size:12px;color:#89a9c7;margin-top:2px;">${quest.desc}</div>
-                              <div style="font-size:11px;color:#ffda8f;margin-top:4px;">Reward: ${reward.join(' • ') || 'None'}</div>
-                          </div>
-                          <button style="padding:7px 10px;border:none;border-radius:8px;font-weight:800;cursor:${quest.completed && !quest.claimed ? 'pointer' : 'default'};background:${quest.claimed ? '#5f6f82' : (quest.completed ? '#58e4b6' : (questUnlocked ? '#2e4258' : '#1f2f42'))};color:#07111d;">${actionText}</button>
-                      </div>
-                      <div style="margin-top:8px;height:7px;background:#0b192b;border-radius:999px;overflow:hidden;">
-                          <div style="height:100%;width:${pct}%;background:${quest.completed ? '#58e4b6' : '#5ec4ff'};"></div>
-                      </div>
-                      <div style="margin-top:4px;font-size:11px;color:#c1d8ee;">${quest.progress || 0}/${quest.target}</div>
-                  `;
-                  const claimButton = row.querySelector('button');
-                  claimButton.onclick = () => {
-                      if (claimQuestReward(bucketName, quest.id)) {
-                          document.body.removeChild(overlay);
-                          openQuestBoard();
-                      }
-                  };
-                  column.appendChild(row);
-              }
-              return column;
-          }
-
-          function createCoreView() {
-              const body = document.createElement('div');
-              body.style.display = 'grid';
-              body.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
-              body.style.gap = '14px';
-              body.style.overflowY = 'auto';
-              body.style.paddingRight = '4px';
-              body.style.height = '100%';
-              body.appendChild(createColumn('Daily Quests', `Resets: ${playerData.questBoard.dailyKey}`, 'daily'));
-              body.appendChild(createColumn('Weekly Quests', `Resets: ${playerData.questBoard.weeklyKey} • Stage ${getActiveWeeklyStage()}/${WEEKLY_STAGE_COUNT}`, 'weekly'));
-              body.appendChild(createColumn('Soul Starter', 'One-time • up to 200 free Souls', 'starter'));
-              return body;
-          }
-
-          function createLimitedView() {
-              const bucket = playerData.questBoard.limited || {};
-              const body = document.createElement('div');
-              body.style.height = '100%';
-              body.style.overflowY = 'auto';
-              body.style.paddingRight = '4px';
-
-              const info = document.createElement('div');
-              info.style.marginBottom = '12px';
-              info.style.padding = '12px';
-              info.style.borderRadius = '10px';
-              info.style.border = '1px solid #5e46aa';
-              info.style.background = 'linear-gradient(180deg, rgba(33,22,58,0.85), rgba(17,12,32,0.85))';
-              info.innerHTML = `
-                  <div style="font-size:18px;font-weight:900;color:#d5c7ff;">Limited Ranked Rush</div>
-                  <div style="font-size:12px;color:#b7a9e7;margin-top:2px;">These quests are independent and can be completed in any order.</div>
-                  <div style="font-size:12px;color:#ffd27a;margin-top:6px;">${formatLimitedQuestTimeLeft()}</div>
-              `;
-              body.appendChild(info);
-
-              const orderedQuests = Object.values(bucket);
-              for (const quest of orderedQuests) {
-                  const row = document.createElement('div');
-                  const active = isLimitedQuestActive();
-                  const rewardClaimed = !!quest.claimed;
-                  const done = !!quest.completed;
-                  const claimable = active && done && !rewardClaimed;
-                  const pct = Math.max(0, Math.min(100, Math.round(((quest.progress || 0) / Math.max(1, quest.target)) * 100)));
-                  const reward = questRewardText(quest.rewards);
-                  const actionText = rewardClaimed ? 'Claimed' : (claimable ? 'Claim' : (active ? 'In Progress' : 'Expired'));
-
-                  row.style.marginBottom = '10px';
-                  row.style.padding = '12px';
-                  row.style.borderRadius = '10px';
-                  row.style.border = rewardClaimed ? '1px solid #4e6c85' : (done ? '1px solid #58e4b6' : '1px solid #5e46aa');
+                  row.style.border = rewardClaimed ? '1px solid #4e6c85' : (done ? '1px solid #58e4b6' : '1px solid #27405b');
                   row.style.background = rewardClaimed ? 'rgba(54,75,95,0.25)' : (done ? 'rgba(88,228,182,0.08)' : 'rgba(30,20,54,0.45)');
                   row.innerHTML = `
                       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
@@ -3180,13 +3368,59 @@
                   const claimButton = row.querySelector('button');
                   claimButton.onclick = () => {
                       if (!claimable) return;
-                      if (claimQuestReward('limited', quest.id)) {
-                          document.body.removeChild(overlay);
-                          openQuestBoard();
+                      if (claimQuestReward(bucketName, quest.id)) {
+                          const tab = bucketName === 'limited' ? 'limited' : ((bucketName === 'mega' || bucketName === 'brawler') ? 'mega' : (bucketName === 'snapperJourney' ? 'snapper' : 'core'));
+                          setActiveTab(tab);
+                          refreshHomeUI();
                       }
                   };
-                  body.appendChild(row);
+                  column.appendChild(row);
               }
+              return column;
+          }
+
+          function createCoreView() {
+              const body = document.createElement('div');
+              body.style.display = 'grid';
+              body.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
+              body.style.gap = '14px';
+              body.style.overflowY = 'auto';
+              body.style.height = '100%';
+              body.appendChild(createColumn('Daily Quests', 'Daily rewards', 'daily'));
+              body.appendChild(createColumn('Weekly Quests', 'Weekly staged rewards', 'weekly'));
+              body.appendChild(createColumn('Soul Starter', 'One-time rewards', 'starter'));
+              return body;
+          }
+
+          function createLimitedView() {
+              const body = document.createElement('div');
+              body.style.height = '100%';
+              body.style.overflowY = 'auto';
+              body.appendChild(createColumn('Limited Quests', 'Limited-time event rewards', 'limited'));
+              return body;
+          }
+
+          function createMegaView() {
+              const body = document.createElement('div');
+              body.style.display = 'grid';
+              body.style.gridTemplateColumns = '1.5fr 1fr';
+              body.style.gap = '14px';
+              body.style.height = '100%';
+              body.style.overflowY = 'auto';
+              body.appendChild(createColumn('MEGA QUESTS', 'Huge weekly goals with huge rewards', 'mega'));
+              body.appendChild(createColumn('BRAWLER QUEST', 'Complete it to unlock the featured brawler', 'brawler'));
+              return body;
+          }
+
+          function createSnapperView() {
+              const body = document.createElement('div');
+              body.style.height = '100%';
+              body.style.overflowY = 'auto';
+              const banner = document.createElement('div');
+              banner.style.cssText = 'margin-bottom:12px;padding:14px;border:2px solid #55e6ff;border-radius:12px;background:linear-gradient(90deg,#102a3c,#251536);color:#e9fbff;';
+              banner.innerHTML = '<div style="font-size:20px;font-weight:1000;color:#75efff">SNAPPER JOURNEY</div><div style="font-size:12px;margin-top:4px">10 stages - 7,500 Coins - 75 Gems - Snapper unlocked free at Stage 10.</div>';
+              body.appendChild(banner);
+              body.appendChild(createColumn('Snapper Journey', 'Complete each stage to reveal the next', 'snapperJourney'));
               return body;
           }
 
@@ -3281,8 +3515,8 @@
                   claimBtn.onclick = () => {
                       if (!done || rewardClaimed) return;
                       if (claimSeasonQuestReward(quest.id)) {
-                          document.body.removeChild(overlay);
-                          openQuestBoard();
+                          setActiveTab('season');
+                          refreshHomeUI();
                       }
                   };
                   questCard.appendChild(claimBtn);
@@ -3337,8 +3571,8 @@
                   gemBtn.style.background = (playerData.gems || 0) >= SEASON_PREMIUM_UNLOCK_GEMS ? '#ffb15a' : '#596b7f';
                   gemBtn.onclick = () => {
                       if (unlockSeasonPremium('gems')) {
-                          document.body.removeChild(overlay);
-                          openQuestBoard();
+                          setActiveTab('season');
+                          refreshHomeUI();
                       }
                   };
                   const coinBtn = document.createElement('button');
@@ -3352,8 +3586,8 @@
                   coinBtn.style.background = (playerData.coins || 0) >= SEASON_PREMIUM_UNLOCK_COINS ? '#58e4b6' : '#596b7f';
                   coinBtn.onclick = () => {
                       if (unlockSeasonPremium('coins')) {
-                          document.body.removeChild(overlay);
-                          openQuestBoard();
+                          setActiveTab('season');
+                          refreshHomeUI();
                       }
                   };
                   actions.appendChild(gemBtn);
@@ -3398,8 +3632,8 @@
                   freeBtn.onclick = () => {
                       if (!tierUnlocked || freeDone) return;
                       if (claimSeasonPassTrackReward(tier.tier, 'free')) {
-                          document.body.removeChild(overlay);
-                          openQuestBoard();
+                          setActiveTab('season');
+                          refreshHomeUI();
                       }
                   };
                   freeCard.appendChild(freeBtn);
@@ -3434,8 +3668,8 @@
                   premiumBtn.onclick = () => {
                       if (!pass.premiumUnlocked || !tierUnlocked || premiumDone) return;
                       if (claimSeasonPassTrackReward(tier.tier, 'premium')) {
-                          document.body.removeChild(overlay);
-                          openQuestBoard();
+                          setActiveTab('season');
+                          refreshHomeUI();
                       }
                   };
                   premiumCard.appendChild(premiumBtn);
@@ -3455,6 +3689,8 @@
           const views = {
               core: createCoreView,
               limited: createLimitedView,
+              mega: createMegaView,
+              snapper: createSnapperView,
               season: createSeasonView
           };
 
@@ -3482,12 +3718,20 @@
               tabRow.appendChild(btn);
           }
 
-          makeTab('core', 'Daily + Weekly + Starter');
+          makeTab('core', 'Random Contracts');
           makeTab('limited', 'Limited-Time Quests');
+          makeTab('mega', 'MEGA + Brawler Quest');
+          makeTab('snapper', 'Snapper Journey');
           if (ENABLE_SEASON_QUESTS) makeTab('season', 'Season Quests');
           setActiveTab('core');
 
           panel.appendChild(top);
+          const questXP = playerData.questBoard.questXP || 0;
+          const questLevel = playerData.questBoard.questLevel || 0;
+          const xpBar = document.createElement('div');
+          xpBar.style.cssText = 'padding:10px 12px;border:1px solid #5ec4ff;border-radius:10px;background:#0a1c30;color:#d7ecff;font-weight:800;';
+          xpBar.innerHTML = `<div style="display:flex;justify-content:space-between"><span>Contract Level ${questLevel}</span><span>${questXP % 100}/100 XP</span></div><div style="height:7px;margin-top:7px;border-radius:99px;background:#07111d;overflow:hidden"><div style="height:100%;width:${questXP % 100}%;background:linear-gradient(90deg,#5ec4ff,#b089ff)"></div></div><div style="font-size:11px;color:#9fc7e8;margin-top:5px">Every level: +1 Tapper. Every 5 levels: +1 Super Tapper.</div>`;
+          panel.appendChild(xpBar);
           panel.appendChild(tabRow);
           panel.appendChild(content);
           overlay.appendChild(panel);
@@ -3529,6 +3773,14 @@
       }
 
     const brawlerData = {
+      'fuser': { name:'Fuser', role:'Damage Dealer', desc:'Outlit\'s evil twin fires a deliberate eight-round burst down two parallel firing lanes.', color:'#ff4d6d', attack:'Eight-Fuse Salvo', attackDesc:'Fires 8 small bullets in alternating parallel left and right lanes. There are no center shots and no cone spread.', super:'Wall-Fuser Barrage', superDesc:'Fires 8 piercing bullets that break through walls.', hyper:'Return to Sender: Super bullets return. Main attack fires 75% faster with its two lanes clamped closer together, but its bullets never return.', g1:'Crossed Wires (Next attack swaps the left/right firing order and deals +20% damage)', g2:'Spare Magazine (Instantly reload 2 ammo)', sp1:'Live Fuse (Straight bullets explode at maximum range)', sp2:'Family Grudge (+12% damage to nearby enemies)' },
+      'robber': { name:'Robber', role:'Skirmisher', desc:'A coin thief who snowballs every successful hit into a faster, larger stolen-coin barrage.', color:'#d9b44a', attack:'Stolen Fortune', attackDesc:'Starts with 1 row of coins. Every hit adds another row, up to 8; later rows travel faster.', super:'Grand Theft Ammo', superDesc:'Dash through an enemy and steal all of their ammo. Stealing 3 ammo expands Robber from 3 to as many as 6 ammo.', hyper:'Perfect Heist: Main attack always fires 9 rows. Super siphons 1 ammo per second for 3 seconds and can expand Robber to 9 ammo.', g1:'Smoke Bomb (Gain a 1600 shield after the next Super dash)', g2:'Counterfeit Stack (Instantly add 2 attack rows)', sp1:'Compound Interest (First hit adds 2 rows)', sp2:'Quick Hands (Stolen ammo reloads 25% faster)' },
+      'snapper': { name:'Snapper', role:'Controller / Marksman', desc:'A precision photographer who marks targets before unleashing a map-wide SNAP wave.', color:'#55e6ff', attack:'Perfect Picture', attackDesc:'Fire a medium-large, non-piercing orb for 1500 damage. It marks the enemy so Snapper\'s next hit deals 10% more damage.', super:'SNAP!', superDesc:'Release an expanding 360-degree wave with infinite range. It removes 30% of each enemy\'s current HP, but cannot defeat them by itself.', hyper:'Perfect Snap: marks amplify by 20%. SNAP removes 50% current HP, followed by a smaller wave removing 10%.', g1:'Double Exposure (Next orb gives 2 mark charges)', g2:'Camera Shy (Marked enemies cannot damage Snapper for 1.5s)', sp1:'Lasting Impression (Marks last 4s and empower every Snapper hit)', sp2:'Aftershock (SNAP slows; Hyper double-hit roots)' },
+      'jetpack': { name:'Jetpack', role:'Assassin / Artillery', desc:'A one-ammo aerial diver who charges huge jumps and carpet-bombs a locked flight path.', color:'#5fd9ff', attack:'Crash Landing', attackDesc:'Hold to charge one jump. Longer holds increase range, airtime, blast size and landing damage from 1500 up to 2700.', super:'I Drop Bombs', superDesc:'Lock an aimed landing point and fly there without steering, dropping 6 bombs in a triangular pattern along the route.', hyper:'Air Raid: Super bombs split into 3 mini-bombs. Hypercharged Crash Landing drops a 900-damage bomb at takeoff.', g1:'Emergency Thrusters (Cancel the current flight and land safely)', g2:'Fuel Dump (Drop a 1200-damage bomb beneath Jetpack)', sp1:'Soft Landing (Heal 1000 after hitting an enemy with Crash Landing)', sp2:'High Altitude (Maximum-charge jumps gain 15% blast radius)' },
+      'chickpig': { name:'Chickpig', role:'Controller / Summoner', desc:'A farmyard fighter serving poisonous eggs, rooting bacon, a rideable chicken and a ramming pig.', color:'#f2b35e', attack:'Breakfast Blast', attackDesc:'Fire cooked egg and bacon together. Egg poisons; bacon roots enemies for 0.6 seconds.', super:'Farmyard Rush', superDesc:'Ride a chicken for 40% extra speed for 5 seconds and summon a 4500 HP pig that repeatedly rams enemies.', hyper:'Breakfast Stampede: Eggs leave 2-second poison areas, bacon burns for 2 seconds, chicken grants 50% speed for 8 seconds, and the pig has 50% damage resistance while charging.', g1:'Sunny Side Up (Next egg heals 1200 on hit)', g2:'Grease Trap (Drop bacon grease that roots the next enemy)', sp1:'Thicker Bacon (Bacon root lasts 0.25s longer)', sp2:'Free Range (Chicken ride also grants 15% reload speed)' },
+      'chickpig_pig': { name:'Ramming Pig', role:'Summon', color:'#ef8d93' },
+      'upiedown': { name:'Upiedown', role:'Thrower / Controller', desc:'A pie-flinging baker who turns the entire arena upside down.', color:'#e69a63', attack:'Pie in the Sky', attackDesc:'Lob a larger 1700-damage pie. Its impact launches 4 mini pies outward; each explodes on contact or at maximum range.', super:'Upside-Down Pie', superDesc:'Flip the battlefield for 3 seconds. Enemies move 28% slower while Upiedown reloads 15% faster.', hyper:'Blueberry Breakdown: Main pies release 7 mini pies. The flipped arena becomes blueberry pie and poisons enemies for 5 seconds.', g1:'Fresh Filling (Next large pie heals Upiedown for 1200)', g2:'Pie Face (Burst nearby enemies back with a pie explosion)', sp1:'Second Slice (Mini-pie explosions are 20% larger)', sp2:'No Crust Left (Hitting all 4 mini pies restores 1 ammo)' },
+      'relay': { name:'Relay', role:'Support', desc:'A fragile shield engineer who reroutes incoming damage into a powerful linked device.', color:'#35d7e8', attack:'Shield Signal', attackDesc:'Fire a short-range orb for 1150 damage. Enemy hits grant Relay a 2000 shield; ally hits grant both Relay and that ally 2000 shield. Relay shields can reach 8500.', super:'Move My Damage', superDesc:'Deploy a 12000 HP Relay Device. While connected, 75% of damage aimed at Relay is moved into the device.', hyper:'Total Transfer: Shield Signal grants 2500 shield. The device has 18000 HP and takes 95% of Relay damage.', g1:'Emergency Transfer (Move up to 2000 of your shield into device HP)', g2:'Shared Connection (Nearest ally gains 50% damage transfer for 3s)', sp1:'Reinforced Signal (+25% device connection radius)', sp2:'Return to Sender (Destroyed device gives nearby allies 1500 shield)' },
       'warrior': { name:'Warrior', role:'Damage Dealer', desc:'A disciplined spear thrower who becomes a rapid-fire artillery fighter during Final Stand.', color:'#d9a441', attack:'Twin Spears', attackDesc:'Lobs 2 parallel spears over walls to an aimed landing area. Each spear deals 900 damage at Power 11.', super:'Final Stand', superDesc:'For 3 seconds, move 70% slower, reload 125% faster, and throw 3 spears per attack.', hyper:'Army of One: Final Stand throws 6 spears at 15% lower direct damage and only slows Warrior by 25%. Main attack landings explode for 280 area damage.', g1:'Spear Rain (Airborne spears land immediately with 20% less damage)', g2:'Battle Rush (Ignore Final Stand slow for 1.5s and reload 1 ammo)', sp1:'Perfect Formation (Two spears landing on one enemy deals 300 bonus damage)', sp2:'Hold the Line (20% damage reduction during Final Stand)' },
       'angel': { name:'Angel', role:'Support', desc:'A guardian support who lifts allies out of danger and denies lethal damage.', color:'#fff0a8', attack:'Guiding Light', attackDesc:'A light shot that damages and slows enemies, or heals and briefly lifts teammates.', super:'Second Life', superDesc:'Gain a 6-second blessing. Lethal damage leaves Angel at 1 HP, then fully heals her.', hyper:'Team Takeback: Second Life protects the whole team for 5 seconds. Guiding Light fires a rapid triple burst.', g1:'Guardian Swap (Give Second Life to the nearest teammate)', g2:'Emergency Landing (Land lifted allies, heal 1600 and grant speed)', sp1:'Blessed Flight (Lifted allies gain a 900 shield on landing)', sp2:'Final Judgment (Second Life activation damages and knocks back nearby enemies)' },
       'demon': { name:'Demon', role:'Assassin', desc:'A demonic blade assassin who recalls his weapon or glides to its landing point.', color:'#d44763', attack:'Hellblade', attackDesc:'Throw a blade. For 1 second after it lands, move toward it to glide and retrieve it; otherwise it recalls and damages again.', super:'Demonic Doom', superDesc:'Create three blade clones that hook up to three enemies and pull them toward Demon.', hyper:'Doom’s Embrace: Fire a second spectral blade. During Demonic Doom’s pull, Demon gains 60% damage reduction.', g1:'Blade Swap (Instantly teleport to the grounded blade)', g2:'Barbed Recall (Next recall slows and heals on hit)', sp1:'Cut Both Ways (Outgoing plus returning hit deals 700 bonus)', sp2:'Hellbound Landing (Gliding grants a 1400 shield)' },
@@ -3537,11 +3789,11 @@
       'beam': { name: 'Beam', role: 'Damage Dealer', desc: 'A continuous laser weapon that ramps up damage the longer it hits.', color: '#ffd700', attack: 'Focus Beam', attackDesc: 'Fires a continuous laser. Damage ramps up through 6 stages while firing.', super: 'The Golden Beam', superDesc: 'Turns the beam golden! Enemies hit are stunned for 0.9s.', hyper: 'Purple Ray of Roar: +23% range, faster ramp, last 25% ammo does +50% dmg.', g1: 'Prism Split (Wide 3-laser cone)', g2: 'Emergency Cooling (Consume 30% ammo to heal 2000 HP)', sp1: 'Thermal Resonance (25% shield at max ramp)', sp2: 'Overload Residue (Super leaves a burning trail)' },
       'outlit': { name: 'Outlit', role: 'Close-range', desc: 'Shotgun blast with strong point-blank damage.', color: '#ff9b42', attack: 'Scatter Pump', attackDesc: 'A compact shotgun blast with a tight spread and strong point-blank damage.', super: 'Boom Break', superDesc: 'Fires 2 heavy shells that destroy walls and crack open escape routes.', hyper: 'Super pierces, tighter & faster main attacks.', g1: 'Next Shot Pierce', g2: 'Healing Pod', sp1: 'Shell Chill (Slows)', sp2: 'Long Boom (+35% Super Range)' },
       'echo': { name: 'Echo', role: 'Controller', desc: 'Fires expanding sound rings that control the battlefield.', color: '#ccaaff', attack: 'Sound Wave', attackDesc: 'Shoots a ring that grows in size as it travels.', super: 'Resonance', superDesc: 'Unleashes massive sound waves that pierce through enemies.', hyper: 'Super sound rings expand twice for double hits.', g1: 'Amplify (Bigger ring, less dmg)', g2: 'Shielding (Take reduced damage)', sp1: 'Reverb Heal (Heal 334 HP on hit)', sp2: 'Double Wave (Super shoots backwards too)' },
-      'cheseypuff': { name: 'Cheseypuff', role: 'Marksman', desc: 'Long-range sniper that evolves projectiles.', color: '#ffdc78', attack: 'Cheese Ball', attackDesc: 'Fires a multi-stage projectile with 50% more range and 30% larger stages.', super: 'Cheese Aura', superDesc: 'Gains 30% damage reduction and damages nearby enemies over time.', hyper: 'Super lasts longer, 50% damage reduction, and trailing aura.', g1: 'Big Puff (Empowered shot)', g2: 'Cheese Trap (Slow field)', sp1: 'Sticky Cheese (Super drops fields)', sp2: 'Aged Cheese (Third attack stage)' },
-      'decayer': { name: 'Decayer', role: 'Controller', desc: 'Manipulates permanent shields and homing projectiles.', color:'#8a2be2', attack:'Decay Shot', attackDesc:'Fires a heavy shot that grants exactly 650 shield on hit. Decayer shields do not decay.', super:'Dark Orbit', superDesc:'Instantly grants a 2200 non-decaying shield.', hyper:'Dark Orbit grants 2600 shield and adds 6 orbiting shots.', g1:'Homing Shot', g2:'Sacrifice (Ammo for instant shield)', sp1:'Persistent Decay (Longer super effects)', sp2:'Long Shield (+20% shield from main attack)' },
+      'cheseypuff': { name: 'Cheseypuff', role: 'Marksman', desc: 'Long-range sniper that evolves projectiles.', color: '#ffdc78', attack: 'Cheese Ball', attackDesc: 'Fires a multi-stage projectile with 50% more range and 30% larger stages.', super: 'Cheese Aura', superDesc: 'Gains 30% damage reduction and damages nearby enemies over time.', hyper: 'Extra Aged: Cheese Ball no longer shrinks and its final stage bursts for 650 damage. Super lasts longer with 50% damage reduction and a trailing aura.', g1: 'Big Puff (Empowered shot)', g2: 'Cheese Trap (Slow field)', sp1: 'Sticky Cheese (Super drops fields)', sp2: 'Aged Cheese (Third attack stage)' },
+      'decayer': { name: 'Decayer', role: 'Controller', desc: 'Builds persistent numeric shields and controls space with homing projectiles.', color:'#8a2be2', attack:'Decay Shot', attackDesc:'Fires a heavy shot that grants exactly 650 shield on hit.', super:'Dark Orbit', superDesc:'Instantly grants a persistent 2200 shield.', hyper:'Dark Orbit grants 2600 shield and adds 6 orbiting shots.', g1:'Homing Shot', g2:'Sacrifice (Ammo for instant shield)', sp1:'Persistent Decay (Longer super effects)', sp2:'Long Shield (+20% shield from main attack)' },
       'unopcoloco': { name: 'UnoPcoLoco', role: 'Support', desc: 'Leaping scarf attack and healing whacks.', color: '#ff4d4d', attack: 'Scarf & Whack (1-2-3 combo)', attackDesc: 'Fires a locking scarf, followed by 2 short-range glove whacks that heal you.', super: 'Scarf Clonin (Jump & drop clones)', superDesc: 'Jumps with a scarf and drops 3 clones at the landing spot.', hyper: 'Super clones drop faster and deal more damage.', g1: 'Scarf Switch (Next attack is scarf)', g2: 'Stretchy Scarf (+30% range/heal)', sp1: 'Heavy Scarf (Jump does 50% splash)', sp2: 'Extra Clone (Super drops an extra clone at start)' },
       'dashaholic': { name: 'Dashaholic', role: 'Assassin', desc: 'Slashes through enemies with piercing claws and dashes rapidly across the battlefield.', color: '#00ffcc', attack: 'Claw Slash', attackDesc: 'A piercing slash that damages all enemies in its path exactly once.', super: 'Unleash the Dashaholic', superDesc: 'Dashes forward at high speed, slashing anyone you pass through.', hyper: 'Super hits 3 times rapidly and stuns. Main attack fires a massive sweeping slash.', g1: 'Phase Dash (Short directional teleport)', g2: 'Adrenaline (Heal 1500 HP & Reload 1 ammo)', sp1: 'Vampiric Claws (Heal 15% from main attack)', sp2: 'Deep Cuts (Super leaves enemies bleeding)' },
-      'trapper': { name: 'Trapper', role: 'Controller', desc: 'Drops gates and musical fences to lock down zones.', color: '#5a7bff', attack: 'Slam Gate', attackDesc: 'Shoots a cone gate. Hit: burst damage + knockback. Miss: gate remains as a short wall.', super: 'Sound Fence', superDesc: 'Spawns a rectangular fence that traps enemies for a short duration and deals continuous music damage.', hyper: 'Fence becomes larger, allies inside gain speed, and enemies inside take more damage from all sources.', g1: 'Bass Blast (Nearby knockback pulse)', g2: 'Quick Patch (Instant heal)', sp1: 'Encore Set (Super lasts longer)', sp2: 'Rhythm Rush (Gain speed after landing Slam)' },
+      'trapper': { name: 'Trapper', role: 'Controller', desc: 'Drops gates and musical fences to lock down zones.', color: '#5a7bff', attack: 'Slam Gate', attackDesc: 'Shoots a cone gate. Hit: burst damage + knockback. Miss: gate remains as a short wall.', super: 'Sound Fence', superDesc: 'Spawns a rectangular fence that traps enemies for a short duration and deals continuous music damage.', hyper: 'Double Gate: Slam Gate launches two parallel gates and roots struck enemies for 0.7s. Fence becomes larger, speeds allies and amplifies enemy damage taken.', g1: 'Bass Blast (Nearby knockback pulse)', g2: 'Quick Patch (Instant heal)', sp1: 'Encore Set (Super lasts longer)', sp2: 'Rhythm Rush (Gain speed after landing Slam)' },
       'classy': { name: 'Classy', role: 'Marksman', desc: 'Fires a fast burst of notes. Hits fill a Symphony bar. Full Symphony turns attacks gold and homing.', color: '#d4af37', attack: 'Note Burst', attackDesc: 'Fires 7 notes. Hits fill a Symphony bar. When full, next attack is gold and homes.', super: 'Bass Drop', superDesc: 'Drops an 8500 HP speaker. Near it, Classy fires 8 larger notes.', hyper: 'Attacks pierce. Speaker shoots at nearby enemies.', g1: 'Tuning Up (Instantly fills half Symphony)', g2: 'Fanfare (Fires notes in a wide fan)', sp1: 'Crescendo (Damage up per consecutive hit)', sp2: 'The Show Must Go On (Refills Symphony if speaker destroyed)' },
     'hyperorigin': { name: 'Hyperorigin', role: 'Tank', desc: 'A seismic tank that stores Origin Energy with each hit and detonates it in a purple shockwave super.', color: '#a66bff', attack: 'Origin Slam', attackDesc: 'After a short delay, slams 4 tiles in a straight line. Each enemy hit grants +1 Origin Energy.', super: 'Purple Unleashed', superDesc: 'Consumes all Origin Energy in a 360 smash. Enemies are suspended for 1s, then slammed down.', hyper: 'Become My Weakling: Main attacks weaken enemy damage by 40% for 1.2s. Super launches 3 mining fissures that each explode twice. Suspend has a brief warning telegraph before lift.', g1: 'Core Clamp (+3 Origin Energy)', g2: 'Fault Step (short dash + shield)', sp1: 'Gravity Core (wider, longer suspend super)', sp2: 'Deep Mantle (damage reduction at 5+ Energy)' },
     'heater_miser': { name: 'Heater Miser', role: 'Support', desc: 'Latches a thermal beam to one target to ramp damage or healing over time.', color: '#ff8a5b', attack: 'Thermal Tether', attackDesc: 'Latch a beam to one ally or enemy. Ticks every 0.30s and ramps through 7 stages while connected.', super: 'Intergalactic Heat', superDesc: 'Launch a furnace that creates a 3.5-tile slow zone for 4s and deals 1200 damage over 3s to enemies inside.', hyper: 'Beam starts at the 300 ramp value. Furnace super also pulls enemies to center.', g1: 'Heat Valve (next tether hit gains burst + fast ramp start)', g2: 'Flux Splitter (tether chains to nearby target)', sp1: 'Thermal Reserve (stronger tether healing)', sp2: 'Combustion Core (larger, stronger furnace zone)' },
@@ -3555,7 +3807,7 @@
       'forest': { name: 'Forest', role: 'Controller', desc: 'Commands nature to fire delayed plant projectiles and summons a fierce parrot.', color: '#228b22', attack: 'Nature\'s Wrath', attackDesc: 'Shoots 3 large plants left to right with a short delay.', super: 'Avian Ally', superDesc: 'Spawns a 7000 HP parrot that pecks the closest enemy.', hyper: 'Super spawns a Hyper Parrot that drops an egg at 50% HP. Main attacks burn.', g1: 'Rooted (Heal 2000 HP & 30% Shield, cannot move 3s)', g2: 'Grasping Vines (Next attack pulls enemies slightly)', sp1: 'Flaming Core (Middle plant sets enemies on fire)', sp2: 'Angry Bird (Parrot speed & attack rate +20%)' },
       'bouncin_balls': { name: 'Bouncin\' Balls', role: 'Marksman', desc: 'Shoots bouncing balls that ricochet off walls. Dynamic range mechanics.', color: '#00aaff', attack: 'Ricochet Volley', attackDesc: 'Fires 6 bouncing balls straight. -5% range and -5% dmg per bounce.', super: 'Bouncy House', superDesc: 'Shoots 7 overpowered piercing balls that bounce fully without losing stats.', hyper: 'Trampoline Park: Super gains 3 balls and splits on hit. +20% range/speed.', g1: 'Elasticity (+50% range)', g2: 'Bouncy Turret (Lose all ammo, deploy turret)', sp1: 'Desperation Bounce (Extra shiny ball when low HP)', sp2: 'Momentum (Bullets 10% faster after bounce)' },
       'goonbob': { name: 'Blobert', role: 'Controller', desc: 'A messy brawler who coats the battlefield in gooey liquid, then scoops it up into a pressurized jar blast.', color: '#adff2f', attack: 'Gooey Splatter', attackDesc: 'Shoots a blob of goo. On enemy or wall hit, it creates a lingering puddle. Walk over your puddles to store liquid for Super.', super: 'Blobert in a Jar!', superDesc: 'Fires a liquid jar powered by your stored puddles. More stored liquid means a stronger, larger jar shot that slows and burns on hit.', hyper: 'Main attack fires twice as many splatters. Super blast gets larger and stronger.', g1: 'Sticky Feet: Next splatter roots enemies for 1s.', g2: 'Overflow: Instantly creates 3 puddles around Blobert.', sp1: 'Industrial Grade: Puddles last 2 seconds longer.', sp2: 'Recycling: Casting Super heals Blobert based on stored liquid.' },
-    'tempo_maker': { name: 'Tempo Maker', role: 'Assassin', desc: 'Two-note duelist that detonates at range, then boomerangs back to punish anyone in the return lane.', color: '#ff5f7a', attack: 'Twin Cadence', attackDesc: 'Shoots 2 notes that explode at the end of their path. Enemies caught near the center take extra damage. After exploding, the notes return to you and stun anything they pass through on the way back.', super: 'Drop the Beat', superDesc: 'Jump to a targeted spot and land with a 3-layer blast. The closer enemies are to the center, the more damage they take. Hypercharge adds a pull-in and stun on landing.', hyper: 'Landing on an enemy adds impact damage, super pulls enemies toward the center and stuns them. Hyper keeps the attack as a single clean twin-note volley.', g1: 'Snap Back (Instantly return notes early)', g2: 'Bass Drop (Super leaves a slowing zone)', sp1: 'Middle Ring (Inner blast ring deals more damage)', sp2: 'Return Pulse (Return stun lasts longer)' },
+    'tempo_maker': { name: 'Tempo Maker', role: 'Assassin', desc: 'Two-note duelist that detonates at range, then boomerangs back to punish anyone in the return lane.', color: '#ff5f7a', attack: 'Twin Cadence', attackDesc: 'Shoots 2 notes that explode at the end of their path. Enemies caught near the center take extra damage. After exploding, the notes return to you and stun anything they pass through on the way back.', super: 'Drop the Beat', superDesc: 'Jump to a targeted spot and land with a 3-layer blast. The closer enemies are to the center, the more damage they take. Hypercharge adds a pull-in and stun on landing.', hyper: 'Endless Encore: Returning notes pass through Tempo Maker and continue behind for 45% damage while retaining their stun. Super pulls and stuns on landing.', g1: 'Snap Back (Instantly return notes early)', g2: 'Bass Drop (Super leaves a slowing zone)', sp1: 'Middle Ring (Inner blast ring deals more damage)', sp2: 'Return Pulse (Return stun lasts longer)' },
         // Overlord metadata and runtime tuning values
         'overlord': { name: 'Overlord', role: 'Zone Controller', desc: 'Starts at stage 0 and ascends into a wand duelist with explosive stage upgrades.', color: '#8f00ff', attack: 'Wand Pulse', attackDesc: 'Stage 0 and 1 fire a focused wand bolt. Stage 1 moves 20% faster and reloads 10% faster. Stage 2 bolts explode on impact. Stage 3 bolts grow by 10% on enemy hit and explode again.', super: 'Wand Ascension', superDesc: 'Upgrade one stage and create three protective wand shots in a triangle around you while the wand locks in.', hyper: 'Overloaded: shorter main-attack delay; during hypercharge, attacks enflame enemies.', g1: 'Quick Draw (Next stage-up or attack fires with a much shorter delay)', g2: 'Arc Burst (Next main attack splits into 3 close wand shots)', sp1: 'Arc Resonance (Stage 2/3 explosions hit harder)', sp2: 'Imperial Guard (Triangle super lasts longer and protects more tightly)',
             // tuning
@@ -3570,14 +3822,14 @@
         },
       'fightnfire': { name: 'Fight\'nFire', role: 'Thrower', desc: 'Shoots shards in a 360-degree burst that ignite enemies.', color: '#ff6b2d', attack: 'Fireball Throw', attackDesc: 'Throws a fireball with range limit. Explodes into 4 shards that bounce once then explode again.', super: 'Shard Bloom', superDesc: 'Fires shards in a full 360-degree burst around you, then spits one fireball forward.', hyper: 'Main attack throws 8 shards with +20% damage. Super shards home in on enemies. +20% damage.', g1: 'Thermite Canister: Next fireball is bigger, flies farther (1100 px), and splits into 8 embers.', g2: 'Firestep: Instantly hop to your cursor and leave a smaller fire patch on landing.', sp1: 'Flaming Core: Fireballs leave burn trails. Shards apply slight knockback.', sp2: 'Ember Shield: Taking damage grants 400 HP shield (3s cooldown).' }
             ,
-        'beast': { name: 'Beast', role: 'Assassin', desc: 'A feral claw fighter that slashes diagonally and transforms into a stronger beast.', color: '#ff3d6e', attack: 'Twin Claws', attackDesc: 'Alternating diagonal claw swipes that carve from right-to-left and left-to-right.', super: 'Unleash the Beast', superDesc: 'Transforms after 1 second into a stronger beast for 7 seconds. Beast form gives more HP, faster movement, poison claws, and split claws. You remain vulnerable during the transform.', hyper: 'Beast form lasts 9 seconds, movement is 45% faster. Main claws gain +20% range and split into 2 sideways claws on hit.', g1: 'Rending Grip (Next claw slows)', g2: 'Savage Surge (Start Beast mode with a speed burst)', sp1: 'Razor Pounce (Main attack gains tiny knockback)', sp2: 'Predator Instinct (Gain ammo on Beast hits)' },
-            'amplifier': { name: 'Amplifier', role: 'Support', desc: 'Drops toolboxes and screws that swing fights with buff and debuff zones.', color: '#ffc04d', attack: 'Ampifin', attackDesc: 'Throws a toolbox. It drops for 2s at max range. Ally pickup: +15% damage for 1.7s. Enemy hit or touch: -15% damage for 1.3s.', super: 'Screws and Nuts', superDesc: 'Deploys a 6200 HP screw with a zone: allies +10% damage and +30% speed. Enemies -10% damage and -12% speed.', hyper: 'Screw gains +40% HP (8680). Allies inside gain decaying shield ticks (150-200 every 0.4s, max 2500, fades a bit faster). Enemies inside take 230 damage every 0.8s.', g1: 'Torque Snap (Next Ampifin applies stronger, longer damage-down)', g2: 'Quick Wrench (Instant heal, speed boost, 900 shield for 0.7s, and drop a toolbox)', sp1: 'Overtighten (Screw zone buffs/debuffs are stronger)', sp2: 'Stabilizer (Larger screw zone and screw self-repairs over time)' },
+        'beast': { name: 'Beast', role: 'Assassin', desc: 'A feral claw fighter that slashes diagonally and transforms into a stronger beast.', color: '#ff3d6e', attack: 'Twin Claws', attackDesc: 'Alternating diagonal claw swipes that carve from right-to-left and left-to-right.', super: 'Unleash the Beast', superDesc: 'Transforms after 0.85 seconds for about 7 seconds. Beast form grants 15% max HP, 25% movement speed, poison claws, and split claws. You remain vulnerable during the transform.', hyper: 'Beast form lasts about 9 seconds with 35% movement speed. Main claws gain +20% range and split into 2 sideways claws on hit.', g1: 'Rending Grip (Next claw slows)', g2: 'Savage Surge (Start Beast mode with a speed burst)', sp1: 'Razor Pounce (Main attack gains tiny knockback)', sp2: 'Predator Instinct (Gain ammo on Beast hits)' },
+            'amplifier': { name: 'Amplifier', role: 'Support', desc: 'Drops toolboxes and screws that swing fights with buff and debuff zones.', color: '#ffc04d', attack: 'Ampifin', attackDesc: 'Throws a toolbox. It drops for 2s at max range. Ally pickup: +15% damage for 1.7s. Enemy hit or touch: -15% damage for 1.3s.', super: 'Screws and Nuts', superDesc: 'Deploys a 6200 HP screw with a zone: allies +10% damage and +30% speed. Enemies -10% damage and -12% speed.', hyper: 'Power Tool: Ampifin grows 35%, pierces one enemy and drops 2.5s mini screw zones that cut enemy damage by 20%. The Super screw also gains +40% HP and shield ticks.', g1: 'Torque Snap (Next Ampifin applies stronger, longer damage-down)', g2: 'Quick Wrench (Instant heal, speed boost, 900 shield and drop a toolbox)', sp1: 'Overtighten (Screw zone buffs/debuffs are stronger)', sp2: 'Stabilizer (Larger screw zone and screw self-repairs over time)' },
             'skeleflying': { name: 'Skeleflying', role: 'Controller', desc: 'Drops explosive para-shoots and summons skyfall skeletroopers.', color: '#cfd4ff', attack: 'Para-Shoot Barrage', attackDesc: 'Fires 3 para-shoots in a cone. They fall and explode on landing.', super: 'Comin Down!', superDesc: 'Open 3 sky portals. Skeletroopers descend for 4s with visible landing spots, then land with mini swords and chase the nearest enemy.', hyper: 'Homin Skeles: troopers retarget while descending. Main attack also spawns a skeletrooper on each landing.', g1: 'Bone Beacon (Next attack para-shoots home and fly farther)', g2: 'Reinforce Drop (Spawn a skeletrooper at your feet with a short shield)', sp1: 'Heavy Bones (Troopers gain HP and sword damage)', sp2: 'Swift Chutes (Main and super land faster)' },
             'crystila': { name: 'Crystila', role: 'Marksman', desc: 'Anime crystal duelist with shrinking arm shots and a reflective glass super.', color: '#86d7ff', attack: 'Crystal Arms: Detach!', attackDesc: 'Launches a crystal arm that shrinks while traveling. On hit, after 0.22s, a follow-up shard lunges forward for 50% distance.', super: 'Crystal Glass: Explode!', superDesc: 'Summons a moving glass reflector for 4s. Front-facing by default, reflects incoming projectiles and absorbs up to 6800 damage.', hyper: 'Overreflective: Main attack gains an extra returning crystal layer. Super becomes 360° and absorbs 15000 damage.', g1: 'Prism Edge (Next attack pierces and follow-up travels farther)', g2: 'Polish Guard (Repair glass HP or gain instant shield)', sp1: 'Shatter Chill (Reflected/follow-up shots slow)', sp2: 'Tempered Glass (+20% glass HP and +1s duration)' },
             'hope': { name: 'Hope', role: 'Marksman', desc: 'An emotional brawler whose attacks scale with her own HP — the more hope she has, the harder she hits.', color: '#ffd6ec', attack: 'Hopeful Shot', attackDesc: "Fires a glowing orb that deals damage equal to a % of the enemy's max HP based on your current HP. At full HP it deals 18% of enemy max HP; less HP means less damage.", super: 'You Broke My Hope', superDesc: 'Unleashes a piercing cry in a cone, stunning all enemies caught in it for 1.5s.', hyper: 'Hope Never Dies! Main attack always deals full 18% (max damage) regardless of current HP. Super cone expands to 180° and stuns for 2s.', g1: 'Rally Cry (Next attack deals damage as if at full HP)', g2: 'Desperate Shield (Gain a shield equal to 25% of your missing HP)', sp1: 'Minimum Hope (Attack always deals at least 7% of enemy max HP)', sp2: 'Hopeful Voice (Super stun lasts +0.5s longer)' },
             'evil_doctor': { name: 'Evil Doctor', role: 'Specialist', desc: 'To infect or not to infect? Hit enemies to poison them or miss to heal yourself.', color: '#00cc66', attack: 'Infectious Shot', attackDesc: 'Fires a syringe. Hit: 600 poison damage ×3 ticks, with 30% less time between ticks. Miss: heal 220 ×4 ticks.', super: 'Spread My Virus!', superDesc: 'Release 6 DNA strands that home onto enemies. Each deals 500 on hit plus fast poison, then disappears.', hyper: 'Main attack applies both effects: poison on hit and heal. Hyper DNA kills release 6 more hyper DNA.', g1: 'Antidote (Cleanse debuffs + heal 1200)', g2: 'Overdose (Next shot adds +1 poison tick)', sp1: 'Chain Reaction (Every kill releases DNA. If it kills, spawn full DNA burst)', sp2: 'Adrenaline Miss (Missed shots give a short speed boost)' },
-            'splitter': { name: 'The Splitter', role: 'Thrower', desc: 'Lobs unstable grenades that repeatedly split into more explosives.', color: '#ffd166', attack: 'Split Grenade', attackDesc: 'Short-range big grenade. At max range it splits into 3, then each splits into 4.', super: 'Splitin Off!', superDesc: 'Throw a long-range core grenade that splits while traveling and explodes only at the end.', hyper: 'Main attack gains 2 extra split generations. Super gains 1 extra travel split and launches 3 grenades around you.', g1: 'Short Fuse (Next grenade splits faster and blasts wider)', g2: 'Ring Burst (Throw 3 mini split grenades around you)', sp1: 'Heavy Fragments (Split grenades deal +12% damage)', sp2: 'Chain Lob (Main attack range +20%)' },
-            'scuba_diver': { name: 'Scuba Diver', role: 'Epic Specialist', desc: 'Dual-mode diver: starts in submarine mode, can switch to scuba mode mid-match.', color: '#4fc3f7', attack: 'Bubble Barrage / Push Current', attackDesc: 'Submarine mode: fires 4 delayed bubbles in a left-to-right cone (520 close -> 320 far each; Hyper keeps at least 75% close damage). Scuba mode: pushes a rectangular bubble wave for 420 each.', super: 'Dash Underwater! / Transform', superDesc: 'Submarine mode: dash 5 tiles underwater, untargetable, and light post damages enemies hit. Scuba mode: transform back into submarine mode.', hyper: 'Under the Sea!: Main attacks keep at least 75% close-range damage and travel +30% farther. Super light post marks and slows. Scuba→Submarine transform grants a 3000 decaying shield.', g1: 'Depth Charge (Next main attack slows enemies)', g2: 'Emergency Oxygen (Heal and force scuba mode with speed burst)', sp1: 'Pressure Hull (Submarine death-swap grants extra shield)', sp2: 'Rip Current (Scuba mode attack is wider and lightly slows)' },
+            'splitter': { name: 'The Splitter', role: 'Thrower', desc: 'Lobs unstable grenades that repeatedly split into larger explosive waves.', color: '#ffd166', attack: 'Split Grenade', attackDesc: 'One core splits into waves of 3, then 5, then 7, and finally 9 fragments.', super: 'Splitin Off!', superDesc: 'Throw a long-range core grenade that splits while traveling and explodes only at the end.', hyper: 'Main attack gains 2 extra split generations. Super gains 1 extra travel split and launches 3 grenades around you.', g1: 'Short Fuse (Next grenade splits faster and blasts wider)', g2: 'Ring Burst (Throw 3 mini split grenades around you)', sp1: 'Heavy Fragments (Split grenades deal +12% damage)', sp2: 'Chain Lob (Main attack range +20%)' },
+            'scuba_diver': { name: 'Scuba Diver', role: 'Epic Specialist', desc: 'Dual-mode diver: starts in submarine mode, can switch to scuba mode mid-match.', color: '#4fc3f7', attack: 'Bubble Barrage / Push Current', attackDesc: 'Submarine mode: fires 4 delayed bubbles in a left-to-right cone (520 close -> 320 far each; Hyper keeps at least 75% close damage). Scuba mode: pushes a rectangular bubble wave for 420 each.', super: 'Dash Underwater! / Transform', superDesc: 'Submarine mode: dash 5 tiles underwater, untargetable, and light post damages enemies hit. Scuba mode: transform back into submarine mode.', hyper: 'Under the Sea!: Main attacks keep at least 75% close-range damage and travel +30% farther. Super light post marks and slows. Scuba→Submarine transform grants a persistent 3000 shield.', g1: 'Depth Charge (Next main attack slows enemies)', g2: 'Emergency Oxygen (Heal and force scuba mode with speed burst)', sp1: 'Pressure Hull (Submarine death-swap grants extra shield)', sp2: 'Rip Current (Scuba mode attack is wider and lightly slows)' },
             'hoop': { name: 'Hoop', role: 'Controller', desc: 'Streetball playmaker with a SWISH/Bank-shot rhythm: direct hits power your next shot, wall bounces charge Heat Check.', color: '#ff9f43', attack: 'Bounce Breaker', attackDesc: 'Shoots a bouncing basketball that explodes in a small area on each impact. Direct hit before first bounce grants SWISH buff. Wall bounces build Bank Stacks; at 3 stacks your next shot becomes Heat Check.', super: 'Full-Court Crash', superDesc: 'Launches a giant slam ball that bounces multiple times, each bounce creating a heavy area blast.', hyper: 'Main attack throws an extra angle ball and first impact spawns mini-balls. Super gains extra bounce count, bigger blast radius, and stuns enemies in the blast.', g1: 'Backboard Bank (Next ball gets larger splash and extra bounce)', g2: 'Crossover Drive (Dash forward, gain shield, and speed burst)', sp1: 'Ankle Breaker (Main splash slows enemies briefly)', sp2: 'Deep Range (Main and super travel farther with faster arc)' },
             'screener': { name: 'Screener', role: 'Controller', desc: 'Battery-based projector brawler. Starts at 100% battery that drains over time; recharge by landing screen hits.', color: '#7ec8ff', attack: 'Projected Sweep', attackDesc: 'Fires a 360-degree radial burst of screen projectors around you. Each hit recharges battery.', super: 'Projected Charge', superDesc: 'Activates a static projector field for 4s. Incoming shots that touch the field are converted into projector blasts fired out at that angle.', hyper: 'Main attack spins with multiple rotating sweeps. Super gains an extra projector layer and stronger conversions.', g1: 'Power Cell (Instant battery refill + heal)', g2: 'Overclock Grid (Temporarily boost projector output and battery gain)', sp1: 'Efficient Panel (Battery decays slower)', sp2: 'Capacitor Bank (Larger battery capacity and stronger low-battery safety)' },
             'malakor': { name: 'Malakor', role: 'Controller', desc: 'The fallen red-staff child who commands infernal terrain and demon hands.', color: '#ff4a4a', attack: 'Putting You Down', attackDesc: 'Slams his staff and corrupts the ground into Hell around him. Enemies standing in Hell take constant damage. Hell terrain lasts until the match ends.', super: 'Hell Is Forever!', superDesc: 'Slam to create a huge Hell zone and summon demon hands that punish enemies standing in Hell.', hyper: 'UPSIDE DOWN!: Super corrupts the whole map into Hell and summons many more demon hands. Main attack corrupts a larger area.', g1: 'Crimson Surge (Create a bonus Hell pulse and heal)', g2: 'Damnation Mark (Next main attack also summons a demon hand)', sp1: 'Infernal Dominion (Hell terrain deals more damage)', sp2: 'Abyssal Grip (Demon hands strike wider and stun longer)' },
@@ -3641,7 +3893,22 @@
             'decoy_healer': { name: 'Decoy Healer', color: '#39ff14', role: 'Support' }
   };
 
+    // V4 standardized primary-role organization: exactly one gameplay role per brawler.
+    const PRIMARY_ROLE_BY_BRAWLER = {
+        beast:'Tank', chaird:'Tank', forest:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank',
+        bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', teether:'Assassin',
+        boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', hunter:'Marksman', snapper:'Marksman', xray:'Marksman',
+        evil_doctor:'Artillery', fightnfire:'Artillery', skeleflying:'Artillery', splitter:'Artillery', trapper:'Artillery', upiedown:'Artillery',
+        amplifier:'Support', angel:'Support', echo:'Support', hope:'Support', relay:'Support', sera_eclipse:'Support',
+        decayer:'Controller', fuel:'Controller', paradox:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller',
+        beam:'Damage Dealer', fuser:'Damage Dealer', heater_miser:'Damage Dealer', minigunnin:'Damage Dealer', money_and_tax:'Damage Dealer', outlit:'Damage Dealer', steamer:'Damage Dealer',
+        bouncin_balls:'Skirmisher', chickpig:'Skirmisher', classy:'Skirmisher', copyphase:'Skirmisher', goonbob:'Skirmisher', hoop:'Skirmisher', hyperorigin:'Skirmisher', robber:'Skirmisher'
+    };
+    for (const [id, role] of Object.entries(PRIMARY_ROLE_BY_BRAWLER)) if (brawlerData[id]) brawlerData[id].role = role;
+
     const brawlerPortraitIcons = {
+        fuser: '🧨',
+        robber: '🥷',
         warrior: '🔱',
         outlit: '🔫',
         echo: '🔊',
@@ -3678,6 +3945,10 @@
         screener: '🖥️',
         malakor: '😈',
         paradox: '⏳',
+        upiedown: '🥧',
+        chickpig: '🍳',
+        jetpack: '🚀',
+        chickpig_pig: '🐖',
         evil_doctor_dna: '🧪',
         skeletrooper: '🗡️',
         parrot: '🦜',
@@ -3694,6 +3965,151 @@
         if (brawlerId === 'wall_structure') return '🧱';
         if (brawlerId === 'decoy_healer') return '💚';
         return brawlerPortraitIcons[brawlerId] || '⭐';
+    }
+
+    const ATTACHIE_PULL_COST = 350;
+    function ensureAttachieState() {
+        if (!playerData.attachies || typeof playerData.attachies !== 'object') playerData.attachies = {};
+        for (const type of ['hyper','gadget','star']) if (!playerData.attachies[type] || typeof playerData.attachies[type] !== 'object') playerData.attachies[type] = {};
+        playerData.attachies.pulls = Math.max(0, Math.floor(playerData.attachies.pulls || 0));
+        return playerData.attachies;
+    }
+    function hasHyperAttachie(brawlerId) {
+        if (isTraining) return true;
+        return !!ensureAttachieState().hyper[brawlerId];
+    }
+    function hasAttachie(type, brawlerId, slot) {
+        if (isTraining) return true;
+        const bucket = ensureAttachieState()[type];
+        const owned = bucket && bucket[brawlerId];
+        return owned === true || (owned && owned[slot]);
+    }
+    function unlockAttachie(type, brawlerId, slot) {
+        const bucket = ensureAttachieState()[type];
+        if (!bucket[brawlerId] || bucket[brawlerId] === true) bucket[brawlerId] = {};
+        bucket[brawlerId][slot] = true;
+    }
+    function hasEntityAttachie(entity, type, slot) {
+        const id = entity && entity.id === player.id ? selectedBrawler : (entity ? entity.brawler : selectedBrawler);
+        if (!id) return false;
+        return hasAttachie(type, id, slot);
+    }
+    function hasSelectedAttachie(type, slot, brawlerId = selectedBrawler) {
+        return hasAttachie(type, brawlerId, slot);
+    }
+    function getPlayerHyperMainActive(brawlerId) { return !!isHypercharged && hasHyperAttachie(brawlerId); }
+    function openAttachiesHubLegacyDisabled() {
+        return;
+    }
+    function openAttachiesHubOldUnused() {}
+    function openAttachiesHub() {
+        const state = ensureAttachieState();
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:3300;background:radial-gradient(circle at 50% 0,#34235d,#07111e 62%);color:#fff;font-family:Trebuchet MS,sans-serif;overflow:auto;padding:22px';
+        const panel = document.createElement('div');
+        panel.style.cssText = 'max-width:1120px;margin:auto';
+        overlay.appendChild(panel);
+        let activeType = 'hyper';
+        const infoByType = {
+            hyper: { title:'Hyper Attachie', tab:'HYPER', color:'#d970ff', slots:['hyper'] },
+            gadget: { title:'Gadget Attachie', tab:'GADGET', color:'#55d68a', slots:['g1','g2'] },
+            star: { title:'Star Attachie', tab:'STAR', color:'#ffd166', slots:['slow','long'] }
+        };
+        const slotLabel = { hyper:'Hyper Main', g1:'Gadget 1', g2:'Gadget 2', slow:'Star Power 1', long:'Star Power 2' };
+        const slotDesc = {
+            outlit: { g1:'Next Shot Pierce attacks return once.', g2:'Healing Pod gains +2000 HP and 40% larger heal range.', slow:'Boom Break restores 2 ammo.', long:'Scatter Pump gains +20% range.' },
+            echo: { g1:'Amplify keeps full damage.', g2:'Shielding converts 70% of prevented damage into shield.', slow:'Reverb Heal also grants 30% of the heal as shield.', long:'Double Wave fires 3 extra bigger side rings.' },
+            cheseypuff: { g1:'Big Puff also pulls enemies.', g2:'Cheese Trap deals 140 damage per tick.', slow:'Cheese Ball leaves a mini cheese field at the end.', long:'Cheese Ball gains 30% more range.' },
+            decayer: { g1:'Homing Shot also slows enemies.', g2:'Sacrifice grants an 80% damage reduction shield until hit.', slow:'Decayer shield max increases by 2500.', long:'Decay Shot stacks 5% damage reduction per hit, up to 30%, for 8 seconds.' }
+        };
+        const owns = (type, id, slot) => type === 'hyper' ? !!state.hyper[id] : hasAttachie(type, id, slot);
+        const unlock = (type, id, slot) => {
+            if (type === 'hyper') state.hyper[id] = true;
+            else unlockAttachie(type, id, slot);
+            state.pulls++;
+        };
+        const missingFor = (type, group, clawNum) => {
+            if (type === 'hyper') return group.filter(id => !state.hyper[id]).map(id => ({ id, slot:'hyper' }));
+            if (clawNum !== 1) return [];
+            const missing = [];
+            for (const id of group) for (const slot of infoByType[type].slots) if (!owns(type, id, slot)) missing.push({ id, slot });
+            return missing;
+        };
+        function showAttachieInfo(type, id, slot) {
+            const info = infoByType[type];
+            const owned = owns(type, id, slot);
+            const desc = type === 'hyper' ? (brawlerData[id]?.hyper || 'Activates this brawler main attack upgrade while hypercharged.') : (slotDesc[id]?.[slot] || 'Coming soon.');
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed;inset:0;z-index:3450;background:rgba(3,7,16,.82);display:flex;align-items:center;justify-content:center;padding:18px';
+            modal.innerHTML = `<div style="max-width:500px;width:100%;padding:28px;border:2px solid ${info.color};border-radius:22px;background:linear-gradient(145deg,#2d1747,#0b1928);box-shadow:0 0 55px ${info.color}55;text-align:center"><div style="font-size:70px">${getBrawlerPortraitIcon(id)}</div><div style="font-size:12px;color:${info.color};font-weight:1000;letter-spacing:.14em">${info.title.toUpperCase()}</div><h1 style="margin:6px 0">${brawlerData[id]?.name || id}</h1><div style="color:#d8e5f5;font-weight:900">${slotLabel[slot]}</div><div style="display:inline-block;margin-top:8px;padding:6px 11px;border-radius:999px;background:${owned?'#174b3b':'#343e4d'};color:${owned?'#67f2bd':'#b8c3d1'};font-weight:1000">${owned?'OWNED':'LOCKED'}</div><p style="font-size:17px;line-height:1.5;color:#e1eaf5">${desc}</p><button style="padding:11px 24px;border:0;border-radius:11px;background:#70efbd;font-weight:1000;cursor:pointer">BACK TO CLAWS</button></div>`;
+            modal.querySelector('button').onclick = () => modal.remove();
+            modal.onclick = e => { if (e.target === modal) modal.remove(); };
+            document.body.appendChild(modal);
+        }
+        function showAttachieReveal(type, won) {
+            const info = infoByType[type];
+            const reveal = document.createElement('div');
+            reveal.style.cssText = 'position:fixed;inset:0;z-index:3400;background:rgba(5,8,18,.95);display:flex;align-items:center;justify-content:center;color:#fff;font-family:Trebuchet MS,sans-serif';
+            reveal.innerHTML = `<div style="text-align:center;padding:38px;border:2px solid ${info.color};border-radius:24px;background:#201336;box-shadow:0 0 60px ${info.color}77"><div style="font-size:76px">${getBrawlerPortraitIcon(won.id)}</div><h1>${info.title.toUpperCase()}!</h1><h2 style="color:${info.color}">${brawlerData[won.id]?.name || won.id}</h2><p>${slotLabel[won.slot]} upgraded.</p><button style="padding:12px 25px;border:0;border-radius:12px;background:#70efbd;font-weight:1000">AWESOME</button></div>`;
+            reveal.querySelector('button').onclick = () => { reveal.remove(); render(); };
+            document.body.appendChild(reveal);
+        }
+        function render() {
+            const info = infoByType[activeType];
+            const owned = activeType === 'hyper'
+                ? allBrawlers.filter(id => state.hyper[id]).length
+                : allBrawlers.reduce((sum, id) => sum + info.slots.filter(slot => owns(activeType, id, slot)).length, 0);
+            const total = activeType === 'hyper' ? allBrawlers.length : allBrawlers.length * info.slots.length;
+            panel.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div style="color:#d8a7ff;font-weight:1000;letter-spacing:.15em">COLLECTION LAB</div><h1 style="margin:4px 0">ATTACHIES</h1><div style="color:#b9cce2">${info.title}s ${owned}/${total} - ${playerData.coins || 0} Coins</div></div><button data-close style="padding:12px 18px;border:0;border-radius:12px;background:#e7efff;font-weight:1000;cursor:pointer">CLOSE</button></div><div data-tabs style="display:flex;gap:8px;margin:18px 0"></div><p style="color:#d8e5f5">Pull attachies to upgrade specific Hyper, Gadget, or Star Power bonuses. Gadget and Star tabs currently support Claw 1 only.</p><div data-machines style="display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:13px"></div>`;
+            panel.querySelector('[data-close]').onclick = () => overlay.remove();
+            const tabs = panel.querySelector('[data-tabs]');
+            for (const type of ['hyper','gadget','star']) {
+                const tabInfo = infoByType[type];
+                const tab = document.createElement('button');
+                tab.textContent = tabInfo.tab;
+                tab.style.cssText = `padding:10px 15px;border:2px solid ${tabInfo.color};border-radius:12px;background:${type===activeType?tabInfo.color:'#182536'};color:${type===activeType?'#07111e':'#d8e5f5'};font-weight:1000;cursor:pointer`;
+                tab.onclick = () => { activeType = type; render(); };
+                tabs.appendChild(tab);
+            }
+            const machines = panel.querySelector('[data-machines]');
+            for (let start = 0; start < allBrawlers.length; start += 4) {
+                const group = allBrawlers.slice(start, start + 4);
+                const clawNum = Math.floor(start / 4) + 1;
+                const comingSoon = activeType !== 'hyper' && clawNum !== 1;
+                const missing = missingFor(activeType, group, clawNum);
+                const card = document.createElement('div');
+                card.style.cssText = `padding:15px;border:1px solid ${info.color}66;border-radius:17px;background:linear-gradient(145deg,rgba(51,29,82,.94),rgba(10,23,39,.96));box-shadow:0 12px 28px rgba(0,0,0,.24)`;
+                if (comingSoon) {
+                    card.innerHTML = `<div style="font-weight:1000;color:${info.color};margin-bottom:9px">CLAW ${clawNum}</div><div style="min-height:132px;display:flex;align-items:center;justify-content:center;border:1px dashed #53657a;border-radius:12px;color:#91a8bf;font-weight:1000">COMING SOON</div>`;
+                    machines.appendChild(card);
+                    continue;
+                }
+                const rows = [];
+                for (const id of group) {
+                    const slots = activeType === 'hyper' ? ['hyper'] : info.slots;
+                    for (const slot of slots) {
+                        rows.push(`<button data-id="${id}" data-slot="${slot}" style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:8px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(255,255,255,.05);color:#fff;cursor:pointer;text-align:left"><span>${getBrawlerPortraitIcon(id)} ${brawlerData[id]?.name || id}<small style="display:block;color:#9db1c8">${slotLabel[slot]}</small></span><b style="color:${owns(activeType,id,slot)?'#67f2bd':'#8798ad'}">${owns(activeType,id,slot)?'OWNED':'LOCKED'} ></b></button>`);
+                    }
+                }
+                card.innerHTML = `<div style="font-weight:1000;color:${info.color};margin-bottom:9px">CLAW ${clawNum}</div><div style="display:grid;gap:6px">${rows.join('')}</div><button data-pull style="width:100%;margin-top:12px;padding:11px;border:0;border-radius:11px;background:${missing.length?`linear-gradient(135deg,${info.color},#8d4de8)`:'#385064'};color:#fff;font-weight:1000">${missing.length?`PULL - ${ATTACHIE_PULL_COST} COINS`:'MACHINE COMPLETE'}</button>`;
+                card.querySelectorAll('[data-id]').forEach(btn => btn.onclick = () => showAttachieInfo(activeType, btn.dataset.id, btn.dataset.slot));
+                const pull = card.querySelector('[data-pull]');
+                pull.disabled = !missing.length;
+                pull.onclick = () => {
+                    if (!missing.length) return;
+                    if ((playerData.coins || 0) < ATTACHIE_PULL_COST) return alert(`You need ${ATTACHIE_PULL_COST} Coins.`);
+                    playerData.coins -= ATTACHIE_PULL_COST;
+                    const won = missing[Math.floor(Math.random() * missing.length)];
+                    unlock(activeType, won.id, won.slot);
+                    saveProgress();
+                    render();
+                    showAttachieReveal(activeType, won);
+                };
+                machines.appendChild(card);
+            }
+        }
+        render();
+        document.body.appendChild(overlay);
     }
 
     const brawlerTraitData = {
@@ -3744,12 +4160,12 @@
             entity.beastModeActive = true;
             if (!entity.beastTransformed) {
                 const baseMaxHp = entity.beastBaseMaxHp || entity.maxHp || 0;
-                const hpBoost = Math.round(baseMaxHp * 0.20);
-                entity.maxHp = Math.round(baseMaxHp * 1.20);
+                const hpBoost = Math.round(baseMaxHp * 0.15);
+                entity.maxHp = Math.round(baseMaxHp * 1.15);
                 entity.hp = Math.min(entity.maxHp, entity.hp + hpBoost);
                 entity.beastTransformed = true;
             }
-            entity.beastMoveMult = entity.beastHyper ? 1.40 : 1.30;
+            entity.beastMoveMult = entity.beastHyper ? 1.35 : 1.25;
         }
 
         if (entity.beastModeActive && now >= entity.beastModeUntil) {
@@ -4204,16 +4620,19 @@
   let isTraining = false;
     let isTutorialMode = false;
     let tutorialStartedAt = 0;
-    const TUTORIAL_DURATION_SECONDS = 60;
+    const TUTORIAL_DURATION_SECONDS = 180;
     const TUTORIAL_GUIDE_STEPS = [
-        { key: 'move', text: 'Move with WASD until the movement check is complete.' },
-        { key: 'attack', text: 'Attack once with Left Click.' },
-        { key: 'gadget', text: 'Use your gadget with Q.' },
-        { key: 'super', text: 'Cast your super with E.' },
-        { key: 'hyper', text: 'Activate hypercharge with F.' }
+        { key: 'move', text: 'Move around the arena.' },
+        { key: 'attack', text: 'Aim and hit the training dummy with your main attack.' },
+        { key: 'signature', text: 'Learn your brawler\'s signature attack pattern.' },
+        { key: 'gadget', text: 'Use your Gadget.' },
+        { key: 'super', text: 'Aim and hit the dummy with your Super.' },
+        { key: 'hyper', text: 'Activate Hypercharge.' },
+        { key: 'hyperAttack', text: 'Land a Hypercharged main attack.' }
     ];
-    let tutorialProgress = { move: false, attack: false, gadget: false, super: false, hyper: false };
+    let tutorialProgress = { move: false, attack: false, signature: false, gadget: false, super: false, hyper: false, hyperAttack: false };
     let tutorialTravelDistance = 0;
+    let tutorialAttackHits = 0;
     let tutorialLastShotSeen = 0;
     let tutorialLastPlayerPos = { x: 0, y: 0 };
         let isDuoShowdown = false;
@@ -4240,6 +4659,7 @@
     const MODE_MODIFIER_ROTATE_MS = 20 * 60 * 1000;
     const SHOWDOWN_MODE_MODIFIER_POOLS = {
             slop_sushi: ['none'],
+            slop_sushi_plus: ['none'],
             solo: ['heavy_storm', 'power_surge', 'no_free_cubes'],
             duo: ['power_surge', 'no_free_cubes', 'none'],
             objective: ['none'],
@@ -4377,8 +4797,9 @@
   let ammoReloadTimer = 0;
 
   function resetTutorialProgress() {
-      tutorialProgress = { move: false, attack: false, gadget: false, super: false, hyper: false };
+      tutorialProgress = { move: false, attack: false, signature: false, gadget: false, super: false, hyper: false, hyperAttack: false };
       tutorialTravelDistance = 0;
+      tutorialAttackHits = 0;
       tutorialLastShotSeen = 0;
       tutorialLastPlayerPos = { x: player.x, y: player.y };
   }
@@ -4392,6 +4813,23 @@
 
   function getTutorialCompletedCount() {
       return TUTORIAL_GUIDE_STEPS.filter(step => tutorialProgress[step.key]).length;
+  }
+
+  function getTutorialStepText(step) {
+      if (!step) return 'Course complete!';
+      const touch = deviceMode === 'mobile';
+      if (step.key === 'move') return touch ? 'Drag the movement stick to move.' : 'Move with WASD or the arrow keys.';
+      if (step.key === 'attack') return touch ? 'Drag to aim, then release the Attack stick to fire.' : 'Aim with the mouse and Left Click to fire.';
+      if (step.key === 'signature') {
+          if (selectedBrawler === 'fuser') return 'Track the dummy and land 3 bullets from Fuser\'s eight-shot pattern.';
+          if (selectedBrawler === 'outlit') return 'Land 3 main-attack hits to learn Outlit\'s spread.';
+          return 'Land 3 main-attack hits to learn this attack pattern.';
+      }
+      if (step.key === 'gadget') return touch ? 'Tap the green Gadget button.' : 'Press Q to use your Gadget.';
+      if (step.key === 'super') return touch ? 'Drag and release the yellow Super stick onto the dummy.' : 'Aim at the dummy and press E for your Super.';
+      if (step.key === 'hyper') return touch ? 'Tap the purple Hypercharge button.' : 'Press F to activate Hypercharge.';
+      if (step.key === 'hyperAttack') return 'Hit the dummy once while Hypercharged.';
+      return step.text;
   }
 
   function pickShowdownModifierForMode(mode) {
@@ -4503,9 +4941,10 @@
       },
       tutorialCompleted: false,
       evilDoctorUnlockEndAt: 0,
-      unlockedBrawlers: { outlit: true },
+      unlockedBrawlers: { outlit: true, fuser: true },
       soulSummoner: { pullCount: 0, deferredQueue: [], road: [], soulBank: 0, soulWater: 0, targetBrawler: null, pendingWaterReward: null, pendingTargetPick: null },
       ranked: { points: 0, rewardsClaimed: [] },
+      attachies: { hyper: {}, gadget: {}, star: {}, pulls: 0 },
       brawlers: {}
   };
     let refreshBrawlerList = null;
@@ -4561,7 +5000,7 @@
       return [0, 3, 6].map(offset => HOURLY_SUSHI_MODE_POOL[(start + offset) % HOURLY_SUSHI_MODE_POOL.length]);
   }
   function hasHourlySushiModifier(mode, now = Date.now()) {
-      return isSlopSushiEventLive() && mode !== 'slop_sushi' && getHourlySushiModes(now).includes(mode);
+      return isSlopSushiEventLive() && mode !== 'slop_sushi' && mode !== 'slop_sushi_plus' && getHourlySushiModes(now).includes(mode);
   }
 
   function getActiveSlopSushiDeck(brawler) {
@@ -4614,6 +5053,66 @@
   function getEntitySlopEffectTotal(entity, key) {
       if (entity === player) return getSlopEffectTotal(key);
       return getEntitySlopCards(entity).reduce((sum, card) => sum + Number(card.effects?.[key] || 0), 0);
+  }
+  function applySlopSushiProjectileMutation(projectile) {
+      if (!isSlopSushiMode || !projectile || projectile.slopMutationInitialized) return;
+      projectile.slopMutationInitialized = true;
+      const owner = projectile.ownerId === player.id ? player : bots.find(b => b.id === projectile.ownerId);
+      if (!owner) return;
+      const effect = key => getEntitySlopEffectTotal(owner, key);
+      const prefix = projectile.super ? 'sushiSuper' : 'sushiAttack';
+      // Accept both the current Sushi keys and older card keys that may still
+      // exist in a saved deck. Size affects the complete attack footprint,
+      // not only the tiny generic projectile collision circle.
+      const brawlerSizePct = !projectile.super && projectile.ownerBrawler === 'outlit'
+          ? effect('outlitProjectileSizePct')
+          : 0;
+      const sizePct = effect(`${prefix}SizePct`) + effect(projectile.super ? 'superSizePct' : 'attackSizePct') + brawlerSizePct;
+      const rangePct = effect(`${prefix}RangePct`);
+      const speedPct = effect(`${prefix}SpeedPct`);
+      if (projectile.ownerBrawler === 'bouncin_balls' && effect('bouncyInfiniteBounce') > 0) {
+          projectile.bouncyInfiniteBounce = true;
+          projectile.canBounce = true;
+          projectile.pierce = true;
+          projectile.hitIds = projectile.hitIds || {};
+          projectile.maxLife = 1000000000;
+          projectile.maxBounceDist = Number.POSITIVE_INFINITY;
+          projectile.bounceLifeLoss = 0;
+          projectile.bounceDmgLoss = 0;
+          projectile.hyperVisual = true;
+      }
+      if (projectile.ownerBrawler === 'classy' && effect('classyEndlessEncore') > 0) {
+          projectile.classyEndlessEncore = true;
+          projectile.classyHoming = true;
+          projectile.homingRadius = Number.POSITIVE_INFINITY;
+          projectile.pierce = true;
+          projectile.hitIds = projectile.hitIds || {};
+          projectile.maxLife = 1000000000;
+          projectile.hyperVisual = true;
+      }
+      if (sizePct) {
+          const sizeMultiplier = Math.max(.25, 1 + sizePct);
+          projectile.slopSizeMultiplier = sizeMultiplier;
+          projectile.hitboxMod = (projectile.hitboxMod || 1) * sizeMultiplier;
+      }
+      if (rangePct && Number.isFinite(projectile.maxLife)) projectile.maxLife *= 1 + rangePct;
+      if (speedPct) { projectile.vx *= 1 + speedPct; projectile.vy *= 1 + speedPct; }
+      if (effect(`${prefix}Pierce`) > 0) { projectile.pierce = true; projectile.hitIds = projectile.hitIds || {}; }
+      const bouncePct = effect(`${prefix}BounceRangePct`);
+      if (bouncePct > 0) { projectile.canBounce = true; projectile.maxLife *= 1 + bouncePct; projectile.maxBounceDist = (projectile.maxBounceDist || 900) * (1 + bouncePct); projectile.bounceLifeLoss = Math.min(projectile.bounceLifeLoss || .08, .04); }
+      const homing = effect(`${prefix}Homing`);
+      if (homing > 0) { projectile.slopHoming = homing; projectile.slopHomingRadius = effect(`${prefix}HomingRadius`) || 560; }
+      if (effect(`${prefix}Return`) > 0 && !projectile.isBoomArang && !projectile.isDemonBlade) {
+          projectile.isBoomerang = true; projectile.boomerangPhase = 0; projectile.boomerangTurnAt = projectile.maxLife * .52;
+      }
+      const forks = Math.max(0, Math.min(3, Math.round(effect(`${prefix}Forks`))));
+      if (forks > 0 && !projectile.slopForkChild) {
+          const baseAngle = Math.atan2(projectile.vy, projectile.vx), speed = Math.hypot(projectile.vx, projectile.vy);
+          for (let n=0;n<forks;n++) {
+              const offset=(n-(forks-1)/2)*.24 + (forks===1?.22:0);
+              bullets.push({...projectile,slopMutationInitialized:true,slopForkChild:true,x:projectile.x,y:projectile.y,vx:Math.cos(baseAngle+offset)*speed,vy:Math.sin(baseAngle+offset)*speed,damage:projectile.damage*.62,hitIds:{}});
+          }
+      }
   }
   function assignSlopSushiBotPowers() {
       if (!isSlopSushiMode) return;
@@ -4677,25 +5176,30 @@
               else owner.superCharge = clamp((owner.superCharge || 0) + thirdSuper, 0, 100);
           }
       }
-      if (owner !== player) return;
       const ammoChance = effect('ammoRefundChance');
-      if (ammoChance > 0 && Math.random() < ammoChance) ammo = Math.min(maxAmmo, ammo + 1);
+      if (ammoChance > 0 && Math.random() < ammoChance) {
+          if (owner === player) ammo = Math.min(maxAmmo, ammo + 1);
+          else owner.lastShot = 0;
+      }
       const thirdAmmo = owner.slopSushiHitCount % 3 === 0 ? effect('thirdHitAmmo') : 0;
-      if (thirdAmmo > 0) ammo = Math.min(maxAmmo, ammo + thirdAmmo);
-      const splashPct = getSlopEffectTotal('splashDamagePct');
+      if (thirdAmmo > 0) {
+          if (owner === player) ammo = Math.min(maxAmmo, ammo + thirdAmmo);
+          else owner.lastShot = 0;
+      }
+      const splashPct = effect('splashDamagePct');
       if (splashPct > 0) {
-          const splashRadius = getSlopEffectTotal('splashRadius') || 120;
-          for (const other of bots) {
-              if (!other || other === target || other.hp <= 0 || areAlliedEntities(player, other)) continue;
+          const splashRadius = effect('splashRadius') || 120;
+          for (const other of [player, ...bots]) {
+              if (!other || other === target || other === owner || other.hp <= 0 || areAlliedEntities(owner, other)) continue;
               if (Math.hypot(other.x - target.x, other.y - target.y) > splashRadius + (other.radius || 0)) continue;
               const splash = applyShieldDamage(other, dealtDamage * splashPct);
               other.hp -= splash; spawnDamageText(other, splash, '#ff9dcc');
           }
       }
-      const chainPct = getSlopEffectTotal('chainDamagePct');
+      const chainPct = effect('chainDamagePct');
       if (chainPct > 0) {
-          const chainRadius = getSlopEffectTotal('chainRadius') || 260;
-          const next = bots.filter(other => other && other !== target && other.hp > 0 && !areAlliedEntities(player, other) && Math.hypot(other.x-target.x,other.y-target.y)<=chainRadius)
+          const chainRadius = effect('chainRadius') || 260;
+          const next = [player, ...bots].filter(other => other && other !== target && other !== owner && other.hp > 0 && !areAlliedEntities(owner, other) && Math.hypot(other.x-target.x,other.y-target.y)<=chainRadius)
               .sort((a,b)=>Math.hypot(a.x-target.x,a.y-target.y)-Math.hypot(b.x-target.x,b.y-target.y))[0];
           if (next) { const chained=applyShieldDamage(next,dealtDamage*chainPct); next.hp-=chained; spawnDamageText(next,chained,'#9be7ff'); }
       }
@@ -4749,27 +5253,45 @@
       ensureSlopSushiState();
       const sushi = playerData.slopSushi;
       if ((sushi.tappers || 0) <= 0) return;
-      // Missing decks for owned brawlers take absolute priority. This guarantees
-      // that a newly unlocked brawler receives its deck from the very next Tapper.
-      // Once owned brawlers are covered, Tappers may collect decks for locked ones.
+      // Finish missing decks first. After every deck is owned, Tappers become
+      // permanent progression drops instead of adding more card levels.
       const ownedMissing = allBrawlers.filter(id => isBrawlerUnlocked(id) && !hasSlopSushiDeck(id));
       const rosterMissing = allBrawlers.filter(id => !hasSlopSushiDeck(id));
       const deckPool = ownedMissing.length ? ownedMissing : rosterMissing;
       const unlockMode = deckPool.length > 0;
-      const brawlerId = unlockMode ? deckPool[Math.floor(Math.random() * deckPool.length)] : allBrawlers[Math.floor(Math.random() * allBrawlers.length)];
-      const card = unlockMode ? null : getActiveSlopSushiDeck(brawlerId)[Math.floor(Math.random() * 8)];
+      let brawlerId = unlockMode ? deckPool[Math.floor(Math.random() * deckPool.length)] : null;
+      let reward = null;
+      if (unlockMode) {
+          sushi.unlockedDecks[brawlerId] = true;
+      } else {
+          const locked = allBrawlers.filter(id => !isBrawlerUnlocked(id));
+          const early = locked.filter(id => ['Common','Rare','Super Rare'].includes(brawlerRarities[id] || 'Common'));
+          const advanced = locked.filter(id => !['Common','Rare','Super Rare'].includes(brawlerRarities[id] || 'Common'));
+          const roll = Math.random();
+          if (roll < .20 && early.length) {
+              brawlerId = early[Math.floor(Math.random() * early.length)]; unlockBrawler(brawlerId);
+              reward = {icon:'⭐',title:'BRAWLER FOUND!',name:brawlerData[brawlerId]?.name || brawlerId,detail:`${brawlerRarities[brawlerId] || 'Common'} brawler unlocked • 20% chance`};
+          } else if (roll < .26 && advanced.length) {
+              brawlerId = advanced[Math.floor(Math.random() * advanced.length)]; unlockBrawler(brawlerId);
+              reward = {icon:'🌟',title:'RARE BRAWLER DROP!',name:brawlerData[brawlerId]?.name || brawlerId,detail:`${brawlerRarities[brawlerId]} brawler unlocked • 6% chance`};
+          } else if (Math.random() < .5) {
+              const amount = 350 + Math.floor(Math.random() * 351);
+              playerData.coins = Math.max(0, Number(playerData.coins || 0)) + amount;
+              reward = {icon:'🪙',title:'COINS!',name:`+${amount} Coins`,detail:'All Sushi powers collected — bonus reward'};
+          } else {
+              const amount = 35 + Math.floor(Math.random() * 41);
+              playerData.souls = Math.max(0, Number(playerData.souls || 0)) + amount;
+              reward = {icon:'👻',title:'SOULS!',name:`+${amount} Souls`,detail:'All Sushi powers collected — bonus reward'};
+          }
+      }
       sushi.tappers--;
-      if (unlockMode) sushi.unlockedDecks[brawlerId] = true;
-      else if (card) sushi.powerLevels[card.id] = Math.min(5, getSlopPowerLevel(card.id) + 1);
       saveProgress();
 
       const o = document.createElement('div');
       o.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(5,12,20,.94);display:flex;align-items:center;justify-content:center;color:#fff;font-family:sans-serif';
       const panel = document.createElement('div');
       panel.style.cssText = `max-width:520px;padding:34px;text-align:center;border:2px solid ${unlockMode?'#ff8fbc':'#ffb347'};border-radius:24px;background:linear-gradient(145deg,#311329,#101d2c);box-shadow:0 0 45px ${unlockMode?'#ff5ba766':'#ffb34766'}`;
-      const title = unlockMode ? 'SUSHI DECK UNLOCKED!' : 'POWER FOUND!';
-      const powerLevel = card ? getSlopPowerLevel(card.id) : 0;
-      panel.innerHTML = `<div style="font-size:64px">${card?.icon || '🍣'}</div><h1>${title}</h1><h2 style="color:${unlockMode?'#ff9dcc':'#ffcf72'}">${card?.name || brawlerData[brawlerId]?.name || brawlerId}</h2><p>${unlockMode?'All 8 powers can now appear in Cooking Runs.':`${brawlerData[brawlerId]?.name || brawlerId} • ${card?.desc || ''}`}</p>${card?`<p style="color:#5df2c2;font-weight:900">POWER LEVEL ${powerLevel} • ALL NUMBERS +${powerLevel*10}%</p>`:''}<button style="padding:12px 24px;border:0;border-radius:12px;background:#5df2c2;font-weight:900;cursor:pointer">NICE!</button>`;
+      panel.innerHTML = `<div style="font-size:64px">${unlockMode?'🍣':reward.icon}</div><h1>${unlockMode?'SUSHI DECK UNLOCKED!':reward.title}</h1><h2 style="color:${unlockMode?'#ff9dcc':'#ffcf72'}">${unlockMode?(brawlerData[brawlerId]?.name || brawlerId):reward.name}</h2><p>${unlockMode?'All 8 powers can now appear in Sushi matches.':reward.detail}</p><button style="padding:12px 24px;border:0;border-radius:12px;background:#5df2c2;font-weight:900;cursor:pointer">NICE!</button>`;
       panel.querySelector('button').onclick=()=>{o.remove();if(typeof refreshBrawlerList==='function')refreshBrawlerList();refreshHomeUI();};
       o.appendChild(panel); document.body.appendChild(o);
   }
@@ -4781,7 +5303,7 @@
       const preferred=remaining.filter(c=>c.rarity===targetRarity).sort(()=>Math.random()-.5);
       const fallback=remaining.filter(c=>c.rarity!==targetRarity).sort(()=>Math.random()-.5);
       const choices=[...preferred,...fallback].slice(0,3);
-      const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;z-index:2800;background:radial-gradient(circle,#30251a,#07111d 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;';
+      const o=document.createElement('div');o.className='sushi-mobile-overlay';o.style.cssText='position:fixed;inset:0;z-index:2800;background:radial-gradient(circle,#30251a,#07111d 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;';
       o.innerHTML=`<h1 style="color:#ffcf72">🍣 COOKING RUN — STAGE ${Math.min(5,(run.stage||0)+1)}/5</h1><p>Choose 1 of 3. Cards stack through the run.</p><div style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"></div>`;
       const wrap=o.querySelector('div');
       const previousWrap=document.createElement('div');
@@ -4802,20 +5324,23 @@
       slopSushiActiveCards = [];
       sushiMatchArmed = true;
 
+      const totalPicks = showdownMode === 'slop_sushi_plus' ? Math.min(7, deck.length) : 2;
       const pickCard = (pickNumber) => {
-          if (pickNumber > 2) { saveProgress(); launchShowdownMatch(); return; }
+          if (pickNumber > totalPicks) { saveProgress(); launchShowdownMatch(); return; }
           const owned = new Set(slopSushiActiveCards);
           const available = deck.filter(card => !owned.has(card.id)).sort(() => Math.random() - .5);
           const exoticDrop = pickNumber === 1 ? available.find(card => card.id === 'splitter_sushi_9') : null;
           const choices = exoticDrop ? [exoticDrop, ...available.filter(card => card !== exoticDrop).slice(0, 2)] : available.slice(0, 3);
           const overlay = document.createElement('div');
+          overlay.className = 'sushi-mobile-overlay';
           overlay.style.cssText='position:fixed;inset:0;z-index:2800;background:radial-gradient(circle,#30251a,#07111d 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif';
-          overlay.innerHTML=`<h1 style="color:#ffcf72">🍣 CHOOSE POWER ${pickNumber}/2</h1><p>These two powers last for this match only.</p><div class="sushi-match-picks" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"></div>`;
+          overlay.innerHTML=`<h1 style="color:#ffcf72">🍣 CHOOSE POWER ${pickNumber}/${totalPicks}</h1><p>${totalPicks === 7 ? 'Sushi Showdown+ lets you build a seven-card feast!' : 'These two powers last for this match only.'}</p><div class="sushi-match-picks" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"></div>`;
           const wrap=overlay.querySelector('.sushi-match-picks');
           choices.forEach(card=>{
               const color=card.rarity==='Exotic'?'#55f7ff':(card.rarity==='Legendary'?'#ffb347':(card.rarity==='Mythic'?'#ff5ba7':'#9b8cff'));
               const level=getSlopPowerLevel(card.id);
               const button=document.createElement('button');
+              button.className='sushi-mobile-card';
               button.style.cssText=`width:220px;min-height:250px;padding:22px;border:2px solid ${color};border-radius:20px;background:linear-gradient(160deg,#3b1734,#10263a);color:white;cursor:pointer;box-shadow:0 0 25px ${color}55`;
               button.innerHTML=`<div style="font-size:12px;font-weight:900;color:${color}">${card.rarity.toUpperCase()}${level?` • POWER +${level*10}%`:''}</div><div style="font-size:60px">${card.icon}</div><h2>${card.name}</h2><p>${card.desc}</p>`;
               button.onclick=()=>{slopSushiActiveCards.push(card.id);overlay.remove();pickCard(pickNumber+1);};
@@ -4937,6 +5462,9 @@
                   }
                    if (data.persistent.ranked) {
                        playerData.ranked = data.persistent.ranked;
+                   }
+                   if (data.persistent.attachies) {
+                       playerData.attachies = data.persistent.attachies;
                    }
                    if (data.persistent.slopSushi) {
                        playerData.slopSushi = data.persistent.slopSushi;
@@ -5080,6 +5608,7 @@
                    unlockedBrawlers: playerData.unlockedBrawlers,
                    soulSummoner: playerData.soulSummoner,
                     ranked: playerData.ranked,
+                    attachies: playerData.attachies,
                     slopSushi: playerData.slopSushi,
                     selectedBrawler,
                     brawlerProgress: {}
@@ -5649,6 +6178,7 @@
               const rewardCoins = Math.floor(Math.random() * (rInfo.coinMax - rInfo.coinMin + 1)) + rInfo.coinMin;
               const gemReward = Math.max(1, Math.floor(rewardCoins / 400));
               const soulReward = rollSoulReward(8, 18);
+              const pityBonus = grantTapperBonusWithPity('regular');
               playerData.coins += rewardCoins;
               playerData.gems += gemReward;
               addSouls(soulReward);
@@ -6871,6 +7401,66 @@
       const renderFeaturedTab = () => {
           const grid = cardGrid();
 
+          addSection(grid, 'Relay Early Access');
+          const relayProgress = getOrCreateProgress('relay');
+          const relayOwned = !!playerData.unlockedBrawlers.relay;
+          const relayMaxed = relayOwned && relayProgress.level >= 11 && relayProgress.gadgetUnlocked && relayProgress.starPowerUnlocked && relayProgress.hyperchargeUnlocked;
+
+          grid.appendChild(makeShopCard({
+              titleText: 'RELAY - Early Access',
+              accent: '#67e8ff',
+              descText: 'Unlock Relay immediately at Power 1. Her upgrades, Gadget, Star Power, and Hypercharge are purchased normally.',
+              priceText: '79 GEMS',
+              buttonText: 'UNLOCK RELAY',
+              buttonColor: '#67e8ff',
+              isOwned: relayOwned,
+              isLocked: !relayOwned && (playerData.gems || 0) < 79,
+              lockedText: '79 GEMS REQUIRED',
+              footerText: 'Brawler-only early access offer.',
+              onBuy: () => {
+                  if (playerData.unlockedBrawlers.relay) return;
+                  if ((playerData.gems || 0) < 79) return alert('Not enough Gems!');
+                  playerData.gems -= 79;
+                  unlockBrawler('relay');
+                  playerData.shopClaims.relayEarlyAccess = true;
+                  ensureShopButtonRefresh();
+                  renderTabContent();
+              }
+          }));
+
+          const relayBundlePrice = relayOwned ? 149 : 199;
+          grid.appendChild(makeShopCard({
+              titleText: 'RELAY - Max Signal Bundle',
+              accent: '#df75ff',
+              descText: 'Unlock Relay, instantly reach Power 11, and receive her Gadget, Star Power, and Hypercharge.',
+              priceText: `${relayBundlePrice} GEMS`,
+              buttonText: relayOwned ? 'MAX RELAY' : 'GET FULL BUNDLE',
+              buttonColor: '#df75ff',
+              isOwned: relayMaxed,
+              isLocked: !relayMaxed && (playerData.gems || 0) < relayBundlePrice,
+              lockedText: `${relayBundlePrice} GEMS REQUIRED`,
+              footerText: relayOwned ? 'Owned-brawler upgrade price applied.' : 'Complete early access bundle.',
+              onBuy: () => {
+                  const progress = getOrCreateProgress('relay');
+                  const alreadyOwned = !!playerData.unlockedBrawlers.relay;
+                  const price = alreadyOwned ? 149 : 199;
+                  if ((playerData.gems || 0) < price) return alert('Not enough Gems!');
+                  playerData.gems -= price;
+                  if (!alreadyOwned) unlockBrawler('relay');
+                  applyLevelUnlocks(progress, 11);
+                  progress.gadgetUnlocked = true;
+                  progress.starPowerUnlocked = true;
+                  progress.hyperchargeUnlocked = true;
+                  progress.selectedGadget = progress.selectedGadget || 'g1';
+                  progress.selectedStar = progress.selectedStar || 'slow';
+                  playerData.shopClaims.relayMaxSignalBundle = true;
+                  ensureShopButtonRefresh();
+                  renderTabContent();
+              }
+          }));
+
+          addSection(grid, 'Featured Rewards');
+
           const dailyFreebieOptions = [
               { accent: '#5df2c2', reward: { kind: 'gems', amount: 2 }, label: 'Claim 2 Free Gems' },
               { accent: '#ffd166', reward: { kind: 'coins', amount: 350 }, label: 'Claim 350 Free Coins' },
@@ -6917,6 +7507,28 @@
                   ensureSlopSushiState();
                   playerData.slopSushi.tappers += 3;
                   playerData.shopClaims[sushiBugCompKey] = true;
+                  ensureShopButtonRefresh();
+                  renderTabContent();
+              }
+          }));
+
+          const tapperMegaCompKey = 'tapperMegaCompJuly2026';
+          const tapperMegaCompClaimed = !!playerData.shopClaims[tapperMegaCompKey];
+          grid.appendChild(makeShopCard({
+              titleText: '🎁 Tapper Mega Gift',
+              accent: '#d970ff',
+              descText: 'Claim 5 Tappers, 3 Super Tappers, and 1 Hyper Tapper for free!',
+              priceText: 'FREE',
+              buttonText: 'CLAIM ALL',
+              buttonColor: '#d970ff',
+              isOwned: tapperMegaCompClaimed,
+              footerText: 'One-time free gift.',
+              onBuy: () => {
+                  if (playerData.shopClaims[tapperMegaCompKey]) return;
+                  playerData.starrDrops = (playerData.starrDrops || 0) + 5;
+                  playerData.superTapperCount = (playerData.superTapperCount || 0) + 3;
+                  playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
+                  playerData.shopClaims[tapperMegaCompKey] = true;
                   ensureShopButtonRefresh();
                   renderTabContent();
               }
@@ -7837,11 +8449,13 @@
     function getSplitterMainSplitConfig(isHyper, isBotControlled = false) {
         if (!isSplitterPoweredMode) {
             return {
-                splitPlan: isHyper ? [3, 4, 2, 2] : [3, 4],
-                generationCaps: null,
-                childCap: SPLITTER_MAIN_CHILD_CAP,
+                // Regular attack has exact fragment waves: 1 > 3 > 5 > 7 > 9.
+                // Global generation caps prevent exponential projectile growth.
+                splitPlan: isHyper ? [3, 3, 2, 2, 11] : [3, 5, 7, 9],
+                generationCaps: isHyper ? [3, 3, 2, 2, 11] : [3, 5, 7, 9],
+                childCap: isHyper ? 29 : 24,
                 mainDamageMult: 1,
-                childDamageMult: 0.50,
+                childDamageMult: 0.85,
                 hyperDamageMult: 1,
                 hyperChildMult: 1,
             };
@@ -8138,6 +8752,8 @@
     function resetKnockDonateRound() {
         closeKnockDonateDonationUI();
         bullets.length = 0;
+        snapperWaves.length = 0;
+        chickpigEggZones.length = 0;
         rings.length = 0;
         powerups.length = 0;
         cheeseFields.length = 0;
@@ -8513,7 +9129,54 @@
         waterZones.push(...carved);
     }
 
+    function buildNextShowdownMap(mapIndex) {
+        cubes.length = 0; bushZones.length = 0; waterZones.length = 0; destructibleWalls.length = 0;
+        const idx=((mapIndex%4)+4)%4;
+        const wall=(x,y,w,h)=>cubes.push({x,y,w,h});
+        const bush=(x,y,w,h)=>bushZones.push({x,y,w,h});
+        const water=(x,y,w,h)=>waterZones.push({x,y,w,h});
+
+        if(idx===0){
+            // Crown Collapse: a valuable open throne surrounded by six broken crown walls.
+            water(1550,1550,900,150); water(1550,2300,900,150); water(1550,1700,150,600); water(2300,1700,150,600);
+            wall(1740,1320,520,120); wall(1740,2560,520,120); wall(1320,1740,120,520); wall(2560,1740,120,520);
+            wall(820,1040,560,120); wall(2620,2840,560,120); wall(1040,2620,120,560); wall(2840,820,120,560);
+            bush(1720,1720,560,180); bush(1720,2100,560,180); bush(1720,1900,180,200); bush(2100,1900,180,200);
+            bush(520,1520,300,220); bush(3180,2260,300,220); bush(1520,520,220,300); bush(2260,3180,220,300);
+        }else if(idx===1){
+            // Tidal Lock: two rivers with three contested land bridges and flank coves.
+            water(1020,260,360,1160); water(1020,1680,360,700); water(1020,2640,360,1100);
+            water(2620,260,360,1100); water(2620,1620,360,760); water(2620,2640,360,1100);
+            wall(1540,760,920,120); wall(1540,1940,920,120); wall(1540,3120,920,120);
+            wall(560,1460,520,110); wall(2920,2420,520,110); wall(560,2500,520,110); wall(2920,1380,520,110);
+            bush(1450,1040,360,220); bush(2190,1040,360,220); bush(1450,2740,360,220); bush(2190,2740,360,220);
+            bush(1700,1740,600,160); bush(1700,2120,600,160);
+        }else if(idx===2){
+            // Four Corners: protected outer bunkers feeding into a dangerous open center.
+            [[900,900],[3100,900],[900,3100],[3100,3100]].forEach(([x,y])=>{
+                wall(x-260,y-260,520,100); wall(x-260,y+160,520,100); wall(x-260,y-160,100,320); wall(x+160,y-160,100,320);
+                bush(x-145,y-145,290,290);
+            });
+            wall(1640,1640,260,100); wall(2100,1640,260,100); wall(1640,2260,260,100); wall(2100,2260,260,100);
+            water(1840,1840,320,320);
+            bush(500,1840,300,320); bush(3200,1840,300,320); bush(1840,500,320,300); bush(1840,3200,320,300);
+        }else{
+            // Neon Labyrinth: readable zig-zag lanes, quick flank links, and no sealed pockets.
+            wall(740,900,900,110); wall(1940,900,1320,110);
+            wall(740,1580,1320,110); wall(2360,1580,900,110);
+            wall(740,2260,900,110); wall(1940,2260,1320,110);
+            wall(740,2940,1320,110); wall(2360,2940,900,110);
+            wall(1180,1010,110,400); wall(2710,1690,110,400); wall(1180,2370,110,400); wall(2710,3050,110,350);
+            water(1840,1160,320,220); water(1840,2620,320,220);
+            bush(1560,1740,880,180); bush(1560,2080,880,180); bush(420,1180,260,360); bush(3320,2460,260,360);
+        }
+        carveWaterNavigationLanes();
+    }
+
     function buildHandmadeShowdownMap(mapIndex) {
+        buildNextShowdownMap(mapIndex);
+        return;
+        /* Previous rotation retained below for future events. */
         cubes.length = 0;
         bushZones.length = 0;
         waterZones.length = 0;
@@ -9455,7 +10118,7 @@
         const nearSpeaker = !!opts.forceLarge || hasClassySpeakerBoost(owner);
         const noteCount = opts.forceCount || (nearSpeaker ? 8 : 7);
         const wideFan = !!opts.wideFan;
-        const isHyper = owner.id === player.id ? isHypercharged : owner.isHypercharged;
+        const isHyper = owner.id === player.id ? getPlayerHyperMainActive('classy') : owner.isHypercharged;
         const pierce = !!(opts.forcePierce || isHyper);
         const isGolden = !!opts.golden;
         const speed = 1120 * 0.6;
@@ -9494,7 +10157,9 @@
         let base = brawler === 'angel' ? 1700 : (brawler === 'demon' ? 1800 : (Number.isFinite(BALANCE_PROFILE.reloadMsByBrawler[brawler])
             ? BALANCE_PROFILE.reloadMsByBrawler[brawler]
             : 1740 * 1.15));
-        if (brawler === 'warrior' && performance.now() < (player.warriorStandUntil || 0)) base /= 2.25;
+        if (brawler === 'warrior' && performance.now() < (player.warriorStandUntil || 0)) base /= 2.10;
+        if (brawler === 'upiedown' && performance.now() < (player.upiedownReloadBuffUntil || 0)) base *= 0.85;
+        if (brawler === 'robber' && selectedStar === 'long' && maxAmmo > 3) base *= 0.75;
         return (isSlopSushiMode && brawler === selectedBrawler)
             ? base * Math.max(0.4, 1 - getSlopEffectTotal('reloadPct'))
             : base;
@@ -9505,10 +10170,11 @@
         if (brawler === 'echo') return 0.75 * modeMult; // Slower super (high dmg)
         if (brawler === 'bowlin_rida') return 1.4 * modeMult; // Faster super (low dmg)
         if (brawler === 'dashaholic') return 1.25 * modeMult; // Reward aggressive hits
-        if (brawler === 'beast') return 0.85 * modeMult; // Beast mode is powerful, charge slower
+        if (brawler === 'beast') return 1.0 * modeMult; // Fixed: old charge penalty stacked with Beast's damage nerf
                 if (brawler === 'tempo_maker') return 0.9 * modeMult;
         if (brawler === 'steamer') return 0.95 * modeMult;
         if (brawler === 'warrior') return 0.88 * modeMult;
+        if (brawler === 'snapper') return 0.76 * modeMult; // about seven Power 11 orb hits
         return 1.0 * modeMult;
   }
 
@@ -9537,7 +10203,8 @@
   }
 
   function startDuelsRound() {
-    bullets.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0;
+    bullets.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0;
+    snapperWaves.length = 0;
     stormTimer = 0; // Reset storm every round
     
     // Add central walls
@@ -9595,19 +10262,63 @@
 
   function grantShield(entity, amount, cap){
     if(!entity) return;
-    const universalShieldCap = 5000;
+    const universalShieldCap = Math.max(5000, cap || 0, entity.shieldCapOverride || 0);
     entity.shieldMax = universalShieldCap;
     entity.shield = clamp((entity.shield || 0) + amount, 0, universalShieldCap);
   }
 
+  function grantRelayShield(entity, amount, cap = 7500) {
+    if (!entity || amount <= 0) return;
+    const relayCap = Math.max(5000, cap || 7500);
+    entity.shieldCapOverride = Math.max(entity.shieldCapOverride || 0, relayCap);
+    grantShield(entity, amount, relayCap);
+  }
+
   function applyShieldDamage(entity, amount){
     if(!entity || amount <= 0) return 0;
-    entity.shieldMax = 5000;
-    const shield = Math.min(5000, entity.shield || 0);
+    entity.lastShieldDamageAbsorbed = 0;
+    entity.lastDamageRedirected = 0;
+    const link = getRelayDamageLink(entity);
+    if (link) {
+        const redirected = Math.min(link.device.hp, amount * link.ratio);
+        link.device.hp -= redirected;
+        amount -= redirected;
+        entity.lastDamageRedirected = redirected;
+        if (redirected > 0 && performance.now() >= (link.device.nextTransferTextAt || 0)) {
+            spawnFloatingText(link.device.x, link.device.y - 40, `-${Math.round(redirected)} TRANSFER`, '#67e8ff');
+            link.device.nextTransferTextAt = performance.now() + 180;
+        }
+    }
+    const cap = Math.max(5000, entity.shieldCapOverride || 0);
+    entity.shieldMax = cap;
+    const shield = Math.min(cap, entity.shield || 0);
     entity.shield = shield;
     const absorbed = Math.min(shield, amount);
     entity.shield = shield - absorbed;
+    entity.lastShieldDamageAbsorbed = absorbed;
     return amount - absorbed;
+  }
+
+  const PRESSURE_CHARGE_TANKS = new Set(['beast','chaird','forest','overlord','unopcoloco','warrior']);
+  function grantPressureCharge(entity, hpDamage) {
+      if (!entity || entity.hp <= 0 || entity.isBoss) return;
+      const id = entity.id === player.id ? selectedBrawler : entity.brawler;
+      if (!PRESSURE_CHARGE_TANKS.has(id)) return;
+      const received = Math.max(0, Number(hpDamage)||0) + Math.max(0, Number(entity.lastShieldDamageAbsorbed)||0);
+      if (received <= 0 || !entity.maxHp) return;
+      const gain = Math.min(10, (received / entity.maxHp) * 35);
+      if (entity.id === player.id) { superCharge = clamp(superCharge + gain, 0, 100); updateSuperButton(); }
+      else entity.superCharge = clamp((entity.superCharge || 0) + gain, 0, 100);
+  }
+
+  function getRelayDamageLink(entity) {
+      if (!entity) return null;
+      let ownerId = entity.id, ratio = null;
+      if (entity.relaySharedOwnerId && performance.now() < (entity.relaySharedUntil || 0)) { ownerId = entity.relaySharedOwnerId; ratio = 0.5; }
+      const device = healingPods.find(p => p.isRelayDevice && p.ownerId === ownerId && p.hp > 0);
+      if (!device) return null;
+      if (Math.hypot(entity.x-device.x, entity.y-device.y) > (device.relayLinkRadius || 520)) return null;
+      return {device, ratio:ratio ?? device.relayRedirectPct ?? 0.75};
   }
 
   function triggerWarriorSpearExplosion(spear) {
@@ -9635,24 +10346,9 @@
   }
 
   function tickShieldDecay(entity, dt){
-    if(!entity || !entity.shield || entity.shield <= 0) return;
-    const entityBrawler = entity.id === player.id ? selectedBrawler : entity.brawler;
-    if(entityBrawler === 'decayer') return;
-        const now = performance.now();
-        if ((entity.shieldDecayPausedUntil || 0) > now) return;
-    const decayMult = 1.0;
-    entity.shieldDecayTimer = (entity.shieldDecayTimer || 0) + dt;
-    const decayInterval = 0.25; // every quarter-second we apply a decay chunk
-    while(entity.shieldDecayTimer >= decayInterval && entity.shield > 0){
-      entity.shieldDecayTimer -= decayInterval;
-      // Decay scales with current shield amount. Base between ~200-800, clamped, plus a small jitter.
-      // This prevents very large shields from lasting forever and makes decay feel proportional.
-      const scale = Math.max(0, entity.shield || 0) * 0.06; // 6% of shield
-      const base = Math.max(200, Math.min(800, Math.round(scale)));
-      const jitter = Math.floor(Math.random() * 81) - 40; // -40..+40
-      const decay = Math.max(50, Math.round((base + jitter) * decayMult));
-      entity.shield = Math.max(0, entity.shield - decay);
-    }
+    // Numeric shields are persistent health pools. They only decrease when
+    // they absorb damage, which keeps their behavior consistent everywhere.
+    if (entity) entity.shieldDecayTimer = 0;
   }
 
   function spawnFloatingText(x, y, text, color) {
@@ -9736,8 +10432,8 @@
 
   function drawEntityShieldBar(entity, cx, y, width, height = 10) {
       if (!entity || (entity.shield || 0) <= 0) return false;
-      const shield = Math.min(5000, Math.max(0, Math.ceil(entity.shield || 0)));
-      const cap = 5000;
+      const cap = Math.max(5000, entity.shieldCapOverride || 0);
+      const shield = Math.min(cap, Math.max(0, Math.ceil(entity.shield || 0)));
       const pct = Math.max(0, Math.min(1, shield / cap));
       const x = cx - width / 2;
       ctx.save();
@@ -9762,6 +10458,59 @@
       ctx.textBaseline = 'middle';
       ctx.strokeText(`🛡 ${shield}`, cx, y + height / 2 + 0.5);
       ctx.fillText(`🛡 ${shield}`, cx, y + height / 2 + 0.5);
+      ctx.restore();
+      return true;
+  }
+
+  function getEntityDamageResistancePct(entity) {
+      if (!entity) return 0;
+      const now = performance.now();
+      const brawler = entity.id === player.id ? selectedBrawler : entity.brawler;
+      let pct = 0;
+      if ((entity.defenseUntil || 0) > now && Number.isFinite(entity.defenseMult)) {
+          pct = Math.max(pct, 1 - entity.defenseMult);
+      }
+      if ((entity.demonDoomShieldUntil || 0) > now) pct = Math.max(pct, 0.50);
+      const cheeseActive = brawler === 'cheseypuff' && (entity.id === player.id
+          ? now < cheseySuperUntil
+          : now < (entity.cheseySuperUntil || 0));
+      if (cheeseActive) {
+          const hyper = entity.id === player.id ? isHypercharged : !!entity.isHypercharged;
+          pct = Math.max(pct, hyper ? 0.50 : 0.30);
+      }
+      if (isSlopSushiMode) pct = Math.max(pct, getEntitySlopEffectTotal(entity, 'damageReductionPct'));
+      return Math.max(0, Math.min(0.90, pct));
+  }
+
+  function drawDamageResistanceShield(entity, cx, cy, radius) {
+      const pct = getEntityDamageResistancePct(entity);
+      if (pct <= 0) return false;
+      const ringR = radius + 11;
+      const pulse = 0.5 + Math.sin(performance.now() / 150) * 0.5;
+      ctx.save();
+      ctx.fillStyle = `rgba(111, 52, 214, ${0.10 + pulse * 0.05})`;
+      ctx.beginPath(); ctx.arc(cx, cy, ringR - 2, 0, Math.PI * 2); ctx.fill();
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+          const start = -Math.PI / 2 + i * Math.PI / 3 + 0.08;
+          const end = start + Math.PI / 3 - 0.16;
+          ctx.strokeStyle = i % 2 ? '#ff78e8' : '#9d7bff';
+          ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(cx, cy, ringR, start, end); ctx.stroke();
+      }
+      const label = `DR ${Math.round(pct * 100)}%`;
+      ctx.font = 'bold 8px sans-serif';
+      const labelW = Math.max(32, ctx.measureText(label).width + 10);
+      // Keep resistance information beside the fighter. The space below the
+      // fighter belongs to ammo, mode meters and the Power Level indicator.
+      const labelX = cx - ringR - labelW - 5;
+      const labelY = cy - 6;
+      ctx.fillStyle = 'rgba(28, 9, 54, 0.92)';
+      ctx.beginPath(); ctx.roundRect(labelX, labelY, labelW, 12, 6); ctx.fill();
+      ctx.strokeStyle = '#c69cff'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(labelX + 0.5, labelY + 0.5, labelW - 1, 11, 5.5); ctx.stroke();
+      ctx.fillStyle = '#f7eaff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(label, labelX + labelW / 2, labelY + 6.5);
       ctx.restore();
       return true;
   }
@@ -9954,7 +10703,7 @@
           }
 
           const isGolden = isBot ? (now < (entity.beamSuperGoldenUntil || 0)) : (now < (player.beamSuperGoldenUntil || 0));
-          const isHyper = isBot ? (entity.isHypercharged || entity.hyperchargeUntil > now) : isHypercharged;
+          const isHyper = isBot ? (entity.isHypercharged || entity.hyperchargeUntil > now) : getPlayerHyperMainActive('beam');
           let beamRange = isHyper ? 467 : 380;
           
           const timeActiveSec = (entity.beamRampTicks * dt);
@@ -10808,10 +11557,10 @@
       const now = performance.now();
       const MISS_HEAL_COOLDOWN_MS = 2600;
       const MISS_HEAL_TICKS = 4;
-      const MISS_HEAL_TICK_AMOUNT = 220;
+      const MISS_HEAL_TICK_AMOUNT = 250;
       const MISS_HEAL_TICK_DELAY_MS = 400;
       const MISS_HEAL_WINDOW_MS = 8000;
-      const MISS_HEAL_WINDOW_CAP = 1100;
+      const MISS_HEAL_WINDOW_CAP = 1250;
       if ((missOwner.evilDoctorMissHealCooldownUntil || 0) > now) return;
       missOwner.evilDoctorMissHealCooldownUntil = now + MISS_HEAL_COOLDOWN_MS;
       if (!Number.isFinite(missOwner.evilDoctorMissHealWindowStart)) missOwner.evilDoctorMissHealWindowStart = now;
@@ -10963,6 +11712,7 @@
           tempoTargetX: targetX,
           tempoTargetY: targetY,
           tempoSideNote: !!opts.sideNote,
+          tempoHyperEncore: !!isHyper,
           tempoSnapBackAt: opts.snapBackMs ? performance.now() + opts.snapBackMs : 0,
           x: fromEntity.x + Math.cos(ang + spreadOffset) * (fromEntity.radius + 5),
           y: fromEntity.y + Math.sin(ang + spreadOffset) * (fromEntity.radius + 5),
@@ -10981,8 +11731,23 @@
       });
   }
 
+  function recordTrainingBotDamage(target, amount, ownerId) {
+      if (!target?.isDamageMeterBot || ownerId !== player.id || !(amount > 0)) return;
+      const now=performance.now();
+      if(!Array.isArray(target.trainingDamageEvents))target.trainingDamageEvents=[];
+      target.trainingDamageEvents.push({at:now,amount:Number(amount)||0});
+      target.trainingDamageEvents=target.trainingDamageEvents.filter(hit=>now-hit.at<=5000);
+  }
+
   function AOEDamage(x, y, radius, damage, ownerId, isSuper = false) {
     let owner = ownerId === player.id ? player : bots.find(bt=>bt.id===ownerId);
+    // Size cards must also affect attacks implemented as direct blasts, melee
+    // sweeps and landing explosions (these never enter the bullet mutation loop).
+    if (isSlopSushiMode && owner) {
+        const sizeKey = isSuper ? 'sushiSuperSizePct' : 'sushiAttackSizePct';
+        const sizePct = getEntitySlopEffectTotal(owner, sizeKey);
+        if (sizePct) radius *= Math.max(.25, 1 + sizePct);
+    }
     // Boss attacks don't get power cube multiplier (already scaled by difficulty)
     if (!(owner && owner.isBoss)) {
         damage *= (1.0 + ((owner ? owner.powerCubes : 0) || 0) * 0.1);
@@ -11000,6 +11765,8 @@
             if (bot.invulnerableUntil && bot.invulnerableUntil > performance.now()) continue;
             let dealt = applyShieldDamage(bot, damage);
             bot.hp -= dealt;
+            grantPressureCharge(bot, dealt);
+            recordTrainingBotDamage(bot,dealt,ownerId);
             applySlopSushiOnHit(owner, bot, dealt);
             if (bot.hp <= 0) applySlopSushiOnKill(owner, bot);
             if (dealt > 0) {
@@ -11037,6 +11804,7 @@
                 }
                 dealt = applyShieldDamage(player, incomingAoeDamage);
                 player.hp -= dealt;
+                grantPressureCharge(player, dealt);
                 if (dealt > 0) {
                     player.lastDamagedAt = performance.now();
                     player.lastDamagerId = ownerId;
@@ -11711,10 +12479,25 @@
       return true;
   }
 
+    function consumeSnapperMarkBonus(owner, target) {
+        const now = performance.now();
+        if (!owner || !target || target.snapperMarkOwnerId !== owner.id || (target.snapperMarkUntil || 0) <= now) return 1;
+        const star = owner.id === player.id ? selectedStar : owner.selectedStar;
+        const mult = 1 + (target.snapperMarkPct || 0.10);
+        if (star !== 'slow') {
+            target.snapperMarkCharges = Math.max(0, (target.snapperMarkCharges || 1) - 1);
+            if (!target.snapperMarkCharges) target.snapperMarkUntil = 0;
+        }
+        return mult;
+    }
+
     function fire(fromEntity, targetX, targetY, isBot=false, isMoving=false){
         normalizeSelectedBrawler();
     const now = performance.now();
         const brawler = getCombatBrawler(fromEntity, isBot);
+        // Player Hyper Supers/stat boosts still activate normally. Only the
+        // main-attack mutation is routed through its collectible Attachie.
+        const isHypercharged = isBot ? false : getPlayerHyperMainActive(brawler);
         if (brawler === 'demon') {
             const grounded = bullets.find(p => p.ownerId === fromEntity.id && p.isDemonBlade && p.demonGrounded && !p.demonReturning);
             if (grounded) {
@@ -11724,7 +12507,7 @@
                 grounded.hitIds = {};
                 grounded.demonBarbed = !!fromEntity.demonBarbedRecallArmed;
                 fromEntity.demonBarbedRecallArmed = false;
-                grounded.damage = isBot ? 1225 : 1650;
+                grounded.damage = isBot ? 1100 : 1500;
                 grounded.life = 0;
                 grounded.maxLife = 3;
                 return;
@@ -11797,13 +12580,30 @@
     } else {
         lastShot = now;
         const steamerCost = brawler === 'steamer' ? 5 : 2;
-        ammo -= (crystalModeActive ? 1 : ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1));
+        const classyUnlimitedAmmo = brawler === 'classy' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'classyEndlessEncore') > 0;
+        const robberUnlimitedAmmo = brawler === 'robber' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'robberPerfectCrime') > 0;
+        if (!classyUnlimitedAmmo && !robberUnlimitedAmmo) ammo -= (crystalModeActive ? 1 : ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1));
+        else ammo = maxAmmo;
         player.lastAttackAt = now;
         applySlopSushiOnAttack();
     }
     const dx = targetX - fromEntity.x;
     const dy = targetY - fromEntity.y;
     const ang = Math.atan2(dy,dx);
+
+    if (brawler === 'snapper') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        if (!isBot && fromEntity.snapperDoubleMarkArmed) { gadgetArmed=false; gadgetCooldownUntil=now+GADGET_COOLDOWN_MS; updateGadgetButton(); }
+        bullets.push({
+            ownerBrawler:'snapper', isSnapperOrb:true,
+            x:fromEntity.x + Math.cos(ang)*(fromEntity.radius+8), y:fromEntity.y + Math.sin(ang)*(fromEntity.radius+8),
+            vx:Math.cos(ang)*720, vy:Math.sin(ang)*720, life:0, maxLife:0.98,
+            damage:1500, pierce:false, ownerId:fromEntity.id, hitIds:{},
+            hitboxMod:2.35, snapperMarkPct:hyper ? 0.15 : 0.10,
+            color:hyper ? '#ff70ef' : '#55e6ff', hyperVisual:hyper
+        });
+        return;
+    }
 
     if (crystalModeActive) {
         const assistAng = getCrystalBounceAssistAngle(fromEntity, ang, false);
@@ -11912,45 +12712,85 @@
     // This block should never be reached due to early return above
     if (brawler === 'beam') return;
 
-    if (brawler === 'warrior') {
+    if (brawler === 'jetpack') {
+        const hyperMain = isBot ? !!fromEntity.isHypercharged : getPlayerHyperMainActive('jetpack');
+        startJetpackFlight(fromEntity,targetX,targetY,{charge:isBot ? .78 : 1,hyper:hyperMain});
+        return;
+    }
+
+    if (brawler === 'chickpig') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const speed = 720;
+        const rangeLife = .82;
+        const side = 10;
+        const sideX = Math.cos(ang + Math.PI/2) * side;
+        const sideY = Math.sin(ang + Math.PI/2) * side;
+        bullets.push({ownerBrawler:'chickpig',isChickpigEgg:true,x:fromEntity.x+sideX,y:fromEntity.y+sideY,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:rangeLife,damage:isBot?650:900,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.8,hyperVisual:hyper,chickpigLeaveZone:hyper});
+        bullets.push({ownerBrawler:'chickpig',isChickpigBacon:true,x:fromEntity.x-sideX,y:fromEntity.y-sideY,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:rangeLife,damage:isBot?800:1150,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.65,hyperVisual:hyper,chickpigBurn:hyper});
+    } else if (brawler === 'upiedown') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const throwDistance = Math.min(610, Math.hypot(targetX-fromEntity.x,targetY-fromEntity.y));
+        const speed = 600;
+        const spawnOffset = fromEntity.radius + 8;
+        const flightDistance = Math.max(0, throwDistance - spawnOffset);
+        const landX = fromEntity.x + Math.cos(ang) * throwDistance;
+        const landY = fromEntity.y + Math.sin(ang) * throwDistance;
+        bullets.push({
+            ownerBrawler:'upiedown',isUpiedownCorePie:true,upiedownHyper:hyper,upiedownBot:isBot,
+            upiedownLandX:landX,upiedownLandY:landY,
+            x:fromEntity.x+Math.cos(ang)*spawnOffset,y:fromEntity.y+Math.sin(ang)*spawnOffset,
+            vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:Math.max(.05,flightDistance/speed),
+            damage:isBot?1230:1700,pierce:true,pierceWalls:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.65,hyperVisual:hyper
+        });
+    } else if (brawler === 'warrior') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const standActive = now < (fromEntity.warriorStandUntil || 0);
-        const count = standActive ? (fromEntity.warriorStandHyper ? 6 : 3) : 2;
+        const extraSpears=isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'warriorExtraSpears')):0;
+        const explosiveSushi=isSlopSushiMode&&getEntitySlopEffectTotal(fromEntity,'warriorExplosiveMain')>0;
+        const count = standActive ? (fromEntity.warriorStandHyper ? 6 : 3) : 2+extraSpears;
         const spreadStep = count >= 6 ? 0.085 : (count === 3 ? 0.12 : 0.14);
-        const throwDistance = Math.min(620, Math.hypot(targetX-fromEntity.x,targetY-fromEntity.y));
+        const throwDistance = Math.min(620*(1+(isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'warriorRangePct'):0)), Math.hypot(targetX-fromEntity.x,targetY-fromEntity.y));
         const throwSpeed = 620;
         const volleyId = `${fromEntity.id}:${Math.round(now)}:${Math.random().toString(36).slice(2,6)}`;
         for (let i = 0; i < count; i++) {
             const a = ang + (i - (count - 1) / 2) * spreadStep;
             bullets.push({
                 ownerBrawler:'warrior', isWarriorSpear:true, warriorThrown:true, warriorVolleyId:volleyId,
-                warriorExplosive:hyper, warriorExplosionDamage:280, warriorExplosionRadius:78,
+                warriorExplosive:hyper||explosiveSushi, warriorExplosionDamage:240, warriorExplosionRadius:78,
                 x:fromEntity.x+Math.cos(a)*(fromEntity.radius+8), y:fromEntity.y+Math.sin(a)*(fromEntity.radius+8),
                 warriorOriginX:fromEntity.x, warriorOriginY:fromEntity.y,
                 vx:Math.cos(a)*throwSpeed, vy:Math.sin(a)*throwSpeed, life:0, maxLife:Math.max(.18,throwDistance/throwSpeed),
-                damage:count===6?(isBot?578:765):(isBot?680:900), pierce:true, pierceWalls:true, ownerId:fromEntity.id, hitIds:{}, hitboxMod:1.55,
+                damage:isBot?720:960, pierce:true, pierceWalls:true, ownerId:fromEntity.id, hitIds:{}, hitboxMod:1.55,
                 hyperVisual:hyper
             });
         }
+    } else if (brawler === 'relay') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const level = isBot ? (fromEntity.level || 11) : getSelectedBrawlerLevel();
+        const shieldPct=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'relayShieldPct'):0,shieldCap=isSlopSushiMode?(getEntitySlopEffectTotal(fromEntity,'relayShieldCap')||7500):7500;
+        bullets.push({ownerBrawler:'relay',isRelayOrb:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+6),vx:Math.cos(ang)*680,vy:Math.sin(ang)*680,life:0,maxLife:.594,damage:1150,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.35,relayShieldAmount:Math.round((hyper?2500:1750)*getLevelDamageScale(level)*(1+shieldPct)),relayShieldCap:shieldCap,relayHyperAttachie:hyper,hyperVisual:hyper});
     } else if (brawler === 'angel') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
-        const count = hyper ? 3 : 1;
+        const count = (hyper ? 3 : 1)+(isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'angelExtraBurst')):0);
         for (let shot=0; shot<count; shot++) setTimeout(()=>{
             if (!playing || gameOver || fromEntity.hp <= 0) return;
-            bullets.push({ownerBrawler:'angel',isAngelLight:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+5),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+5),vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.82,damage:hyper?(isBot?900:1250):(isBot?1200:1700),healAmt:hyper?(isBot?650:900):(isBot?1050:1450),angelCanLift:shot===0,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.0,hyperVisual:hyper});
+            bullets.push({ownerBrawler:'angel',isAngelLight:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+5),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+5),vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.82,damage:hyper?(isBot?850:1180):(isBot?1120:1600),healAmt:hyper?(isBot?650:900):(isBot?1050:1450),angelCanLift:shot===0,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.0,hyperVisual:hyper});
         },shot*105);
     } else if (brawler === 'demon') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         bullets.push({ownerBrawler:'demon',isDemonBlade:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+6),vx:Math.cos(ang)*680,vy:Math.sin(ang)*680,life:0,maxLife:.72,damage:isBot?1500:2000,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.1});
-        if (hyper) bullets.push({ownerBrawler:'demon',isDemonBlade:true,isDemonSpectral:true,x:fromEntity.x+Math.cos(ang+.13)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang+.13)*(fromEntity.radius+6),vx:Math.cos(ang+.13)*700,vy:Math.sin(ang+.13)*700,life:0,maxLife:.68,damage:isBot?900:1250,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.8,hyperVisual:true});
+        if (hyper||(isSlopSushiMode&&getEntitySlopEffectTotal(fromEntity,'demonExtraBlade')>0)) bullets.push({ownerBrawler:'demon',isDemonBlade:true,isDemonSpectral:true,x:fromEntity.x+Math.cos(ang+.13)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang+.13)*(fromEntity.radius+6),vx:Math.cos(ang+.13)*700,vy:Math.sin(ang+.13)*700,life:0,maxLife:.68,damage:isBot?900:1250,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.8,hyperVisual:hyper});
     } else if (brawler === 'outlit') {
         const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
-        const pellets = isBot ? 3 : 5; // bots shoot fewer pellets
+        const outlitExtraPellets = isSlopSushiMode ? Math.round(getEntitySlopEffectTotal(fromEntity,'outlitExtraPellets')) : 0;
+        const pellets = (isBot ? 3 : 5) + outlitExtraPellets;
         const shotCount = isHyper ? 2 : 1; // Hypercharge 2.0: Double shot
         
         // Hypercharge gives 40% less spread and +15% speed (we'll implement speed via player movement)
         const hcSpread = (!isBot && isHypercharged) ? 0.6 : 1.0; 
-      const spread = baseSpread * (isBot ? 0.8 : 0.6) * hcSpread; 
+      const sushiSpreadMult = isSlopSushiMode ? Math.max(1,getEntitySlopEffectTotal(fromEntity,'outlitSpreadMult')) : 1;
+      const sushiSpeed = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'outlitProjectileSpeedPct') : 0;
+      const spread = baseSpread * (isBot ? 0.8 : 0.6) * hcSpread * sushiSpreadMult;
         const outlitDamage = isBot ? 208 : 265;
         const outlitVelocity = (!isBot && isHypercharged) ? 1.8 : 1.0;
         const hcRangeMult = (!isBot && isHypercharged) ? 1.1 : 1.0;
@@ -11958,6 +12798,8 @@
         if (!isBot) explosions.push({x: fromEntity.x + Math.cos(ang)*20, y: fromEntity.y + Math.sin(ang)*20, radius: 25, life: 0, maxLife: 0.15, color: isHypercharged ? 'rgba(238, 0, 255, 0.8)' : 'rgba(255, 200, 50, 0.6)'});
 
         const outlitPierce = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1'); // Added Chaird specific properties
+        const outlitReturn = outlitPierce && hasEntityAttachie(fromEntity, 'gadget', 'g1');
+        const outlitStarRange = ((!isBot && selectedStar === 'long') || (isBot && fromEntity.selectedStar === 'long')) && (isBot ? hasEntityAttachie(fromEntity, 'star', 'long') : hasSelectedAttachie('star', 'long', 'outlit'));
         
         // Fire twice when hypercharged
         for (let shot = 0; shot < shotCount; shot++) {
@@ -11970,17 +12812,19 @@
               ownerBrawler: brawler,
               x: fromEntity.x + Math.cos(a)*(fromEntity.radius+4), 
               y: fromEntity.y + Math.sin(a)*(fromEntity.radius+4), 
-              vx: Math.cos(a)*560 * 0.6 * outlitVelocity, 
-              vy: Math.sin(a)*560 * 0.6 * outlitVelocity, 
+              vx: Math.cos(a)*560 * 0.6 * outlitVelocity * (1+sushiSpeed),
+              vy: Math.sin(a)*560 * 0.6 * outlitVelocity * (1+sushiSpeed),
               life: 0, 
-              maxLife: 1.65 * hcRangeMult, 
+              maxLife: 1.65 * hcRangeMult * (outlitStarRange ? 1.2 : 1),
               damage: outlitDamage,
               pierce: outlitPierce || isHyper, // Hypercharge 2.0: Pierce players when hypercharged
               hitIds: {},
               ownerBrawler: 'outlit',
               hyperVisual: isHyper,
               ownerId: fromEntity.id,
-              outlitHyperGlow: isHyper // New property for enhanced effects
+              hitboxMod: 1,
+              outlitHyperGlow: isHyper, // New property for enhanced effects
+              outlitReturnOnExpire: outlitReturn
             });
           }
         }
@@ -11989,8 +12833,9 @@
     } else if (brawler === 'decayer') {
         const decayerHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
         const starLong = !isBot ? (selectedStar === 'long') : (fromEntity.selectedStar === 'long');
-        const baseShieldGain = Math.round(650 * (starLong ? 1.2 : 1)); // SP2: 780 shield
-        const baseShieldCap = starLong ? 2400 : 2000;
+        const starSlow = !isBot ? (selectedStar === 'slow') : (fromEntity.selectedStar === 'slow');
+        const baseShieldGain = Math.round(575 * (starLong ? 1.2 : 1));
+        const baseShieldCap = (starSlow && hasEntityAttachie(fromEntity, 'star', 'slow')) ? 4500 : (starLong ? 2400 : 2000);
         const homingArmed = !isBot
             ? (decayerHomingArmed && selectedGadget === 'g1')
             : (fromEntity.decayerHomingArmed && fromEntity.selectedGadget === 'g1');
@@ -12011,7 +12856,9 @@
             shieldGain: baseShieldGain,
             shieldCap: baseShieldCap,
             homing: homingArmed,
-            homingRadius: homingArmed ? 300 : 0
+            homingRadius: homingArmed ? 300 : 0,
+            decayerAttachSlow: homingArmed && hasEntityAttachie(fromEntity, 'gadget', 'g1'),
+            decayerReductionStack: starLong && hasEntityAttachie(fromEntity, 'star', 'long')
         });
 
         if (homingArmed) {
@@ -12058,7 +12905,7 @@
         const echoG1 = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
         if(echoG1) {
             ringSizeMod = 2.5; // 2.5x size
-            ringDmgMod = 0.75; // 25% less damage
+            ringDmgMod = hasEntityAttachie(fromEntity, 'gadget', 'g1') ? 1.0 : 0.75; // Attachie removes the damage penalty
             if(isBot) fromEntity.gadgetArmed = false; else { gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); }
         }
         
@@ -12082,9 +12929,11 @@
           const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
           const bigForever = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
           const sp2 = (!isBot && selectedStar === 'long') || (isBot && fromEntity.selectedStar === 'long');
+          const sp2Attach = sp2 && hasEntityAttachie(fromEntity, 'star', 'long');
           const stageCount = sp2 ? 3 : 2;
-          const stageRanges = stageCount === 3 ? [180, 308, 428] : [195, 368];
-          const stageRadius = bigForever ? [26, 26, 26] : (stageCount === 3 ? [26, 17, 10.4] : [26, 11.7]);
+          const stageRanges = stageCount === 3 ? [159, 267, 364] : [170, 313];
+          if (sp2Attach) for (let sr = 0; sr < stageRanges.length; sr++) stageRanges[sr] = Math.round(stageRanges[sr] * 1.3);
+          const stageRadius = (isHyper || bigForever) ? [23, 23, 23] : (stageCount === 3 ? [23, 15.3, 9.2] : [23, 10.3]);
           const stageDamage = bigForever ? [1300, 1300, 1300] : (stageCount === 3 ? [1300, 1090, 890] : [1300, 985]);
 
           bullets.push({
@@ -12104,7 +12953,7 @@
             vy: Math.sin(ang) * 880 * 0.6,
             distanceTravelled: 0,
             life: 0,
-            maxLife: bigForever ? 1.425 : (stageCount === 3 ? 0.93 : 0.84),
+            maxLife: bigForever ? 1.30 : (stageCount === 3 ? 0.85 : 0.76),
             damage: stageDamage[0],
             radius: stageRadius[0],
             pierce: true,
@@ -12113,7 +12962,10 @@
             pierceWalls: false,
             ownerId: fromEntity.id,
             angle: ang,
-            stageRanges
+            stageRanges,
+            cheeseyHyperBurst: isHyper,
+            cheeseyPullOnHit: bigForever && hasEntityAttachie(fromEntity, 'gadget', 'g1'),
+            cheeseyMiniFieldOnEnd: ((!isBot && selectedStar === 'slow') || (isBot && fromEntity.selectedStar === 'slow')) && hasEntityAttachie(fromEntity, 'star', 'slow')
           });
           if(bigForever){
             if(isBot) fromEntity.gadgetArmed = false; 
@@ -12180,22 +13032,23 @@
         }
     } else if (brawler === 'trapper') {
         const projSpeed = 800 * 0.6;
-        bullets.push({
-            ownerBrawler: 'trapper',
-            isTrapperGateProj: true,
-            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 4),
-            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 4),
-            vx: Math.cos(ang) * projSpeed,
-            vy: Math.sin(ang) * projSpeed,
-            life: 0,
-            maxLife: 0.4,
-            damage: isBot ? 660 : 1040,
-            pierce: true,
-            ownerId: fromEntity.id,
-            gateAngle: ang,
-            hyperVisual: isBot ? fromEntity.isHypercharged : isHypercharged,
-            hitboxMod: 1.8
-        });
+        const trapperHyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const sharedGateHits = {};
+        const gateOffsets = trapperHyper ? [-18, 18] : [0];
+        for (const sideOffset of gateOffsets) {
+            const px = Math.cos(ang + Math.PI / 2) * sideOffset;
+            const py = Math.sin(ang + Math.PI / 2) * sideOffset;
+            bullets.push({
+                ownerBrawler: 'trapper', isTrapperGateProj: true,
+                x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 4) + px,
+                y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 4) + py,
+                vx: Math.cos(ang) * projSpeed, vy: Math.sin(ang) * projSpeed,
+                life: 0, maxLife: 0.4, damage: isBot ? 1050 : 1650,
+                pierce: true, ownerId: fromEntity.id, gateAngle: ang,
+                hyperVisual: trapperHyper, trapperHyperRootMs: trapperHyper ? 600 : 0,
+                hitIds: sharedGateHits, hitboxMod: 1.8
+            });
+        }
     } else if (brawler === 'classy') {
         const useFan = !isBot ? (gadgetArmed && selectedGadget === 'g2') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g2');
         const symphony = getClassySymphony(fromEntity);
@@ -12435,7 +13288,7 @@
             vy: Math.sin(ang) * 820 * 0.6,
             life: 0,
             maxLife: 1.3,
-            damage: 220,
+            damage: isBot ? 1010 : 1675,
             pierce: false,
             hyperVisual: isHyper,
             ownerId: fromEntity.id,
@@ -12626,6 +13479,47 @@
                 updateGadgetButton();
             }
         }
+    } else if (brawler === 'fuser') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const reverse = !!fromEntity.fuserReverseArmed;
+        const delay = hyper ? 36 : 144;
+        for (let shot=0;shot<8;shot++) setTimeout(()=>{
+            if(fromEntity.hp<=0)return;
+            const side=((shot%2===0)?-1:1)*(reverse?-1:1);
+            const lateral=side*(hyper?5:16);
+            const sx=fromEntity.x+Math.cos(ang)*(fromEntity.radius+5)-Math.sin(ang)*lateral;
+            const sy=fromEntity.y+Math.sin(ang)*(fromEntity.radius+5)+Math.cos(ang)*lateral;
+            bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.92,damage:Math.round((isBot?220:330)*(reverse?1.2:1)),pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:.756,hyperVisual:hyper,fuserShotIndex:shot});
+        },shot*delay);
+        fromEntity.fuserReverseArmed=false;
+    } else if (brawler === 'robber') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const perfectCrime = isSlopSushiMode && getEntitySlopEffectTotal(fromEntity,'robberPerfectCrime') > 0;
+        const takeover = now < (fromEntity.robberTakeoverUntil || 0);
+        const sushiCap = isSlopSushiMode ? (getEntitySlopEffectTotal(fromEntity,'robberWaveCap') || 8) : 8;
+        const waveCount = perfectCrime ? 16 : (takeover ? 12 : (hyper ? 9 : Math.max(1, Math.min(sushiCap, fromEntity.robberWaveCount || 1))));
+        const coinsPerWave = isSlopSushiMode ? (getEntitySlopEffectTotal(fromEntity,'robberCoinsPerWave') || 3) : 3;
+        const fanMult = isSlopSushiMode ? (getEntitySlopEffectTotal(fromEntity,'robberFanMult') || 1) : 1;
+        const speedGrowth = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'robberWaveSpeedPct') : 0;
+        const damageGrowth = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'robberWaveDamagePct') : 0;
+        const ricochet = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'robberRicochet') : 0;
+        const attackId = `rob_${fromEntity.id}_${Math.round(now)}_${Math.random().toString(36).slice(2,6)}`;
+        for (let wave=0; wave<waveCount; wave++) {
+            setTimeout(() => {
+                if (fromEntity.hp <= 0) return;
+                const speed = (570 + wave * 55) * (1 + wave*speedGrowth);
+                for (let coin=0; coin<coinsPerWave; coin++) {
+                    const lane = coinsPerWave===1 ? 0 : coin-(coinsPerWave-1)/2;
+                    const a = ang + lane*0.105*fanMult;
+                    bullets.push({ ownerBrawler:'robber', isRobberCoin:true, isCoin:true, robberAttackId:attackId,
+                        x:fromEntity.x+Math.cos(a)*(fromEntity.radius+5), y:fromEntity.y+Math.sin(a)*(fromEntity.radius+5),
+                        vx:Math.cos(a)*speed, vy:Math.sin(a)*speed, life:0, maxLife:perfectCrime?12:(ricochet?4.8:0.92),
+                        damage:Math.round((isBot?185:280)*(1+wave*damageGrowth)), pierce:perfectCrime, ownerId:fromEntity.id, hitIds:{}, hitboxMod:1.15,
+                        canBounce:!!ricochet, bounceDmgLoss:0, bounceLifeLoss:0, maxBounceDist:ricochet?4800:0,
+                        xrayHoming:perfectCrime, hyperVisual:hyper||perfectCrime });
+                }
+            }, wave*85);
+        }
     } else if (brawler === 'money_and_tax') {
         const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
         const mode = isBot ? (fromEntity.moneyAndTaxMode || 'money') : (player.moneyAndTaxMode || 'money');
@@ -12633,7 +13527,10 @@
         if (mode === 'money') {
             const attackId = Math.random().toString(36).substr(2, 9); // For SP1 tracking
             const firedAtFullAmmo = isBot ? ((fromEntity.ammo ?? 3) >= 2) : (ammo >= maxAmmo - 1.01);
-            for (let w = 0; w < 4; w++) { // 4 tighter waves
+            const extraWaves=isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'moneyExtraWaves')):0;
+            const centerSize=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'moneyCenterSizePct'):0;
+            const centerDamage=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'moneyCenterDamagePct'):0;
+            for (let w = 0; w < 3 + extraWaves; w++) {
                 setTimeout(() => {
                     if (fromEntity.hp <= 0 && isBot) return; // Don't fire remaining waves if bot dies
                     const waveSpread = 0.0875; // 30% narrower than the previous cone
@@ -12644,8 +13541,8 @@
                             ownerBrawler: 'money_and_tax', isCoin: true, moneyAttackId: attackId,
                             x: fromEntity.x + Math.cos(a)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(a)*(fromEntity.radius+4),
                             vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6,
-                            life: 0, maxLife: 0.9, damage: empoweredCenter ? (isBot ? 170 : 390) : (isBot ? 120 : 270), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxCoinDist: 513,
-                            hitboxMod: empoweredCenter ? 1.65 : 1.0, moneyEmpoweredCenter: empoweredCenter
+                            life: 0, maxLife: 0.9, damage: empoweredCenter ? (isBot ? 160 : 356)*(1+centerDamage) : (isBot ? 120 : 270), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxCoinDist: 513,
+                            hitboxMod: empoweredCenter ? 1.65*(1+centerSize) : 1.0, moneyEmpoweredCenter: empoweredCenter
                         });
                     }
                 }, w * 150); // 150ms delay between waves
@@ -12760,17 +13657,19 @@
         if (transformed) balls = 10;
         if (transformed && isHyper) balls = 12;
 
-        const rangeMult = (g1 ? 1.5 : 1.0) * (isHyper ? 1.2 : 1.0) * (transformed ? 1.35 : 1.0);
+        const sushiBounceRange = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'bouncyRangePct') : 0;
+        const sushiSplit = isSlopSushiMode && getEntitySlopEffectTotal(fromEntity,'bouncySplitOnHit') > 0;
+        const rangeMult = (g1 ? 1.5 : 1.0) * (isHyper ? 1.2 : 1.0) * (transformed ? 1.35 : 1.0) * (1+sushiBounceRange);
         const speedMult = (isHyper ? 1.2 : 1.0) * (transformed ? 1.18 : 1.0);
-        const damageBase = isBot ? 190 : (transformed ? 360 : 280);
-        const canSplit = !!isHyper || transformed;
+        const damageBase = isBot ? 177 : (transformed ? 335 : 260);
+        const canSplit = !!isHyper || transformed || sushiSplit;
 
         for (let i = 0; i < balls; i++) {
             setTimeout(() => { // +10% Delay (80ms -> 88ms)
                 if (isBot && fromEntity.hp <= 0) return;
                 const isShiny = (balls === 7 && i === 6);
                 bullets.push({ ownerBrawler: 'bouncin_balls', x: fromEntity.x + Math.cos(ang)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(ang)*(fromEntity.radius+4),
-                    vx: Math.cos(ang) * 900 * 0.6 * speedMult, vy: Math.sin(ang) * 900 * 0.6 * speedMult, life: 0, maxLife: 1.0 * rangeMult, damage: isBot ? damageBase : (isShiny ? Math.round(damageBase * 1.18) : damageBase), pierce: false, hyperVisual: isHyper || isShiny || transformed, ownerId: fromEntity.id, canBounce: true, bounceDmgLoss: transformed ? 0.0 : 0.05, bounceLifeLoss: transformed ? 0.0 : 0.05, ownerSp2: sp2, splitOnHit: canSplit, hitboxMod: transformed ? 1.8 : 1.5, maxBounceDist: transformed ? 1500 : 1000 });
+                    vx: Math.cos(ang) * 900 * 0.6 * speedMult, vy: Math.sin(ang) * 900 * 0.6 * speedMult, life: 0, maxLife: 0.88 * rangeMult, damage: isBot ? damageBase : (isShiny ? Math.round(damageBase * 1.18) : damageBase), pierce: false, hyperVisual: isHyper || isShiny || transformed, ownerId: fromEntity.id, canBounce: true, bounceDmgLoss: transformed ? 0.0 : 0.08, bounceLifeLoss: transformed ? 0.0 : 0.05, ownerSp2: sp2, splitOnHit: canSplit, hitboxMod: transformed ? 1.8 : 1.5, maxBounceDist: transformed ? 1320 : 880 });
             }, i * 88);
         }
     } else if (brawler === 'goonbob') {
@@ -12790,6 +13689,7 @@
         }
         if (rooted) { if(isBot) fromEntity.gadgetArmed = false; else { gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); } }
     } else if (brawler === 'amplifier') {
+        const amplifierHyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const torqueSnap = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
         const projectileSpeed = 924 * 0.6;
         const range = torqueSnap ? 610 : 520;
@@ -12804,8 +13704,12 @@
             life: 0,
             maxLife: dist / projectileSpeed,
             damage: isBot ? 605 : 980,
-            pierce: false,
+            pierce: amplifierHyper,
+            hitIds: {},
             ownerId: fromEntity.id,
+            hitboxMod: amplifierHyper ? 1.35 : 1,
+            ampHyperPierceRemaining: amplifierHyper ? 2 : 0,
+            ampHyperMiniZone: amplifierHyper,
             ampDropOnExpire: true,
             ampTorqueSnap: torqueSnap,
             ampDebuffMult: torqueSnap ? AMPLIFIER_G1_DEBUFF_MULT : AMPLIFIER_DAMAGE_DEBUFF_MULT,
@@ -12881,7 +13785,7 @@
         const beastModeActive = !isBot ? !!player.beastModeActive : !!fromEntity.beastModeActive;
         const beastHyper = !isBot ? !!player.beastHyper : !!fromEntity.beastHyper;
         const beastRangeMult = (beastModeActive || beastHyper) ? (beastModeActive && beastHyper ? 1.2 : 1.2) : 1.0;
-        const poisonDuration = beastModeActive ? 3200 : 0;
+        const poisonDuration = beastModeActive ? 2500 : 0;
         const clawCount = beastModeActive ? 3 : 2;
         const slashBase = beastModeActive ? 0.7 : 0.58;
         const sideFlip = isBot ? (fromEntity.beastAttackFlip || 0) : (player.beastAttackFlip || 0);
@@ -13097,19 +14001,24 @@
             x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8),
             y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8),
             vx: Math.cos(ang) * 760, vy: Math.sin(ang) * 760,
-            life: 0, maxLife: 0.92, damage: isBot ? 650 : 1180,
+            life: 0, maxLife: 0.92, damage: isBot ? 972 : 1700,
             pierce: false, ownerId: fromEntity.id, hitIds: {}, hyperVisual: xrayHyper, hitboxMod: 1.12
         });
         explosions.push({x:fromEntity.x+Math.cos(ang)*22,y:fromEntity.y+Math.sin(ang)*22,radius:24,life:0,maxLife:0.18,color:xrayHyper?'#dc72ff':'#79f7ff'});
     } else if (brawler === 'fuel') {
         const fuelHyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const superActive = now < (fromEntity.fuelSuperUntil || 0);
-        const cycle = Math.max(1, Math.min(4, fromEntity.fuelAttackCycle || 1));
+        if (!superActive && now - (fromEntity.fuelLastAttackAt || now) > 3500) fromEntity.fuelAttackCycle = 1;
+        const sushiCycleMax = isSlopSushiMode ? Math.round(getEntitySlopEffectTotal(fromEntity,'fuelCycleMax')) : 0;
+        const cycleMax = Math.max(4, sushiCycleMax || 4);
+        const cycle = Math.max(1, Math.min(cycleMax, fromEntity.fuelAttackCycle || 1));
         const flashPoint = !!fromEntity.fuelFlashPoint;
         const flameCount = superActive ? 5 : Math.max(fuelHyper ? 2 : 1, flashPoint ? 4 : cycle);
-        const baseSpread = superActive ? 0.32 : 0.52;
-        const spread = baseSpread * (fuelHyper ? 0.75 : 1) * (flameCount === 4 ? 1.05 : 1);
-        const rangeMult = superActive && fuelHyper ? 1.20 : 1;
+        const coneMult = isSlopSushiMode ? (getEntitySlopEffectTotal(fromEntity,'fuelConeMult') || 1) : 1;
+        const rangeBonus = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'fuelRangePct') : 0;
+        const baseSpread = superActive ? 0.288 : 0.52;
+        const spread = baseSpread * (fuelHyper ? 0.75 : 1) * (flameCount >= 4 ? 1.05 : 1) * coneMult;
+        const rangeMult = (superActive && fuelHyper ? 1.20 : 1) * (1 + rangeBonus);
         for (let flame = 0; flame < flameCount; flame++) {
             const offset = flameCount === 1 ? 0 : ((flame / (flameCount - 1)) - 0.5) * spread;
             const flameAng = ang + offset;
@@ -13119,18 +14028,21 @@
                 y: fromEntity.y + Math.sin(flameAng) * (fromEntity.radius + 7),
                 vx: Math.cos(flameAng) * 610, vy: Math.sin(flameAng) * 610,
                 life: 0, maxLife: 0.72 * rangeMult, fuelBaseLife: 0.72,
-                damage: isBot ? 330 : 590, pierce: false, ownerId: fromEntity.id,
+                damage: isBot ? (cycle===1?356:330) : (cycle===1?637:590), pierce: false, ownerId: fromEntity.id,
                 hitIds: {}, hyperVisual: fuelHyper, hitboxMod: 1.18
             });
         }
         if (flashPoint) fromEntity.fuelFlashPoint = false;
-        else if (!superActive) fromEntity.fuelAttackCycle = cycle >= 4 ? 1 : cycle + 1;
+        else if (!superActive) fromEntity.fuelAttackCycle = cycle >= cycleMax ? 1 : cycle + 1;
+        fromEntity.fuelLastAttackAt = now;
         if (!isBot && !flashPoint && cycle === 4 && selectedStar === 'slow') fromEntity.fuelSpeedUntil = now + 1500;
         explosions.push({ x: fromEntity.x + Math.cos(ang) * 24, y: fromEntity.y + Math.sin(ang) * 24, radius: 28 + flameCount * 3, life: 0, maxLife: 0.22, color: fuelHyper ? '#db4cff' : '#ff781f', legendary: flameCount >= 4 });
     } else if (brawler === 'teether') {
         const attachmentActive = now < (fromEntity.teetherAttachedUntil || 0);
         if (attachmentActive) {
-            const maxRange = 620;
+            const rangePct=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'teetherFlossRangePct'):0;
+            const lockBonus=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'teetherLockRadius'):0;
+            const maxRange = 620*(1+rangePct);
             const rawDist = Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y);
             let grappleX = fromEntity.x + Math.cos(ang) * Math.min(maxRange, rawDist);
             let grappleY = fromEntity.y + Math.sin(ang) * Math.min(maxRange, rawDist);
@@ -13139,7 +14051,7 @@
             for (const target of candidates) {
                 const aimDist = Math.hypot(target.x - grappleX, target.y - grappleY);
                 const ownerDist = Math.hypot(target.x - fromEntity.x, target.y - fromEntity.y);
-                if (aimDist <= 105 && ownerDist <= maxRange) { hooked = target; break; }
+                if (aimDist <= 105+lockBonus && ownerDist <= maxRange) { hooked = target; break; }
             }
             if (hooked) { grappleX = hooked.x; grappleY = hooked.y; }
             fromEntity.isDashing = true;
@@ -13152,6 +14064,7 @@
             fromEntity.teetherAttachedUntil = 0;
         } else {
             const waves = [[0], [-0.28, 0.28], [-0.12, 0.12]];
+            if(isSlopSushiMode&&getEntitySlopEffectTotal(fromEntity,'teetherExtraToothWave')>0)waves.push([-.4,0,.4]);
             waves.forEach((offsets, wave) => setTimeout(() => {
                 if (fromEntity.hp <= 0) return;
                 for (const offset of offsets) {
@@ -13195,14 +14108,14 @@
         const ownerMult = 1.0 + ((fromEntity.powerCubes || 0) * 0.1);
         // Projectile hit resolution applies the Power 1–11 damage curve once.
         const levelMult = 1.0;
-        const bulletDmg = Math.round(810 * ownerMult * levelMult);
+        const bulletDmg = Math.round(1100 * ownerMult * levelMult);
 
         bullets.push({
             ownerBrawler: 'boom_arang',
             x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 6),
             y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 6),
-            vx: Math.cos(ang) * 972 * 0.6,
-            vy: Math.sin(ang) * 972 * 0.6,
+            vx: Math.cos(ang) * 1134 * 0.6,
+            vy: Math.sin(ang) * 1134 * 0.6,
             life: 0,
             maxLife: 1.4,
             damage: bulletDmg,
@@ -13314,33 +14227,260 @@
 
     function castAngelSecondLife(owner, hyper) {
         const now = performance.now();
-        const recipients = hyper ? [player, ...bots].filter(e => e && e.hp > 0 && areAlliedEntities(owner, e)) : [owner];
+        const sushiTeam=isSlopSushiMode&&getEntitySlopEffectTotal(owner,'angelSuperTeam')>0;
+        const recipients = (hyper||sushiTeam) ? [player, ...bots].filter(e => e && e.hp > 0 && areAlliedEntities(owner, e)) : [owner];
         for (const entity of recipients) {
-            entity.angelSecondLifeUntil = now + (hyper ? 5000 : 6000);
+            entity.angelSecondLifeUntil = now + 5000;
             entity.angelSecondLifeUsed = false;
             entity.angelSecondLifeOwnerId = owner.id;
             spawnFloatingText(entity.x, entity.y - 38, 'SECOND LIFE', '#fff0a8');
         }
+        if (getEntitySlopEffectTotal(owner, 'superAmmo') > 0) owner.lastShot = 0;
     }
     function castWarriorFinalStand(owner, hyper) {
         const now = performance.now();
-        owner.warriorStandUntil = now + 3000;
+        owner.warriorStandUntil = now + 3000 + (isSlopSushiMode?getEntitySlopEffectTotal(owner,'warriorStandBonusMs'):0);
         owner.warriorStandHyper = !!hyper;
         owner.warriorBattleRushUntil = 0;
         spawnFloatingText(owner.x, owner.y - 38, hyper ? 'ARMY OF ONE!' : 'FINAL STAND!', hyper ? '#d96cff' : '#ffd166');
         explosions.push({x:owner.x,y:owner.y,radius:72,life:0,maxLife:.32,color:hyper?'rgba(210,75,255,.65)':'rgba(255,190,65,.55)'});
     }
+    function castRelayDevice(owner, hyper, aimX, aimY) {
+        for (let i=healingPods.length-1;i>=0;i--) if (healingPods[i].isRelayDevice && healingPods[i].ownerId===owner.id) healingPods.splice(i,1);
+        const dx=aimX-owner.x,dy=aimY-owner.y,d=Math.hypot(dx,dy)||1,range=Math.min(330,d);
+        const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11), scale=getLevelDamageScale(level);
+        const hpPct=isSlopSushiMode?getEntitySlopEffectTotal(owner,'relayDeviceHpPct'):0;
+        const linkPct=isSlopSushiMode?getEntitySlopEffectTotal(owner,'relayLinkRadiusPct'):0;
+        const maxHp=Math.round(12000*scale*(hyper?1.5:1)*(1+hpPct));
+        const star=owner.id===player.id?selectedStar:owner.selectedStar;
+        healingPods.push({isRelayDevice:true,x:clamp(owner.x+dx/d*range,38,WORLD_W-38),y:clamp(owner.y+dy/d*range,38,WORLD_H-38),hp:maxHp,maxHp,radius:35,healRadius:0,healAmount:0,decayPerSec:0,ownerId:owner.id,team:owner.team,relayRedirectPct:hyper?.90:.75,relayLinkRadius:520*(star==='slow'?1.25:1)*(1+linkPct),relayHyper:hyper});
+        spawnFloatingText(owner.x,owner.y-38,hyper?'TOTAL TRANSFER!':'DAMAGE MOVED!','#67e8ff');
+    }
+    function stealAmmoForRobber(owner, target, requested, cap, requireThree=false) {
+        if (!owner || !target || target.hp <= 0) return 0;
+        const targetAmmo = target.id === player.id ? ammo : Math.max(0, target.ammo ?? 3);
+        const stolen = Math.min(Math.max(0, requested), Math.floor(targetAmmo));
+        if (stolen <= 0) return 0;
+        if (target.id === player.id) ammo = Math.max(0, ammo - stolen);
+        else target.ammo = Math.max(0, targetAmmo - stolen);
+        const canExpand = !requireThree || stolen >= 3;
+        if (owner.id === player.id) {
+            if (canExpand) maxAmmo = Math.min(cap, Math.max(3, maxAmmo) + stolen);
+            ammo = Math.min(maxAmmo, ammo + stolen);
+        } else {
+            owner.maxAmmo = canExpand ? Math.min(cap, Math.max(3, owner.maxAmmo || 3) + stolen) : (owner.maxAmmo || 3);
+            owner.ammo = Math.min(owner.maxAmmo, (owner.ammo ?? 3) + stolen);
+        }
+        spawnFloatingText(owner.x, owner.y - 40, `+${stolen} STOLEN AMMO`, '#ffd166');
+        spawnFloatingText(target.x, target.y - 38, `-${stolen} AMMO`, '#ff7b7b');
+        return stolen;
+    }
     function castDemonicDoom(owner, hyper) {
         const now = performance.now();
-        const targets = [player, ...bots].filter(e => e && e.hp > 0 && e.id !== owner.id && !areAlliedEntities(owner,e) && Math.hypot(e.x-owner.x,e.y-owner.y)<=620).sort((a,b)=>Math.hypot(a.x-owner.x,a.y-owner.y)-Math.hypot(b.x-owner.x,b.y-owner.y)).slice(0,3);
+        const extraTargets=isSlopSushiMode?Math.round(getEntitySlopEffectTotal(owner,'demonDoomTargets')):0,rangePct=isSlopSushiMode?getEntitySlopEffectTotal(owner,'demonDoomRangePct'):0;
+        const targets = [player, ...bots].filter(e => e && e.hp > 0 && e.id !== owner.id && !areAlliedEntities(owner,e) && Math.hypot(e.x-owner.x,e.y-owner.y)<=620*(1+rangePct)).sort((a,b)=>Math.hypot(a.x-owner.x,a.y-owner.y)-Math.hypot(b.x-owner.x,b.y-owner.y)).slice(0,3+extraTargets);
         for (const target of targets) {
-            target.hp -= applyShieldDamage(target, 1350);
+            target.hp -= applyShieldDamage(target, 1200);
             target.demonPullOwnerId = owner.id;
             target.demonPullUntil = now + 700;
             spawnFloatingText(target.x,target.y-30,'HOOKED!','#ff5577');
         }
         if (hyper && targets.length) owner.demonDoomShieldUntil = now + 700;
         for(let i=0;i<3;i++){const a=i*Math.PI*2/3;explosions.push({x:owner.x+Math.cos(a)*36,y:owner.y+Math.sin(a)*36,radius:34,life:0,maxLife:.28,color:hyper?'rgba(220,55,255,.8)':'rgba(210,45,70,.75)'});}
+    }
+
+    function spawnChickpigEggZone(projectile) {
+        if (!projectile || projectile.chickpigZoneSpawned || !projectile.chickpigLeaveZone) return;
+        projectile.chickpigZoneSpawned = true;
+        chickpigEggZones.push({x:projectile.x,y:projectile.y,radius:82,ownerId:projectile.ownerId,until:performance.now()+2000,nextTickAt:0,damage:180});
+        explosions.push({x:projectile.x,y:projectile.y,radius:82,life:0,maxLife:.28,color:'rgba(247,218,91,.55)'});
+    }
+
+    function explodeJetpackBomb(x, y, owner, damage, hyperSplit=false) {
+        const ownerId = owner?.id ?? player.id;
+        explosions.push({x,y,radius:66,life:0,maxLife:.28,color:hyperSplit?'rgba(211,91,255,.9)':'rgba(255,157,55,.88)',legendary:true,fxKind:'jetpackBomb',hyperVisual:hyperSplit});
+        AOEDamage(x,y,66,damage,ownerId,false);
+        if (hyperSplit) {
+            for (let i=0;i<3;i++) {
+                const a=-Math.PI/2+i*Math.PI*2/3;
+                const mx=clamp(x+Math.cos(a)*72,18,WORLD_W-18), my=clamp(y+Math.sin(a)*72,18,WORLD_H-18);
+                explosions.push({x:mx,y:my,radius:24,life:0,maxLife:.42,color:'rgba(216,135,255,.55)',fxKind:'jetpackMiniWarning'});
+                setTimeout(()=>{
+                    explosions.push({x:mx,y:my,radius:38,life:0,maxLife:.2,color:'rgba(238,171,255,.9)',fxKind:'jetpackBomb',hyperVisual:true});
+                    AOEDamage(mx,my,38,350,ownerId,false);
+                },180);
+            }
+        }
+    }
+
+    function startJetpackFlight(owner, aimX, aimY, options={}) {
+        if (!owner || owner.hp <= 0 || owner.jetpackFlight) return false;
+        const now=performance.now();
+        if (!options.superFlight && (now < (owner.jetpackNextJumpAt || 0) || now < (owner.jetpackLandingRecoveryUntil || 0))) return false;
+        const dx=aimX-owner.x,dy=aimY-owner.y,d=Math.hypot(dx,dy)||1;
+        const charge=clamp(options.charge ?? 1,0.12,1);
+        const maxRange=options.superFlight?850:(220+480*charge);
+        const range=Math.min(d,maxRange);
+        const endX=clamp(owner.x+dx/d*range,30,WORLD_W-30),endY=clamp(owner.y+dy/d*range,30,WORLD_H-30);
+        owner.jetpackFlight={startX:owner.x,startY:owner.y,endX,endY,startAt:now,duration:options.superFlight?1250:(480+charge*520),charge,superFlight:!!options.superFlight,hyper:!!options.hyper,nextBomb:0};
+        if (!options.superFlight) owner.jetpackNextJumpAt = now + (owner.id === player.id ? 1250 : 1600);
+        owner.isFlying=true; owner.z=1; owner.stunUntil=Math.max(owner.stunUntil||0,now+owner.jetpackFlight.duration+40);
+        if (!options.superFlight && options.hyper) explodeJetpackBomb(owner.x,owner.y,owner,900,false);
+        explosions.push({x:endX,y:endY,radius:options.superFlight?78:Math.round(58+charge*34),life:0,maxLife:owner.jetpackFlight.duration/1000,color:'rgba(95,217,255,.4)',legendary:true,fxKind:'jetpackLandingWarning'});
+        return true;
+    }
+
+    function updateJetpackFlight(owner, now) {
+        const f=owner?.jetpackFlight;if(!f)return;
+        const p=clamp((now-f.startAt)/f.duration,0,1),ease=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+        owner.x=f.startX+(f.endX-f.startX)*ease;owner.y=f.startY+(f.endY-f.startY)*ease;
+        owner.z=Math.sin(Math.PI*p)*(f.superFlight?105:(55+70*f.charge));
+        // Main-attack jumps can dodge during ascent, but become targetable for
+        // the final 20% of descent. Super flight remains fully airborne.
+        owner.isFlying=!!f.superFlight || p<.8;
+        if(f.superFlight){
+            const pattern=[-1,1,-.55,.55,-.18,.18];
+            while(f.nextBomb<6&&p>=(f.nextBomb+1)/7){
+                const i=f.nextBomb++,pathP=(i+1)/7,bx=f.startX+(f.endX-f.startX)*pathP,by=f.startY+(f.endY-f.startY)*pathP;
+                const a=Math.atan2(f.endY-f.startY,f.endX-f.startX)+Math.PI/2,lane=pattern[i]*(42+i*9);
+                explodeJetpackBomb(clamp(bx+Math.cos(a)*lane,20,WORLD_W-20),clamp(by+Math.sin(a)*lane,20,WORLD_H-20),owner,950,f.hyper);
+            }
+        }
+        if(p>=1){
+            owner.x=f.endX;owner.y=f.endY;owner.z=0;owner.isFlying=false;owner.jetpackFlight=null;
+            owner.jetpackLandingRecoveryUntil=now+350;
+            if (!f.superFlight) owner.jetpackNextJumpAt=Math.max(owner.jetpackNextJumpAt||0,now+(owner.id===player.id?1250:1600));
+            if(!f.superFlight){
+                const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11),scale=getLevelDamageScale(level);
+                const damage=Math.round((1600+950*f.charge)*scale),radius=Math.round(58+28*f.charge);
+                explosions.push({x:owner.x,y:owner.y,radius,life:0,maxLife:.3,color:f.hyper?'rgba(197,92,255,.9)':'rgba(91,219,255,.9)',legendary:true,fxKind:'jetpackLanding',hyperVisual:f.hyper});
+                AOEDamage(owner.x,owner.y,radius,damage,owner.id,false);
+            }
+        }
+    }
+
+    function castJetpackSuper(owner, hyper, aimX, aimY) {
+        startJetpackFlight(owner,aimX,aimY,{superFlight:true,hyper});
+        spawnFloatingText(owner.x,owner.y-40,hyper?'AIR RAID!':'I DROP BOMBS!','#76e6ff');
+    }
+
+    function spawnChickpigPig(owner, hyper) {
+        for (let i=bots.length-1;i>=0;i--) if (bots[i].isChickpigPig && bots[i].ownerId===owner.id) bots.splice(i,1);
+        const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11);
+        const hp=Math.round(4100*getLevelDamageScale(level));
+        bots.push({id:nextId++,x:owner.x+28,y:owner.y+18,z:0,vx:0,vy:0,hp,maxHp:hp,powerCubes:owner.powerCubes||0,isDead:false,shield:0,shieldMax:0,radius:22,speed:330,slowUntil:0,brawler:'chickpig_pig',lastTargetId:null,targetLockUntil:0,lastShot:0,superCharge:0,hyperChargeCharge:0,isHypercharged:false,gadgetArmed:false,gadgetCooldownUntil:0,selectedStar:'none',isPet:true,isChickpigPig:true,chickpigPigHyper:!!hyper,ownerId:owner.id,team:owner.team||'player',ramCooldownUntil:0,charging:false});
+    }
+
+    function castChickpigSuper(owner, hyper) {
+        const now=performance.now();
+        owner.chickpigChickenUntil=now+(hyper?7000:5000);
+        owner.chickpigChickenSpeedMult=hyper?1.5:1.35;
+        spawnChickpigPig(owner,hyper);
+        spawnFloatingText(owner.x,owner.y-38,hyper?'BREAKFAST STAMPEDE!':'FARMYARD RUSH!','#ffd37f');
+    }
+
+    function spawnUpiedownMiniPies(core) {
+        if (!core || core.upiedownSplitDone) return;
+        core.upiedownSplitDone = true;
+        const count = core.upiedownHyper ? 7 : 4;
+        const baseAngle = Math.atan2(core.vy, core.vx);
+        explosions.push({x:core.x,y:core.y,radius:72,life:0,maxLife:.28,color:core.upiedownHyper?'rgba(114,82,220,.82)':'rgba(255,178,103,.78)',legendary:true});
+        for (let i = 0; i < count; i++) {
+            const angle = baseAngle + (Math.PI * 2 * i / count);
+            bullets.push({
+                ownerBrawler:'upiedown',isUpiedownMiniPie:true,
+                x:core.x,y:core.y,vx:Math.cos(angle)*500,vy:Math.sin(angle)*500,
+                life:0,maxLife:.58,damage:core.upiedownBot?610:820,pierce:false,
+                ownerId:core.ownerId,hitIds:{},hitboxMod:1.9,hyperVisual:!!core.upiedownHyper
+            });
+        }
+    }
+
+    function burstUpiedownMiniPie(pie) {
+        if (!pie || pie.upiedownBurstDone) return;
+        pie.upiedownBurstDone = true;
+        explosions.push({x:pie.x,y:pie.y,radius:47,life:0,maxLife:.22,color:pie.hyperVisual?'rgba(108,75,220,.82)':'rgba(255,205,125,.8)'});
+    }
+
+    function castUpiedownSuper(owner, hyper) {
+        const now = performance.now();
+        upiedownPieUntil = Math.max(upiedownPieUntil, now + 3000);
+        upiedownPieOwnerId = owner.id;
+        upiedownPieHyper = !!hyper;
+        owner.upiedownReloadBuffUntil = now + 3000;
+        canvas.style.transition = 'transform 420ms cubic-bezier(.2,.8,.2,1), filter 220ms ease';
+        canvas.style.transform = 'rotate(180deg)';
+        canvas.style.filter = hyper ? 'hue-rotate(38deg) saturate(1.35)' : 'sepia(.12) saturate(1.12)';
+        let pieOverlay = document.getElementById('upiedownPieOverlay');
+        if (!pieOverlay) {
+            pieOverlay = document.createElement('div');
+            pieOverlay.id = 'upiedownPieOverlay';
+            Object.assign(pieOverlay.style,{position:'fixed',inset:'0',zIndex:'62',pointerEvents:'none',opacity:'0',transition:'opacity 260ms ease',mixBlendMode:'screen'});
+            document.body.appendChild(pieOverlay);
+        }
+        pieOverlay.style.background = hyper
+            ? 'repeating-conic-gradient(from 0deg at 50% 50%,rgba(87,52,180,.20) 0 12deg,rgba(174,133,255,.08) 12deg 24deg),radial-gradient(circle at 50% 50%,rgba(79,47,160,.05) 0 42%,rgba(100,62,190,.25) 43% 48%,transparent 49%)'
+            : 'repeating-conic-gradient(from 0deg at 50% 50%,rgba(245,170,92,.16) 0 12deg,rgba(196,78,82,.08) 12deg 24deg),radial-gradient(circle at 50% 50%,rgba(255,198,118,.04) 0 42%,rgba(139,72,38,.22) 43% 48%,transparent 49%)';
+        pieOverlay.style.opacity = '1';
+        spawnFloatingText(owner.x,owner.y-42,hyper?'BLUEBERRY BREAKDOWN!':'UPSIDE-DOWN PIE!','#f0b8ff');
+        if (hyper) {
+            for (const target of [player,...bots]) {
+                if (!target || target.hp <= 0 || target.id === owner.id || areAlliedEntities(owner,target)) continue;
+                target.poisonDamage = Math.max(target.poisonDamage || 0, 330);
+                target.poisonUntil = Math.max(target.poisonUntil || 0, now + 5000);
+                target.poisonTickAt = Math.min(target.poisonTickAt || (now + 1000), now + 1000);
+                target.poisonTicksLeft = Math.max(target.poisonTicksLeft || 0, 5);
+            }
+        }
+        setTimeout(() => {
+            if (performance.now() < upiedownPieUntil - 20) return;
+            canvas.style.transform = 'rotate(0deg)';
+            canvas.style.filter = '';
+            const overlay = document.getElementById('upiedownPieOverlay');
+            if (overlay) { overlay.style.opacity='0'; setTimeout(()=>overlay.remove(),320); }
+        }, 3050);
+    }
+
+    function castSnapperSuper(owner, hyper) {
+        const maxRadius = Math.hypot(WORLD_W, WORLD_H) + 300;
+        snapperWaves.push({ownerId:owner.id,x:owner.x,y:owner.y,radius:0,previousRadius:0,maxRadius,speed:1050,pct:hyper?0.45:0.30,delay:0,mini:false,hitIds:{},fxClock:0});
+        if (hyper) snapperWaves.push({ownerId:owner.id,x:owner.x,y:owner.y,radius:0,previousRadius:0,maxRadius,speed:1180,pct:0.10,delay:0.62,mini:true,hitIds:{},fxClock:0});
+        explosions.push({x:owner.x,y:owner.y,radius:90,life:0,maxLife:0.42,color:hyper?'#ff65e6':'#55e6ff',legendary:true});
+        spawnFloatingText(owner.x, owner.y-42, hyper?'PERFECT SNAP!':'SNAP!', hyper?'#ff65e6':'#55e6ff');
+    }
+
+    function updateSnapperWaves(dt) {
+        const now = performance.now();
+        for (let i=snapperWaves.length-1;i>=0;i--) {
+            const w=snapperWaves[i];
+            if (w.delay>0) { w.delay-=dt; continue; }
+            const owner=w.ownerId===player.id?player:bots.find(b=>b.id===w.ownerId);
+            if (!owner) { snapperWaves.splice(i,1); continue; }
+            w.previousRadius=w.radius; w.radius+=w.speed*dt;
+            for (const target of [player,...bots]) {
+                if (!target || target.hp<=0 || target.id===owner.id || areAlliedEntities(owner,target) || w.hitIds[target.id]) continue;
+                const d=Math.hypot(target.x-w.x,target.y-w.y);
+                if (d>w.radius+24 || d<w.previousRadius-28) continue;
+                w.hitIds[target.id]=true;
+                if ((target.invulnerableUntil||0)>now || target.isFlying || (target.angelLiftUntil||0)>now) { spawnFloatingText(target.x,target.y-28,'DODGED!','#ffffff'); continue; }
+                if ((target.crystilaGlassUntil||0)>now && (target.crystilaGlassHp||0)>0) {
+                    target.crystilaGlassHp=Math.max(0,target.crystilaGlassHp-(w.mini?1000:3000));
+                    spawnFloatingText(target.x,target.y-28,'REFLECTED!','#9be7ff'); continue;
+                }
+                let raw=Math.max(0,target.hp*w.pct*consumeSnapperMarkBonus(owner,target));
+                raw=Math.min(raw,Math.max(0,target.hp-1));
+                const dealt=applyShieldDamage(target,raw);
+                target.hp=Math.max(1,target.hp-dealt);
+                spawnFloatingText(target.x,target.y-28,`-${Math.round(dealt)}`,w.mini?'#ffd3fa':'#55e6ff');
+                const star=owner.id===player.id?selectedStar:owner.selectedStar;
+                if (star==='long') {
+                    target.slowUntil=Math.max(target.slowUntil||0,now+2000);
+                    if (!w.mini) { target.snapperWaveOneOwnerId=owner.id; target.snapperWaveOneUntil=now+1800; }
+                    else if (target.snapperWaveOneOwnerId===owner.id && (target.snapperWaveOneUntil||0)>now) target.rootUntil=Math.max(target.rootUntil||0,now+500);
+                }
+            }
+            if (w.radius>w.maxRadius) snapperWaves.splice(i,1);
+        }
     }
 
     function fireSuper(){
@@ -13379,8 +14519,13 @@
     const combatBrawler = getCombatBrawler(player, false);
 
     if (combatBrawler === 'warrior') { castWarriorFinalStand(player, !!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'relay') { castRelayDevice(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'angel') { castAngelSecondLife(player, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'demon') { castDemonicDoom(player, !!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'upiedown') { castUpiedownSuper(player, !!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'chickpig') { castChickpigSuper(player, !!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'jetpack') { castJetpackSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'snapper') { castSnapperSuper(player, !!isHypercharged); updateSuperButton(); return; }
 
     // In Beast Boss crystal form, super is converted into a full ammo reload.
     if (isEntityEmpoweredBeast(player, true)) {
@@ -13563,16 +14708,18 @@
         const px = clamp(player.x + Math.cos(ang) * placeDist, 45, WORLD_W - 45);
         const py = clamp(player.y + Math.sin(ang) * placeDist, 45, WORLD_H - 45);
         for (let i=healingPods.length-1;i>=0;i--) if (healingPods[i].isXrayMachine && healingPods[i].ownerId===player.id) healingPods.splice(i,1);
-        healingPods.push({x:px,y:py,hp:7000,maxHp:7000,radius:38,healRadius:0,healAmount:0,
-            decayPerSec:selectedStar==='long'?225:300,ownerId:player.id,lastDecayTick:now,lastHealTick:now,
-            isXrayMachine:true,xrayRadius:500,xrayHyper:!!isHypercharged});
+        const hpPct=isSlopSushiMode?getSlopEffectTotal('xrayMachineHpPct'):0,radiusPct=isSlopSushiMode?getSlopEffectTotal('xrayMachineRadiusPct'):0,noDecay=isSlopSushiMode&&getSlopEffectTotal('xrayNoDecay')>0;
+        const machineHp=Math.round(7400*(1+hpPct));
+        healingPods.push({x:px,y:py,hp:machineHp,maxHp:machineHp,radius:38,healRadius:0,healAmount:0,
+            decayPerSec:noDecay?0:(selectedStar==='long'?225:300),ownerId:player.id,lastDecayTick:now,lastHealTick:now,
+            isXrayMachine:true,xrayRadius:540*(1+radiusPct),xrayHyper:!!isHypercharged});
         explosions.push({x:px,y:py,radius:520,life:0,maxLife:0.55,color:isHypercharged?'#cf66ff':'#68efff',legendary:true});
         updateSuperButton();
         return;
     }
 
     if (selectedBrawler === 'fuel') {
-        player.fuelSuperUntil = now + 3250;
+        player.fuelSuperUntil = now + 3250 + (isSlopSushiMode?getSlopEffectTotal('fuelSuperBonusMs'):0);
         explosions.push({ x: player.x, y: player.y, radius: 125, life: 0, maxLife: 0.55, color: isHypercharged ? '#e24cff' : '#ff5a12', legendary: true });
         updateSuperButton();
         return;
@@ -13780,14 +14927,14 @@
     }
 
     if(selectedBrawler === 'decayer'){
-      const superCap = isHypercharged ? 2600 : 2200;
+      const superCap = isHypercharged ? 2350 : 2000;
       const dur = (selectedStar === 'slow') ? 7000 : 5000;
       grantShield(player, superCap, superCap);
       decayerSuperUntil = now + dur;
       decayerOrbitUntil = isHypercharged ? now + dur : 0;
       player.reloadBuffUntil = now + 2000;
       if(isHypercharged){
-        player.shieldMax = 2600;
+        player.shieldMax = 2350;
       }
       updateSuperButton();
       return;
@@ -13964,12 +15111,35 @@
     }
 
     
+    if (selectedBrawler === 'robber') {
+        const hyper = !!isHypercharged;
+        const distance = 600 * (1 + (isSlopSushiMode ? getEntitySlopEffectTotal(player,'robberDashRangePct') : 0));
+        player.isDashing = true;
+        player.isRobberDash = true;
+        player.robberDashHyper = hyper;
+        player.dashStartX = player.x; player.dashStartY = player.y;
+        player.dashTargetX = clamp(player.x + Math.cos(ang)*distance, player.radius, WORLD_W-player.radius);
+        player.dashTargetY = clamp(player.y + Math.sin(ang)*distance, player.radius, WORLD_H-player.radius);
+        player.dashDuration = 380; player.dashElapsed = 0; player.dashHitCooldowns = {};
+        const takeoverMs = isSlopSushiMode ? getEntitySlopEffectTotal(player,'robberTakeoverMs') : 0;
+        if (takeoverMs > 0) {
+            player.robberTakeoverPreviousMaxAmmo = maxAmmo;
+            player.robberTakeoverUntil = now + takeoverMs;
+            player.robberWaveCount = Math.max(player.robberWaveCount || 1, getEntitySlopEffectTotal(player,'robberTakeoverWaves') || 12);
+            maxAmmo = Math.max(maxAmmo, getEntitySlopEffectTotal(player,'robberTakeoverAmmo') || 9);
+            ammo = maxAmmo;
+        }
+        if (player.robberSmokeArmed) { grantShield(player, 1600, Math.max(player.shieldMax || 0, 1600)); player.robberSmokeArmed = false; }
+        updateSuperButton();
+        return;
+    }
+
     if(selectedBrawler === 'money_and_tax') {
         const hc = isHypercharged;
         if ((player.moneyAndTaxMode || 'money') === 'money') {
-            for (let i = 0; i < 7; i++) {
-                const a = ang + (i - 3) * (1 / 6);
-                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.70, x: player.x, y: player.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.1, damage: 900, pierce: true, pierceWalls: hc, hyperVisual: hc, ownerId: player.id, super: true, hitIds: {} });
+            for (let i = 0; i < 6; i++) {
+                const a = ang + (i - 2.5) * (1 / 6);
+                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: player.x, y: player.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: hc, hyperVisual: hc, ownerId: player.id, super: true, hitIds: {} });
             }
             player.moneyAndTaxMode = 'tax';
         } else {
@@ -14077,8 +15247,8 @@
         healingPods.push({
             x: player.x,
             y: player.y,
-            hp: 7600,
-            maxHp: 7600,
+            hp: 7800,
+            maxHp: 7800,
             radius: hc ? 44 : 34,
             healRadius: 0,
             healAmount: 0,
@@ -14210,13 +15380,37 @@
                     vx: Math.cos(a)*1000*0.6, vy: Math.sin(a)*1000*0.6, 
               life:0, maxLife:1.56, damage:840, pierce:true, pierceWalls: false, hyperVisual: isHypercharged, ownerId: player.id, super:true, forceEchoRing:true });
             }
+            if (hasEntityAttachie(player, 'star', 'long')) {
+                [-0.55, 0, 0.55].forEach(side => {
+                    const a = ang + side;
+                    bullets.push({
+                        ownerBrawler: 'echo', isEchoRingProj: true,
+                        ringSizeMod: 2.05, ringDmgMod: 1.0,
+                        x: player.x + Math.cos(a)*24, y: player.y + Math.sin(a)*24,
+                        vx: Math.cos(a)*1000*0.6, vy: Math.sin(a)*1000*0.6,
+                        life:0, maxLife:1.56, damage:840, pierce:true, pierceWalls:false, hyperVisual:isHypercharged, ownerId:player.id, super:true, forceEchoRing:true
+                    });
+                });
+            }
         }
+    } else if (selectedBrawler === 'fuser') {
+        for(let shot=0;shot<8;shot++)setTimeout(()=>{
+            if(!playing||player.hp<=0)return;
+            const side=shot%2===0?-1:1,lateral=side*(isHypercharged?8:24);
+            const sx=player.x+Math.cos(ang)*24-Math.sin(ang)*lateral,sy=player.y+Math.sin(ang)*24+Math.cos(ang)*lateral;
+            bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*920,vy:Math.sin(ang)*920,life:0,maxLife:1.08,damage:600,pierce:true,pierceWalls:true,ownerId:player.id,super:true,hitIds:{},hitboxMod:1.25,hyperVisual:isHypercharged,teetherReturns:isHypercharged});
+        },shot*(isHypercharged?18:65));
     } else if (selectedBrawler === 'outlit') {
         for(let s=-0.08;s<=0.08;s+=0.16){
           const a = ang + s;
           // Outlit hypercharge: super now pierces enemies
           // nerf super range by 50%: reduce maxLife
           bullets.push({ ownerBrawler: 'outlit', x: player.x + Math.cos(a)*24, y: player.y + Math.sin(a)*24, vx: Math.cos(a)*1100*mult*0.6, vy: Math.sin(a)*1100*mult*0.6, life:0, maxLife:(1.6*mult)*0.25, damage:2120, pierce:true, hitIds: {}, pierceWalls: false, hyperVisual: isHypercharged, ownerId: player.id, super:true, outlitHyperGlow: true });
+        }
+        if (selectedStar === 'slow' && hasSelectedAttachie('star', 'slow', 'outlit')) {
+            ammo = Math.min(maxAmmo, ammo + 2);
+            ammoReloadTimer = 0;
+            spawnFloatingText(player.x, player.y - 38, '+2 AMMO', '#ff9b42');
         }
     }
 
@@ -14290,11 +15484,15 @@
     } else if (bot.brawler === 'warrior' && g === 'g2') {
       bot.warriorBattleRushUntil=now+1500; bot.lastShot=0;
     } else if (bot.brawler === 'decayer' && g === 'g1') bot.decayerHomingArmed = true;
-    else if (bot.brawler === 'decayer' && g === 'g2') grantShield(bot, 1400, Math.max(bot.shieldMax || 0, 1400));
-    else if (bot.brawler === 'cheseypuff' && g === 'g2') spawnCheeseField(bot.x, bot.y, 200, 6500, 0.55, bot.id, false);
+    else if (bot.brawler === 'decayer' && g === 'g2') {
+      grantShield(bot, 1400, Math.max(bot.shieldMax || 0, 1400));
+      if (hasEntityAttachie(bot, 'gadget', 'g2')) { bot.decayerFirstHitReductionUntil = now + 8000; bot.decayerFirstHitReductionMult = 0.2; }
+    }
+    else if (bot.brawler === 'cheseypuff' && g === 'g2') spawnCheeseField(bot.x, bot.y, 200, 6500, 0.55, bot.id, false, hasEntityAttachie(bot, 'gadget', 'g2') ? 140 : 0);
     else if (bot.brawler === 'outlit' && g === 'g2') {
       const ownerMult = 1.0 + ((bot.powerCubes || 0) * 0.1);
-      healingPods.push({ x: bot.x, y: bot.y, hp: 2250, maxHp: 2250, radius: 25, healRadius: 300, healAmount: 150 * ownerMult, decayPerSec: 200, ownerId: bot.id, lastDecayTick: performance.now(), lastHealTick: performance.now() });
+      const podBoost = hasEntityAttachie(bot, 'gadget', 'g2');
+      healingPods.push({ x: bot.x, y: bot.y, hp: podBoost ? 4250 : 2250, maxHp: podBoost ? 4250 : 2250, radius: 25, healRadius: podBoost ? 420 : 300, healAmount: 150 * ownerMult, decayPerSec: 200, ownerId: bot.id, lastDecayTick: performance.now(), lastHealTick: performance.now() });
     }
     else if (bot.brawler === 'boom_arang' && g === 'g1') {
         let count = 0;
@@ -14327,6 +15525,13 @@
             bot.hp = oldestState.hp;
             explosions.push({ x: bot.x, y: bot.y, radius: 30, life: 0, maxLife: 0.25, color: '#00ffff' });
         }
+    }
+    else if (bot.brawler === 'fuser' && g === 'g1') {
+        bot.fuserReverseArmed = true;
+        bot.gadgetArmed = false;
+    } else if (bot.brawler === 'fuser' && g === 'g2') {
+        bot.ammo = Math.min(bot.maxAmmo || 3, (bot.ammo || 0) + 2);
+        bot.gadgetArmed = false;
     }
     else if (bot.brawler === 'dashaholic' && g === 'g1') {
         if (bot.lastTargetId) {
@@ -14388,7 +15593,11 @@
         bot.scubaDiverOxygenSpeedUntil = performance.now() + 3200;
         bot.gadgetArmed = false;
     }
-    else if (bot.brawler === 'money_and_tax' && g === 'g1') {
+    else if (bot.brawler === 'robber' && g === 'g1') {
+        bot.robberSmokeArmed = true; bot.gadgetArmed = false;
+    } else if (bot.brawler === 'robber' && g === 'g2') {
+        bot.robberWaveCount = Math.min(8, (bot.robberWaveCount || 1) + 2); bot.gadgetArmed = false;
+    } else if (bot.brawler === 'money_and_tax' && g === 'g1') {
         bot.moneyAndTaxMode = bot.moneyAndTaxMode === 'money' ? 'tax' : 'money';
         bot.gadgetArmed = true;
     } else if (bot.brawler === 'money_and_tax' && g === 'g2') {
@@ -14582,8 +15791,31 @@
     const dx = targetX - bot.x; const dy = targetY - bot.y; const ang = Math.atan2(dy, dx);
 
         if (botCombatBrawler === 'warrior') { castWarriorFinalStand(bot, isHyper); return; }
+        if (botCombatBrawler === 'relay') { castRelayDevice(bot, isHyper, bot.x, bot.y); return; }
         if (botCombatBrawler === 'angel') { castAngelSecondLife(bot, isHyper); return; }
         if (botCombatBrawler === 'demon') { castDemonicDoom(bot, isHyper); return; }
+        if (botCombatBrawler === 'upiedown') { castUpiedownSuper(bot, isHyper); return; }
+        if (botCombatBrawler === 'chickpig') { castChickpigSuper(bot, isHyper); return; }
+        if (botCombatBrawler === 'jetpack') { castJetpackSuper(bot, isHyper, targetX, targetY); return; }
+        if (botCombatBrawler === 'snapper') { castSnapperSuper(bot, isHyper); return; }
+        if (botCombatBrawler === 'fuel') { bot.fuelSuperUntil = now + 3250 + (isSlopSushiMode?getEntitySlopEffectTotal(bot,'fuelSuperBonusMs'):0); return; }
+        if (botCombatBrawler === 'xray') {
+            for (let i = healingPods.length - 1; i >= 0; i--) {
+                if (healingPods[i].isXrayMachine && healingPods[i].ownerId === bot.id) healingPods.splice(i, 1);
+            }
+            const hp = Math.round(7400 * (1 + getEntitySlopEffectTotal(bot, 'xrayMachineHpPct')));
+            healingPods.push({
+                x: bot.x, y: bot.y, hp, maxHp: hp, radius: 34,
+                healRadius: 0, healAmount: 0,
+                decayPerSec: getEntitySlopEffectTotal(bot, 'xrayNoDecay') > 0 ? 0 : 300,
+                ownerId: bot.id, ownerTeam: bot.team || 'bot',
+                lastDecayTick: now, lastHealTick: now,
+                isXrayMachine: true,
+                xrayRadius: 464 * (1 + getEntitySlopEffectTotal(bot, 'xrayMachineRadiusPct')),
+                hyper: isHyper
+            });
+            return;
+        }
 
         if (botCombatBrawler === 'beam') {
             bot.beamSuperGoldenUntil = now + 5000;
@@ -14780,11 +16012,11 @@
     }
 
     if (bot.brawler === 'decayer') {
-      const superCap = bot.isHypercharged ? 2600 : 2200;
+      const superCap = bot.isHypercharged ? 2350 : 2000;
       const dur = (bot.selectedStar === 'slow') ? 7000 : 5000;
       grantShield(bot, superCap, superCap);
       bot.decayerSuperUntil = now + dur; bot.decayerOrbitUntil = bot.isHypercharged ? now + dur : 0;
-      bot.reloadBuffUntil = now + 2000; if(bot.isHypercharged) bot.shieldMax = 2600;
+      bot.reloadBuffUntil = now + 2000; if(bot.isHypercharged) bot.shieldMax = 2350;
       if (bot.isBoss) {
           for (let i = 0; i < 8; i++) {
               const a = Math.random() * Math.PI * 2;
@@ -14898,6 +16130,16 @@
       bot.isSuperJump = true;
       return;
     }
+    if (bot.brawler === 'fuser') {
+      const hyper=!!bot.isHypercharged;
+      for(let shot=0;shot<8;shot++)setTimeout(()=>{
+        if(!playing||bot.hp<=0)return;
+        const side=shot%2===0?-1:1,lateral=side*(hyper?8:24);
+        const sx=bot.x+Math.cos(ang)*24-Math.sin(ang)*lateral,sy=bot.y+Math.sin(ang)*24+Math.cos(ang)*lateral;
+        bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*920,vy:Math.sin(ang)*920,life:0,maxLife:1.08,damage:400,pierce:true,pierceWalls:true,ownerId:bot.id,super:true,hitIds:{},hitboxMod:1.25,hyperVisual:hyper,teetherReturns:hyper});
+      },shot*(hyper?18:65));
+      return;
+    }
     if (bot.brawler === 'dashaholic') {
       const dist = Math.min(Math.hypot(dx, dy), 800);
       bot.isDashing = true;
@@ -14968,12 +16210,31 @@
         bot.isFlying = true; bot.z = 80;
         return;
     }
+    if (bot.brawler === 'robber') {
+        const hyper = !!bot.isHypercharged;
+        const distance = 600 * (1 + (isSlopSushiMode ? getEntitySlopEffectTotal(bot,'robberDashRangePct') : 0));
+        bot.isDashing = true; bot.isRobberDash = true; bot.robberDashHyper = hyper;
+        bot.dashStartX = bot.x; bot.dashStartY = bot.y;
+        bot.dashTargetX = clamp(bot.x + Math.cos(ang)*distance, bot.radius, WORLD_W-bot.radius);
+        bot.dashTargetY = clamp(bot.y + Math.sin(ang)*distance, bot.radius, WORLD_H-bot.radius);
+        bot.dashDuration = 380; bot.dashElapsed = 0; bot.dashHitCooldowns = {};
+        const takeoverMs = isSlopSushiMode ? getEntitySlopEffectTotal(bot,'robberTakeoverMs') : 0;
+        if (takeoverMs > 0) {
+            bot.robberTakeoverPreviousMaxAmmo = bot.maxAmmo || 3;
+            bot.robberTakeoverUntil = now + takeoverMs;
+            bot.robberWaveCount = Math.max(bot.robberWaveCount || 1, 12);
+            bot.maxAmmo = 9;
+            bot.ammo = 9;
+        }
+        if (bot.robberSmokeArmed) { grantShield(bot, 1600, Math.max(bot.shieldMax || 0, 1600)); bot.robberSmokeArmed = false; }
+        return;
+    }
     if (bot.brawler === 'money_and_tax') {
         const hc = bot.isHypercharged;
         if ((bot.moneyAndTaxMode || 'money') === 'money') {
-            for (let i = 0; i < 7; i++) {
-                const a = ang + (i - 3) * (1 / 6);
-                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.70, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.1, damage: 900, pierce: true, pierceWalls: hc, hyperVisual: hc, ownerId: bot.id, super: true, hitIds: {} });
+            for (let i = 0; i < 6; i++) {
+                const a = ang + (i - 2.5) * (1 / 6);
+                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: hc, hyperVisual: hc, ownerId: bot.id, super: true, hitIds: {} });
             }
             bot.moneyAndTaxMode = 'tax';
         } else {
@@ -15067,8 +16328,8 @@
         healingPods.push({
             x: bot.x,
             y: bot.y,
-              hp: 7600,
-              maxHp: 7600,
+              hp: 7800,
+              maxHp: 7800,
             radius: isHyper ? 44 : 34,
             healRadius: 0,
             healAmount: 0,
@@ -15169,7 +16430,11 @@
     addEventQuestProgress('use_gadget');
     progressSeasonPassQuest('use_gadget');
     
-    if (curBrawler === 'warrior' && curGadget === 'g1') {
+    if (curBrawler === 'snapper' && curGadget === 'g1') {
+      player.snapperDoubleMarkArmed=true; gadgetArmed=true; spawnFloatingText(player.x,player.y-32,'DOUBLE EXPOSURE','#55e6ff'); updateGadgetButton();
+    } else if (curBrawler === 'snapper' && curGadget === 'g2') {
+      player.snapperCameraShyUntil=now+1500; gadgetCooldownUntil=now+GADGET_COOLDOWN_MS; spawnFloatingText(player.x,player.y-32,'CAMERA SHY','#8beaff'); updateGadgetButton();
+    } else if (curBrawler === 'warrior' && curGadget === 'g1') {
       for (const spear of bullets.filter(b=>b.ownerId===player.id&&b.isWarriorSpear)) { spear.damage=Math.round(spear.damage*.8); spear.warriorExplosionDamage=Math.round((spear.warriorExplosionDamage||280)*.8); spear.life=spear.maxLife+.01; }
       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
     } else if (curBrawler === 'warrior' && curGadget === 'g2') {
@@ -15196,10 +16461,14 @@
       ammo = 0;
       ammoReloadTimer = 0;
       grantShield(player, 1400, Math.max(player.shieldMax || 0, 1400));
+      if (hasEntityAttachie(player, 'gadget', 'g2')) {
+        player.decayerFirstHitReductionUntil = now + 8000;
+        player.decayerFirstHitReductionMult = 0.2;
+      }
       gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
       updateGadgetButton();
     } else if (curBrawler === 'cheseypuff' && curGadget === 'g2') {
-      spawnCheeseField(player.x, player.y, 200, 6500, 0.55, player.id, false);
+      spawnCheeseField(player.x, player.y, 200, 6500, 0.55, player.id, false, hasEntityAttachie(player, 'gadget', 'g2') ? 140 : 0);
       gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
       updateGadgetButton();
     } else if (curBrawler === 'outlit' && curGadget === 'g1') {
@@ -15210,13 +16479,14 @@
       // Outlit G2: healing pod deployable
       const wm = getMouseWorld();
       const ownerMult = 1.0 + ((player.powerCubes || 0) * 0.1);
+      const podBoost = hasEntityAttachie(player, 'gadget', 'g2');
       healingPods.push({
         x: wm.x,
         y: wm.y,
-        hp: 2250,
-        maxHp: 2250,
+        hp: podBoost ? 4250 : 2250,
+        maxHp: podBoost ? 4250 : 2250,
         radius: 25,
-        healRadius: 300,
+        healRadius: podBoost ? 420 : 300,
         healAmount: 150 * ownerMult,
         decayPerSec: 200,
         ownerId: player.id,
@@ -15291,7 +16561,7 @@
         const a=Math.atan2(target.y-player.y,target.x-player.x);
         target.x=clamp(target.x+Math.cos(a)*95,target.radius,WORLD_W-target.radius);
         target.y=clamp(target.y+Math.sin(a)*95,target.radius,WORLD_H-target.radius);
-        target.fireUntil=Math.max(target.fireUntil||0,now+2000); target.fireStacks=Math.max(target.fireStacks||0,1); target.fireTickAt=now+1000; target.fuelBurnUntil=Math.max(target.fuelBurnUntil||0,now+2000); target.fuelBurnDamage=280;
+        target.fireUntil=Math.max(target.fireUntil||0,now+2000); target.fireStacks=Math.max(target.fireStacks||0,1); target.fireTickAt=now+1000; target.fuelBurnUntil=Math.max(target.fuelBurnUntil||0,now+2000); target.fuelBurnDamage=310;
       }
       gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
       explosions.push({x:player.x,y:player.y,radius:160,life:0,maxLife:0.38,color:'#ff4d0a',legendary:true});
@@ -15353,6 +16623,14 @@
       // Cheseypuff G1: enlarge puff (gadgetArmed)
       gadgetArmed = true;
       updateGadgetButton();
+    } else if (curBrawler === 'fuser' && curGadget === 'g1') {
+      player.fuserReverseArmed = true;
+      spawnFloatingText(player.x, player.y - 24, 'PATTERN REVERSED!', '#ff6b7f');
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton();
+    } else if (curBrawler === 'fuser' && curGadget === 'g2') {
+      ammo = Math.min(maxAmmo, ammo + 2);
+      ammoReloadTimer = 0;
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton();
     } else if (curBrawler === 'dashaholic' && curGadget === 'g1') {
       // Dashaholic G1: Phase Dash (Directional Teleport)
       let moveX = 0, moveY = 0;
@@ -15436,6 +16714,13 @@
       doHeal(player, 1400, player.id);
       player.scubaDiverMode = 'scuba';
       player.scubaDiverOxygenSpeedUntil = now + 3200;
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton();
+    } else if (curBrawler === 'robber' && curGadget === 'g1') {
+      player.robberSmokeArmed = true;
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton();
+    } else if (curBrawler === 'robber' && curGadget === 'g2') {
+      player.robberWaveCount = Math.min(8, (player.robberWaveCount || 1) + 2);
+      spawnFloatingText(player.x, player.y - 34, `${player.robberWaveCount} COIN WAVES`, '#ffd166');
       gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton();
     } else if (curBrawler === 'money_and_tax' && curGadget === 'g1') {
       player.moneyAndTaxMode = player.moneyAndTaxMode === 'money' ? 'tax' : 'money';
@@ -15921,6 +17206,7 @@
 
   const homeModeCardMap = {};
   const HOME_MODE_CARDS = [
+      ['slop_sushi_plus', '🍱', 'Sushi Showdown+', 'Pick 7 powers every match'],
       ['slop_sushi', '🍣', 'SlopSushi Solo', 'Pick 2 powers every match'],
       ['solo', '⚔️', 'Solo Showdown', '10-player FFA'],
       ['duo', '👥', 'Duo Showdown', '5 teams of 2'],
@@ -16070,6 +17356,7 @@
       homeModeSelect = null;
 
       const modeColors = {
+          slop_sushi_plus: '#55f7ff',
           slop_sushi: '#ff5ba7',
           solo: '#ff5c5c',
           duo: '#ff8552',
@@ -16086,7 +17373,7 @@
       };
 
       HOME_MODE_CARDS.forEach(([id, emoji, name, subtitle]) => {
-          if (id === 'slop_sushi' && !isSlopSushiLive()) return;
+          if ((id === 'slop_sushi' || id === 'slop_sushi_plus') && !isSlopSushiLive()) return;
           const card = document.createElement('button');
           card.type = 'button';
           card.className = 'home-mode-card';
@@ -16098,7 +17385,7 @@
           
           const mColor = modeColors[id] || '#dff2ff';
           let tag = '3V3';
-          if (id === 'solo') tag = 'FFA';
+          if (id === 'solo' || id === 'slop_sushi' || id === 'slop_sushi_plus') tag = 'FFA';
           else if (id === 'duo') tag = 'DUO';
           else if (id === 'trio') tag = 'TRIO';
           else if (id === 'power_gods' || id === 'arena_forge' || id === 'damage_filler' || id === 'solo_td') tag = 'SOLO';
@@ -16710,6 +17997,8 @@
       renderHomeBrawlerCard();
       if (showdownMode === 'slop_sushi' && startBtn) {
           startBtn.textContent = '🍣 Start SlopSushi • Pick 2 Powers';
+      } else if (showdownMode === 'slop_sushi_plus' && startBtn) {
+          startBtn.textContent = '🍱 Start Sushi Showdown+ • Pick 7 Powers';
       } else if (hasHourlySushiModifier(showdownMode) && startBtn) {
           startBtn.textContent = `🍣 ${startBtn.textContent}`;
       }
@@ -16784,7 +18073,9 @@
       isDuoShowdown = showdownMode === 'duo';
       setShowdownModifier(showdownMode);
       if (document.getElementById('topbar')) {
-          let baseTitle = showdownMode === 'slop_sushi' ? 'Arena Forge - SlopSushi' : 'Arena Forge - Solo Showdown';
+          let baseTitle = showdownMode === 'slop_sushi'
+              ? 'Arena Forge - SlopSushi'
+              : (showdownMode === 'slop_sushi_plus' ? 'Arena Forge - Sushi Showdown+' : 'Arena Forge - Solo Showdown');
           if (isConstructionMode) baseTitle = 'Arena Forge - Brick Run 3v3';
           else if (isMirrorMode) baseTitle = `Arena Forge - Mirror 5v5 (${mirrorModeBrawler.toUpperCase()})`;
           else if (isSplitterPoweredMode) baseTitle = `Arena Forge - Splitter Powered 10v10 (${SPLITTER_POWERED_BRAWLER.toUpperCase()} ONLY)`;
@@ -16796,7 +18087,7 @@
           else if (isDamageFillerMode) baseTitle = `Arena Forge - Damage Filler ${damageFillerTeamSize}v${damageFillerTeamSize}`;
           else if (isObjectiveMode) baseTitle = 'Arena Forge - Control Clash (Prototype)';
           else if (isDuoShowdown) baseTitle = 'Arena Forge - Duo Showdown';
-          if (isSlopSushiMode && showdownMode !== 'slop_sushi') baseTitle += ' 🍣 Sushi Modifier';
+          if (isSlopSushiMode && showdownMode !== 'slop_sushi' && showdownMode !== 'slop_sushi_plus') baseTitle += ' 🍣 Sushi Modifier';
           if (isRankedMatch) baseTitle = `[RANKED] ${baseTitle}`;
           document.getElementById('topbar').textContent = `${baseTitle} | ${activeShowdownModifierLabel}`;
       }
@@ -16909,7 +18200,7 @@
   if(startBtn){
       startBtn.addEventListener('click', () => {
           clearRankedSessionState();
-          if (showdownMode === 'slop_sushi' || hasHourlySushiModifier(showdownMode)) prepareSlopSushiMatch();
+          if (showdownMode === 'slop_sushi' || showdownMode === 'slop_sushi_plus' || hasHourlySushiModifier(showdownMode)) prepareSlopSushiMatch();
           else { sushiMatchArmed = false; slopSushiActiveCards = []; launchShowdownMatch(); }
       });
   }
@@ -17062,7 +18353,8 @@
       player.y = WORLD_H - 240;
       player.team = 'player';
       bots.length = 0;
-      bots.push({ id: nextId++, x: WORLD_W * 0.5, y: 320, z:0, vx:0, vy:0, hp: 1000000, maxHp: 1000000, shield:0, shieldMax:0, shieldDecayTimer:0, reloadBuffUntil:0, radius: 35, speed: 0, slowUntil: 0, brawler: 'outlit', lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false, isDummy: true, isTrainingBot: true });
+      bots.push({ id: nextId++, x: WORLD_W * 0.5 - 230, y: 320, baseX:WORLD_W * 0.5 - 230, baseY:320, z:0, vx:0, vy:0, hp: 1000000, maxHp: 1000000, shield:0, shieldMax:0, shieldDecayTimer:0, reloadBuffUntil:0, radius: 35, speed: 0, slowUntil: 0, brawler: 'outlit', lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false, isDummy: true, isTrainingBot: true });
+      bots.push({ id: nextId++, x: WORLD_W * 0.5 + 230, y: 320, baseX:WORLD_W * 0.5 + 230, baseY:320, z:0, vx:0, vy:0, hp: 1000000, maxHp: 1000000, shield:0, shieldMax:0, shieldDecayTimer:0, reloadBuffUntil:0, radius: 40, speed: 0, slowUntil: 0, brawler: 'relay', lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false, isDummy: true, isTrainingBot: true, isDamageMeterBot:true, trainingDamageEvents:[], team:'enemy' });
       allBrawlers.forEach((b, i) => {
           const col = i % cols;
           const row = Math.floor(i / cols);
@@ -17111,7 +18403,7 @@
       isWarperEvent = false;
       isObjectiveMode = false;
     isConstructionMode = false;
-      if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - 1 Minute Tutorial';
+      if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
       gameOver = false;
       hasHandledGameOver = false;
@@ -17141,9 +18433,9 @@
       bots.push({
           id: nextId++,
           x: WORLD_W * 0.5,
-          y: 380,
+          y: WORLD_H - 820,
           baseX: WORLD_W * 0.5,
-          baseY: 380,
+          baseY: WORLD_H - 820,
           z: 0,
           vx: 0,
           vy: 0,
@@ -17178,7 +18470,7 @@
   }
 
   const tutorialBtn = document.createElement('button');
-  tutorialBtn.textContent = '📘 1 Min Tutorial';
+  tutorialBtn.textContent = '📘 Rookie Course';
   tutorialBtn.style.padding = '10px 12px';
   tutorialBtn.style.borderRadius = '10px';
   styleHomeButton(tutorialBtn, 'blue', false);
@@ -17207,6 +18499,13 @@
     if(homeUtilityRow) homeUtilityRow.appendChild(shopBtn);
     else if(startBtn) startBtn.parentNode.appendChild(shopBtn);
     shopBtn.addEventListener('click', ()=>{ openGemShop(); });
+
+    const attachiesBtn = document.createElement('button');
+    attachiesBtn.textContent = '🧸 Attachies';
+    styleHomeButton(attachiesBtn, 'purple', true);
+    if(homeUtilityRow) homeUtilityRow.appendChild(attachiesBtn);
+    else if(startBtn) startBtn.parentNode.appendChild(attachiesBtn);
+    attachiesBtn.addEventListener('click', openAttachiesHub);
 
     const soulSummonerBtn = document.createElement('button');
     soulSummonerBtn.id = 'soulSummonerBtn';
@@ -19018,13 +20317,28 @@
     if (tryCrystilaGlassReflect(target, b)) return false;
     
     let owner = (b.ownerId === player.id) ? player : bots.find(bt=>bt.id===b.ownerId);
+    if (isTutorialMode && owner && owner.id === player.id && target && target.isTrainingBot && !b.tutorialCounted) {
+        b.tutorialCounted = true;
+        if (b.super) tutorialProgress.super = true;
+        else {
+            tutorialProgress.attack = true;
+            tutorialAttackHits++;
+            if (tutorialAttackHits >= 3) tutorialProgress.signature = true;
+            if (b.hyperVisual || isHypercharged) tutorialProgress.hyperAttack = true;
+        }
+    }
+    if (owner && target && (target.snapperCameraShyUntil || 0) > performance.now() &&
+        owner.snapperMarkOwnerId === target.id && (owner.snapperMarkUntil || 0) > performance.now()) {
+        spawnFloatingText(target.x, target.y - 30, 'CAMERA SHY!', '#8beaff');
+        return true;
+    }
     if (b.isBoomArang && b.isAcceleratedRecall && b.returning && owner && !b.quickRecallHealConsumed) {
         doHeal(owner, 900);
         b.quickRecallHealConsumed = true;
     }
     if (b.isTeetherTooth && owner) {
         const starChoice = owner.id === player.id ? selectedStar : owner.selectedStar;
-        const attachMs = starChoice === 'slow' ? 3750 : 2750;
+        const attachMs = (starChoice === 'slow' ? 3500 : 2500) + (isSlopSushiMode?getEntitySlopEffectTotal(owner,'teetherAttachMs'):0);
         owner.teetherAttachedStartedAt = performance.now();
         owner.teetherAttachedDurationMs = attachMs;
         owner.teetherAttachedUntil = Math.max(owner.teetherAttachedUntil || 0, performance.now() + attachMs);
@@ -19032,34 +20346,35 @@
         target.teetherTeethUntil = Math.max(target.teetherTeethUntil || 0, performance.now() + attachMs);
     }
     if (b.isFuelFlame) {
-        const burnDuration = (owner && owner.id === player.id && selectedStar === 'long') ? 2450 : 1700;
+        const burnDuration = ((owner && owner.id === player.id && selectedStar === 'long') ? 2650 : 2200) + (owner&&isSlopSushiMode?getEntitySlopEffectTotal(owner,'fuelBurnBonusMs'):0);
         target.fireUntil = Math.max(target.fireUntil || 0, performance.now() + burnDuration);
         target.fireStacks = Math.max(target.fireStacks || 0, 1);
         target.fireTickAt = Math.min(target.fireTickAt || (performance.now() + 1000), performance.now() + 1000);
         target.fuelBurnUntil = Math.max(target.fuelBurnUntil || 0, performance.now() + burnDuration);
-        target.fuelBurnDamage = 280;
+        target.fuelBurnDamage = 310;
         if (b.fuelLongPull && b.life > (b.fuelBaseLife || 0.72)) {
             const pullOwner = owner || player;
             const pullAng = Math.atan2(pullOwner.y - target.y, pullOwner.x - target.x);
-            target.x = clamp(target.x + Math.cos(pullAng) * 120, target.radius, WORLD_W - target.radius);
-            target.y = clamp(target.y + Math.sin(pullAng) * 120, target.radius, WORLD_H - target.radius);
-            target.vx = (target.vx || 0) + Math.cos(pullAng) * 260;
-            target.vy = (target.vy || 0) + Math.sin(pullAng) * 260;
+            target.x = clamp(target.x + Math.cos(pullAng) * 102, target.radius, WORLD_W - target.radius);
+            target.y = clamp(target.y + Math.sin(pullAng) * 102, target.radius, WORLD_H - target.radius);
+            target.vx = (target.vx || 0) + Math.cos(pullAng) * 221;
+            target.vy = (target.vy || 0) + Math.sin(pullAng) * 221;
             explosions.push({ x: target.x, y: target.y, radius: 38, life: 0, maxLife: 0.2, color: '#d957ff' });
         }
     }
     if (b.isXrayBeam) {
-        target.xrayRevealedUntil = Math.max(target.xrayRevealedUntil || 0, performance.now() + 5000);
+        target.xrayRevealedUntil = Math.max(target.xrayRevealedUntil || 0, performance.now() + 6000 + (owner&&isSlopSushiMode?getEntitySlopEffectTotal(owner,'xrayRevealBonusMs'):0));
+        if(owner&&isSlopSushiMode&&getEntitySlopEffectTotal(owner,'xrayPierce')>0){b.pierce=true;b.hitIds=b.hitIds||{};}
         if (owner && owner.id === player.id && selectedStar === 'slow') target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + 1200);
         explosions.push({x:target.x,y:target.y,radius:46,life:0,maxLife:0.28,color:b.hyperVisual?'#d66cff':'#79f7ff'});
     }
-    if (b.isAngelLight) applyStatusEffect(target, 'slow', 600);
+    if (b.isAngelLight) applyStatusEffect(target, 'slow', 500);
     let mult = 1.0 + ((owner ? owner.powerCubes : 0) || 0) * 0.1;
     let dealtDamage = b.damage * mult;
     const exposureZone = healingPods.find(p => p.isXrayMachine && p.xrayHyper && p.hp > 0 && owner &&
         Math.hypot(target.x-p.x,target.y-p.y) <= (p.xrayRadius || 520) &&
         ((p.ownerId === owner.id) || ((p.ownerId===player.id?player:bots.find(e=>e.id===p.ownerId))?.team === owner.team)));
-    if (exposureZone) dealtDamage *= 1.20;
+        if (exposureZone) dealtDamage *= 1.20;
         if (b.ownerId === player.id) {
             dealtDamage *= getPlayerDamageScale();
         } else if (owner && owner.level) {
@@ -19069,6 +20384,7 @@
         dealtDamage *= owner.copyphaseCloneDamageMult || 0.30;
     }
     const ownerBaseBrawler = owner ? (owner.id === player.id ? selectedBrawler : owner.brawler) : null;
+    if (ownerBaseBrawler === 'snapper') dealtDamage *= consumeSnapperMarkBonus(owner, target);
     if (b.isDemonBlade && b.demonReturning) {
         const star = owner?.id === player.id ? selectedStar : owner?.selectedStar;
         if (star === 'slow' && b.demonOutgoingHitIds?.[target.id]) dealtDamage += 700;
@@ -19108,6 +20424,30 @@
     
     if(!b.hitIds) b.hitIds = {};
     b.hitIds[target.id] = true;
+    if (b.isRobberCoin && owner) {
+        const star = owner.id === player.id ? selectedStar : owner.selectedStar;
+        owner.robberHitAttacks = owner.robberHitAttacks || {};
+        const firstForAttack = !owner.robberHitAttacks[b.robberAttackId];
+        owner.robberHitAttacks[b.robberAttackId] = true;
+        const sushiGain = isSlopSushiMode ? getEntitySlopEffectTotal(owner,'robberWaveGain') : 0;
+        const waveCap = isSlopSushiMode ? (getEntitySlopEffectTotal(owner,'robberWaveCap') || 8) : 8;
+        const gain = sushiGain > 0 ? sushiGain : (star === 'slow' && firstForAttack ? 2 : 1);
+        owner.robberWaveCount = Math.min(waveCap, (owner.robberWaveCount || 1) + gain);
+        const hitSteal = isSlopSushiMode ? getEntitySlopEffectTotal(owner,'robberHitSteal') : 0;
+        const perfectCrime = isSlopSushiMode && getEntitySlopEffectTotal(owner,'robberPerfectCrime') > 0;
+        if ((perfectCrime || (hitSteal > 0 && firstForAttack))) stealAmmoForRobber(owner, target, 1, perfectCrime ? 9 : 6, false);
+        spawnFloatingText(owner.x, owner.y - 34, `${owner.robberWaveCount} COIN WAVES`, '#ffd166');
+    }
+    if (b.isSnapperOrb && owner) {
+        const star = owner.id === player.id ? selectedStar : owner.selectedStar;
+        const charges = owner.snapperDoubleMarkArmed ? 2 : 1;
+        owner.snapperDoubleMarkArmed = false;
+        target.snapperMarkOwnerId = owner.id;
+        target.snapperMarkPct = b.snapperMarkPct || 0.10;
+        target.snapperMarkCharges = charges;
+        target.snapperMarkUntil = performance.now() + (star === 'slow' ? 4000 : 5000);
+        spawnFloatingText(target.x, target.y - 32, charges > 1 ? 'DOUBLE MARK!' : 'MARKED!', '#55e6ff');
+    }
     if (b.isScubaSubBubble) resolveScubaDiverSubBubble(b, true);
 
     if (b.isSteamerSteam) {
@@ -19165,9 +20505,21 @@
     // Apply temporary defensive buff if active on the target (Echo G2)
     if(target && target.defenseUntil && performance.now() < target.defenseUntil){
       const mult = target.defenseMult || 1.0;
+      const prevented = dealtDamage * (1 - mult);
       dealtDamage = dealtDamage * mult;
+      if ((target.id === player.id ? selectedBrawler : target.brawler) === 'echo' && hasEntityAttachie(target, 'gadget', 'g2') && prevented > 0) {
+          grantShield(target, prevented * 0.70, Math.max(target.shieldMax || 0, 5000));
+      }
     }
-    if (target && performance.now() < (target.demonDoomShieldUntil || 0)) dealtDamage *= 0.40;
+    if (target && performance.now() < (target.decayerFirstHitReductionUntil || 0)) {
+        dealtDamage *= target.decayerFirstHitReductionMult || 0.2;
+        target.decayerFirstHitReductionUntil = 0;
+        spawnFloatingText(target.x, target.y - 38, 'DECAY GUARD', '#c084fc');
+    }
+    if (target && performance.now() < (target.decayerStackReductionUntil || 0) && (target.decayerStackReductionPct || 0) > 0) {
+        dealtDamage *= Math.max(0.7, 1 - target.decayerStackReductionPct);
+    }
+    if (target && performance.now() < (target.demonDoomShieldUntil || 0)) dealtDamage *= 0.50;
     if (target && (target.id === player.id ? selectedBrawler : target.brawler) === 'warrior' && performance.now() < (target.warriorStandUntil || 0)) {
         const warriorStar = target.id === player.id ? selectedStar : (target.selectedStar || 'none');
         if (warriorStar === 'long') dealtDamage *= 0.80;
@@ -19217,7 +20569,7 @@
         }
     }
     if (b.isBeastClaw && b.beastPoison) {
-        target.poisonUntil = performance.now() + 3000;
+        target.poisonUntil = performance.now() + 2500;
         if (!target.poisonTickAt || performance.now() >= target.poisonTickAt) {
             target.poisonTickAt = performance.now() + 1000;
         }
@@ -19314,7 +20666,7 @@
         const remLife = b.maxLife - b.life;
         if (remLife > 0) {
             for (const offset of [-0.25, 0.25]) {
-                const splitDamage = b.ownerBrawler === 'bouncin_balls' ? Math.round((b.damage || 0) * 0.90) : b.damage;
+                const splitDamage = b.ownerBrawler === 'bouncin_balls' ? (b.ownerId === player.id ? 190 : 135) : b.damage;
                 bullets.push({ ...b, hitIds: { ...b.hitIds }, x: target.x, y: target.y, vx: Math.cos(splAng + offset) * splSpd, vy: Math.sin(splAng + offset) * splSpd, life: 0, maxLife: remLife * 1.2, splitOnHit: false, damage: splitDamage });
             }
         }
@@ -19368,16 +20720,20 @@
         dealtDamage *= Math.max(0.2, 1 - getEntitySlopEffectTotal(target, 'damageReductionPct'));
         if (target.hp <= target.maxHp * 0.35) dealtDamage *= Math.max(0.2, 1 - getEntitySlopEffectTotal(target, 'lowHpReductionPct'));
     }
+    if (b.isClassyNote && b.hyperVisual && b.pierce && Object.keys(b.hitIds || {}).length > 1) dealtDamage *= 0.80;
 
     dealtDamage = normalizeDamageBreakpoint(dealtDamage);
 
     const rawDmg = dealtDamage;
     dealtDamage = applyShieldDamage(target, dealtDamage);
     target.hp -= dealtDamage;
+    grantPressureCharge(target, dealtDamage);
+    recordTrainingBotDamage(target,dealtDamage,b.ownerId);
+    if (b.isRelayOrb && owner && rawDmg > 0) grantRelayShield(owner, b.relayShieldAmount || 2000, b.relayShieldCap || 8500);
     if (b.isWarriorSpear && b.warriorExplosive) triggerWarriorSpearExplosion(b);
     if (target.hp <= 0 && performance.now() < (target.angelSecondLifeUntil || 0) && !target.angelSecondLifeUsed) {
         target.angelSecondLifeUsed = true; target.angelSecondLifeUntil = 0; target.isDead = false;
-        target.hp = target.maxHp; target.invulnerableUntil = performance.now() + 800;
+        target.hp = Math.max(1, Math.round(target.maxHp * 0.75)); target.invulnerableUntil = performance.now() + 800;
         spawnFloatingText(target.x,target.y-42,'SECOND LIFE!','#fff0a8');
         const blessingOwner=target.angelSecondLifeOwnerId===player.id?player:bots.find(e=>e.id===target.angelSecondLifeOwnerId);
         const judgment=blessingOwner&&(blessingOwner.id===player.id?selectedStar==='long':blessingOwner.selectedStar==='long');
@@ -19471,7 +20827,15 @@
         }
     }
     if(b.ownerBrawler === 'decayer' && b.shieldGain){
-      grantShield(b.ownerId === player.id ? player : (bots.find(bt => bt.id === b.ownerId) || null), b.shieldGain, b.shieldCap);
+      const decayerOwner = b.ownerId === player.id ? player : (bots.find(bt => bt.id === b.ownerId) || null);
+      grantShield(decayerOwner, b.shieldGain, b.shieldCap);
+      if (b.decayerAttachSlow) applyStatusEffect(target, 'slow', 900);
+      if (b.decayerReductionStack && decayerOwner) {
+          if (performance.now() > (decayerOwner.decayerStackReductionUntil || 0)) decayerOwner.decayerStackReductionPct = 0;
+          decayerOwner.decayerStackReductionPct = Math.min(0.30, (decayerOwner.decayerStackReductionPct || 0) + 0.05);
+          decayerOwner.decayerStackReductionUntil = performance.now() + 8000;
+          spawnFloatingText(decayerOwner.x, decayerOwner.y - 42, `${Math.round(decayerOwner.decayerStackReductionPct * 100)}% REDUCE`, '#c084fc');
+      }
     }
     
     // UnoPcoLoco
@@ -19650,7 +21014,63 @@
           b.bouncesLeft--;
           if (b.bouncesLeft < 0) { bullets.splice(i,1); return true; }
       }
+    if (b.isUpiedownCorePie) {
+        spawnUpiedownMiniPies(b);
+        bullets.splice(i,1);
+        return true;
+    }
+    if (b.isTrapperGateProj && b.trapperHyperRootMs) {
+        target.stunUntil = Math.max(target.stunUntil || 0, performance.now() + b.trapperHyperRootMs);
+        spawnFloatingText(target.x, target.y - 24, 'DOUBLE GATED!', '#9db4ff');
+    }
+    if (b.isCheeseyPuff && b.cheeseyHyperBurst && b.stage >= b.stageCount - 1) {
+        triggerCheeseyHyperBurst(b);
+    }
+    if (b.isCheeseyPuff && b.cheeseyPullOnHit && owner) {
+        const pullAng = Math.atan2(owner.y - target.y, owner.x - target.x);
+        const pullDist = Math.min(120, Math.hypot(owner.x - target.x, owner.y - target.y) * 0.45);
+        target.x = clamp(target.x + Math.cos(pullAng) * pullDist, target.radius, WORLD_W - target.radius);
+        target.y = clamp(target.y + Math.sin(pullAng) * pullDist, target.radius, WORLD_H - target.radius);
+        spawnFloatingText(target.x, target.y - 28, 'PULLED', '#ffdc78');
+    }
+    if (b.isChickpigEgg) {
+        const nowHit=performance.now();
+        target.poisonDamage=Math.max(target.poisonDamage||0,250);
+        target.poisonUntil=Math.max(target.poisonUntil||0,nowHit+3000);
+        target.poisonTickAt=Math.min(target.poisonTickAt||(nowHit+1000),nowHit+1000);
+        target.poisonTicksLeft=Math.max(target.poisonTicksLeft||0,3);
+        spawnChickpigEggZone(b);
+    }
+    if (b.isChickpigBacon) {
+        const rootBonus=owner&&((owner.id===player.id?selectedStar:owner.selectedStar)==='slow')?250:0;
+        target.stunUntil=Math.max(target.stunUntil||0,performance.now()+500+rootBonus);
+        if (b.chickpigBurn) {
+            target.fireUntil=Math.max(target.fireUntil||0,performance.now()+2000);
+            target.fireTickAt=Math.min(target.fireTickAt||(performance.now()+1000),performance.now()+1000);
+            target.fireStacks=Math.max(target.fireStacks||0,1);
+        }
+        if (b.ampHyperMiniZone && owner) {
+            amplifierScrewZones.push({
+                id:`amp_mini_${owner.id}_${Math.floor(performance.now())}_${Math.random()}`,
+                x:b.x,y:b.y,ownerId:owner.id,team:owner.team,hp:1,maxHp:1,radius:78,
+                isHyper:true,isHyperMini:true,expiresAt:performance.now()+2500,
+                allyDamageMult:1,enemyDamageMult:.8,allySpeedMult:1,enemySpeedMult:1,
+                nextEnemyDotAt:Number.POSITIVE_INFINITY,nextRegenAt:Number.POSITIVE_INFINITY
+            });
+        }
+        if (b.ampHyperPierceRemaining > 0) {
+            b.ampHyperPierceRemaining--;
+            if (b.ampHyperPierceRemaining <= 0) b.pierce = false;
+        }
+    }
+    if (b.isUpiedownMiniPie) {
+        burstUpiedownMiniPie(b);
+        bullets.splice(i,1);
+        return true;
+    }
     if(!b.pierce) {
+        if (b.isUpiedownCorePie) spawnUpiedownMiniPies(b);
+        if (b.isUpiedownMiniPie) burstUpiedownMiniPie(b);
         if (b.isSplitterGrenade || b.isSplitterSuperCore) triggerSplitterGrenadeImpact(b);
         bullets.splice(i,1);
         return true;
@@ -19706,6 +21126,11 @@
       b.damage *= (1 - (b.bounceDmgLoss || 0));
       b.life += b.maxLife * (b.bounceLifeLoss || 0); // Compress remaining range
       if (b.ownerSp2) { b.vx *= 1.1; b.vy *= 1.1; }
+      if (b.bouncyInfiniteBounce) {
+          b.hitIds = {};
+          b.bounceLifeLoss = 0;
+          b.bounceDmgLoss = 0;
+      }
   }
 
   function triggerScarfJump(b, tx, ty) {
@@ -19717,6 +21142,14 @@
         owner.jumpDuration = 450; owner.jumpElapsed = 0;
         owner.isSuperJump = b.isSuperScarf;
     }
+  }
+
+  function triggerCheeseyHyperBurst(b) {
+      if (!b || b.cheeseyHyperBurstDone) return;
+      b.cheeseyHyperBurstDone = true;
+      AOEDamage(b.x, b.y, 90, 700, b.ownerId, false);
+      explosions.push({x:b.x,y:b.y,radius:90,life:0,maxLife:.24,color:'rgba(255,220,92,.78)',legendary:true});
+      spawnFloatingText(b.x,b.y-24,'EXTRA AGED!','#ffe56f');
   }
 
   function triggerChairExplosion(b, now) {
@@ -19899,6 +21332,8 @@
           splitterBlastRadius: opts.blastRadius || 58,
           splitterSplitPlan: Array.isArray(opts.splitPlan) ? opts.splitPlan.slice() : [3, 4],
           splitterSplitIndex: opts.splitIndex || 0,
+          // Preserve the player's initial aim through every later generation.
+          splitterRootAngle: Number.isFinite(opts.rootAngle) ? opts.rootAngle : angle,
           splitterChildDamageMult: opts.childDamageMult || 0.58,
           splitterGenerationCaps: Array.isArray(opts.generationCaps) ? opts.generationCaps.slice() : null,
           splitterStarSlow: !!opts.starSlow,
@@ -19947,10 +21382,19 @@
               if (state) state.generationCounts = generationCounts;
           }
       }
-      const baseAng = Math.atan2(b.vy, b.vx);
+      // Exact-wave generations may be triggered by a side fragment. Using that
+      // fragment's velocity rotated the whole next fan; always use the original
+      // attack direction instead.
+      const baseAng = Number.isFinite(b.splitterRootAngle) ? b.splitterRootAngle : Math.atan2(b.vy, b.vx);
       const fan = Math.min(1.9, 0.34 * Math.max(1, allowedChildren - 1));
       const starBoost = b.splitterStarSlow ? 1.12 : 1.0;
-      const childDamage = Math.max(95, Math.round(b.damage * (b.splitterChildDamageMult || 0.58) * starBoost));
+      const generationIndex = Math.max(0, b.splitterSplitIndex || 0);
+      const exactWaveDamage = generationCaps
+          ? (b.hyperVisual ? [320, 240, 180, 135, 110][generationIndex] : [320, 240, 180, 135][generationIndex])
+          : null;
+      const childDamage = exactWaveDamage != null
+          ? Math.round(exactWaveDamage * starBoost)
+          : Math.max(95, Math.round(b.damage * (b.splitterChildDamageMult || 0.58) * starBoost));
       const childRadius = Math.max(16, Math.round((b.splitterRadius || 28) * 0.85));
       const childBlast = Math.max(34, Math.round((b.splitterBlastRadius || 56) * 0.86));
       const childLife = Math.max(0.2, (b.maxLife || 0.42) * 0.86);
@@ -19977,7 +21421,8 @@
               splitterBlastRadius: childBlast,
               splitterSplitPlan: splitPlan,
               splitterSplitIndex: (b.splitterSplitIndex || 0) + 1,
-              splitterChildDamageMult: Math.max(0.48, (b.splitterChildDamageMult || 0.58) * 0.95),
+              splitterRootAngle: baseAng,
+              splitterChildDamageMult: Math.max(0.70, (b.splitterChildDamageMult || 0.85) * 0.824),
               splitterGenerationCaps: generationCaps ? generationCaps.slice() : null,
               splitterStarSlow: !!b.splitterStarSlow,
               splitterExoticCascade: !!b.splitterExoticCascade,
@@ -20150,13 +21595,14 @@
           if (!entity) continue;
           if (entity.angelLiftUntil && now >= entity.angelLiftUntil) {
               entity.angelLiftUntil = 0; entity.isFlying = false;
+              if(entity.angelSushiLandingHeal>0){doHeal(entity,entity.angelSushiLandingHeal);entity.angelSushiLandingHeal=0;}
               const owner = entity.angelLiftOwnerId === player.id ? player : bots.find(b=>b.id===entity.angelLiftOwnerId);
               const blessed = owner && (owner.id===player.id ? selectedStar==='slow' : owner.selectedStar==='slow');
               if (blessed) grantShield(entity,900,2600);
           }
           if (entity.hp <= 0 && now < (entity.angelSecondLifeUntil || 0) && !entity.angelSecondLifeUsed) {
               entity.angelSecondLifeUsed = true; entity.angelSecondLifeUntil = 0; entity.isDead = false;
-              entity.hp = entity.maxHp; entity.invulnerableUntil = now + 800;
+              entity.hp = Math.max(1, Math.round(entity.maxHp * 0.75)); entity.invulnerableUntil = now + 800;
               spawnFloatingText(entity.x,entity.y-42,'SECOND LIFE!','#fff0a8');
               const angelOwner = entity;
               const judgment = angelOwner.id===player.id ? selectedStar==='long' : angelOwner.selectedStar==='long';
@@ -20174,15 +21620,16 @@
           const blade=bullets[i]; if(!blade.isDemonBlade || blade.isDemonSpectral) continue;
           const owner=blade.ownerId===player.id?player:bots.find(b=>b.id===blade.ownerId); if(!owner)continue;
           if(blade.demonGrounded){
-              const windowOpen=now-(blade.demonLandedAt||0)<=1000;
+              const glideBonus=isSlopSushiMode?getEntitySlopEffectTotal(owner,'demonGlideBonusMs'):0;
+              const windowOpen=now-(blade.demonLandedAt||0)<=1000+glideBonus;
               if(owner===player && windowOpen){
                   const ix=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0), iy=(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);
                   const toX=blade.x-owner.x,toY=blade.y-owner.y,mag=Math.hypot(ix,iy),dist=Math.hypot(toX,toY);
                   if(mag>0&&dist>20&&(ix*toX+iy*toY)/(mag*dist)>.55){demonGlides.push({entity:owner,x:blade.x,y:blade.y});owner.isFlying=true;owner.invulnerableUntil=now+1100;bullets.splice(i,1);continue;}
               }
-              if(!windowOpen){blade.demonGrounded=false;blade.demonReturning=true;blade.demonOutgoingHitIds={...(blade.hitIds||{})};blade.hitIds={};blade.demonBarbed=!!owner.demonBarbedRecallArmed;owner.demonBarbedRecallArmed=false;blade.damage=owner===player?1650:1225;blade.life=0;blade.maxLife=3;}
+              if(!windowOpen){const damagePct=isSlopSushiMode?getEntitySlopEffectTotal(owner,'demonRecallDamagePct'):0;blade.demonGrounded=false;blade.demonReturning=true;blade.demonOutgoingHitIds={...(blade.hitIds||{})};blade.hitIds={};blade.demonBarbed=!!owner.demonBarbedRecallArmed;owner.demonBarbedRecallArmed=false;blade.damage=(owner===player?1500:1100)*(1+damagePct);blade.life=0;blade.maxLife=3;}
           }
-          if(blade.demonReturning){const a=Math.atan2(owner.y-blade.y,owner.x-blade.x);blade.vx=Math.cos(a)*820;blade.vy=Math.sin(a)*820;if(Math.hypot(owner.x-blade.x,owner.y-blade.y)<28){bullets.splice(i,1);}}
+          if(blade.demonReturning){const speedPct=isSlopSushiMode?getEntitySlopEffectTotal(owner,'demonRecallSpeedPct'):0,a=Math.atan2(owner.y-blade.y,owner.x-blade.x);blade.vx=Math.cos(a)*820*(1+speedPct);blade.vy=Math.sin(a)*820*(1+speedPct);if(Math.hypot(owner.x-blade.x,owner.y-blade.y)<28){bullets.splice(i,1);}}
       }
       for(let i=demonGlides.length-1;i>=0;i--){const g=demonGlides[i],e=g.entity;if(!e||e.hp<=0){demonGlides.splice(i,1);continue;}const d=Math.hypot(g.x-e.x,g.y-e.y),a=Math.atan2(g.y-e.y,g.x-e.x),step=Math.min(d,950*dt);e.x+=Math.cos(a)*step;e.y+=Math.sin(a)*step;if(d<18){e.isFlying=false;AOEDamage(e.x,e.y,90,1200,e.id);const shield=e.id===player.id?selectedStar==='long':e.selectedStar==='long';if(shield)grantShield(e,1400,2800);demonGlides.splice(i,1);}}
   }
@@ -20191,6 +21638,7 @@
     if(!playing || gameOver) return;
 
     updateAngelDemonStates(dt);
+    updateSnapperWaves(dt);
 
     if (isSlopSushiMode) {
         const reviveHp = getSlopEffectTotal('reviveHp');
@@ -20274,13 +21722,11 @@
         tutorialLastPlayerPos.x = player.x;
         tutorialLastPlayerPos.y = player.y;
         if (!tutorialProgress.move && tutorialTravelDistance >= 220) tutorialProgress.move = true;
-        if (!tutorialProgress.attack && lastShot > tutorialStartedAt) tutorialProgress.attack = true;
         if (!tutorialProgress.gadget && gadgetCooldownUntil > tutorialStartedAt) tutorialProgress.gadget = true;
-        if (!tutorialProgress.super && aimingSuper) tutorialProgress.super = true;
         if (!tutorialProgress.hyper && (isHypercharged || hyperchargeUntil > tutorialStartedAt)) tutorialProgress.hyper = true;
 
         const tutorialDone = getTutorialCurrentStep() == null;
-        if (tutorialDone || elapsed >= TUTORIAL_DURATION_SECONDS) {
+        if (tutorialDone) {
             playing = false;
             isTutorialMode = false;
             let firstCompletion = false;
@@ -21056,7 +22502,7 @@
     // Amplifier screw zone aura processing
     for (let i = amplifierScrewZones.length - 1; i >= 0; i--) {
         const zone = amplifierScrewZones[i];
-        if (!zone || zone.hp <= 0) {
+        if (!zone || zone.hp <= 0 || (zone.expiresAt && now >= zone.expiresAt)) {
             amplifierScrewZones.splice(i, 1);
             continue;
         }
@@ -21080,9 +22526,6 @@
                 if (!e.amplifierShieldTickAt || now >= e.amplifierShieldTickAt) {
                     const shieldAmt = AMPLIFIER_HYPER_SHIELD_MIN + Math.floor(Math.random() * (AMPLIFIER_HYPER_SHIELD_MAX - AMPLIFIER_HYPER_SHIELD_MIN + 1));
                     grantShield(e, shieldAmt, 2500);
-                    // Keep shield from disappearing instantly, but still decay a bit faster than normal.
-                    e.shieldDecayPausedUntil = Math.max(e.shieldDecayPausedUntil || 0, now + AMPLIFIER_HYPER_SHIELD_DECAY_PAUSE_MS);
-                    e.shieldDecayTimer = (e.shieldDecayTimer || 0) + AMPLIFIER_HYPER_SHIELD_QUICK_DECAY_STEP;
                     e.amplifierShieldTickAt = now + 400;
                 }
             }
@@ -21747,6 +23190,12 @@
       // Decay pod HP
       pod.hp = Math.max(0, pod.hp - pod.decayPerSec * dt);
       if(pod.hp <= 0){
+          if (pod.isRelayDevice) {
+              const owner = pod.ownerId === player.id ? player : bots.find(b=>b.id===pod.ownerId);
+              const star = owner && (owner.id===player.id ? selectedStar : owner.selectedStar);
+              if (owner && star === 'long') for (const ally of [player,...bots]) if (ally.hp>0 && areAlliedEntities(owner,ally) && Math.hypot(ally.x-pod.x,ally.y-pod.y)<=260) grantRelayShield(ally,Math.round(1500*getLevelDamageScale(owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11))));
+              explosions.push({x:pod.x,y:pod.y,radius:85,life:0,maxLife:.3,color:'rgba(66,220,235,.65)'});
+          }
           if (pod.isClassySpeaker) {
               const owner = pod.ownerId === player.id ? player : bots.find(b => b.id === pod.ownerId);
               if (owner && getClassyStar(owner) === 'long') {
@@ -21790,6 +23239,7 @@
         }
         pod.lastHealTick = now;
       }
+      if (pod.isRelayDevice) continue;
       
       if (pod.isTurret) {
           pod.lastTurretTick = pod.lastTurretTick || now;
@@ -21963,7 +23413,7 @@
           ensureCopyphaseState(player);
               if (isHypercharged && player.copyphaseTransformUntil > now && player.copyphaseTransformBrawler) hcSpd *= 1.15;
       }
-    if ((selectedBrawler === 'beast' || isEntityEmpoweredBeast(player, true)) && player.beastModeActive) hcSpd *= (player.beastHyper ? 1.45 : 1.3);
+    if ((selectedBrawler === 'beast' || isEntityEmpoweredBeast(player, true)) && player.beastModeActive) hcSpd *= (player.beastMoveMult || (player.beastHyper ? 1.35 : 1.25));
 
     // Spacetime Tether speed boost (+30%) inside friendly Relativity Zone
     let playerInFriendlyDome = false;
@@ -21982,6 +23432,7 @@
     if (playerInFriendlyDome) hcSpd *= 1.30;
 
     let activeSpeed = player.speed * (player.speedMult || 1.0); // Apply Chaird super speed mult
+    if (now < (player.relaySignalSpeedUntil || 0)) activeSpeed *= 1.10;
     if (isSlopSushiMode) {
         activeSpeed *= 1 + getSlopEffectTotal('speedPct');
         if (player.hp <= player.maxHp * 0.35) activeSpeed *= 1 + getSlopEffectTotal('lowHpSpeedPct');
@@ -21993,17 +23444,19 @@
         spawnFloatingText(player.x, player.y - 45, '+ SECOND COURSE', '#ff9dcc');
     }
     activeSpeed *= getTerrainMoveMultiplier(player);
+    if (now < (player.chickpigChickenUntil||0)) activeSpeed *= player.chickpigChickenSpeedMult||1.4;
+    if (now < upiedownPieUntil && selectedBrawler !== 'upiedown') activeSpeed *= 0.72;
     if (player.catchAndGoUntil && performance.now() < player.catchAndGoUntil) activeSpeed *= 1.30;
     if (selectedBrawler === 'overlord' && (player.overlordStage || 0) >= 1) activeSpeed *= 1.2;
-      if (selectedBrawler === 'teether' && now < (player.teetherSpeedUntil || 0)) activeSpeed *= 1.22;
+    if (selectedBrawler === 'teether' && now < (player.teetherSpeedUntil || 0)) activeSpeed *= 1.20;
       if (selectedBrawler === 'fuel' && now < (player.fuelSpeedUntil || 0)) activeSpeed *= 1.15;
       if (selectedBrawler === 'warrior' && now < (player.warriorStandUntil || 0) && now >= (player.warriorBattleRushUntil || 0)) {
-          activeSpeed *= player.warriorStandHyper ? 0.75 : 0.30;
+          activeSpeed *= player.warriorStandHyper ? 0.75 : 0.35;
       }
       if (selectedBrawler === 'minigunnin' && selectedStar === 'long') {
           activeSpeed += (maxAmmo - ammo) * 0.5;
       } else if (selectedBrawler === 'bowlin_rida') {
-          const isHc = isHypercharged;
+          const isHc = getPlayerHyperMainActive('bowlin_rida');
           if (isMoving && !player.isFlying) {
               const curAngle = Math.atan2(vy, vx);
               if (player.lastMoveAngle !== undefined) {
@@ -22065,8 +23518,29 @@
       }
       if (hitWall && selectedBrawler === 'bowlin_rida') player.ridaSpeedMult = 1.0;
       
+      // Jetpack flight is resolved here so both players and bots use the same arc.
+      updateJetpackFlight(player, now);
+      for (const flyingBot of aliveBots) if (flyingBot.brawler === 'jetpack') updateJetpackFlight(flyingBot, now);
+
       // firing
-      if((mouse.down || mobileInput.attackActive) && !playerIsStunned) {
+      if(selectedBrawler === 'jetpack') {
+          const held = mouse.down || mobileInput.attackActive;
+          const jetpackReady = now >= (player.jetpackNextJumpAt || 0) && now >= (player.jetpackLandingRecoveryUntil || 0);
+          if (held && !playerIsStunned && ammo > 0 && !player.jetpackFlight && jetpackReady) {
+              if (!player.jetpackChargeStartedAt) player.jetpackChargeStartedAt = now;
+              const wm = mobileInput.attackActive
+                  ? { x: player.x + mobileInput.aimX * 1200, y: player.y + mobileInput.aimY * 1200 }
+                  : getMouseWorld();
+              player.jetpackAimX=wm.x;player.jetpackAimY=wm.y;
+              player.jetpackChargePct=clamp((now-player.jetpackChargeStartedAt)/1200,0,1);
+          } else if (!held && player.jetpackChargeStartedAt && !player.jetpackFlight && jetpackReady) {
+              const charge=clamp((now-player.jetpackChargeStartedAt)/1200,.12,1);
+              ammo=Math.max(0,ammo-1);lastShot=now;ammoReloadTimer=0;player.lastAttackAt=now;
+              applySlopSushiOnAttack();
+              startJetpackFlight(player,player.jetpackAimX??player.x,player.jetpackAimY??player.y,{charge,hyper:getPlayerHyperMainActive('jetpack')});
+              player.jetpackChargeStartedAt=0;player.jetpackChargePct=0;
+          }
+      } else if((mouse.down || mobileInput.attackActive) && !playerIsStunned) {
           const wm = mobileInput.attackActive
               ? { x: player.x + mobileInput.aimX * 1200, y: player.y + mobileInput.aimY * 1200 }
               : getMouseWorld();
@@ -22154,6 +23628,21 @@
       }
     }
 
+        for (let i=chickpigEggZones.length-1;i>=0;i--) {
+            const zone=chickpigEggZones[i];
+            if(now>=zone.until){chickpigEggZones.splice(i,1);continue;}
+            if(now>=(zone.nextTickAt||0)){
+                zone.nextTickAt=now+500;
+                const owner=getEntityById(zone.ownerId);
+                for(const target of [player,...bots]){
+                    if(!target||target.hp<=0||target.id===zone.ownerId||(owner&&areAlliedEntities(owner,target)))continue;
+                    if(Math.hypot(target.x-zone.x,target.y-zone.y)>zone.radius+(target.radius||14))continue;
+                    checkHit(target,{ownerBrawler:'chickpig',ownerId:zone.ownerId,damage:zone.damage,pierce:true,hitIds:{},isChickpigEggZone:true},-1);
+                    target.poisonDamage=Math.max(target.poisonDamage||0,250);target.poisonUntil=Math.max(target.poisonUntil||0,now+1200);target.poisonTickAt=Math.min(target.poisonTickAt||(now+500),now+500);target.poisonTicksLeft=Math.max(target.poisonTicksLeft||0,2);
+                }
+            }
+        }
+
         for (let i = hyperoriginLiftTiles.length - 1; i >= 0; i--) {
             if (now > hyperoriginLiftTiles[i].until) hyperoriginLiftTiles.splice(i, 1);
         }
@@ -22161,6 +23650,7 @@
     // bullets
     for(let i=bullets.length-1;i>=0;i--){
       const b = bullets[i];
+      applySlopSushiProjectileMutation(b);
       b.prevX = b.x;
       b.prevY = b.y;
       
@@ -22181,11 +23671,22 @@
                   continue;
               }
               if (b.isFightnFireShard) b.fightnFireBounced = true;
+              // Put the projectile back inside the arena before reflecting.
+              // Leaving it beyond the boundary caused another collision every
+              // frame and made bounce projectiles appear to vanish randomly.
+              const bounceRadius = Math.max(2, (b.hitboxMod || 1) * 4);
+              b.x = clamp(b.x, bounceRadius, WORLD_W - bounceRadius);
+              b.y = clamp(b.y, bounceRadius, WORLD_H - bounceRadius);
               processBounce(b, refX, refY);
           }
       }
 
-      if(b.isDecayerShieldShot && b.homing){
+      if (b.slopHoming) {
+          const homingOwner=b.ownerId===player.id?player:bots.find(bt=>bt.id===b.ownerId);
+          const candidates=[player,...aliveBots].filter(t=>t&&t.hp>0&&t.id!==b.ownerId&&(!homingOwner||!areAlliedEntities(homingOwner,t)));
+          const best=candidates.filter(t=>Math.hypot(t.x-b.x,t.y-b.y)<=(b.slopHomingRadius||560)).sort((a,c)=>Math.hypot(a.x-b.x,a.y-b.y)-Math.hypot(c.x-b.x,c.y-b.y))[0];
+          if(best){const speed=Math.hypot(b.vx,b.vy)||1,a=Math.atan2(best.y-b.y,best.x-b.x),turn=Math.min(.22,b.slopHoming*dt*5);b.vx=lerp(b.vx,Math.cos(a)*speed,turn);b.vy=lerp(b.vy,Math.sin(a)*speed,turn);}
+      } else if(b.isDecayerShieldShot && b.homing){
         let bestTarget = null;
         let bestDistance = 999999;
                 const homingOwner = b.ownerId === player.id ? player : bots.find(bt => bt.id === b.ownerId);
@@ -22265,7 +23766,7 @@
           
           if (b.returning) {
               if (!b.super && !b.returnDamageApplied) {
-                  b.damage += 200;
+                  b.damage = Math.round(b.damage * 0.80);
                   b.returnDamageApplied = true;
               }
               const steerDx = owner.x - b.x;
@@ -22275,7 +23776,7 @@
               b.vx = (steerDx / dist) * speed;
               b.vy = (steerDy / dist) * speed;
               
-              if (dist < owner.radius + 18) {
+              if (dist < owner.radius + 22) {
                   // Quick Recall healing is granted on the first returning hit.
                       if (!b.super) {
                           if (owner.id === player.id) {
@@ -22344,12 +23845,12 @@
                 let bestTarget = null;
                 let bestDistance = 999999;
                 const classyOwner = b.ownerId === player.id ? player : bots.find(bt => bt.id === b.ownerId);
-                if (player.hp > 0 && (!classyOwner || !areAlliedEntities(classyOwner, player))) {
+                if (player.hp > 0 && (!classyOwner || !areAlliedEntities(classyOwner, player)) && (!b.classyEndlessEncore || !b.hitIds?.[player.id])) {
                     const d = Math.hypot(player.x - b.x, player.y - b.y);
                     if (d < bestDistance) { bestDistance = d; bestTarget = player; }
                 }
                 for (const bot of aliveBots) {
-                    if (bot.id === b.ownerId || bot.hp <= 0) continue;
+                    if (bot.id === b.ownerId || bot.hp <= 0 || (b.classyEndlessEncore && b.hitIds?.[bot.id])) continue;
                     if (classyOwner && areAlliedEntities(classyOwner, bot)) continue;
                     const d = Math.hypot(bot.x - b.x, bot.y - b.y);
                     if (d < bestDistance) { bestDistance = d; bestTarget = bot; }
@@ -22358,9 +23859,15 @@
                     const steerDx = bestTarget.x - b.x;
                     const steerDy = bestTarget.y - b.y;
                     const steerLen = Math.hypot(steerDx, steerDy) || 1;
-                    const steer = 1100 * dt;
-                    b.vx += (steerDx / steerLen) * steer;
-                    b.vy += (steerDy / steerLen) * steer;
+                    if (b.classyEndlessEncore) {
+                        const speed = Math.hypot(b.vx, b.vy) || 720;
+                        b.vx = (steerDx / steerLen) * speed;
+                        b.vy = (steerDy / steerLen) * speed;
+                    } else {
+                        const steer = 968 * dt;
+                        b.vx += (steerDx / steerLen) * steer;
+                        b.vy += (steerDy / steerLen) * steer;
+                    }
                 }
             } else if (b.isEvilDoctorDNA) {
                 let bestTarget = null;
@@ -22611,7 +24118,7 @@
           if (target) {
               const aim=Math.atan2(target.y-b.y,target.x-b.x), speed=Math.max(600,Math.hypot(b.vx,b.vy));
               const current=Math.atan2(b.vy,b.vx); let delta=((aim-current+Math.PI*3)%(Math.PI*2))-Math.PI;
-              const next=current+clamp(delta,-2.8*dt,2.8*dt);
+              const next=current+clamp(delta,-1.96*dt,1.96*dt);
               b.vx=Math.cos(next)*speed; b.vy=Math.sin(next)*speed;
           }
       }
@@ -22631,7 +24138,12 @@
       }
       if (b.isTempoNote) {
           const tempoOwner = getEntityById(b.ownerId) || player;
-          if (!b.tempoReturning) {
+          if (b.tempoEncoreOutbound) {
+              if (b.life > b.maxLife) {
+                  bullets.splice(i, 1); i--; continue;
+              }
+          }
+          if (!b.tempoEncoreOutbound && !b.tempoReturning) {
               if (b.tempoSnapBackAt && now >= b.tempoSnapBackAt) {
                   b.life = Math.max(b.life, b.maxLife + 0.01);
               }
@@ -22654,18 +24166,26 @@
               if (!b.tempoReturning) continue;
           }
 
-          if (tempoOwner && tempoOwner.hp > 0) {
+          if (!b.tempoEncoreOutbound && tempoOwner && tempoOwner.hp > 0) {
               const retAng = Math.atan2(tempoOwner.y - b.y, tempoOwner.x - b.x);
               const retSpeed = (b.tempoReturnSpeed || 760) * 0.6;
               b.vx = Math.cos(retAng) * retSpeed;
               b.vy = Math.sin(retAng) * retSpeed;
               if (Math.hypot(tempoOwner.x - b.x, tempoOwner.y - b.y) <= tempoOwner.radius + 18) {
-                  bullets.splice(i, 1);
-                  i--;
-                  continue;
+                  if (b.tempoHyperEncore) {
+                      const passAng = Math.atan2(b.vy, b.vx);
+                      b.tempoEncoreOutbound = true;
+                      b.damage = Math.round((b.tempoBaseDamage || b.damage) * .45);
+                      b.life = 0; b.maxLife = .75; b.hitIds = {};
+                      b.vx = Math.cos(passAng) * (b.tempoReturnSpeed || 760) * .6;
+                      b.vy = Math.sin(passAng) * (b.tempoReturnSpeed || 760) * .6;
+                      spawnFloatingText(tempoOwner.x, tempoOwner.y - 32, 'ENCORE!','#ffd0d8');
+                  } else {
+                      bullets.splice(i, 1); i--; continue;
+                  }
               }
           }
-          if (b.tempoReturning && b.life > b.maxLife * 1.9) {
+          if (!b.tempoEncoreOutbound && b.tempoReturning && b.life > b.maxLife * 1.9) {
               bullets.splice(i, 1);
               i--;
               continue;
@@ -22675,7 +24195,7 @@
           const toothOwner = getEntityById(b.ownerId);
           if (!b.teetherReturning && b.life > b.maxLife) {
               b.teetherReturning = true;
-              b.damage = Math.round(b.damage || 0);
+              b.damage = Math.round((b.damage || 0) * 0.70);
               b.life = 0;
               b.maxLife = 1.15;
               b.hitIds = {};
@@ -22760,6 +24280,8 @@
           }
       }
       if(b.life > b.maxLife){ 
+            if (b.isChickpigEgg) spawnChickpigEggZone(b);
+            if (b.isCheeseyPuff && b.cheeseyHyperBurst && b.stage >= b.stageCount - 1) triggerCheeseyHyperBurst(b);
             // If a boomerang times out because its owner moved too far away, refund
             // the throw just like a catch. Otherwise its disabled passive reload
             // leaves Boom-Arang unable to attack for the rest of the match.
@@ -22777,6 +24299,17 @@
             // Some specials expire into secondary effects without wall collision checks.
             // Apply endpoint vault damage so all brawler kits can pressure vaults.
             applyProjectileEndpointVaultDamage(b);
+            if (b.isUpiedownCorePie) {
+                b.x = clamp(b.upiedownLandX ?? b.x,0,WORLD_W);
+                b.y = clamp(b.upiedownLandY ?? b.y,0,WORLD_H);
+                AOEDamage(b.x,b.y,58,b.damage,b.ownerId,true);
+                spawnUpiedownMiniPies(b);
+                bullets.splice(i,1); i--; continue;
+            }
+            if (b.isUpiedownMiniPie) {
+                burstUpiedownMiniPie(b);
+                bullets.splice(i,1); i--; continue;
+            }
             if (b.isWarriorSpear) triggerWarriorSpearLanding(b);
             if (b.isParadoxMain) {
                 bullets.splice(i, 1); i--; continue;
@@ -22832,6 +24365,18 @@
                 b.vy *= -1;
                 b.life = 0;
                 continue;
+            }
+            if(b.ownerBrawler === 'outlit' && b.outlitReturnOnExpire && !b.outlitReturned) {
+                b.outlitReturned = true;
+                b.damage = Math.round(b.damage * 0.75);
+                b.vx *= -1;
+                b.vy *= -1;
+                b.life = 0;
+                b.hitIds = {};
+                continue;
+            }
+            if(b.isCheeseyPuff && b.cheeseyMiniFieldOnEnd) {
+                spawnCheeseField(b.x, b.y, 58, 2400, 0.65, b.ownerId, true, 0);
             }
             if(b.isScarf) triggerScarfJump(b, b.x, b.y);
             if(b.isChair) triggerChairExplosion(b, now);
@@ -22932,7 +24477,7 @@
               if (dw.isVault) {
                   const ownerTeam = owner?.team || (b.ownerId === player.id ? 'player' : 'enemy');
                   if (ownerTeam !== dw.vaultTeam) {
-                      const wallRawDmg = Math.max(0, b.damage * mult);
+                  const wallRawDmg = Math.max(0, b.damage * mult * (b.ownerBrawler === 'outlit' && b.super ? 1.15 : 1));
                       const wallDmg = Math.min(dw.hp, getVaultDamagePerHit(wallRawDmg, dw));
                       dw.hp -= wallDmg;
                       registerBrickVaultWallDamage(b.ownerId, dw, wallDmg);
@@ -22943,7 +24488,7 @@
                   break;
               }
               if (!dw.isPlatform) {
-                  dw.hp -= b.damage * mult;
+                  dw.hp -= b.damage * mult * (b.ownerBrawler === 'outlit' && b.super ? 1.15 : 1);
                   if(dw.hp <= 0) {
                       if (b.ownerId === player.id) {
                           addEventQuestProgress('destroy_walls');
@@ -23010,10 +24555,26 @@
                   continue;
               }
           }
+          // Rewind to the last safe position, then move away from the wall in
+          // the reflected direction. This prevents repeated same-wall hits.
+          b.x = b.prevX;
+          b.y = b.prevY;
           processBounce(b, refX, refY);
-          b.x += b.vx * dt * 2; b.y += b.vy * dt * 2;
+          b.x += b.vx * dt * 1.25;
+          b.y += b.vy * dt * 1.25;
+          b.lastCleanBounceAt = now;
           hitCube = false; // Resolved bounce, don't destroy
       } else if(hitCube && !canPierceWall){ 
+          if (b.isUpiedownCorePie) {
+              spawnUpiedownMiniPies(b);
+              bullets.splice(i,1);
+              continue;
+          }
+          if (b.isUpiedownMiniPie) {
+              burstUpiedownMiniPie(b);
+              bullets.splice(i,1);
+              continue;
+          }
           if (b.isWarriorSpear) {
               triggerWarriorSpearExplosion(b);
               bullets.splice(i,1);
@@ -23074,6 +24635,9 @@
       // Warrior's spears are true throws: they travel above walls and units,
       // then deal damage only where they land.
       if (b.isWarriorSpear && b.warriorThrown) continue;
+      // Upiedown's large pie is also a true lob. It cannot collide with a unit
+      // while airborne; its endpoint explosion handles the impact damage.
+      if (b.isUpiedownCorePie) continue;
       
       // VS Healing Pods
       for(let j=healingPods.length-1; j>=0; j--){
@@ -23175,6 +24739,7 @@
          let ownerEntity = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
          if (ownerEntity && ownerEntity.team && player.team && ownerEntity.team === player.team && !b.isHeaterTetherStarter) {
              if (b.isAngelLight) applyAngelAllyHit(b, player, ownerEntity);
+             if (b.isRelayOrb && applyRelayAllyHit(b, player, ownerEntity)) { bullets.splice(i,1); consumed=true; }
              // skip friendly fire
              if (b.isDecoyHealProj) {
                   const dx = b.x - player.x; const dy = b.y - player.y;
@@ -23285,6 +24850,7 @@
         let ownerEntity = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
         if (ownerEntity && ownerEntity.team && t.team && ownerEntity.team === t.team && !b.isHeaterTetherStarter) {
             if (b.isAngelLight) applyAngelAllyHit(b, t, ownerEntity);
+            if (b.isRelayOrb && applyRelayAllyHit(b, t, ownerEntity)) { bullets.splice(i,1); consumed=true; break; }
             if (b.isDecoyHealProj) {
                 const dx = b.x - t.x; const dy = b.y - t.y;
                 if (Math.hypot(dx,dy) < t.radius + 8) {
@@ -23425,6 +24991,7 @@
                let targetEntity = r.ownerId === player.id ? player : ownerBot;
                if(targetEntity && targetEntity.hp > 0) {
                    doHeal(targetEntity, 334);
+                   if (hasEntityAttachie(targetEntity, 'star', 'slow')) grantShield(targetEntity, 100, Math.max(targetEntity.shieldMax || 0, 5000));
                }
            }
            
@@ -23521,12 +25088,12 @@
                                 life: 0, maxLife: 0.9, damage: e.id === player.id ? 520 : 300,
                                 pierce: true, ownerId: e.id, hitIds: {}, hyperVisual: hyper, hitboxMod: 1.35 });
                         }
-                        explosions.push({x:e.x,y:e.y,radius:hyper?145:105,life:0,maxLife:0.32,color:hyper?'#e8a4ff':'#f4f0df',legendary:true});
+                        explosions.push({x:e.x,y:e.y,radius:hyper?133:97,life:0,maxLife:0.32,color:hyper?'#e8a4ff':'#f4f0df',legendary:true});
                         if (hyper) {
                             for (const target of [player, ...aliveBots]) {
                                 if (!target || target.hp <= 0 || target.id === e.id) continue;
                                 if (e.team && target.team && e.team === target.team) continue;
-                                if (Math.hypot(target.x - e.x, target.y - e.y) <= 145) {
+                                if (Math.hypot(target.x - e.x, target.y - e.y) <= 133) {
                                     target.stunUntil = Math.max(target.stunUntil || 0, now + 1300);
                                 }
                             }
@@ -23623,6 +25190,7 @@
                     e.isFlying = false;
                     e.z = 0;
                 }
+                if (e.isRobberDash) e.isRobberDash = false;
             }
             if (e.scubaDiverDash) {
                 e.isFlying = true;
@@ -23641,6 +25209,18 @@
                 if (Math.hypot(enemy.x - e.x, enemy.y - e.y) < e.radius + enemy.radius + 20) {
                     if (!e.dashHitCooldowns[enemy.id] || now > e.dashHitCooldowns[enemy.id]) {
                         e.dashHitCooldowns[enemy.id] = now + 400; // 400ms cooldown between hits
+                        if (e.isRobberDash) {
+                            if (e.robberDashHyper) {
+                                e.robberSiphon = { targetId:enemy.id, until:now+3000, nextTick:now+1000, ticks:0 };
+                                spawnFloatingText(enemy.x, enemy.y - 42, 'AMMO SIPHON!', '#ffd166');
+                            } else {
+                                const available = enemy.id === player.id ? ammo : (enemy.ammo ?? 3);
+                                stealAmmoForRobber(e, enemy, available, 6, true);
+                            }
+                            const victimShield = isSlopSushiMode ? getEntitySlopEffectTotal(e,'robberVictimShield') : 0;
+                            if (victimShield > 0) grantShield(e, victimShield, Math.max(e.shieldMax || 0, 9000));
+                            continue;
+                        }
                         const scubaDash = !!e.scubaDiverDash;
                         let dmg = scubaDash ? (e.id === player.id ? 950 : 540) : (e.isTeetherGrapple ? (e.id === player.id ? 650 : 360) : (e.id === player.id ? 645 : 322));
                         if (e.isHyperDash && !scubaDash) {
@@ -23662,6 +25242,27 @@
                     }
                 }
             }
+        }
+    }
+
+    for (const robber of [player, ...aliveBots]) {
+        if ((robber.robberTakeoverUntil || 0) > 0 && now >= robber.robberTakeoverUntil) {
+            if (robber.id === player.id) { maxAmmo = Math.max(3, robber.robberTakeoverPreviousMaxAmmo || 3); ammo = Math.min(ammo, maxAmmo); }
+            else { robber.maxAmmo = Math.max(3, robber.robberTakeoverPreviousMaxAmmo || 3); robber.ammo = Math.min(robber.ammo ?? 3, robber.maxAmmo); }
+            robber.robberTakeoverUntil = 0;
+        }
+        const siphon = robber.robberSiphon;
+        if (!siphon) continue;
+        const target = getEntityById(siphon.targetId);
+        if (!target || target.hp <= 0 || now > siphon.until || siphon.ticks >= 3) {
+            robber.robberSiphon = null;
+            continue;
+        }
+        if (now >= siphon.nextTick) {
+            stealAmmoForRobber(robber, target, 1, 9, false);
+            siphon.ticks += 1;
+            siphon.nextTick += 1000;
+            if (siphon.ticks >= 3) robber.robberSiphon = null;
         }
     }
 
@@ -23707,6 +25308,7 @@
     // Player Reload logic
     if(player.hp > 0 && ammo < maxAmmo){
        let currentReloadTime = getReloadTime(selectedBrawler) * ((selectedBrawler === 'decayer' && now < player.reloadBuffUntil) ? 0.5 : 1);
+       if(selectedBrawler==='chickpig'&&selectedStar==='long'&&now<(player.chickpigChickenUntil||0))currentReloadTime*=.85;
        if(player.reloadDebuffUntil && now < player.reloadDebuffUntil) currentReloadTime *= 1.4;
        if (selectedBrawler === 'minigunnin') {
            if (now - lastShot > 1000) currentReloadTime = 30; // Fast reload out of combat
@@ -23718,7 +25320,8 @@
        } else if (selectedBrawler === 'boom_arang') {
            currentReloadTime = 9999999;
        }
-       ammoReloadTimer += dt * 1000;
+       // Jetpack's reload clock is completely paused during flight.
+       if (!(selectedBrawler === 'jetpack' && player.jetpackFlight)) ammoReloadTimer += dt * 1000;
        if(ammoReloadTimer >= currentReloadTime){
            ammo = selectedBrawler === 'minigunnin' ? Math.min(maxAmmo, ammo + 1) : ammo + 1;
            ammoReloadTimer -= currentReloadTime;
@@ -23782,7 +25385,7 @@
         }
     if(e.hp > 0 && e.fireUntil && now < e.fireUntil) {
         if(now >= (e.fireTickAt || 0)) {
-            const burnBase = (e.fuelBurnUntil || 0) > now ? (e.fuelBurnDamage || 280) : 500;
+            const burnBase = (e.fuelBurnUntil || 0) > now ? (e.fuelBurnDamage || 310) : 500;
             const dmg = burnBase * (e.fireStacks || 1);
             const burnHpDamage = applyShieldDamage(e, dmg);
             e.hp -= burnHpDamage; e.fireTickAt = now + 1000;
@@ -23819,6 +25422,34 @@
 
       if (t.isStructure) {
           updateTdStructureActions(t, dt, now);
+          continue;
+      }
+
+      if (t.isChickpigPig) {
+          const owner=getEntityById(t.ownerId);
+          let target=null,best=Infinity;
+          for(const candidate of [player,...aliveBots]){
+              if(!candidate||candidate.hp<=0||candidate.id===t.id||candidate.id===t.ownerId||(owner&&areAlliedEntities(owner,candidate)))continue;
+              const d=Math.hypot(candidate.x-t.x,candidate.y-t.y);if(d<best){best=d;target=candidate;}
+          }
+          t.charging=!!target;
+          if(t.chickpigPigHyper&&t.charging){t.defenseUntil=now+180;t.defenseMult=.5;}
+          if(target){
+              const angle=Math.atan2(target.y-t.y,target.x-t.x),moveSpeed=t.speed*(t.charging?1.28:1);
+              const contactDistance=t.radius+(target.radius||14)+12;
+              const travel=Math.max(0,Math.min(moveSpeed*dt,best-contactDistance));
+              const nx=clamp(t.x+Math.cos(angle)*travel,t.radius,WORLD_W-t.radius),ny=clamp(t.y+Math.sin(angle)*travel,t.radius,WORLD_H-t.radius);
+              if(travel>0&&canMoveToPosition(t,nx,ny)){t.x=nx;t.y=ny;}
+              if(best<=contactDistance+9&&now>=(t.ramCooldownUntil||0)){
+                  t.ramCooldownUntil=now+900;
+                  checkHit(target,{ownerBrawler:'chickpig',ownerId:t.ownerId,damage:1200,pierce:true,isChickpigRam:true},-1);
+                  const knock=Math.atan2(target.y-t.y,target.x-t.x);target.x=clamp(target.x+Math.cos(knock)*70,target.radius,WORLD_W-target.radius);target.y=clamp(target.y+Math.sin(knock)*70,target.radius,WORLD_H-target.radius);
+                  // Recoil keeps the pig beside its victim instead of stacked on top of it.
+                  t.x=clamp(t.x-Math.cos(knock)*24,t.radius,WORLD_W-t.radius);
+                  t.y=clamp(t.y-Math.sin(knock)*24,t.radius,WORLD_H-t.radius);
+                  explosions.push({x:target.x,y:target.y,radius:42,life:0,maxLife:.2,color:t.chickpigPigHyper?'#d970ff':'#f29b59'});
+              }
+          }
           continue;
       }
 
@@ -23869,7 +25500,8 @@
           cheeseSlow = Math.min(cheeseSlow, field.slowMult);
         }
       }
-    const slow = getEntitySlowMultiplier(t, now) * cheeseSlow;
+    const upiedownMapSlow = now < upiedownPieUntil && t.brawler !== 'upiedown' ? 0.72 : 1;
+    const slow = getEntitySlowMultiplier(t, now) * cheeseSlow * upiedownMapSlow;
       
       // find nearest enemy (player or other bot), biased toward low HP targets
       let target = null;
@@ -24126,6 +25758,7 @@
           const isStunned = isEntityStunned(t, nowTarget);
           
           let activeBotSpeed = t.speed;
+          if (nowTarget < (t.relaySignalSpeedUntil || 0)) activeBotSpeed *= 1.10;
           if (isSlopSushiMode) {
               activeBotSpeed *= 1 + getEntitySlopEffectTotal(t, 'speedPct');
               if (t.hp <= t.maxHp * .35) activeBotSpeed *= 1 + getEntitySlopEffectTotal(t, 'lowHpSpeedPct');
@@ -24152,7 +25785,8 @@
               if (t.isHypercharged && t.copyphaseTransformUntil > nowTarget && t.copyphaseTransformBrawler) activeBotSpeed *= 1.15;
           }
           activeBotSpeed *= getTerrainMoveMultiplier(t);
-          if ((t.brawler === 'beast' || isEntityEmpoweredBeast(t, false)) && t.beastModeActive) activeBotSpeed *= (t.beastHyper ? 1.45 : 1.3);
+          if (nowTarget < (t.chickpigChickenUntil||0)) activeBotSpeed *= t.chickpigChickenSpeedMult||1.4;
+          if ((t.brawler === 'beast' || isEntityEmpoweredBeast(t, false)) && t.beastModeActive) activeBotSpeed *= (t.beastMoveMult || (t.beastHyper ? 1.35 : 1.25));
 
           // Spacetime Tether speed boost (+30%) inside friendly Relativity Zone
           let botInFriendlyDome = false;
@@ -24191,7 +25825,7 @@
               }
               activeBotSpeed *= (t.speedMult || 1.0); // Apply Chaird super speed mult
               if (t.brawler === 'warrior' && now < (t.warriorStandUntil || 0) && now >= (t.warriorBattleRushUntil || 0)) {
-                  activeBotSpeed *= t.warriorStandHyper ? 0.75 : 0.30;
+                  activeBotSpeed *= t.warriorStandHyper ? 0.75 : 0.35;
               }
               activeBotSpeed *= t.ridaSpeedMult;
           }
@@ -24491,6 +26125,109 @@
     }
   }
 
+  function getPlayerMechanicHudState(now = performance.now()) {
+      if (selectedBrawler === 'jetpack') {
+          const flight=player.jetpackFlight;
+          if(flight)return {label:flight.superFlight?'BOMBING RUN  •  FLIGHT LOCKED':'CRASH LANDING  •  AIRBORNE',value:Math.max(0,flight.duration-(now-flight.startAt)),max:flight.duration,color:flight.hyper?'#d96cff':'#5fd9ff'};
+          const pct=player.jetpackChargeStartedAt?clamp((now-player.jetpackChargeStartedAt)/1200,0,1):0;
+          return {label:pct>0?`JUMP CHARGE  •  ${Math.round(pct*100)}%`:'JUMP CHARGE  •  HOLD ATTACK',value:pct,max:1,color:pct>=1?'#ffe16b':'#5fd9ff'};
+      }
+      if (selectedBrawler === 'hoop') {
+          const stacks = Math.max(0, Math.min(3, player.hoopBankStacks || 0));
+          const swish = now < (player.hoopSwishBuffUntil || 0);
+          return { label: `BANK ${stacks}/3${swish ? '  •  SWISH READY' : ''}`, value: stacks, max: 3, segments: 3, color: swish ? '#fff0a8' : '#ff9f43' };
+      }
+      if (selectedBrawler === 'heater_miser') {
+          const tethered = !!(player.heaterTetherTargetId || player.heaterTetherTargetWall);
+          const elapsed = tethered ? Math.max(0, now - (player.heaterTetherStartedAt || now)) + (isHypercharged ? 2500 : 0) : 0;
+          const thresholds = [0, 2500, 4000, 5500, 7000, 8500, 10000];
+          let stage = tethered ? 1 : 0;
+          for (let i = 1; i < thresholds.length; i++) if (elapsed >= thresholds[i]) stage = i + 1;
+          return { label: tethered ? `THERMAL TETHER  •  STAGE ${stage}/7` : 'THERMAL TETHER  •  NOT CONNECTED', value: stage, max: 7, segments: 7, color: '#ff8a5b' };
+      }
+      if (selectedBrawler === 'fuel') {
+          const superActive = now < (player.fuelSuperUntil || 0);
+          const flames = superActive ? 5 : Math.max(isHypercharged ? 2 : 1, Math.min(4, player.fuelAttackCycle || 1));
+          return { label: superActive ? 'FIVE FLAME FINGER  •  5 FLAMES' : `NEXT ATTACK  •  ${flames} FLAME${flames === 1 ? '' : 'S'}`, value: flames, max: 5, segments: 5, color: superActive ? '#ffdc6b' : '#ff6a18' };
+      }
+      if (selectedBrawler === 'overlord') {
+          const stage = Math.max(0, Math.min(3, player.overlordStage || 0));
+          return { label: `OVERLORD EVOLUTION  •  STAGE ${stage}/3`, value: stage, max: 3, segments: 3, color: '#b983ff' };
+      }
+      if (selectedBrawler === 'screener') {
+          ensureScreenerState(player, true);
+          const battery = Math.max(0, Math.min(player.screenerMaxBattery || 100, player.screenerBattery || 0));
+          const color = battery > 45 ? '#7effb5' : (battery > 20 ? '#ffd66b' : '#ff7070');
+          return { label: `BATTERY  •  ${Math.round(battery)}%`, value: battery, max: player.screenerMaxBattery || 100, color };
+      }
+      if (selectedBrawler === 'unopcoloco') {
+          const scarf = unopcolocoCycle === 0 || unopcolocoG1Armed;
+          return { label: `NEXT ATTACK  •  ${scarf ? 'SCARF' : 'WHACK'}`, value: scarf ? 1 : 2, max: 2, segments: 2, color: scarf ? '#ff5656' : '#ffd166' };
+      }
+      if (selectedBrawler === 'demon') {
+          const blade = bullets.find(b => b && b.ownerId === player.id && b.isDemonBlade && !b.isDemonSpectral && b.demonGrounded);
+          const remaining = blade ? Math.max(0, 1000 - (now - (blade.demonLandedAt || now))) : 0;
+          return { label: blade ? `GLIDE WINDOW  •  ${(remaining / 1000).toFixed(1)}s` : 'HELLBLADE  •  THROW TO OPEN GLIDE', value: remaining, max: 1000, color: '#ff4263' };
+      }
+      if (selectedBrawler === 'angel') {
+          const remaining = Math.max(0, (player.angelSecondLifeUntil || 0) - now);
+          const max = isHypercharged ? 5000 : 6000;
+          return { label: remaining > 0 ? `SECOND LIFE  •  ${(remaining / 1000).toFixed(1)}s` : 'SECOND LIFE  •  INACTIVE', value: remaining, max, color: '#fff0a8' };
+      }
+      if (selectedBrawler === 'warrior') {
+          const remaining = Math.max(0, (player.warriorStandUntil || 0) - now);
+          return { label: remaining > 0 ? `FINAL STAND  •  ${(remaining / 1000).toFixed(1)}s` : 'FINAL STAND  •  INACTIVE', value: remaining, max: 3000, color: player.warriorStandHyper ? '#df75ff' : '#ffc857' };
+      }
+      if (selectedBrawler === 'relay') {
+          const device=healingPods.find(p=>p.isRelayDevice&&p.ownerId===player.id&&p.hp>0), linked=device&&Math.hypot(player.x-device.x,player.y-device.y)<=(device.relayLinkRadius||520);
+          return {label:device?(linked?`DAMAGE LINK - ${Math.round(device.relayRedirectPct*100)}% - ${Math.ceil(device.hp)} HP`:'DAMAGE LINK - OUT OF RANGE'):'DAMAGE LINK - NO DEVICE',value:device?device.hp:0,max:device?device.maxHp:1,color:device?.relayHyper?'#dc71ff':'#67e8ff'};
+      }
+      if (selectedBrawler === 'money_and_tax') {
+          const tax = (player.moneyAndTaxMode || 'money') === 'tax';
+          return { label: `CURRENT MODE  •  ${tax ? 'TAX' : 'MONEY'}`, value: 1, max: 1, color: tax ? '#27ae60' : '#f1c40f' };
+      }
+      if (selectedBrawler === 'robber') {
+          const waves = isHypercharged ? 9 : Math.max(1, Math.min(8, player.robberWaveCount || 1));
+          const siphon = player.robberSiphon;
+          return { label:siphon ? `AMMO SIPHON - ${Math.max(0, Math.ceil((siphon.until-now)/1000))}s` : `STOLEN FORTUNE - ${waves} WAVE${waves===1?'':'S'}`, value:waves, max:9, segments:9, color:isHypercharged?'#d96cff':'#ffd166' };
+      }
+      if (selectedBrawler === 'scuba_diver') {
+          ensureScubaDiverState(player);
+          const scuba = player.scubaDiverMode === 'scuba';
+          return { label: `CURRENT FORM  •  ${scuba ? 'SCUBA' : 'SUBMARINE'}`, value: 1, max: 1, color: scuba ? '#58f0cf' : '#3da6ff' };
+      }
+      if (selectedBrawler === 'copyphase') {
+          ensureCopyphaseState(player);
+          const slot1 = player.copyphaseSlot1 ? (brawlerData[player.copyphaseSlot1]?.name || player.copyphaseSlot1) : 'EMPTY';
+          const slot2 = player.copyphaseSlot2 ? (brawlerData[player.copyphaseSlot2]?.name || player.copyphaseSlot2) : 'EMPTY';
+          const count = (player.copyphaseSlot1 ? 1 : 0) + (player.copyphaseSlot2 ? 1 : 0);
+          return { label: `PHASES  •  ${slot1}  +  ${slot2}`, value: count, max: 2, segments: 2, color: '#56d8ff' };
+      }
+      return null;
+  }
+
+  function drawPlayerMechanicHud(x, y, width, height) {
+      const state = getPlayerMechanicHudState();
+      if (!state) return false;
+      const pct = Math.max(0, Math.min(1, (state.value || 0) / Math.max(1, state.max || 1)));
+      ctx.fillStyle = 'rgba(0,0,0,0.52)'; ctx.fillRect(x - 6, y - 6, width + 12, height + 12);
+      ctx.fillStyle = 'rgba(18,30,43,0.96)'; ctx.fillRect(x, y, width, height);
+      if (state.segments && state.segments > 1) {
+          const gap = 4;
+          const segmentW = (width - gap * (state.segments - 1)) / state.segments;
+          for (let i = 0; i < state.segments; i++) {
+              ctx.fillStyle = i < Math.round(state.value || 0) ? state.color : 'rgba(255,255,255,0.09)';
+              ctx.fillRect(x + i * (segmentW + gap), y, segmentW, height);
+          }
+      } else {
+          ctx.fillStyle = state.color; ctx.fillRect(x, y, width * pct, height);
+      }
+      ctx.strokeStyle = state.color; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, width, height);
+      ctx.fillStyle = '#eef8ff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(state.label, x, y - 10);
+      return true;
+  }
+
     function drawRoundedRectPath(x, y, w, h, r) {
             const rr = Math.max(2, Math.min(r, Math.min(w, h) * 0.45));
             ctx.beginPath();
@@ -24541,6 +26278,23 @@
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#ffffff';
             ctx.fillText(icon, entity.x, drawY + 1);
+            if (brawlerId === 'jetpack') {
+                const airborne=!!entity.jetpackFlight;
+                const flicker=.78+Math.sin(performance.now()/42)*.22;
+                ctx.save();
+                ctx.shadowColor=entity.jetpackFlight?.hyper?'#d96cff':'#53ddff';ctx.shadowBlur=airborne?18:8;
+                ctx.fillStyle='#41536e';
+                drawRoundedRectPath(x-7,y+size*.25,9,size*.58,4);ctx.fill();
+                drawRoundedRectPath(x+size-2,y+size*.25,9,size*.58,4);ctx.fill();
+                ctx.fillStyle='#9cecff';ctx.beginPath();ctx.arc(x-2,y+size*.42,3,0,Math.PI*2);ctx.arc(x+size+2,y+size*.42,3,0,Math.PI*2);ctx.fill();
+                if(airborne){
+                    const flame=12+18*flicker;
+                    const grad=ctx.createLinearGradient(0,y+size*.75,0,y+size+flame);grad.addColorStop(0,'#fff7a3');grad.addColorStop(.35,'#ff9c38');grad.addColorStop(1,entity.jetpackFlight?.hyper?'rgba(205,70,255,0)':'rgba(51,202,255,0)');
+                    ctx.fillStyle=grad;
+                    for(const fx of [x-2,x+size+2]){ctx.beginPath();ctx.moveTo(fx-4,y+size*.68);ctx.quadraticCurveTo(fx-7,y+size+flame*.45,fx,y+size+flame);ctx.quadraticCurveTo(fx+7,y+size+flame*.45,fx+4,y+size*.68);ctx.fill();}
+                }
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -24558,7 +26312,13 @@
     const playerStatMain = isPlayer ? (getScaledStats(brawler, getSelectedBrawlerLevel()).dmg || 0) : 0;
     const levelScale = isPlayer ? getPlayerDamageScale() : 1.0;
 
-      if(brawler === 'warrior') {
+      if(brawler === 'jetpack') {
+          main='1500–2700';mainLabel='Landing';superVal=isHyper?'6×1050 + Mini Bombs':'6×1050';superLabel='Bombing Run';superIcon='💣';superColor=isHyper?'#d96cff':'#5fd9ff';
+      } else if(brawler === 'chickpig') {
+          main=1150;mainLabel='Egg 900 + Bacon';superVal=isHyper?'8s Ride + Armored Pig':'5s Ride + 4500 HP Pig';superLabel='Farmyard Rush';superColor='#f2b35e';
+      } else if(brawler === 'upiedown') {
+          main = 1450; superVal = isHyper ? 'Flip + 5s Poison' : '3s Map Flip'; superLabel = 'Pie Map'; superColor = isHyper ? '#7954e8' : '#e69a63';
+      } else if(brawler === 'warrior') {
           main = 900; superVal = 0; superLabel = 'Final Stand'; superIcon = '🔱'; superColor = '#d9a441';
       } else if(brawler === 'outlit') {
           main = isPlayer ? playerStatMain : 300; superVal = 2000;
@@ -24962,10 +26722,7 @@
           ctx.arc(t.x, drawY, t.radius + 18, facing - halfArc * hpPct, facing + halfArc * hpPct);
           ctx.stroke();
       }
-      if(t.defenseUntil && performance.now() < t.defenseUntil){
-        ctx.beginPath(); ctx.fillStyle = 'rgba(255, 215, 0, 0.25)'; ctx.arc(t.x, drawY, t.radius + 10, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)'; ctx.lineWidth = 2; ctx.stroke();
-      }
+      drawDamageResistanceShield(t, t.x, drawY, t.radius);
       if(t.slowUntil && performance.now() < t.slowUntil){
         ctx.beginPath(); ctx.fillStyle = 'rgba(100, 180, 255, 0.5)'; ctx.arc(t.x, drawY, t.radius, 0, Math.PI*2); ctx.fill();
       }
@@ -25276,7 +27033,7 @@
       ctx.textAlign = 'left';
     drawEntityStatusChips(t, t.x, hpY - (t.shield > 0 ? 42 : 25), false);
       if ((t.xrayRevealedUntil || 0) > performance.now()) {
-          const shownAmmo=Math.max(0,Math.min(3,Number.isFinite(t.ammo)?t.ammo:3));
+          const shownAmmo=Math.max(0,Math.min(t.maxAmmo||3,Number.isFinite(t.ammo)?t.ammo:3));
           const ay=hpY+11;
           for(let ai=0;ai<3;ai++){
               ctx.fillStyle=shownAmmo>=ai+1?'#68efff':'rgba(18,48,61,.75)';ctx.beginPath();ctx.roundRect(t.x-16+ai*12,ay,9,4,2);ctx.fill();
@@ -25318,6 +27075,17 @@
           ctx.lineWidth = 2;
           ctx.arc(t.baseX, t.baseY, 350, 0, Math.PI * 2);
           ctx.stroke();
+          if(t.isDamageMeterBot){
+              const meterNow=performance.now();
+              t.trainingDamageEvents=(t.trainingDamageEvents||[]).filter(hit=>meterNow-hit.at<=5000);
+              const total=t.trainingDamageEvents.reduce((sum,hit)=>sum+hit.amount,0),dps=total/5;
+              const panelY=drawY-t.radius-74,pulse=total>0?Math.min(1,total/10000):0;
+              ctx.save();ctx.shadowColor='#5df2c2';ctx.shadowBlur=8+12*pulse;
+              ctx.fillStyle='rgba(5,18,29,.94)';ctx.strokeStyle='#5df2c2';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(t.x-112,panelY,224,54,14);ctx.fill();ctx.stroke();
+              ctx.shadowBlur=0;ctx.textAlign='center';ctx.fillStyle='#8fffd7';ctx.font='900 10px sans-serif';ctx.fillText('LAST 5 SECONDS',t.x,panelY+14);
+              ctx.fillStyle='#fff';ctx.font='1000 22px sans-serif';ctx.fillText(`${Math.round(total).toLocaleString()} DMG`,t.x,panelY+36);
+              ctx.fillStyle='#9bb4c8';ctx.font='800 9px sans-serif';ctx.fillText(`${Math.round(dps).toLocaleString()} DPS`,t.x,panelY+49);ctx.textAlign='left';ctx.restore();
+          }
       }
       
       // Floor indicator with level badge and ability icons
@@ -25427,10 +27195,7 @@
           ctx.fillText(`${Math.max(0, Math.round(player.crystilaGlassHp))}`, player.x, drawY - player.radius - 24);
           ctx.textAlign = 'left';
       }
-      if(player.defenseUntil && performance.now() < player.defenseUntil){
-        ctx.beginPath(); ctx.fillStyle = 'rgba(255, 215, 0, 0.25)'; ctx.arc(player.x, drawY, player.radius + 12, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)'; ctx.lineWidth = 2; ctx.stroke();
-      }
+      drawDamageResistanceShield(player, player.x, drawY, player.radius);
       if(player.slowUntil && performance.now() < player.slowUntil){
         ctx.beginPath(); ctx.fillStyle = 'rgba(100, 180, 255, 0.5)'; ctx.arc(player.x, drawY, player.radius, 0, Math.PI*2); ctx.fill();
       }
@@ -25877,6 +27642,30 @@
       // aim cone
     const wm = getMouseWorld();
     const dx = wm.x - player.x; const dy = wm.y - player.y; ang = Math.atan2(dy,dx);
+      if (selectedBrawler === 'jetpack' && !aimingSuper && !player.jetpackFlight) {
+          const charge=player.jetpackChargeStartedAt?clamp((performance.now()-player.jetpackChargeStartedAt)/1200,.12,1):.12;
+          const range=220+480*charge,dist=Math.min(range,Math.hypot(dx,dy));
+          const landX=player.x+Math.cos(ang)*dist,landY=player.y+Math.sin(ang)*dist,radius=58+34*charge;
+          ctx.save();ctx.lineCap='round';
+          const pathGrad=ctx.createLinearGradient(player.x,player.y,landX,landY);pathGrad.addColorStop(0,'rgba(255,239,142,.95)');pathGrad.addColorStop(.5,'rgba(78,220,255,.92)');pathGrad.addColorStop(1,getPlayerHyperMainActive('jetpack')?'rgba(217,108,255,.95)':'rgba(113,239,255,.95)');
+          ctx.strokeStyle=pathGrad;ctx.lineWidth=5;ctx.setLineDash([13,8]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+landX)/2,(player.y+landY)/2-90-100*charge,landX,landY);ctx.stroke();ctx.setLineDash([]);
+          ctx.fillStyle=getPlayerHyperMainActive('jetpack')?'rgba(211,92,255,.18)':'rgba(76,219,255,.16)';ctx.strokeStyle=getPlayerHyperMainActive('jetpack')?'#e8a1ff':'#9af4ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(landX,landY,radius,0,Math.PI*2);ctx.fill();ctx.stroke();
+          ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(landX-radius,landY);ctx.lineTo(landX+radius,landY);ctx.moveTo(landX,landY-radius);ctx.lineTo(landX,landY+radius);ctx.stroke();
+          ctx.fillStyle='#fff';ctx.font='900 13px sans-serif';ctx.textAlign='center';ctx.fillText(`${Math.round(1500+1200*charge)} DMG`,landX,landY-radius-10);ctx.fillText(`${Math.round(charge*100)}%`,(player.x+landX)/2,(player.y+landY)/2-55-75*charge);ctx.textAlign='left';ctx.restore();
+      }
+      if (selectedBrawler === 'fuser' && !aimingSuper) {
+          const hyper=!!isHypercharged;
+          const reversed=!!player.fuserReverseArmed;
+          const laneOffset=hyper?5:16,range=700,perp=ang+Math.PI/2;
+          ctx.save();ctx.lineCap='round';
+          for(const side of [-1,1]){
+              const actualSide=side*(reversed?-1:1),ox=Math.cos(perp)*laneOffset*actualSide,oy=Math.sin(perp)*laneOffset*actualSide;
+              ctx.strokeStyle=hyper?'rgba(232,145,255,.78)':(side<0?'rgba(255,78,116,.78)':'rgba(255,166,82,.78)');
+              ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(player.x+ox,player.y+oy);ctx.lineTo(player.x+ox+Math.cos(ang)*range,player.y+oy+Math.sin(ang)*range);ctx.stroke();
+          }
+          ctx.fillStyle=hyper?'rgba(229,129,255,.16)':'rgba(255,82,109,.12)';ctx.beginPath();ctx.arc(player.x+Math.cos(ang)*range,player.y+Math.sin(ang)*range,14,0,Math.PI*2);ctx.fill();
+          ctx.restore();
+      }
       if (selectedBrawler === 'fuel' && !aimingSuper) {
           const fuelHyper = !!isHypercharged;
           const superActive = performance.now() < (player.fuelSuperUntil || 0);
@@ -25918,7 +27707,37 @@
       if (aimingSuper && superCharge >= 100) {
         ctx.save();
         ctx.lineCap = 'round';
-                if (player.bouncyBallsCrystalActive && player.bouncyBallsCrystalUntil > performance.now()) {
+                if (selectedBrawler === 'fuser') {
+                        const range=990,endX=player.x+Math.cos(ang)*range,endY=player.y+Math.sin(ang)*range,perp=ang+Math.PI/2;
+                        const halfWidth=isHypercharged?18:32;
+                        ctx.fillStyle=isHypercharged?'rgba(216,82,255,.15)':'rgba(255,68,105,.13)';
+                        ctx.beginPath();ctx.moveTo(player.x+Math.cos(perp)*halfWidth,player.y+Math.sin(perp)*halfWidth);ctx.lineTo(endX+Math.cos(perp)*halfWidth,endY+Math.sin(perp)*halfWidth);ctx.lineTo(endX-Math.cos(perp)*halfWidth,endY-Math.sin(perp)*halfWidth);ctx.lineTo(player.x-Math.cos(perp)*halfWidth,player.y-Math.sin(perp)*halfWidth);ctx.closePath();ctx.fill();
+                        ctx.strokeStyle=isHypercharged?'#e88cff':'#ff6d8c';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(endX,endY);ctx.stroke();
+                        ctx.strokeStyle='rgba(255,235,240,.85)';ctx.lineWidth=2;ctx.setLineDash([14,10]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(endX,endY);ctx.stroke();ctx.setLineDash([]);
+                        ctx.fillStyle='#fff';ctx.font='900 13px sans-serif';ctx.textAlign='center';ctx.fillText(isHypercharged?'8 PIERCING SHOTS • RETURN':'8 PIERCING SHOTS • BREAKS WALLS',endX,endY-22);ctx.textAlign='left';
+                } else if (selectedBrawler === 'snapper') {
+                        const pulse=1+Math.sin(performance.now()/520)*.025;
+                        ctx.strokeStyle=isHypercharged?'#ff65e6':'#55e6ff';ctx.lineWidth=7;ctx.setLineDash([24,14]);ctx.beginPath();ctx.arc(player.x,player.y,180*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+                        ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(player.x,player.y,245*pulse,0,Math.PI*2);ctx.stroke();
+                        ctx.fillStyle='#fff';ctx.font='900 18px sans-serif';ctx.textAlign='center';ctx.fillText(isHypercharged?'50% + 10% CURRENT HP':'30% CURRENT HP',player.x,player.y-205);ctx.textAlign='left';
+                } else if (selectedBrawler === 'jetpack') {
+                        const dist=Math.min(850,Math.hypot(dx,dy)),landX=player.x+Math.cos(ang)*dist,landY=player.y+Math.sin(ang)*dist,perp=ang+Math.PI/2;
+                        ctx.strokeStyle=isHypercharged?'rgba(225,130,255,.96)':'rgba(104,232,255,.96)';ctx.lineWidth=7;ctx.setLineDash([16,9]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(landX,landY);ctx.stroke();ctx.setLineDash([]);
+                        const pattern=[-1,1,-.55,.55,-.18,.18];for(let i=0;i<6;i++){const p=(i+1)/7,bx=player.x+(landX-player.x)*p+Math.cos(perp)*pattern[i]*(42+i*9),by=player.y+(landY-player.y)*p+Math.sin(perp)*pattern[i]*(42+i*9);ctx.fillStyle=isHypercharged?'rgba(212,92,255,.22)':'rgba(255,155,55,.2)';ctx.strokeStyle=isHypercharged?'#efa7ff':'#ffc779';ctx.lineWidth=3;ctx.beginPath();ctx.arc(bx,by,66,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='900 22px sans-serif';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('💣',bx,by+8);}
+                        ctx.fillStyle='#fff';ctx.font='900 15px sans-serif';ctx.fillText(isHypercharged?'AIR RAID • MINI BOMBS':'LOCKED FLIGHT • 6 BOMBS',landX,landY-94);ctx.textAlign='left';
+                } else if (selectedBrawler === 'chickpig') {
+                        const pulse=.85+Math.sin(performance.now()/120)*.1;ctx.fillStyle=isHypercharged?'rgba(210,80,255,.13)':'rgba(255,190,90,.12)';ctx.strokeStyle=isHypercharged?'rgba(229,150,255,.9)':'rgba(255,220,145,.9)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(player.x,player.y,145*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='900 34px sans-serif';ctx.textAlign='center';ctx.fillText('🐔',player.x-42,player.y+12);ctx.fillText('🐖',player.x+42,player.y+12);ctx.textAlign='left';
+                } else if (selectedBrawler === 'upiedown') {
+                        const pulse = .72 + Math.sin(performance.now()/130)*.14;
+                        ctx.fillStyle = isHypercharged ? `rgba(91,58,183,${.16+pulse*.08})` : `rgba(230,154,99,${.12+pulse*.07})`;
+                        ctx.fillRect(0,0,WORLD_W,WORLD_H);
+                        ctx.strokeStyle = isHypercharged ? 'rgba(205,180,255,.92)' : 'rgba(255,220,166,.92)';
+                        ctx.lineWidth=8;ctx.setLineDash([24,15]);ctx.strokeRect(18,18,WORLD_W-36,WORLD_H-36);ctx.setLineDash([]);
+                        ctx.translate(player.x,player.y);ctx.rotate(performance.now()/420);
+                        ctx.strokeStyle=isHypercharged?'#c8adff':'#ffd6a0';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,92,.35,Math.PI*1.72);ctx.stroke();
+                        ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.moveTo(88,-23);ctx.lineTo(111,-10);ctx.lineTo(91,7);ctx.closePath();ctx.fill();
+                        ctx.rotate(-performance.now()/420);ctx.fillStyle='#fff';ctx.font='900 18px sans-serif';ctx.textAlign='center';ctx.fillText(isHypercharged?'BLUEBERRY MAP • 5s POISON':'FLIP ENTIRE MAP • 3s',0,132);ctx.textAlign='left';
+                } else if (player.bouncyBallsCrystalActive && player.bouncyBallsCrystalUntil > performance.now()) {
                         const assistAng = getCrystalBounceAssistAngle(player, ang, true);
                         const traced = traceRicochetPath(player.x, player.y, assistAng, 2300, 6, 16);
                         ctx.strokeStyle = isHypercharged ? 'rgba(255, 245, 160, 0.9)' : 'rgba(120, 245, 255, 0.85)';
@@ -25992,7 +27811,8 @@
             ctx.restore();
         } else if (selectedBrawler === 'outlit') {
             const mult = (selectedStar === 'long') ? 1.4 : 1.0;
-            const range = 264 * mult * mult;
+            const attachieRange = selectedStar === 'long' && hasSelectedAttachie('star', 'long', 'outlit') ? 1.2 : 1.0;
+            const range = 264 * mult * mult * attachieRange;
             ctx.fillStyle = 'rgba(255, 200, 0, 0.25)';
             ctx.beginPath(); ctx.moveTo(player.x, player.y);
             ctx.arc(player.x, player.y, range, ang - 0.15, ang + 0.15);
@@ -26457,6 +28277,21 @@
                     ctx.stroke();
                     ctx.setLineDash([]);
                     ctx.restore();
+                } else if(selectedBrawler === 'chickpig'){
+          const range=720*.82,side=10;ctx.save();ctx.lineCap='round';ctx.lineWidth=7;
+          const px=Math.cos(ang+Math.PI/2)*side,py=Math.sin(ang+Math.PI/2)*side;
+          ctx.strokeStyle='rgba(255,226,100,.68)';ctx.beginPath();ctx.moveTo(player.x+px,player.y+py);ctx.lineTo(player.x+px+Math.cos(ang)*range,player.y+py+Math.sin(ang)*range);ctx.stroke();
+          ctx.strokeStyle='rgba(225,86,64,.7)';ctx.beginPath();ctx.moveTo(player.x-px,player.y-py);ctx.lineTo(player.x-px+Math.cos(ang)*range,player.y-py+Math.sin(ang)*range);ctx.stroke();
+          const ex=player.x+px+Math.cos(ang)*range,ey=player.y+py+Math.sin(ang)*range,bx=player.x-px+Math.cos(ang)*range,by=player.y-py+Math.sin(ang)*range;ctx.fillStyle='rgba(255,226,100,.18)';ctx.beginPath();ctx.arc(ex,ey,isHypercharged?82:18,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(255,241,170,.85)';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='rgba(225,86,64,.2)';ctx.beginPath();ctx.arc(bx,by,18,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(255,150,125,.85)';ctx.stroke();ctx.restore();
+                } else if(selectedBrawler === 'upiedown'){
+          const aimDist=Math.min(610,Math.hypot(wm.x-player.x,wm.y-player.y));
+          const landX=player.x+Math.cos(ang)*aimDist,landY=player.y+Math.sin(ang)*aimDist;
+          const pieCount=isHypercharged?7:4;
+          ctx.save();ctx.strokeStyle=isHypercharged?'rgba(201,173,255,.9)':'rgba(255,210,151,.88)';ctx.fillStyle=isHypercharged?'rgba(110,80,205,.18)':'rgba(231,173,114,.18)';ctx.lineWidth=3;ctx.setLineDash([9,7]);
+          ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+landX)/2,(player.y+landY)/2-120,landX,landY);ctx.stroke();ctx.setLineDash([]);
+          ctx.beginPath();ctx.arc(landX,landY,44,0,Math.PI*2);ctx.fill();ctx.stroke();
+          for(let pi=0;pi<pieCount;pi++){const pa=ang+pi*Math.PI*2/pieCount,px=landX+Math.cos(pa)*290,py=landY+Math.sin(pa)*290;ctx.globalAlpha=.72;ctx.beginPath();ctx.moveTo(landX,landY);ctx.lineTo(px,py);ctx.stroke();ctx.beginPath();ctx.arc(px,py,25,0,Math.PI*2);ctx.fill();ctx.stroke();}
+          ctx.globalAlpha=1;ctx.fillStyle='#fff';ctx.font='900 12px sans-serif';ctx.textAlign='center';ctx.fillText(`${pieCount} MINI PIES`,landX,landY-48);ctx.textAlign='left';ctx.restore();
                 } else if(selectedBrawler === 'warrior'){
           const standActive = performance.now() < (player.warriorStandUntil || 0);
           const spearCount = standActive ? (player.warriorStandHyper ? 6 : 3) : 2;
@@ -27008,6 +28843,10 @@
       }
     }
 
+    for(const zone of chickpigEggZones){
+      const pulse=.75+Math.sin(performance.now()/100)*.12;ctx.save();ctx.fillStyle=`rgba(255,213,67,${.12+pulse*.08})`;ctx.strokeStyle='rgba(255,241,158,.82)';ctx.lineWidth=3;ctx.setLineDash([9,6]);ctx.beginPath();ctx.arc(zone.x,zone.y,zone.radius*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#ffcf32';ctx.beginPath();ctx.arc(zone.x,zone.y,18,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff8d8';ctx.beginPath();ctx.arc(zone.x,zone.y,8,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
+
     // draw healing pods
     for(const pod of healingPods){
       // Special rendering for MiniBrickkin lego fort
@@ -27027,6 +28866,15 @@
           ctx.fillStyle='rgba(4,15,24,.78)';ctx.beginPath();ctx.roundRect(bx,by,68,7,4);ctx.fill();ctx.fillStyle=pod.xrayHyper?'#d66cff':'#58edf5';ctx.beginPath();ctx.roundRect(bx,by,68*pct,7,4);ctx.fill();
           ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(Math.ceil(pod.hp),pod.x,by-3);ctx.textAlign='left';
           continue;
+      }
+      if (pod.isRelayDevice) {
+          const owner=pod.ownerId===player.id?player:bots.find(b=>b.id===pod.ownerId), linked=owner&&Math.hypot(owner.x-pod.x,owner.y-pod.y)<=(pod.relayLinkRadius||520);
+          ctx.save();ctx.strokeStyle=linked?(pod.relayHyper?'#df77ff':'#67e8ff'):'rgba(170,180,190,.45)';ctx.lineWidth=linked?5:2;ctx.setLineDash(linked?[12,7]:[5,8]);
+          if(owner){ctx.beginPath();ctx.moveTo(owner.x,owner.y);ctx.lineTo(pod.x,pod.y);ctx.stroke();}
+          ctx.lineWidth=2;ctx.beginPath();ctx.arc(pod.x,pod.y,pod.relayLinkRadius||520,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+          ctx.shadowColor=pod.relayHyper?'#d96cff':'#42e7f5';ctx.shadowBlur=18;ctx.fillStyle='#102d3b';ctx.strokeStyle=pod.relayHyper?'#dc71ff':'#68f1ff';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(pod.x-30,pod.y-35,60,70,16);ctx.fill();ctx.stroke();
+          ctx.fillStyle=pod.relayHyper?'#df77ff':'#67e8ff';ctx.beginPath();ctx.arc(pod.x,pod.y,13,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(`${Math.round((pod.relayRedirectPct||.75)*100)}%`,pod.x,pod.y+3);
+          const pct=Math.max(0,pod.hp/pod.maxHp),w=76,x=pod.x-w/2,y=pod.y-51;ctx.fillStyle='#08141d';ctx.beginPath();ctx.roundRect(x,y,w,9,5);ctx.fill();ctx.fillStyle=pod.relayHyper?'#d96cff':'#42ddeb';ctx.beginPath();ctx.roundRect(x,y,w*pct,9,5);ctx.fill();ctx.fillStyle='#fff';ctx.fillText(`${Math.ceil(pod.hp)}/${pod.maxHp}`,pod.x,y-4);ctx.restore();continue;
       }
 
             if (pod.isClassySpeaker) {
@@ -27356,6 +29204,9 @@
     }
 
     for (const entity of [player, ...bots]) {
+        if (entity && entity.hp > 0 && performance.now() < (entity.chickpigChickenUntil||0)) {
+            const flap=Math.sin(performance.now()/75)*5;ctx.save();ctx.translate(entity.x,entity.y+entity.radius*.55);ctx.shadowColor=entity.chickpigChickenSpeedMult>=1.5?'#d66cff':'#ffd16b';ctx.shadowBlur=16;ctx.fillStyle='#fff4cf';ctx.beginPath();ctx.ellipse(0,0,entity.radius+8,11,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffbd32';ctx.beginPath();ctx.moveTo(entity.radius+5,-2);ctx.lineTo(entity.radius+15,2);ctx.lineTo(entity.radius+5,6);ctx.closePath();ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-5,0);ctx.lineTo(-18,-8-flap);ctx.moveTo(5,0);ctx.lineTo(18,-8+flap);ctx.stroke();ctx.restore();
+        }
         if (entity && entity.hp > 0 && performance.now() < (entity.warriorStandUntil || 0)) {
             const pulse=1+Math.sin(performance.now()/95)*.08;ctx.save();ctx.strokeStyle=entity.warriorStandHyper?'#df75ff':'#ffc857';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=18;ctx.lineWidth=4;ctx.beginPath();ctx.arc(entity.x,entity.y,(entity.radius+10)*pulse,0,Math.PI*2);ctx.stroke();
             const pct=Math.max(0,Math.min(1,(entity.warriorStandUntil-performance.now())/3000));ctx.fillStyle='rgba(4,10,18,.75)';ctx.beginPath();ctx.roundRect(entity.x-25,entity.y+entity.radius+7,50,6,3);ctx.fill();ctx.fillStyle=entity.warriorStandHyper?'#df75ff':'#ffc857';ctx.beginPath();ctx.roundRect(entity.x-24,entity.y+entity.radius+8,48*pct,4,2);ctx.fill();ctx.restore();
@@ -27364,8 +29215,74 @@
         const pulse=1+Math.sin(performance.now()/120)*.08;ctx.save();ctx.strokeStyle='#fff0a8';ctx.shadowColor='#fff0a8';ctx.shadowBlur=18;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(entity.x,entity.y-entity.radius-13,18*pulse,6*pulse,0,0,Math.PI*2);ctx.stroke();ctx.restore();
     }
 
+    // Size-card visual underlay. Many brawlers have bespoke projectile art
+    // with fixed pixel dimensions, so hitboxMod alone was not visible even
+    // though collision had grown. This makes the powered-up footprint clear
+    // for every projectile renderer without replacing its unique artwork.
+    for (const b of bullets) {
+      if (!b || !(b.slopSizeMultiplier > 1)) continue;
+      const radius = Math.max(7, (b.super ? 8 : 5) * (b.hitboxMod || 1));
+      ctx.save();
+      ctx.globalAlpha = .52;
+      ctx.fillStyle = b.hyperVisual ? '#ef8cff' : '#62eaff';
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = Math.min(32, radius * .9);
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = .92;
+      ctx.strokeStyle = '#eaffff';
+      ctx.lineWidth = Math.max(1.5, Math.min(4, radius * .12));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw each SNAP wave once as a steady expanding ring. The old effect
+    // spawned a new bright ring every 55ms, which produced unsafe flashing.
+    for (const wave of snapperWaves) {
+      if (!wave || wave.delay>0) continue;
+      ctx.save();ctx.globalAlpha=wave.mini?.52:.64;ctx.strokeStyle=wave.mini?'#efb8e8':'#66d9e8';ctx.lineWidth=wave.mini?4:6;
+      ctx.beginPath();ctx.arc(wave.x,wave.y,Math.max(0,wave.radius),0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha=wave.mini?.16:.20;ctx.lineWidth=wave.mini?10:14;ctx.beginPath();ctx.arc(wave.x,wave.y,Math.max(0,wave.radius),0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+
+    // Snapper marks stay readable until consumed or expired.
+    for (const marked of [player,...bots]) {
+      if (!marked || (marked.snapperMarkUntil||0)<=performance.now()) continue;
+      const pulse=1+Math.sin(performance.now()/480)*.025;ctx.save();ctx.translate(marked.x,marked.y-(marked.radius||20)-18);ctx.scale(pulse,pulse);
+      ctx.strokeStyle=(marked.snapperMarkPct||.1)>.1?'#ff65e6':'#55e6ff';ctx.lineWidth=3;ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=12;ctx.beginPath();ctx.arc(0,0,12,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-18,0);ctx.lineTo(-7,0);ctx.moveTo(18,0);ctx.lineTo(7,0);ctx.moveTo(0,-18);ctx.lineTo(0,-7);ctx.moveTo(0,18);ctx.lineTo(0,7);ctx.stroke();ctx.restore();
+    }
+
     // draw bullets 
     for(const b of bullets){ 
+      if (b.isSnapperOrb) {
+          ctx.save();ctx.translate(b.x,b.y);const pulse=1+Math.sin(performance.now()/500)*.025;ctx.scale(pulse,pulse);
+          ctx.shadowColor=b.hyperVisual?'#d78ad0':'#76cbd5';ctx.shadowBlur=8;ctx.fillStyle=b.hyperVisual?'#a04ab0':'#267b8a';
+          ctx.beginPath();ctx.arc(0,0,17,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#efffff';ctx.lineWidth=3;ctx.stroke();
+          ctx.strokeStyle=b.hyperVisual?'#ffd0fa':'#9ff7ff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(-23,0);ctx.lineTo(23,0);ctx.moveTo(0,-23);ctx.lineTo(0,23);ctx.stroke();ctx.restore();continue;
+      }
+      if (b.isChickpigEgg || b.isChickpigBacon) {
+          ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));
+          if(b.isChickpigEgg){ctx.shadowColor=b.hyperVisual?'#d36cff':'#ffe66f';ctx.shadowBlur=14;ctx.fillStyle='#fff8d8';ctx.beginPath();ctx.ellipse(0,0,11,8,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=b.hyperVisual?'#b060ff':'#ffc928';ctx.beginPath();ctx.arc(1,0,4.5,0,Math.PI*2);ctx.fill();}
+          else{ctx.shadowColor=b.hyperVisual?'#df65ff':'#ff7043';ctx.shadowBlur=12;ctx.strokeStyle=b.hyperVisual?'#e8a0ff':'#d94b37';ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-12,-3);ctx.lineTo(-5,3);ctx.lineTo(2,-3);ctx.lineTo(10,3);ctx.stroke();ctx.strokeStyle='#ffd0b0';ctx.lineWidth=2;ctx.stroke();}
+          ctx.restore();continue;
+      }
+      if (b.isUpiedownCorePie || b.isUpiedownMiniPie) {
+          ctx.save();
+          const progress=Math.max(0,Math.min(1,b.life/Math.max(.001,b.maxLife||1)));
+          const lift=Math.sin(progress*Math.PI)*(b.isUpiedownCorePie?82:42);
+          const size=b.isUpiedownCorePie?18.4:9;
+          ctx.fillStyle='rgba(0,0,0,.23)';ctx.beginPath();ctx.ellipse(b.x,b.y,size,Math.max(3,size*.35),0,0,Math.PI*2);ctx.fill();
+          ctx.translate(b.x,b.y-lift);ctx.rotate(performance.now()/180+(b.isUpiedownMiniPie?progress*4:0));
+          ctx.shadowColor=b.hyperVisual?'#7954e8':'#ffb66f';ctx.shadowBlur=b.hyperVisual?18:12;
+          ctx.fillStyle=b.hyperVisual?'#6f55c9':'#e7ad72';ctx.strokeStyle=b.hyperVisual?'#c9b7ff':'#8b4b2a';ctx.lineWidth=2;
+          ctx.beginPath();ctx.arc(0,0,size,0,Math.PI*2);ctx.fill();ctx.stroke();
+          ctx.fillStyle=b.hyperVisual?'#a98aff':'#d84f5f';ctx.beginPath();ctx.arc(0,0,size*.58,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle='#f7e3b8';ctx.lineWidth=1.5;for(let k=0;k<4;k++){const a=k*Math.PI/2;ctx.beginPath();ctx.moveTo(Math.cos(a)*size*.25,Math.sin(a)*size*.25);ctx.lineTo(Math.cos(a)*size*.88,Math.sin(a)*size*.88);ctx.stroke();}
+          ctx.restore();continue;
+      }
       if (b.isWarriorSpear) {
           ctx.save();
           const throwProgress=Math.max(0,Math.min(1,b.life/Math.max(.001,b.maxLife||1)));
@@ -27376,6 +29293,20 @@
           ctx.fillStyle=b.hyperVisual?'#efb0ff':'#f3c969';
           ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(5,-5);ctx.lineTo(7,-2);ctx.lineTo(-15,-2);ctx.lineTo(-15,2);ctx.lineTo(7,2);ctx.lineTo(5,5);ctx.closePath();ctx.fill();
           ctx.strokeStyle='#5b3510';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();continue;
+      }
+      if (b.isRelayOrb) {
+          ctx.save();
+          const angle=Math.atan2(b.vy,b.vx), pulse=.88+Math.sin(performance.now()/70)*.12;
+          const outer=b.hyperVisual?'#df75ff':'#67e8ff', inner=b.hyperVisual?'#fff0ff':'#e8feff';
+          ctx.lineCap='round';ctx.globalAlpha=.28;ctx.strokeStyle=outer;ctx.lineWidth=8;
+          ctx.beginPath();ctx.moveTo(b.x-Math.cos(angle)*34,b.y-Math.sin(angle)*34);ctx.lineTo(b.x-Math.cos(angle)*8,b.y-Math.sin(angle)*8);ctx.stroke();ctx.globalAlpha=1;
+          ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.shadowColor=outer;ctx.shadowBlur=b.hyperVisual?24:18;
+          ctx.fillStyle=b.hyperVisual?'rgba(184,71,231,.32)':'rgba(55,210,232,.28)';ctx.beginPath();ctx.arc(0,0,15*pulse,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle=outer;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(0,0,11*pulse,-.85,.85);ctx.stroke();ctx.beginPath();ctx.arc(0,0,11*pulse,Math.PI-.85,Math.PI+.85);ctx.stroke();
+          ctx.fillStyle=inner;ctx.beginPath();ctx.arc(0,0,6.5*pulse,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle=outer;ctx.beginPath();ctx.moveTo(2,-4);ctx.lineTo(9,0);ctx.lineTo(2,4);ctx.closePath();ctx.fill();
+          if(b.hyperVisual){ctx.rotate(performance.now()/180);ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;for(let i=0;i<4;i++){ctx.rotate(Math.PI/2);ctx.beginPath();ctx.moveTo(13,0);ctx.lineTo(19,0);ctx.stroke();}}
+          ctx.restore();continue;
       }
       if (b.isAngelLight) {
           ctx.save();ctx.shadowColor=b.hyperVisual?'#db66ff':'#fff0a8';ctx.shadowBlur=16;ctx.fillStyle=b.hyperVisual?'#f0a5ff':'#fff8c9';ctx.beginPath();ctx.arc(b.x,b.y,b.hyperVisual?8:7,0,Math.PI*2);ctx.fill();ctx.restore();continue;
@@ -28337,6 +30268,19 @@
           ctx.lineWidth = 1;
           ctx.stroke();
           continue;
+      } else if (b.ownerBrawler === 'fuser' && b.isFuserBullet) {
+          const a=Math.atan2(b.vy||0,b.vx||1);
+          const isSuperShot=!!b.super,coreR=isSuperShot?7:4.1;
+          const accent=b.hyperVisual?'#e991ff':((b.fuserShotIndex||0)%2===0?'#ff416c':'#ff9f43');
+          ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(a);
+          ctx.strokeStyle=b.hyperVisual?'rgba(220,91,255,.55)':'rgba(255,65,108,.48)';ctx.lineWidth=isSuperShot?6:3;ctx.lineCap='round';
+          ctx.beginPath();ctx.moveTo(-22,0);ctx.lineTo(1,0);ctx.stroke();
+          ctx.fillStyle=accent;
+          ctx.beginPath();ctx.moveTo(coreR+5,0);ctx.lineTo(-coreR,-coreR*.78);ctx.lineTo(-coreR*.45,0);ctx.lineTo(-coreR,coreR*.78);ctx.closePath();ctx.fill();
+          ctx.fillStyle='#fff7fa';ctx.beginPath();ctx.ellipse(coreR*.7,0,coreR*.65,coreR*.32,0,0,Math.PI*2);ctx.fill();
+          if(isSuperShot){ctx.strokeStyle='rgba(255,230,238,.9)';ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(0,0,coreR+3,0,Math.PI*2);ctx.stroke();}
+          ctx.restore();
+          continue;
       } else if (b.ownerBrawler === 'xray' && b.isXrayBeam) {
           const a=Math.atan2(b.vy||0,b.vx||1);ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);
           ctx.shadowColor=b.hyperVisual?'#d66cff':'#79f7ff';ctx.shadowBlur=18;
@@ -28967,16 +30911,18 @@
         ctx.rotate((performance.now() / 700) % (Math.PI * 2));
         ctx.fillStyle = zone.isHyper ? '#7fd8ff' : '#ffca64';
         ctx.beginPath();
-        ctx.arc(0, 0, 15, 0, Math.PI * 2);
+        ctx.arc(0, 0, zone.isHyperMini ? 9 : 15, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#fff2d0';
         ctx.lineWidth = 2;
         ctx.stroke();
         ctx.fillStyle = '#81511a';
-        ctx.fillRect(-3, -15, 6, 30);
-        ctx.fillRect(-15, -3, 30, 6);
+        const screwSize=zone.isHyperMini?9:15;
+        ctx.fillRect(-3, -screwSize, 6, screwSize*2);
+        ctx.fillRect(-screwSize, -3, screwSize*2, 6);
         ctx.restore();
 
+        if (zone.isHyperMini) continue;
         const hpRatio = clamp(zone.hp / Math.max(1, zone.maxHp), 0, 1);
         const barW = 44;
         const barH = 6;
@@ -30233,6 +32179,11 @@
     ctx.fillRect(bx, hy, barW * (isHypercharged ? (hyperchargeUntil - performance.now())/5000 : hyperChargeCharge/100), barH);
     ctx.fillStyle = HYPER_VISUALS.textPrimary; ctx.fillText('HYPERCHARGE (F)', bx, hy-10);
 
+    // One consistent, screen-fixed home for decision-critical brawler state.
+    // Keeping it beside Super/Hyper avoids collisions with health, ammo,
+    // Power Level, status chips and world-space aim indicators.
+    drawPlayerMechanicHud(bx, hy - 36, barW, barH);
+
     if (selectedBrawler === 'goonbob') {
         const stored = getBlobertStoredLiquid(player);
         const ly = hy - 36;
@@ -30351,24 +32302,26 @@
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
                     if (isTutorialMode) {
-                        const elapsed = Math.max(0, (performance.now() - tutorialStartedAt) / 1000);
-                        const remain = Math.max(0, Math.ceil(TUTORIAL_DURATION_SECONDS - elapsed));
                         const currentStep = getTutorialCurrentStep();
                         const completed = getTutorialCompletedCount();
+                        const panelW = Math.min(620, innerWidth - 28);
+                        const panelX = (innerWidth - panelW) / 2;
+                        ctx.fillStyle = 'rgba(5,14,29,.90)';
+                        ctx.strokeStyle = 'rgba(125,211,252,.72)';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.roundRect(panelX, 22, panelW, 92, 16);
+                        ctx.fill(); ctx.stroke();
                         ctx.fillStyle = '#8fd8ff';
-                        ctx.fillText(`TUTORIAL ${remain}s  ${completed}/${TUTORIAL_GUIDE_STEPS.length}`, innerWidth/2, 56);
-                        ctx.fillStyle = '#cfeef7';
-                        ctx.font = 'bold 13px sans-serif';
-                        ctx.fillText(currentStep ? currentStep.text : 'All steps complete. Great run.', innerWidth/2, 78);
-
-                        ctx.textAlign = 'left';
-                        let listY = 102;
-                        for (const step of TUTORIAL_GUIDE_STEPS) {
-                            const done = tutorialProgress[step.key];
-                            ctx.fillStyle = done ? '#5df2c2' : '#93a7da';
-                            ctx.font = '12px sans-serif';
-                            ctx.fillText(`${done ? '[x]' : '[ ]'} ${step.text}`, 20, listY);
-                            listY += 18;
+                        ctx.font = '900 15px sans-serif';
+                        ctx.fillText(`ROOKIE COURSE  •  STEP ${Math.min(completed + 1, TUTORIAL_GUIDE_STEPS.length)}/${TUTORIAL_GUIDE_STEPS.length}`, innerWidth/2, 47);
+                        ctx.fillStyle = '#f2f8ff';
+                        ctx.font = 'bold 14px sans-serif';
+                        ctx.fillText(getTutorialStepText(currentStep), innerWidth/2, 72);
+                        const gap=5, segW=(panelW-40-gap*(TUTORIAL_GUIDE_STEPS.length-1))/TUTORIAL_GUIDE_STEPS.length;
+                        for(let s=0;s<TUTORIAL_GUIDE_STEPS.length;s++){
+                            ctx.fillStyle=s<completed?'#5df2c2':(s===completed?'#7dd3fc':'#263d5c');
+                            ctx.fillRect(panelX+20+s*(segW+gap),91,segW,7);
                         }
                         ctx.textAlign = 'center';
                     } else {
@@ -30897,6 +32850,7 @@
   }
 
   function addEventQuestProgress(questKey, amount = 1) {
+      addMegaAndBrawlerQuestProgress(questKey, amount);
       if (!ENABLE_EVENT_HUB) {
           const base = addDailyWeeklyQuestProgress(questKey, amount);
           const limited = addLimitedQuestProgress(questKey, amount);

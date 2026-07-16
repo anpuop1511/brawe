@@ -1,0 +1,13 @@
+ARENA FORGE - PHONE VERSION
+
+Best experience: rotate your phone to landscape.
+
+Controls:
+- Left joystick: move
+- Right joystick: aim and attack
+- Gear: Gadget
+- Star: Super (hold/aim, then release)
+- Lightning: Hypercharge
+
+Extract the ZIP before opening index.html. Progress is saved in that browser on that device.
+Some iPhones block scripts opened directly from Files; a published web link avoids that restriction.

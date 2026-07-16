@@ -14,6 +14,10 @@ html, body {
 body {
   font-family: 'Outfit', sans-serif;
 }
+html.mobile-device #hud { display: none !important; }
+html.mobile-device #homeHeader { align-items: flex-start !important; }
+html.mobile-device #fullscreenBtn { display: inline-flex; align-items: center; justify-content: center; }
+html.desktop-device #fullscreenBtn { opacity: .88; }
 :root {
   --af-panel: rgba(10, 20, 38, 0.45);
   --af-border: rgba(130, 180, 250, 0.16);
@@ -547,6 +551,18 @@ button:disabled {
   .brawler-card__portrait { height: 104px !important; }
   .brawler-card__name { font-size: 16px !important; }
   .brawler-card__abilities { margin-left: -8px !important; margin-right: -8px !important; transform: scale(.9); width: 111%; transform-origin: left center; }
+  #homeTitle { font-size: 25px !important; }
+  #homeHeader { flex-wrap: wrap !important; }
+  #homeCurrencyBar { order: 3; width: 100%; }
+  #fullscreenBtn { margin-left: auto; }
+  button, summary { min-height: 44px; }
+  .sushi-mobile-overlay { justify-content:flex-start !important;overflow-y:auto !important;padding:max(14px,env(safe-area-inset-top)) 10px max(18px,env(safe-area-inset-bottom)) !important;box-sizing:border-box; }
+  .sushi-mobile-overlay > h1 { margin:8px 0 2px !important;font-size:clamp(20px,7vw,28px) !important;text-align:center; }
+  .sushi-mobile-overlay > p { margin:5px 0 10px !important;text-align:center; }
+  .sushi-mobile-overlay .sushi-match-picks { width:100%;gap:10px !important; }
+  .sushi-mobile-card { width:min(100%,360px) !important;min-height:0 !important;padding:14px !important; }
+  .sushi-mobile-card h2 { margin:7px 0 !important;font-size:19px !important; }
+  .sushi-mobile-card p { margin:5px 0 !important;font-size:13px !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
