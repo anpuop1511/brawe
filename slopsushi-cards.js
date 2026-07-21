@@ -7,7 +7,7 @@
   // Cards are generated from rotating mechanic mutations so all 360 cards alter
   // an attack, Super, resource loop, or survivability state in live gameplay.
   const S={
-    outlit:['Scatter Pump','Boom Break','Shell'],fuser:['Eight-Fuse Salvo','Wall-Fuser Barrage','Instability'],echo:['Sound Wave','Resonance','Reverb'],cheseypuff:['Cheese Ball','Cheese Aura','Fondue'],decayer:['Decay Shot','Dark Orbit','Void'],
+    outlit:['Scatter Pump','Boom Break','Shell'],fuser:['Eight-Fuse Salvo','Wall-Fuser Barrage','Instability'],predator:['Through the Prey','No Escape','Hunt'],orbo:['Crisscross Orbit','Orbital Horizon','Cosmos'],homer:['Learning Shot','Targeting Pair','Lock-On'],peter_pickle:['Pickle Pitch','Petah\'s Pickles','Brine'],unstable:['Containment Failure','Going Unstable','Genome'],echo:['Sound Wave','Resonance','Reverb'],cheseypuff:['Cheese Ball','Cheese Aura','Fondue'],decayer:['Decay Shot','Dark Orbit','Void'],
     unopcoloco:['Scarf & Whack','Scarf Clonin','Fiesta'],dashaholic:['Claw Slash','Unleash the Dashaholic','Adrenaline'],trapper:['Slam Gate','Sound Fence','Backstage'],classy:['Note Burst','Bass Drop','Encore'],
     hyperorigin:['Origin Slam','Purple Unleashed','Origin'],heater_miser:['Thermal Tether','Intergalactic Heat','Furnace'],minigunnin:['Minigun Stream','Bullet Storm','Ammo'],steamer:['Steam Stream','Railroad Rush','Boiler'],
     bowlin_rida:['Bowling Burst','Pin Strike','Perfect Game'],money_and_tax:['Coin Waves','Market Crash','Profit'],hunter:['Delay Sweep','I Found You','Tracker'],chaird:['Chair Toss','Chair Spin','Furniture'],
@@ -19,6 +19,8 @@
     sera_eclipse:['Eclipse Flare','Eclipse Orbit','Corona'],boom_arang:['Boomerang Toss','Gravity Recall','Orbit'],teether:['Bite Pattern','Tooth Fairy','Dental'],fuel:['Finger Flames','Five Flame Finger','Blowtorch'],
     xray:['Infrared Reading','Full Body Scan','Radiology'],angel:['Guiding Light','Second Life','Halo'],demon:['Hellblade','Demonic Doom','Abyss'],warrior:['Twin Spears','Final Stand','Phalanx'],relay:['Shield Signal','Move My Damage','Bandwidth'],upiedown:['Pie in the Sky','Upside-Down Pie','Bakery'],chickpig:['Breakfast Blast','Farmyard Rush','Farmhouse'],jetpack:['Crash Landing','I Drop Bombs','Flight Deck'],robber:['Stolen Fortune','Grand Theft Ammo','Heist']
   };
+
+  S.rocketeer=['Breakup Rocket','Triple Impact','Warhead'];
 
   const attackMutations=[
     (a,n)=>[`${n} Colossus`,`${a} becomes 55% larger.`,{sushiAttackSizePct:.55}],
@@ -48,7 +50,7 @@
     'cheseypuff','decayer','unopcoloco','dashaholic','trapper','classy','hyperorigin',
     'steamer','hunter','chaird','forest','tempo_maker','overlord','copyphase','beast',
     'amplifier','skeleflying','crystila','scuba_diver','screener','malakor','beam',
-    'paradox','sera_eclipse','fuel','xray','angel','demon','warrior','relay','upiedown','chickpig','jetpack'
+    'paradox','sera_eclipse','fuel','xray','angel','demon','warrior','relay','upiedown','chickpig','jetpack','unstable','predator'
   ]);
   const castSuperMutations=[
     (s,n)=>[`${n} Aftershock`,`Casting ${s} grants 2400 shield and 28% speed for 4 seconds.`,{superShield:2400,superSpeedPct:.28,superSpeedMs:4000,shieldCap:5200}],
@@ -108,6 +110,14 @@
   O('relay',0,C('Epic','Overcharged Signal','Shield Signal grants 75% more shield with a 12000 cap.',{relayShieldPct:.75,relayShieldCap:12000}));
   O('relay',1,C('Epic','Industrial Relay','The device gains 75% HP and 65% connection radius.',{relayDeviceHpPct:.75,relayLinkRadiusPct:.65}));
   O('splitter',7,C('Exotic','Split Into Split Into Split!','Main grenades gain a third full splitting generation.',{splitterExoticCascade:1}));
+  O('rocketeer',0,C('Epic','Six-Pack Separation','Every Breakup Rocket releases 3 additional mini-rockets.',{rocketeerExtraMinis:3}));
+  O('rocketeer',1,C('Epic','Napalm Pockets','Mini-rocket fire zones are 55% larger and last 75% longer.',{rocketeerFireRadiusPct:.55,rocketeerFireDurationPct:.75}));
+  O('rocketeer',2,C('Epic','Hotter Exhaust','Breakup Rockets fire and reload 25% faster.',{fireDelayPct:.25,reloadPct:.25}));
+  O('rocketeer',3,C('Mythic','Chain of Command','Breakup Rocket launches two angled copies dealing 62% damage.',{rocketeerExtraMainRockets:2}));
+  O('rocketeer',4,C('Mythic','Five-Rocket Forecast','Triple Impact calls down 2 additional big rockets.',{rocketeerExtraSuperStrikes:2}));
+  O('rocketeer',5,C('Mythic','Permanent Burn Notice','Every big Super rocket leaves a 4-second fire zone, even without Gravity Warheads.',{rocketeerSuperFire:1}));
+  O('rocketeer',6,C('Legendary','Sixteen Directions','Hypercharged Super impacts launch 16 radial rockets instead of 8.',{rocketeerHyperRadial:16}));
+  O('rocketeer',7,C('Exotic','Rocket Weather','Breakup Rocket releases 12 mini-rockets with 100% extra range; Triple Impact rains 7 big rockets.',{rocketeerExtraMinis:9,sushiAttackRangePct:1,rocketeerExtraSuperStrikes:4}));
   O('robber',0,C('Epic','Pyramid Scheme','Every successful coin hit adds 3 attack waves. The wave cap becomes 12.',{robberWaveGain:3,robberWaveCap:12}));
   O('robber',1,C('Epic','Coin-Shotgun Getaway','Every wave fires 9 coins across an enormous fan.',{robberCoinsPerWave:9,robberFanMult:2.4}));
   O('robber',2,C('Epic','Accelerated Assets','Each later wave gains 35% projectile speed and 25% damage.',{robberWaveSpeedPct:.35,robberWaveDamagePct:.25}));

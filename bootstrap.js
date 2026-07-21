@@ -26,7 +26,7 @@ const gameScript = document.createElement('script');
 // Keep this release token aligned with index.html. GitHub Pages and browsers
 // may cache the large runtime, so a versioned URL ensures new game content is
 // loaded immediately after a deployment.
-gameScript.src = './game.js?v=20260715-fuserlanes1';
+gameScript.src = './game.js?v=20260721-rosterrestore2';
 gameScript.addEventListener('load', () => { if (homeScreen) homeScreen.style.display = ''; });
 gameScript.addEventListener('error', () => {
   if (homeScreen) homeScreen.style.display = '';
