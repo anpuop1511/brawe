@@ -143,15 +143,15 @@
         }
         if (brawlerId === 'fuser') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(7000*scale), dmg:Math.round(330*scale), speed:260 };
+            return { hp:Math.round(7000*scale), dmg:Math.round(350*scale), speed:260 };
         }
         if (brawlerId === 'rocketeer') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(7000*scale), dmg:Math.round(2100*scale), speed:252 };
+            return { hp:Math.round(7000*scale), dmg:Math.round(1950*scale), speed:252 };
         }
         if (brawlerId === 'peter_pickle') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(7200*scale), dmg:Math.round(1280*scale), speed:255 };
+            return { hp:Math.round(7200*scale), dmg:Math.round(1200*scale), speed:255 };
         }
         if (brawlerId === 'unstable') {
             const scale = 0.55 + (level - 1) * 0.045;
@@ -163,16 +163,16 @@
         }
         if (brawlerId === 'orbo') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(6500*scale), dmg:Math.round(520*scale), speed:255 };
+            return { hp:Math.round(6500*scale), dmg:Math.round(460*scale), speed:255 };
         }
         if (brawlerId === 'predator') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(7600*scale), dmg:Math.round(1850*scale), speed:300 };
+            return { hp:Math.round(7600*scale), dmg:Math.round(1700*scale), speed:300 };
         }
         if (brawlerId === 'angel' || brawlerId === 'demon' || brawlerId === 'warrior' || brawlerId === 'relay' || brawlerId === 'upiedown' || brawlerId === 'chickpig' || brawlerId === 'jetpack' || brawlerId === 'snapper') {
             const scale = 0.55 + (level - 1) * 0.045;
             const p11Hp = brawlerId === 'angel' ? 7200 : (brawlerId === 'demon' ? 7700 : (brawlerId === 'relay' ? 5200 : (brawlerId === 'upiedown' ? 6800 : (brawlerId === 'chickpig' ? 7200 : (brawlerId === 'jetpack' ? 6600 : (brawlerId === 'snapper' ? 6500 : 7600))))));
-            return { hp:Math.round(p11Hp*scale), dmg:brawlerId==='angel'?1600:(brawlerId==='demon'?1900:(brawlerId==='relay'?1150:(brawlerId==='upiedown'?1700:(brawlerId==='chickpig'?1150:(brawlerId==='jetpack'?2550:(brawlerId==='snapper'?1500:950)))))), speed:brawlerId==='angel'?255:(brawlerId==='demon'?300:(brawlerId==='relay'?265:(brawlerId==='upiedown'?250:(brawlerId==='chickpig'?255:(brawlerId==='jetpack'?270:(brawlerId==='snapper'?250:260)))))) };
+            return { hp:Math.round(p11Hp*scale), dmg:brawlerId==='angel'?1600:(brawlerId==='demon'?1900:(brawlerId==='relay'?1250:(brawlerId==='upiedown'?1700:(brawlerId==='chickpig'?1150:(brawlerId==='jetpack'?2550:(brawlerId==='snapper'?1650:950)))))), speed:brawlerId==='angel'?255:(brawlerId==='demon'?300:(brawlerId==='relay'?265:(brawlerId==='upiedown'?250:(brawlerId==='chickpig'?255:(brawlerId==='jetpack'?270:(brawlerId==='snapper'?250:260)))))) };
         }
         const data = brawlerData[brawlerId] || {};
         const role = String(data.role || '').toLowerCase();
@@ -3877,7 +3877,6 @@
       'angel': { name:'Angel', role:'Support', desc:'A guardian support who lifts allies out of danger and denies lethal damage.', color:'#fff0a8', attack:'Guiding Light', attackDesc:'A light shot that damages and slows enemies, or heals and briefly lifts teammates.', super:'Second Life', superDesc:'Gain a 6-second blessing. Lethal damage leaves Angel at 1 HP, then fully heals her.', hyper:'Team Takeback: Second Life protects the whole team for 5 seconds. Guiding Light fires a rapid triple burst.', g1:'Guardian Swap (Give Second Life to the nearest teammate)', g2:'Emergency Landing (Land lifted allies, heal 1600 and grant speed)', sp1:'Blessed Flight (Lifted allies gain a 900 shield on landing)', sp2:'Final Judgment (Second Life activation damages and knocks back nearby enemies)' },
       'demon': { name:'Demon', role:'Assassin', desc:'A demonic blade assassin who recalls his weapon or glides to its landing point.', color:'#d44763', attack:'Hellblade', attackDesc:'Throw a blade. For 1 second after it lands, move toward it to glide and retrieve it; otherwise it recalls and damages again.', super:'Demonic Doom', superDesc:'Create three blade clones that hook up to three enemies and pull them toward Demon.', hyper:'Doom’s Embrace: Fire a second spectral blade. During Demonic Doom’s pull, Demon gains 60% damage reduction.', g1:'Blade Swap (Instantly teleport to the grounded blade)', g2:'Barbed Recall (Next recall slows and heals on hit)', sp1:'Cut Both Ways (Outgoing plus returning hit deals 700 bonus)', sp2:'Hellbound Landing (Gliding grants a 1400 shield)' },
       'paradox': { name: 'Paradox', role: 'Controller', desc: 'A legendary Time Weaver who tunnels space-time, slows enemy fire, and rewinds position.', color: '#a8a2ff', attack: 'Temporal Skip', attackDesc: 'Fires a skip shot. Disappears instantly and teleports to max range, detonating in a splash explosion.', super: 'Relativity Zone', superDesc: 'Spawns a dome. Friendly shots fly +50% faster. Enemy shots fly -50% slower but track players inside.', hyper: 'Double Paradox: Spawns stationary dome and attaches a mobile dome to Paradox. Attack skips twice as fast and stuns for 0.5s.', g1: 'Chronoshift (Rewind position 2 seconds ago and heal 1500 HP)', g2: 'Paradox Charge (Next attack sweeps full path for double damage)', sp1: 'Quantum Tangle (Skipped middle path pulls enemies towards explosion)', sp2: 'Temporal Fracture (Super activates 8s of side shots & middle sweeps)' },
-      'sera_eclipse': { name: 'Sera Eclipse', role: 'Support', desc: 'A Chromatic Support who controls dark and light energies, using eclipse flares that heal allies and harm enemies, alongside tether and orbit zones.', color: '#d15aff', attack: 'Eclipse Flare', attackDesc: 'Fires a medium-range solar/lunar orb that damages enemies, heals allies, and passes through all targets.', super: 'Eclipse Orbit', superDesc: 'Deploys a large zone centered around Sera. Allies in the zone continuously heal and gain +20% damage. Enemies are continuously damaged and slowed by 25%.', hyper: 'Total Eclipse: Increases Orbit radius by 45%, increases healing/damage rates by 50%, and releases a burst of 6 solar flares outwards upon activation.', g1: 'Solar Gravity (Instantly pulls all enemies within the Eclipse Orbit zone to the center)', g2: 'Corona Shield (Grants a protective shield reducing all incoming damage by 40% for 3.5 seconds)', sp1: 'Corona Flash (Healing an ally with Eclipse Flare boosts their movement speed by +20% for 2.0 seconds)', sp2: 'Umbral Crown (Extends Super zone duration by +4.0 seconds)' },
       'beam': { name: 'Beam', role: 'Damage Dealer', desc: 'A continuous laser weapon that ramps up damage the longer it hits.', color: '#ffd700', attack: 'Focus Beam', attackDesc: 'Fires a continuous laser. Damage ramps up through 6 stages while firing.', super: 'The Golden Beam', superDesc: 'Turns the beam golden! Enemies hit are stunned for 0.9s.', hyper: 'Purple Ray of Roar: +23% range, faster ramp, last 25% ammo does +50% dmg.', g1: 'Prism Split (Wide 3-laser cone)', g2: 'Emergency Cooling (Consume 30% ammo to heal 2000 HP)', sp1: 'Thermal Resonance (25% shield at max ramp)', sp2: 'Overload Residue (Super leaves a burning trail)' },
       'outlit': { name: 'Outlit', role: 'Close-range', desc: 'Shotgun blast with strong point-blank damage.', color: '#ff9b42', attack: 'Scatter Pump', attackDesc: 'A compact shotgun blast with a tight spread and strong point-blank damage.', super: 'Boom Break', superDesc: 'Fires 2 heavy shells that destroy walls and crack open escape routes.', hyper: 'Super pierces, tighter & faster main attacks.', g1: 'Next Shot Pierce', g2: 'Healing Pod', sp1: 'Shell Chill (Slows)', sp2: 'Long Boom (+35% Super Range)' },
       'echo': { name: 'Echo', role: 'Controller', desc: 'Fires expanding sound rings that control the battlefield.', color: '#ccaaff', attack: 'Sound Wave', attackDesc: 'Shoots a ring that grows in size as it travels.', super: 'Resonance', superDesc: 'Unleashes massive sound waves that pierce through enemies.', hyper: 'Super sound rings expand twice for double hits.', g1: 'Amplify (Bigger ring, less dmg)', g2: 'Shielding (Take reduced damage)', sp1: 'Reverb Heal (Heal 334 HP on hit)', sp2: 'Double Wave (Super shoots backwards too)' },
@@ -4100,11 +4099,28 @@
         };
         const slotLabel = { hyper:'Hyper Main', g1:'Gadget 1', g2:'Gadget 2', slow:'Star Power 1', long:'Star Power 2' };
         const slotDesc = {
-            outlit: { g1:'Next Shot Pierce attacks return once.', g2:'Healing Pod gains +2000 HP and 40% larger heal range.', slow:'Boom Break restores 2 ammo.', long:'Scatter Pump gains +20% range.' },
+            outlit: { g1:'Next Shot Pierce attacks return once.', g2:'Healing Pod gains +1500 HP and 30% larger heal range.', slow:'Boom Break restores 2 ammo.', long:'Scatter Pump gains +15% range.' },
             echo: { g1:'Amplify keeps full damage.', g2:'Shielding converts 70% of prevented damage into shield.', slow:'Reverb Heal also grants 30% of the heal as shield.', long:'Double Wave fires 3 extra bigger side rings.' },
-            cheseypuff: { g1:'Big Puff also pulls enemies.', g2:'Cheese Trap deals 140 damage per tick.', slow:'Cheese Ball leaves a mini cheese field at the end.', long:'Cheese Ball gains 30% more range.' },
-            decayer: { g1:'Homing Shot also slows enemies.', g2:'Sacrifice grants an 80% damage reduction shield until hit.', slow:'Decayer shield max increases by 2500.', long:'Decay Shot stacks 5% damage reduction per hit, up to 30%, for 8 seconds.' }
+            cheseypuff: { g1:'Big Puff also pulls enemies.', g2:'Cheese Trap deals 160 damage per tick.', slow:'Cheese Ball leaves a mini cheese field at the end.', long:'Cheese Ball gains 22% more range.' },
+            decayer: { g1:'Homing Shot also slows enemies for 1.1 seconds.', g2:'Sacrifice grants an 80% damage reduction shield until hit.', slow:'Decayer shield max increases by 2500.', long:'Decay Shot stacks 5% damage reduction per hit, up to 25%, for 7 seconds.' },
+            unopcoloco: { g1:'Tangled Scarf pierces one target, then jumps to a second for 60% damage.', g2:'Wrapped Up immediately heals 900 HP.', slow:'Scarf landings leave a 1.25-second patch that slows by 20%.', long:'Whack healing splashes nearby allies for 50%.' },
+            dashaholic: { g1:'Phase Armor dashes 425 units and grants a 900 shield for 1.5 seconds.', g2:'Second Wind heals 1700 and its restored ammo fires 20% faster.', slow:'The first enemy hit is marked to take 12% more damage for 2 seconds.', long:'After a Super dash, one slash repeats for 45% damage after 0.45 seconds.' },
+            trapper: { g1:'Loaded Blast radius grows to 235 and drops a short trap at your feet.', g2:'Field Repair heals 1900 and arms the next gate.', slow:'Caught enemies remain 18% slowed for 1.5 seconds.', long:'An expired or destroyed trap fires a 45% mini gate at the nearest enemy.' },
+            classy: { g1:'Perfect Pitch grants 35 Symphony and makes the next note 25% larger.', g2:'Encore Fan notes return once for 35% damage.', slow:'Golden notes burst again for 40% damage after 0.55 seconds.', long:'Taking damage pauses Symphony decay for 3 seconds.' },
+            hyperorigin: { g1:'Core Overflow grants 4 Energy; excess Energy becomes a 500 shield each.', g2:'Fault Line dashes 260 units and grants an 1800 shield.', slow:'Heavy Singularity pulls enemies 70 units before suspending them.', long:'Stable Origin raises the 5+ Energy damage reduction from 18% to 24%.' },
+            heater_miser: { g1:'Pressure Spike burns for 100 damage every 0.5 seconds for 2 seconds.', g2:'Three-Way Flux chains to 2 extra targets at 70% power.', slow:'Stored Heat loses only one ramp stage when the tether disconnects.', long:'Closed Circuit lets the Super zone retether through walls at 75% power.' },
+            minigunnin: { g1:'Full Overclock fires 8 radial bullets and grants a 600 shield for 2 seconds.', g2:'Efficient Fortify costs 750 max HP and heals 3500.', slow:'Every 10th bullet pierces once and deals 130% damage.', long:'Walls and forts gain 25% HP and resist their first wall-breaking hit.' },
+            steamer: { g1:'Boiler Burst grows 30%; enemies in the inner ring are stunned for 0.45 seconds.', g2:'Express Service lasts 6.5 seconds and grants 15% reload speed.', slow:'Pressure trails burn enemies for 240 damage over 2 seconds.', long:'Last Stop ends with a knockback ring and heals Steamer for 900.' }
         };
+        const fixedClaws = [
+            ['outlit','echo','cheseypuff','decayer'],
+            ['unopcoloco','dashaholic','trapper','classy'],
+            ['hyperorigin','heater_miser','minigunnin','steamer']
+        ];
+        const fixedIds = new Set(fixedClaws.flat());
+        const remainingIds = allBrawlers.filter(id => !fixedIds.has(id));
+        const clawGroups = fixedClaws.slice();
+        for (let i=0;i<remainingIds.length;i+=4) clawGroups.push(remainingIds.slice(i,i+4));
         const owns = (type, id, slot) => type === 'hyper' ? !!state.hyper[id] : hasAttachie(type, id, slot);
         const unlock = (type, id, slot) => {
             if (type === 'hyper') state.hyper[id] = true;
@@ -4113,7 +4129,7 @@
         };
         const missingFor = (type, group, clawNum) => {
             if (type === 'hyper') return group.filter(id => !state.hyper[id]).map(id => ({ id, slot:'hyper' }));
-            if (clawNum !== 1) return [];
+            if (clawNum > 3) return [];
             const missing = [];
             for (const id of group) for (const slot of infoByType[type].slots) if (!owns(type, id, slot)) missing.push({ id, slot });
             return missing;
@@ -4143,7 +4159,7 @@
                 ? allBrawlers.filter(id => state.hyper[id]).length
                 : allBrawlers.reduce((sum, id) => sum + info.slots.filter(slot => owns(activeType, id, slot)).length, 0);
             const total = activeType === 'hyper' ? allBrawlers.length : allBrawlers.length * info.slots.length;
-            panel.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div style="color:#d8a7ff;font-weight:1000;letter-spacing:.15em">COLLECTION LAB</div><h1 style="margin:4px 0">ATTACHIES</h1><div style="color:#b9cce2">${info.title}s ${owned}/${total} - ${playerData.coins || 0} Coins</div></div><button data-close style="padding:12px 18px;border:0;border-radius:12px;background:#e7efff;font-weight:1000;cursor:pointer">CLOSE</button></div><div data-tabs style="display:flex;gap:8px;margin:18px 0"></div><p style="color:#d8e5f5">Pull attachies to upgrade specific Hyper, Gadget, or Star Power bonuses. Gadget and Star tabs currently support Claw 1 only.</p><div data-machines style="display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:13px"></div>`;
+            panel.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div style="color:#d8a7ff;font-weight:1000;letter-spacing:.15em">COLLECTION LAB</div><h1 style="margin:4px 0">ATTACHIES</h1><div style="color:#b9cce2">${info.title}s ${owned}/${total} - ${playerData.coins || 0} Coins</div></div><button data-close style="padding:12px 18px;border:0;border-radius:12px;background:#e7efff;font-weight:1000;cursor:pointer">CLOSE</button></div><div data-tabs style="display:flex;gap:8px;margin:18px 0"></div><p style="color:#d8e5f5">Attachies add an extra effect to an owned ability; they never replace or lock its base effect. Gadget and Star Claws 1-3 are live.</p><div data-machines style="display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:13px"></div>`;
             panel.querySelector('[data-close]').onclick = () => overlay.remove();
             const tabs = panel.querySelector('[data-tabs]');
             for (const type of ['hyper','gadget','star']) {
@@ -4155,10 +4171,10 @@
                 tabs.appendChild(tab);
             }
             const machines = panel.querySelector('[data-machines]');
-            for (let start = 0; start < allBrawlers.length; start += 4) {
-                const group = allBrawlers.slice(start, start + 4);
-                const clawNum = Math.floor(start / 4) + 1;
-                const comingSoon = activeType !== 'hyper' && clawNum !== 1;
+            for (let groupIndex = 0; groupIndex < clawGroups.length; groupIndex++) {
+                const group = clawGroups[groupIndex];
+                const clawNum = groupIndex + 1;
+                const comingSoon = activeType !== 'hyper' && clawNum > 3;
                 const missing = missingFor(activeType, group, clawNum);
                 const card = document.createElement('div');
                 card.style.cssText = `padding:15px;border:1px solid ${info.color}66;border-radius:17px;background:linear-gradient(145deg,rgba(51,29,82,.94),rgba(10,23,39,.96));box-shadow:0 12px 28px rgba(0,0,0,.24)`;
@@ -12062,7 +12078,7 @@
         let base = brawler === 'angel' ? 1700 : (brawler === 'demon' ? 1800 : (Number.isFinite(BALANCE_PROFILE.reloadMsByBrawler[brawler])
             ? BALANCE_PROFILE.reloadMsByBrawler[brawler]
             : 1740 * 1.15));
-        if (brawler === 'warrior' && performance.now() < (player.warriorStandUntil || 0)) base /= 2.10;
+        if (brawler === 'warrior' && performance.now() < (player.warriorStandUntil || 0)) base /= 2.40;
         if (brawler === 'upiedown' && performance.now() < (player.upiedownReloadBuffUntil || 0)) base *= 0.85;
         if (brawler === 'robber' && selectedStar === 'long' && maxAmmo > 3) base *= 0.75;
         return (isSlopSushiMode && brawler === selectedBrawler)
@@ -13124,7 +13140,7 @@
       if(!owner)return;
       const now=performance.now();
       bots.push({id:`living_pickle_${owner.id}_${Math.floor(now)}_${Math.floor(Math.random()*9999)}`,brawler:'peter_pickle_minion',isPeterPickleMinion:true,
-          x:clamp(x,18,WORLD_W-18),y:clamp(y,18,WORLD_H-18),radius:12,hp:950,maxHp:950,speed:192,team:owner.team,ownerId:owner.id,pickleHyper:!!isHyper,
+          x:clamp(x,18,WORLD_W-18),y:clamp(y,18,WORLD_H-18),radius:12,hp:1050,maxHp:1050,speed:192,team:owner.team,ownerId:owner.id,pickleHyper:!!isHyper,
           isSummon:true,isPet:true,noPowerupDrop:true,pickleDamage:310,pickleExpiresAt:now+6500,pickleHopStartedAt:now,selectedStar:'none',selectedGadget:'g1'});
   }
 
@@ -13189,7 +13205,7 @@
       if(!owner)return false;
       if(!isSuper&&!skipCap&&getUnstableMainContainerCount(owner)>=3)return false;
       const now=performance.now(),level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11),scale=getLevelDamageScale(level);
-      const reinforced=getOwnerStarChoice(owner)==='slow',hp=Math.round((850+(reinforced?350:0))*scale);
+      const reinforced=getOwnerStarChoice(owner)==='slow',hp=Math.round((950+(reinforced?300:0))*scale);
       bots.push({id:`unstable_container_${owner.id}_${Math.floor(now)}_${Math.floor(Math.random()*9999)}`,brawler:'unstable_container',isUnstableContainer:true,
           x:clamp(x,20,WORLD_W-20),y:clamp(y,20,WORLD_H-20),radius:20,hp,maxHp:hp,speed:0,team:owner.team,ownerId:owner.id,
           isSummon:true,isPet:true,noPowerupDrop:true,summonHpDecayPerSec:0,summonDecayAt:now,
@@ -14566,7 +14582,7 @@
       const target=getPredatorTarget(owner,targetX,targetY,lockRange,false);
       const startX=owner.x,startY=owner.y,a=Math.atan2((target?.y??targetY)-owner.y,(target?.x??targetX)-owner.x);
       if(!target){
-          const dist=Math.min(235,Math.hypot(targetX-owner.x,targetY-owner.y));
+          const dist=Math.min(275,Math.hypot(targetX-owner.x,targetY-owner.y));
           owner.predatorFlight={mode:'reposition',startX,startY,endX:clamp(startX+Math.cos(a)*dist,owner.radius,WORLD_W-owner.radius),endY:clamp(startY+Math.sin(a)*dist,owner.radius,WORLD_H-owner.radius),startAt:now,duration:300,nextFx:now};
           owner.isFlying=true;owner.stunUntil=Math.max(owner.stunUntil||0,now+320);owner.invulnerableUntil=now+300;return false;
       }
@@ -14586,7 +14602,7 @@
       const now=performance.now(),star=getOwnerStarChoice(owner),duration=1500,ticks=star==='long'?5:4;
       owner.predatorFlight={mode:'super',targetId:target.id,startX:owner.x,startY:owner.y,endX:target.x,endY:target.y,startAt:now,duration:520,latchDuration:duration,ticks,star,hyper:!!hyper,nextFx:now};
       owner.isFlying=true;owner.stunUntil=Math.max(owner.stunUntil||0,now+duration+560);owner.invulnerableUntil=now+520;
-      if(hyper){target.slowUntil=Math.max(target.slowUntil||0,now+duration+2700);spawnFloatingText(target.x,target.y-46,'LOCKED + SLOWED','#e67aff');}
+      if(hyper){target.slowUntil=Math.max(target.slowUntil||0,now+2800);spawnFloatingText(target.x,target.y-46,'LOCKED + SLOWED','#e67aff');}
       else spawnFloatingText(target.x,target.y-46,'PREDATOR INCOMING','#d8ff68');
       return true;
   }
@@ -14611,7 +14627,7 @@
           if(!target||target.hp<=0||owner.hp<=0||now>=latch.until){owner.predatorLatch=null;continue;}
           const a=Math.atan2(target.y-owner.y,target.x-owner.x);owner.x=clamp(target.x-Math.cos(a)*18,owner.radius,WORLD_W-owner.radius);owner.y=clamp(target.y-Math.sin(a)*18,owner.radius,WORLD_H-owner.radius);
           owner.stunUntil=Math.max(owner.stunUntil||0,latch.until);target.stunUntil=Math.max(target.stunUntil||0,latch.until);
-          if(now>=latch.nextTick&&latch.ticksLeft>0){dealPredatorDamage(owner,target,owner.id===player.id?650:470,latch.hyper?'#ed9cff':'#d8ff68',false);latch.ticksLeft--;latch.nextTick=now+(latch.tickInterval||350);explosions.push({x:target.x+(Math.random()-.5)*34,y:target.y+(Math.random()-.5)*34,radius:32,life:0,maxLife:.18,color:latch.hyper?'#d65cff':'#b7e34b',legendary:true,fxKind:'predatorClaw'});}
+          if(now>=latch.nextTick&&latch.ticksLeft>0){dealPredatorDamage(owner,target,owner.id===player.id?580:420,latch.hyper?'#ed9cff':'#d8ff68',false);latch.ticksLeft--;latch.nextTick=now+(latch.tickInterval||350);explosions.push({x:target.x+(Math.random()-.5)*34,y:target.y+(Math.random()-.5)*34,radius:32,life:0,maxLife:.18,color:latch.hyper?'#d65cff':'#b7e34b',legendary:true,fxKind:'predatorClaw'});}
       }
   }
 
@@ -14637,7 +14653,7 @@
         const star=getOwnerStarChoice(owner);
         const baseAng=Math.atan2(projectile.vy,projectile.vx);
         const count=Math.max(3,(projectile.rocketeerMiniCount||3)+(isSlopSushiMode?getEntitySlopEffectTotal(owner,'rocketeerExtraMinis'):0));
-        const miniDamage=Math.round((projectile.rocketeerBaseDamage||projectile.damage||2100)*.20);
+        const miniDamage=Math.round((projectile.rocketeerBaseDamage||projectile.damage||1950)*.18);
         if(star==='slow') spawnRocketeerFireZone(projectile.ownerId,projectile.x,projectile.y,2500,210,78,projectile.hyperVisual);
         for(let n=0;n<count;n++){
             const lane=count===1?0:(n/(count-1)-.5);
@@ -14651,7 +14667,7 @@
     }
 
     function launchRocketeerMain(owner, angle, hyper, damageMult=1, options={}) {
-        const damage=Math.round(2100*damageMult);
+        const damage=Math.round(1950*damageMult);
         const lateral=options.lateral||0,forward=options.forward||0,perp=angle+Math.PI/2;
         bullets.push({ownerBrawler:'rocketeer',isRocketeerMain:true,rocketeerBaseDamage:damage,
             rocketeerMiniCount:owner.rocketeerClusterArmed?5:3,
@@ -14674,7 +14690,7 @@
                 if(d<=190){target.x=clamp(target.x+dx/d*65,target.radius,WORLD_W-target.radius);target.y=clamp(target.y+dy/d*65,target.radius,WORLD_H-target.radius);}
             }
         }
-        AOEDamage(strike.x,strike.y,112,1550,strike.ownerId,true);
+        AOEDamage(strike.x,strike.y,112,1700,strike.ownerId,true);
         for(const target of targets){
             if(!target||target.hp<=0||target.id===owner.id||areAlliedEntities(owner,target))continue;
             const dx=target.x-strike.x,dy=target.y-strike.y,d=Math.hypot(dx,dy)||1;
@@ -14845,7 +14861,7 @@
         const dense = isBot ? !!fromEntity.orboDenseArmed : (gadgetArmed && selectedGadget === 'g1');
         const count = hyperMain ? 6 : 4;
         const speed = 790;
-        const maxLife = hyperMain ? 2.7 : 1.35;
+        const maxLife = hyperMain ? 2.295 : 1.35;
         const amplitude = dense ? 72 : 54;
         const perpX = -Math.sin(ang), perpY = Math.cos(ang);
         const volleyId = `${fromEntity.id}:${Math.round(now * 10)}`;
@@ -14858,7 +14874,7 @@
                 x:fromEntity.x + Math.cos(ang)*(fromEntity.radius+9) + perpX*offset,
                 y:fromEntity.y + Math.sin(ang)*(fromEntity.radius+9) + perpY*offset,
                 vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed, life:0, maxLife,
-                damage:isBot?370:520, pierce:!!dense, ownerId:fromEntity.id, hitIds:{},
+                damage:isBot?330:460, pierce:!!dense, ownerId:fromEntity.id, hitIds:{},
                 hitboxMod:dense?1.8:1.2, hyperVisual:hyperMain, orboDense:!!dense
             });
         }
@@ -14870,9 +14886,9 @@
     } else if (brawler === 'homer') {
         const hyperMain=isBot?!!fromEntity.isHypercharged:!!isHypercharged;
         const hardLock=!!fromEntity.homerPerfectShotArmed;
-        const learned=clamp(fromEntity.homerHomingPct||.10,.10,.80),calibration=now<(fromEntity.homerCalibrationUntil||0) ? .20 : 0;
-        const tuned=clamp(learned+calibration,.10,1);
-        const homing=hardLock?1:(hyperMain ? Math.max(.95,tuned) : tuned);
+        const learned=clamp(fromEntity.homerHomingPct||.15,.15,.80),calibration=now<(fromEntity.homerCalibrationUntil||0) ? .20 : 0;
+        const tuned=clamp(learned+calibration,.15,1);
+        const homing=hardLock?1:(hyperMain ? Math.max(.85,tuned) : tuned);
         const star=getOwnerStarChoice(fromEntity),damage=Math.round((isBot?1260:1800)*(star==='slow'&&learned>=.70?1.12:1));
         bullets.push({ownerBrawler:'homer',isHomerProjectile:true,homerHomingPct:homing,
             x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+8),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+8),
@@ -14885,7 +14901,7 @@
             ownerBrawler:'snapper', isSnapperOrb:true,
             x:fromEntity.x + Math.cos(ang)*(fromEntity.radius+8), y:fromEntity.y + Math.sin(ang)*(fromEntity.radius+8),
             vx:Math.cos(ang)*720, vy:Math.sin(ang)*720, life:0, maxLife:0.98,
-            damage:1500, pierce:false, ownerId:fromEntity.id, hitIds:{},
+            damage:1650, pierce:false, ownerId:fromEntity.id, hitIds:{},
             hitboxMod:2.35, snapperMarkPct:hyper ? 0.15 : 0.10,
             color:hyper ? '#ff70ef' : '#55e6ff', hyperVisual:hyper
         });
@@ -15034,7 +15050,7 @@
         const standActive = now < (fromEntity.warriorStandUntil || 0);
         const extraSpears=isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'warriorExtraSpears')):0;
         const explosiveSushi=isSlopSushiMode&&getEntitySlopEffectTotal(fromEntity,'warriorExplosiveMain')>0;
-        const count = standActive ? (fromEntity.warriorStandHyper ? 6 : 3) : 2+extraSpears;
+        const count = standActive ? (fromEntity.warriorStandHyper ? 5 : 3) : 2+extraSpears;
         const spreadStep = count >= 6 ? 0.085 : (count === 3 ? 0.12 : 0.14);
         const throwDistance = Math.min(620*(1+(isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'warriorRangePct'):0)), Math.hypot(targetX-fromEntity.x,targetY-fromEntity.y));
         const throwSpeed = 620;
@@ -15043,7 +15059,7 @@
             const a = ang + (i - (count - 1) / 2) * spreadStep;
             bullets.push({
                 ownerBrawler:'warrior', isWarriorSpear:true, warriorThrown:true, warriorVolleyId:volleyId,
-                warriorExplosive:hyper||explosiveSushi, warriorExplosionDamage:240, warriorExplosionRadius:78,
+                warriorExplosive:hyper||explosiveSushi, warriorExplosionDamage:240, warriorExplosionRadius:hyper?94:78,
                 x:fromEntity.x+Math.cos(a)*(fromEntity.radius+8), y:fromEntity.y+Math.sin(a)*(fromEntity.radius+8),
                 warriorOriginX:fromEntity.x, warriorOriginY:fromEntity.y,
                 vx:Math.cos(a)*throwSpeed, vy:Math.sin(a)*throwSpeed, life:0, maxLife:Math.max(.18,throwDistance/throwSpeed),
@@ -15054,8 +15070,8 @@
     } else if (brawler === 'relay') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const level = isBot ? (fromEntity.level || 11) : getSelectedBrawlerLevel();
-        const shieldPct=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'relayShieldPct'):0,shieldCap=isSlopSushiMode?(getEntitySlopEffectTotal(fromEntity,'relayShieldCap')||7500):7500;
-        bullets.push({ownerBrawler:'relay',isRelayOrb:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+6),vx:Math.cos(ang)*680,vy:Math.sin(ang)*680,life:0,maxLife:.594,damage:1150,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.35,relayShieldAmount:Math.round((hyper?2500:1750)*getLevelDamageScale(level)*(1+shieldPct)),relayShieldCap:shieldCap,relayHyperAttachie:hyper,hyperVisual:hyper});
+        const shieldPct=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'relayShieldPct'):0,shieldCap=isSlopSushiMode?(getEntitySlopEffectTotal(fromEntity,'relayShieldCap')||7000):7000;
+        bullets.push({ownerBrawler:'relay',isRelayOrb:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+6),vx:Math.cos(ang)*680,vy:Math.sin(ang)*680,life:0,maxLife:.594,damage:1250,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.35,relayShieldAmount:Math.round((hyper?2200:1600)*getLevelDamageScale(level)*(1+shieldPct)),relayShieldCap:shieldCap,relayHyperAttachie:hyper,hyperVisual:hyper});
     } else if (brawler === 'angel') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const count = (hyper ? 3 : 1)+(isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'angelExtraBurst')):0);
@@ -15108,7 +15124,7 @@
               life: 0, 
               // Outlit is deliberately short-range. Faster projectile variants
               // get proportionally less lifetime so speed cannot inflate reach.
-              maxLife: (outlitBaseRange / Math.max(1,outlitProjectileSpeed)) * hcRangeMult * (outlitStarRange ? 1.2 : 1),
+              maxLife: (outlitBaseRange / Math.max(1,outlitProjectileSpeed)) * hcRangeMult * (outlitStarRange ? 1.15 : 1),
               damage: outlitDamage,
               pierce: outlitPierce || isHyper, // Hypercharge 2.0: Pierce players when hypercharged
               hitIds: {},
@@ -15197,7 +15213,7 @@
         let ringDmgMod = 1.0;
         const echoG1 = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
         if(echoG1) {
-            ringSizeMod = 2.5; // 2.5x size
+            ringSizeMod = hasEntityAttachie(fromEntity, 'gadget', 'g1') ? 2.75 : 2.5;
             ringDmgMod = hasEntityAttachie(fromEntity, 'gadget', 'g1') ? 1.0 : 0.75; // Attachie removes the damage penalty
             if(isBot) fromEntity.gadgetArmed = false; else { gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); }
         }
@@ -15225,7 +15241,7 @@
           const sp2Attach = sp2 && hasEntityAttachie(fromEntity, 'star', 'long');
           const stageCount = sp2 ? 3 : 2;
           const stageRanges = stageCount === 3 ? [159, 267, 364] : [170, 313];
-          if (sp2Attach) for (let sr = 0; sr < stageRanges.length; sr++) stageRanges[sr] = Math.round(stageRanges[sr] * 1.3);
+          if (sp2Attach) for (let sr = 0; sr < stageRanges.length; sr++) stageRanges[sr] = Math.round(stageRanges[sr] * 1.22);
           const stageRadius = (isHyper || bigForever) ? [23, 23, 23] : (stageCount === 3 ? [23, 15.3, 9.2] : [23, 10.3]);
           const stageDamage = bigForever ? [1300, 1300, 1300] : (stageCount === 3 ? [1300, 1090, 890] : [1300, 985]);
 
@@ -15788,21 +15804,21 @@
         fromEntity.peterPickleShotSerial=serial;
         const starMax=getOwnerStarChoice(fromEntity)==='slow'&&(hyperMain||streak>=12);
         const pickle={ownerBrawler:'peter_pickle',isPeterPickle:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+6),
-            vx:Math.cos(ang)*725,vy:Math.sin(ang)*725,life:0,maxLife:.86,damage:Math.round((isBot?900:1280)*(starMax?1.12:1)),pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.2*sizeMult,peterPickleSize:sizeMult,peterPickleSerial:serial,hyperVisual:hyperMain};
+            vx:Math.cos(ang)*725,vy:Math.sin(ang)*725,life:0,maxLife:.86,damage:Math.round((isBot?845:1200)*(starMax?1.12:1)),pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.2*sizeMult,peterPickleSize:sizeMult,peterPickleSerial:serial,hyperVisual:hyperMain};
         bullets.push(pickle);
         setTimeout(()=>{if(!pickle.peterPickleHit&&fromEntity.peterPickleShotSerial===serial)fromEntity.peterPickleStreak=Math.max(0,(fromEntity.peterPickleStreak||0)-2);},1000);
         if(brineBoost){if(isBot)fromEntity.gadgetArmed=false;else{gadgetArmed=false;gadgetCooldownUntil=performance.now()+GADGET_COOLDOWN_MS;updateGadgetButton();}}
     } else if (brawler === 'fuser') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const reverse = !!fromEntity.fuserReverseArmed;
-        const delay = hyper ? 36 : 144;
+        const delay = hyper ? 93 : 144;
         for (let shot=0;shot<8;shot++) setTimeout(()=>{
             if(fromEntity.hp<=0)return;
             const side=((shot%2===0)?-1:1)*(reverse?-1:1);
             const lateral=side*(hyper?5:16);
             const sx=fromEntity.x+Math.cos(ang)*(fromEntity.radius+5)-Math.sin(ang)*lateral;
             const sy=fromEntity.y+Math.sin(ang)*(fromEntity.radius+5)+Math.cos(ang)*lateral;
-            bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.92,damage:Math.round((isBot?220:330)*(reverse?1.2:1)),pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:.756,hyperVisual:hyper,fuserShotIndex:shot});
+            bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.92,damage:Math.round((isBot?235:350)*(reverse?1.2:1)),pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:.756,hyperVisual:hyper,fuserShotIndex:shot});
         },shot*delay);
         fromEntity.fuserReverseArmed=false;
     } else if (brawler === 'robber') {
@@ -16571,7 +16587,7 @@
         const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11), scale=getLevelDamageScale(level);
         const hpPct=isSlopSushiMode?getEntitySlopEffectTotal(owner,'relayDeviceHpPct'):0;
         const linkPct=isSlopSushiMode?getEntitySlopEffectTotal(owner,'relayLinkRadiusPct'):0;
-        const maxHp=Math.round(12000*scale*(hyper?1.5:1)*(1+hpPct));
+        const maxHp=Math.round(13000*scale*(hyper?1.5:1)*(1+hpPct));
         const star=owner.id===player.id?selectedStar:owner.selectedStar;
         healingPods.push({isRelayDevice:true,x:clamp(owner.x+dx/d*range,38,WORLD_W-38),y:clamp(owner.y+dy/d*range,38,WORLD_H-38),hp:maxHp,maxHp,radius:35,healRadius:0,healAmount:0,decayPerSec:0,ownerId:owner.id,team:owner.team,relayRedirectPct:hyper?.90:.75,relayLinkRadius:520*(star==='slow'?1.25:1)*(1+linkPct),relayHyper:hyper});
         spawnFloatingText(owner.x,owner.y-38,hyper?'TOTAL TRANSFER!':'DAMAGE MOVED!','#67e8ff');
@@ -16657,7 +16673,7 @@
         owner.z=Math.sin(Math.PI*p)*(f.superFlight?105:(55+70*f.charge));
         // Main-attack jumps can dodge during ascent, but become targetable for
         // the final 20% of descent. Super flight remains fully airborne.
-        owner.isFlying=!!f.superFlight || p<.8;
+        owner.isFlying=!!f.superFlight || (f.startAt + f.duration - now) > 120;
         if(f.superFlight){
             const pattern=[-1,1,-.55,.55,-.18,.18];
             while(f.nextBomb<6&&p>=(f.nextBomb+1)/7){
@@ -16668,11 +16684,11 @@
         }
         if(p>=1){
             owner.x=f.endX;owner.y=f.endY;owner.z=0;owner.isFlying=false;owner.jetpackFlight=null;
-            owner.jetpackLandingRecoveryUntil=now+350;
+            owner.jetpackLandingRecoveryUntil=now+650;
             if (!f.superFlight) owner.jetpackNextJumpAt=Math.max(owner.jetpackNextJumpAt||0,now+(owner.id===player.id?1250:1600));
             if(!f.superFlight){
                 const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11),scale=getLevelDamageScale(level);
-                const damage=Math.round((1600+950*f.charge)*scale),radius=Math.round(58+28*f.charge);
+                const damage=Math.round((1536+950*f.charge)*scale),radius=Math.round(58+28*f.charge);
                 explosions.push({x:owner.x,y:owner.y,radius,life:0,maxLife:.3,color:f.hyper?'rgba(197,92,255,.9)':'rgba(91,219,255,.9)',legendary:true,fxKind:'jetpackLanding',hyperVisual:f.hyper});
                 AOEDamage(owner.x,owner.y,radius,damage,owner.id,false);
             }
@@ -16694,7 +16710,7 @@
     function castChickpigSuper(owner, hyper) {
         const now=performance.now();
         owner.chickpigChickenUntil=now+(hyper?7000:5000);
-        owner.chickpigChickenSpeedMult=hyper?1.5:1.35;
+        owner.chickpigChickenSpeedMult=hyper?1.5:1.45;
         spawnChickpigPig(owner,hyper);
         spawnFloatingText(owner.x,owner.y-38,hyper?'BREAKFAST STAMPEDE!':'FARMYARD RUSH!','#ffd37f');
     }
@@ -16763,16 +16779,16 @@
 
     function castSnapperSuper(owner, hyper) {
         const maxRadius = Math.hypot(WORLD_W, WORLD_H) + 300;
-        snapperWaves.push({ownerId:owner.id,x:owner.x,y:owner.y,radius:0,previousRadius:0,maxRadius,speed:1050,pct:hyper?0.45:0.30,delay:0,mini:false,hitIds:{},fxClock:0});
-        if (hyper) snapperWaves.push({ownerId:owner.id,x:owner.x,y:owner.y,radius:0,previousRadius:0,maxRadius,speed:1180,pct:0.10,delay:0.62,mini:true,hitIds:{},fxClock:0});
+        snapperWaves.push({ownerId:owner.id,x:owner.x,y:owner.y,radius:0,previousRadius:0,maxRadius,speed:1150,pct:hyper?0.40:0.25,delay:0,mini:false,hitIds:{},fxClock:0});
+        if (hyper) snapperWaves.push({ownerId:owner.id,x:owner.x,y:owner.y,radius:0,previousRadius:0,maxRadius,speed:1240,pct:0.08,delay:0.62,mini:true,hitIds:{},fxClock:0});
         explosions.push({x:owner.x,y:owner.y,radius:90,life:0,maxLife:0.42,color:hyper?'#ff65e6':'#55e6ff',legendary:true});
         spawnFloatingText(owner.x, owner.y-42, hyper?'PERFECT SNAP!':'SNAP!', hyper?'#ff65e6':'#55e6ff');
     }
 
     function castHomerSuper(owner,hyper,targetX,targetY){
         if(!owner)return;
-        const now=performance.now(),star=getOwnerStarChoice(owner),gain=star==='slow' ? .15 : .10;
-        owner.homerHomingPct=clamp((owner.homerHomingPct||.10)+gain,.10,.80);
+        const now=performance.now(),star=getOwnerStarChoice(owner),gain=star==='slow' ? .12 : .08;
+        owner.homerHomingPct=clamp((owner.homerHomingPct||.15)+gain,.15,.80);
         const base=Math.atan2(targetY-owner.y,targetX-owner.x),count=hyper?4:2;
         for(let i=0;i<count;i++){
             const spread=(i-(count-1)/2)*(hyper?.12:.16),a=base+spread;
@@ -16806,7 +16822,7 @@
                 ownerBrawler:'orbo', isOrboSuper:true, orboReturns:!!hyper, orboReturning:false,
                 x:owner.x + Math.cos(angle)*(owner.radius+18), y:owner.y + Math.sin(angle)*(owner.radius+18),
                 vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, life:0, maxLife:edgeDistance/speed,
-                damage:owner.id===player.id?2300:1650, pierce:true, pierceWalls:true, ownerId:owner.id,
+                damage:owner.id===player.id?2450:1750, pierce:true, pierceWalls:true, ownerId:owner.id,
                 hitIds:{}, hitboxMod:5.2, super:true, hyperVisual:!!hyper
             });
         }
@@ -17077,9 +17093,9 @@
         const py = clamp(player.y + Math.sin(ang) * placeDist, 45, WORLD_H - 45);
         for (let i=healingPods.length-1;i>=0;i--) if (healingPods[i].isXrayMachine && healingPods[i].ownerId===player.id) healingPods.splice(i,1);
         const hpPct=isSlopSushiMode?getSlopEffectTotal('xrayMachineHpPct'):0,radiusPct=isSlopSushiMode?getSlopEffectTotal('xrayMachineRadiusPct'):0,noDecay=isSlopSushiMode&&getSlopEffectTotal('xrayNoDecay')>0;
-        const machineHp=Math.round(7400*(1+hpPct));
+        const machineHp=Math.round(8500*(1+hpPct));
         healingPods.push({x:px,y:py,hp:machineHp,maxHp:machineHp,radius:38,healRadius:0,healAmount:0,
-            decayPerSec:noDecay?0:(selectedStar==='long'?225:300),ownerId:player.id,lastDecayTick:now,lastHealTick:now,
+            decayPerSec:noDecay?0:(selectedStar==='long'?188:250),ownerId:player.id,lastDecayTick:now,lastHealTick:now,
             isXrayMachine:true,xrayRadius:540*(1+radiusPct),xrayHyper:!!isHypercharged});
         explosions.push({x:px,y:py,radius:520,life:0,maxLife:0.55,color:isHypercharged?'#cf66ff':'#68efff',legendary:true});
         updateSuperButton();
@@ -17749,7 +17765,7 @@
               life:0, maxLife:1.56, damage:840, pierce:true, pierceWalls: false, hyperVisual: isHypercharged, ownerId: player.id, super:true, forceEchoRing:true });
             }
             if (hasEntityAttachie(player, 'star', 'long')) {
-                [-0.55, 0, 0.55].forEach(side => {
+                [-0.55, 0.55].forEach(side => {
                     const a = ang + side;
                     bullets.push({
                         ownerBrawler: 'echo', isEchoRingProj: true,
@@ -17764,7 +17780,7 @@
     } else if (selectedBrawler === 'unstable') {
         castUnstableSuper(player,!!isHypercharged);
     } else if (selectedBrawler === 'peter_pickle') {
-        const count=isHypercharged?6:3,dist=Math.min(720,Math.hypot(wm.x-player.x,wm.y-player.y));
+        const count=isHypercharged?5:3,dist=Math.min(720,Math.hypot(wm.x-player.x,wm.y-player.y));
         const cx=player.x+Math.cos(ang)*dist,cy=player.y+Math.sin(ang)*dist,perp=ang+Math.PI/2;
         for(let jar=0;jar<count;jar++){const row=Math.floor(jar/3),slot=(jar%3)-1;throwPeterPickleJar(player,cx+Math.cos(perp)*slot*86-Math.cos(ang)*row*92,cy+Math.sin(perp)*slot*86-Math.sin(ang)*row*92,isHypercharged,jar*75);}
     } else if (selectedBrawler === 'fuser') {
@@ -17862,11 +17878,11 @@
       grantShield(bot, 1400, Math.max(bot.shieldMax || 0, 1400));
       if (hasEntityAttachie(bot, 'gadget', 'g2')) { bot.decayerFirstHitReductionUntil = now + 8000; bot.decayerFirstHitReductionMult = 0.2; }
     }
-    else if (bot.brawler === 'cheseypuff' && g === 'g2') spawnCheeseField(bot.x, bot.y, 200, 6500, 0.55, bot.id, false, hasEntityAttachie(bot, 'gadget', 'g2') ? 140 : 0);
+    else if (bot.brawler === 'cheseypuff' && g === 'g2') spawnCheeseField(bot.x, bot.y, 200, 6500, 0.55, bot.id, false, hasEntityAttachie(bot, 'gadget', 'g2') ? 160 : 0);
     else if (bot.brawler === 'outlit' && g === 'g2') {
       const ownerMult = 1.0 + ((bot.powerCubes || 0) * 0.1);
       const podBoost = hasEntityAttachie(bot, 'gadget', 'g2');
-      healingPods.push({ x: bot.x, y: bot.y, hp: podBoost ? 4250 : 2250, maxHp: podBoost ? 4250 : 2250, radius: 25, healRadius: podBoost ? 420 : 300, healAmount: 150 * ownerMult, decayPerSec: 200, ownerId: bot.id, lastDecayTick: performance.now(), lastHealTick: performance.now() });
+      healingPods.push({ x: bot.x, y: bot.y, hp: podBoost ? 3750 : 2250, maxHp: podBoost ? 3750 : 2250, radius: 25, healRadius: podBoost ? 390 : 300, healAmount: 150 * ownerMult, decayPerSec: 200, ownerId: bot.id, lastDecayTick: performance.now(), lastHealTick: performance.now() });
     }
     else if (bot.brawler === 'boom_arang' && g === 'g1') {
         let count = 0;
@@ -18203,11 +18219,11 @@
             for (let i = healingPods.length - 1; i >= 0; i--) {
                 if (healingPods[i].isXrayMachine && healingPods[i].ownerId === bot.id) healingPods.splice(i, 1);
             }
-            const hp = Math.round(7400 * (1 + getEntitySlopEffectTotal(bot, 'xrayMachineHpPct')));
+            const hp = Math.round(8500 * (1 + getEntitySlopEffectTotal(bot, 'xrayMachineHpPct')));
             healingPods.push({
                 x: bot.x, y: bot.y, hp, maxHp: hp, radius: 34,
                 healRadius: 0, healAmount: 0,
-                decayPerSec: getEntitySlopEffectTotal(bot, 'xrayNoDecay') > 0 ? 0 : 300,
+                decayPerSec: getEntitySlopEffectTotal(bot, 'xrayNoDecay') > 0 ? 0 : 250,
                 ownerId: bot.id, ownerTeam: bot.team || 'bot',
                 lastDecayTick: now, lastHealTick: now,
                 isXrayMachine: true,
@@ -18535,7 +18551,7 @@
       return;
     }
     if (bot.brawler === 'peter_pickle') {
-      const count=bot.isHypercharged?6:3,dist=Math.min(720,Math.hypot(dx,dy)),cx=bot.x+Math.cos(ang)*dist,cy=bot.y+Math.sin(ang)*dist,perp=ang+Math.PI/2;
+      const count=bot.isHypercharged?5:3,dist=Math.min(720,Math.hypot(dx,dy)),cx=bot.x+Math.cos(ang)*dist,cy=bot.y+Math.sin(ang)*dist,perp=ang+Math.PI/2;
       for(let jar=0;jar<count;jar++){const row=Math.floor(jar/3),slot=(jar%3)-1;throwPeterPickleJar(bot,cx+Math.cos(perp)*slot*86-Math.cos(ang)*row*92,cy+Math.sin(perp)*slot*86-Math.sin(ang)*row*92,bot.isHypercharged,jar*75);}
       return;
     }
@@ -18877,7 +18893,7 @@
       gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
       updateGadgetButton();
     } else if (curBrawler === 'cheseypuff' && curGadget === 'g2') {
-      spawnCheeseField(player.x, player.y, 200, 6500, 0.55, player.id, false, hasEntityAttachie(player, 'gadget', 'g2') ? 140 : 0);
+      spawnCheeseField(player.x, player.y, 200, 6500, 0.55, player.id, false, hasEntityAttachie(player, 'gadget', 'g2') ? 160 : 0);
       gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
       updateGadgetButton();
     } else if (curBrawler === 'outlit' && curGadget === 'g1') {
@@ -18892,10 +18908,10 @@
       healingPods.push({
         x: wm.x,
         y: wm.y,
-        hp: podBoost ? 4250 : 2250,
-        maxHp: podBoost ? 4250 : 2250,
+        hp: podBoost ? 3750 : 2250,
+        maxHp: podBoost ? 3750 : 2250,
         radius: 25,
-        healRadius: podBoost ? 420 : 300,
+        healRadius: podBoost ? 390 : 300,
         healAmount: 150 * ownerMult,
         decayPerSec: 200,
         ownerId: player.id,
@@ -18956,7 +18972,7 @@
       explosions.push({x:player.x,y:player.y,radius:600,life:0,maxLife:.38,color:'#79f7ff'});
       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
     } else if (curBrawler === 'xray' && curGadget === 'g2') {
-      grantShield(player,1500,Math.max(player.shieldMax||0,1500));player.defenseUntil=now+3000;
+      grantShield(player,1900,Math.max(player.shieldMax||0,1900));player.defenseUntil=now+3000;
       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
     } else if (curBrawler === 'fuel' && curGadget === 'g1') {
       player.fuelFlashPoint = true;
@@ -23224,7 +23240,7 @@
     const exposureZone = healingPods.find(p => p.isXrayMachine && p.xrayHyper && p.hp > 0 && owner &&
         Math.hypot(target.x-p.x,target.y-p.y) <= (p.xrayRadius || 520) &&
         ((p.ownerId === owner.id) || ((p.ownerId===player.id?player:bots.find(e=>e.id===p.ownerId))?.team === owner.team)));
-        if (exposureZone) dealtDamage *= 1.20;
+        if (exposureZone) dealtDamage *= 1.18;
         if (b.ownerId === player.id) {
             dealtDamage *= getPlayerDamageScale();
         } else if (owner && owner.level) {
@@ -23372,7 +23388,7 @@
         spawnFloatingText(target.x, target.y - 38, 'DECAY GUARD', '#c084fc');
     }
     if (target && performance.now() < (target.decayerStackReductionUntil || 0) && (target.decayerStackReductionPct || 0) > 0) {
-        dealtDamage *= Math.max(0.7, 1 - target.decayerStackReductionPct);
+        dealtDamage *= Math.max(0.75, 1 - target.decayerStackReductionPct);
     }
     if (target && performance.now() < (target.demonDoomShieldUntil || 0)) dealtDamage *= 0.45;
     if (target && (target.id === player.id ? selectedBrawler : target.brawler) === 'warrior' && performance.now() < (target.warriorStandUntil || 0)) {
@@ -23703,11 +23719,11 @@
     if(b.ownerBrawler === 'decayer' && b.shieldGain){
       const decayerOwner = b.ownerId === player.id ? player : (bots.find(bt => bt.id === b.ownerId) || null);
       grantShield(decayerOwner, b.shieldGain, b.shieldCap);
-      if (b.decayerAttachSlow) applyStatusEffect(target, 'slow', 900);
+      if (b.decayerAttachSlow) applyStatusEffect(target, 'slow', 1100);
       if (b.decayerReductionStack && decayerOwner) {
           if (performance.now() > (decayerOwner.decayerStackReductionUntil || 0)) decayerOwner.decayerStackReductionPct = 0;
-          decayerOwner.decayerStackReductionPct = Math.min(0.30, (decayerOwner.decayerStackReductionPct || 0) + 0.05);
-          decayerOwner.decayerStackReductionUntil = performance.now() + 8000;
+          decayerOwner.decayerStackReductionPct = Math.min(0.25, (decayerOwner.decayerStackReductionPct || 0) + 0.05);
+          decayerOwner.decayerStackReductionUntil = performance.now() + 7000;
           spawnFloatingText(decayerOwner.x, decayerOwner.y - 42, `${Math.round(decayerOwner.decayerStackReductionPct * 100)}% REDUCE`, '#c084fc');
       }
     }
@@ -24477,7 +24493,7 @@
           if(combatId==='homer'){
               if(entity.hp<=0&&!entity.homerDeathPenaltyApplied){
                   entity.homerDeathPenaltyApplied=true;
-                  entity.homerHomingPct=clamp((entity.homerHomingPct||.10)-.10,.10,.80);
+                  entity.homerHomingPct=clamp((entity.homerHomingPct||.15)-.10,.15,.80);
               }else if(entity.hp>0)entity.homerDeathPenaltyApplied=false;
           }
           if (entity.angelLiftUntil && now >= entity.angelLiftUntil) {
@@ -28544,7 +28560,7 @@
           if(best<=t.radius+(target.radius||14)+5){
               if(target.id===owner.id){
                   owner.unstableBaseMaxHp=owner.unstableBaseMaxHp||owner.maxHp;
-                  const gainPct=Number.isFinite(t.unstableHPGainPctOverride)?t.unstableHPGainPctOverride:(t.unstableDNAHyper?.24:.12);
+                  const gainPct=Number.isFinite(t.unstableHPGainPctOverride)?t.unstableHPGainPctOverride:(t.unstableDNAHyper?.18:.10);
                   const desiredGain=Math.round(owner.unstableBaseMaxHp*gainPct),previousMax=owner.maxHp;
                   owner.maxHp=Math.min(16000,owner.maxHp+desiredGain);
                   const actualGain=Math.max(0,owner.maxHp-previousMax);
@@ -28553,7 +28569,7 @@
                       spawnFloatingText(owner.x,owner.y-34,`MAX HP +${actualGain}`,'#8dffbc');
                   }else spawnFloatingText(owner.x,owner.y-34,'MAX HP CAPPED','#ffe06b');
               }else{
-                  const hostileGenome=getOwnerStarChoice(owner)==='long',damage=Math.round((t.unstableDNAHyper?1500:750)*(hostileGenome?1.2:1));
+                  const hostileGenome=getOwnerStarChoice(owner)==='long',damage=Math.round((t.unstableDNAHyper?1500:800)*(hostileGenome?1.2:1));
                   checkHit(target,{ownerBrawler:'unstable',ownerId:owner.id,damage,pierce:true,super:true,hitIds:{},isUnstableDNAHit:true},-1);
                   spawnFloatingText(target.x,target.y-30,'DNA BURN!','#b7ff65');
               }
@@ -28591,7 +28607,7 @@
               const a=Math.atan2(target.y-t.y,target.x-t.x),dist=Math.hypot(target.x-t.x,target.y-t.y);
               t.x=clamp(t.x+Math.cos(a)*t.speed*dt,t.radius,WORLD_W-t.radius);t.y=clamp(t.y+Math.sin(a)*t.speed*dt,t.radius,WORLD_H-t.radius);
               t.z=Math.abs(Math.sin((now-(t.pickleHopStartedAt||now))/145))*18;
-              if(dist<target.radius+t.radius+7){t.pickleAttachedTargetId=target.id;t.pickleAttachedUntil=now+2000;t.pickleAttachTickAt=now;spawnFloatingText(target.x,target.y-28,'PICKLED!','#a5e85f');}
+              if(dist<target.radius+t.radius+7){t.pickleAttachedTargetId=target.id;t.pickleAttachedUntil=now+1600;t.pickleAttachTickAt=now;spawnFloatingText(target.x,target.y-28,'PICKLED!','#a5e85f');}
           }
           continue;
       }
@@ -28618,7 +28634,7 @@
               const d=Math.hypot(candidate.x-t.x,candidate.y-t.y);if(d<best){best=d;target=candidate;}
           }
           t.charging=!!target;
-          if(t.chickpigPigHyper&&t.charging){t.defenseUntil=now+180;t.defenseMult=.5;}
+          if(t.chickpigPigHyper&&t.charging){t.defenseUntil=now+180;t.defenseMult=.6;}
           if(target){
               const angle=Math.atan2(target.y-t.y,target.x-t.x),moveSpeed=t.speed*(t.charging?1.28:1);
               const contactDistance=t.radius+(target.radius||14)+12;
@@ -31257,7 +31273,7 @@
                         ctx.strokeStyle=isHypercharged?'#d77aff':'#6ff0c3';ctx.lineWidth=5;ctx.setLineDash([13,8]);ctx.beginPath();ctx.arc(player.x,player.y,385*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
                         for(let i=0;i<count;i++){const a=i*Math.PI*2/count,r=250+(i%2)*135;ctx.fillStyle=isHypercharged?'rgba(189,79,232,.22)':'rgba(82,221,179,.2)';ctx.beginPath();ctx.arc(player.x+Math.cos(a)*r,player.y+Math.sin(a)*r,20,0,Math.PI*2);ctx.fill();}
                 } else if(selectedBrawler==='peter_pickle'){
-                        const count=isHypercharged?6:3,dist=Math.min(720,Math.hypot(dx,dy)),cx=player.x+Math.cos(ang)*dist,cy=player.y+Math.sin(ang)*dist,perp=ang+Math.PI/2;
+                        const count=isHypercharged?5:3,dist=Math.min(720,Math.hypot(dx,dy)),cx=player.x+Math.cos(ang)*dist,cy=player.y+Math.sin(ang)*dist,perp=ang+Math.PI/2;
                         ctx.strokeStyle=isHypercharged?'#df8aff':'#9de36f';ctx.lineWidth=3;ctx.setLineDash([10,7]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+cx)/2,(player.y+cy)/2-100,cx,cy);ctx.stroke();ctx.setLineDash([]);
                         for(let jar=0;jar<count;jar++){const row=Math.floor(jar/3),slot=(jar%3)-1,jx=cx+Math.cos(perp)*slot*86-Math.cos(ang)*row*92,jy=cy+Math.sin(perp)*slot*86-Math.sin(ang)*row*92;ctx.fillStyle=isHypercharged?'rgba(210,100,245,.18)':'rgba(125,211,91,.18)';ctx.strokeStyle=isHypercharged?'#e7a2ff':'#bde985';ctx.lineWidth=2;ctx.beginPath();ctx.arc(jx,jy,28,0,Math.PI*2);ctx.fill();ctx.stroke();}
                 } else if (selectedBrawler === 'fuser') {
