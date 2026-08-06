@@ -198,8 +198,9 @@
         return getScaledStats(brawlerId, levelOverride);
     }
   
+  let isTowerTroubleMode = false;
   function getSelectedBrawlerLevel() {
-    if (isDamageFillerMode || isMirrorMode || isRankedMatch) return 11;
+    if (isDamageFillerMode || isMirrorMode || isRankedMatch || isTowerTroubleMode) return 11;
     try {
             const liveLevel = playerData.brawlers?.[selectedBrawler]?.level;
             if (typeof liveLevel === 'number') return liveLevel;
@@ -247,7 +248,7 @@
         return BRICK_RANK_STAGES.find((stage) => bricks >= stage.minBricks && bricks <= stage.maxBricks) || BRICK_RANK_STAGES[BRICK_RANK_STAGES.length - 1];
     }
     function getBotLevelNearPlayer() {
-        if (isDamageFillerMode || isMirrorMode || isRankedMatch) return 11;
+        if (isDamageFillerMode || isMirrorMode || isRankedMatch || isTowerTroubleMode) return 11;
         return getBrickOpponentLevel(getSelectedProgress());
     }
     function getBrickRankLabel(progress) {
@@ -1416,6 +1417,10 @@
 
   // Combat
   const bullets = [];
+  // Duck's lifesteal is represented by travelling orbs so ducklings only heal
+  // after Duck has actually dealt damage.
+  const duckHealOrbs = [];
+  const iceCreamPuddles = [];
   const snapperWaves = [];
   const chickpigEggZones = [];
   const rocketeerFireZones = [];
@@ -1632,6 +1637,30 @@
             cubeStroke: '#b5774f',
             wallBoxFill: '#7a4f34',
             wallBoxStroke: '#d39465'
+        },
+        {
+            name: 'Crownspire Keep',
+            bgOuter: '#090b20', bgInner: '#17143b', grid: 'rgba(190,160,255,.07)',
+            wallBorder: '#6751a8', cubeFill: '#3d356c', cubeStroke: '#8f7ed3',
+            wallBoxFill: '#55458b', wallBoxStroke: '#b5a1ff'
+        },
+        {
+            name: 'Gearfall Foundry',
+            bgOuter: '#171009', bgInner: '#31200e', grid: 'rgba(255,191,93,.07)',
+            wallBorder: '#925b25', cubeFill: '#66431f', cubeStroke: '#bd7c36',
+            wallBoxFill: '#805125', wallBoxStroke: '#e3a35c'
+        },
+        {
+            name: 'Stormglass Heights',
+            bgOuter: '#07131d', bgInner: '#0e3040', grid: 'rgba(90,230,255,.08)',
+            wallBorder: '#287b91', cubeFill: '#285364', cubeStroke: '#4fa6bb',
+            wallBoxFill: '#326d82', wallBoxStroke: '#75d7eb'
+        },
+        {
+            name: 'Voidtower Ruins',
+            bgOuter: '#12071a', bgInner: '#281037', grid: 'rgba(235,104,255,.08)',
+            wallBorder: '#77318a', cubeFill: '#51265e', cubeStroke: '#9f4db4',
+            wallBoxFill: '#673276', wallBoxStroke: '#d070e4'
         }
     ];
     const BALANCE_PROFILE = {
@@ -1879,8 +1908,7 @@
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'ice_cream',
-        'swimmer', 'boomer', 'blade_vane', 'daggershard', 'adlof', 'cluster', 'duck', 'witch'
+        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -2488,7 +2516,7 @@
     const EVENT_END_MS = new Date(2026, 4, 31, 0, 0, 0).getTime(); // May 31, 2026
     const EVENT_SHOP_UNLOCK_MS = EVENT_END_MS + 60 * 24 * 60 * 60 * 1000; // 60 days after event ends (July 30, 2026)
     const ENABLE_EVENT_HUB = false;
-    const ENABLE_SEASON_PASS = false;
+    const ENABLE_SEASON_PASS = true;
     const ENABLE_SEASON_QUESTS = true;
     const ENABLE_DAILY_WEEKLY_QUESTS = true;
 
@@ -2622,8 +2650,8 @@
       }
       const EVENT_QUEST_TOTAL = buildEventQuests().length;
 
-      const SEASON_PASS_SCHEMA_VERSION = 3;
-      const SEASON_PASS_ID = 'summer-forge-2026-06';
+      const SEASON_PASS_SCHEMA_VERSION = 4;
+      const SEASON_PASS_ID = 'battle-of-the-towers-2026-s2';
       const SEASON_PASS_MAX_LEVEL = 25;
       const SEASON_PASS_XP_PER_LEVEL = 100;
       const SEASON_PASS_TIERS = [
@@ -4748,7 +4776,7 @@
   let selectedBrawler = 'outlit';
     function normalizeSelectedBrawler() {
         if (isSplitterPoweredMode && selectedBrawler === 'splitter') return selectedBrawler;
-        if (disabledBrawlers.has(selectedBrawler) || (!isTraining && !isBrawlerUnlocked(selectedBrawler))) selectedBrawler = 'outlit';
+        if (!allBrawlers.includes(selectedBrawler) || disabledBrawlers.has(selectedBrawler) || (!isTraining && !isBrawlerUnlocked(selectedBrawler))) selectedBrawler = 'outlit';
         return selectedBrawler;
     }
         let selectedStar = 'none';
@@ -5138,10 +5166,14 @@
   };
     let refreshBrawlerList = null;
 
-  // SlopSushi: browser-only 34-day limited event. The max-seen clock prevents
-  // rolling the local clock backward from extending the event after it was seen.
-  const SLOP_SUSHI_START_UTC = Date.UTC(2026, 6, 13, 0, 0, 0);
-  const SLOP_SUSHI_END_UTC = SLOP_SUSHI_START_UTC + 34 * 24 * 60 * 60 * 1000;
+  // Season 2 reuses the proven Sushi mutation runtime under its new identity.
+  // Old save keys remain compatible; all player-facing systems call these
+  // Tower Transformations and Tower Drops now.
+  const SLOP_SUSHI_START_UTC = Date.UTC(2026, 7, 6, 0, 0, 0);
+  const SLOP_SUSHI_END_UTC = Date.UTC(2026, 10, 6, 0, 0, 0);
+  const TOWER_TROUBLE_FLOORS = 10;
+  const TOWER_FUSION_CARD_COUNT = 4;
+  const TOWER_FLOOR_BIOMES = ['Verdant Gate','Rust Ramparts','Ember Bastion','Lotus Watch','Frost Keep','Sunset Citadel','Crownspire Keep','Gearfall Foundry','Stormglass Heights','Voidtower Ruins'];
   // Each brawler receives a distinct eight-card deck built from their actual kit.
   // Roles tune the numbers, while attack/Super/gadget/SP/Hyper names personalize it.
   function getSlopSushiDeck(brawler) {
@@ -5180,6 +5212,7 @@
   let isSlopSushiMode = false;
   let slopSushiActiveCards = [];
   let sushiMatchArmed = false;
+  let towerFusionStrength = 1;
   const SPLITTER_EXOTIC_END_UTC = Date.UTC(2026, 6, 18, 0, 0, 0);
   const HOURLY_SUSHI_MODE_POOL = ['solo','duo','trio','objective','construction','knock_donate','brick_vault','damage_filler','mirror','power_gods'];
 
@@ -5194,7 +5227,13 @@
 
   function getActiveSlopSushiDeck(brawler) {
       const deck = (window.SLOP_SUSHI_DECKS && window.SLOP_SUSHI_DECKS[brawler]) || [];
-      return deck.filter(card => card.id !== 'splitter_sushi_9' || Date.now() < SPLITTER_EXOTIC_END_UTC);
+      return deck.filter(card => card.id !== 'splitter_sushi_9' || Date.now() < SPLITTER_EXOTIC_END_UTC).map((card,index)=>({
+          ...card,
+          towerSlot:index+1,
+          icon:card.icon || '\u{1F5FC}',
+          name:card.towerName || card.name,
+          desc:card.towerDesc || card.desc
+      }));
   }
 
   function ensureSlopSushiState() {
@@ -5203,11 +5242,18 @@
       if (!playerData.slopSushi || typeof playerData.slopSushi !== 'object') playerData.slopSushi = {};
       const sushi = playerData.slopSushi;
       sushi.tappers = Math.max(0, Math.floor(sushi.tappers ?? 1));
+      // `tappers` is retained as the save key and now represents Tower Drops.
+      sushi.season = 2;
+      sushi.towerDrops = sushi.tappers;
       if (!sushi.unlockedDecks || typeof sushi.unlockedDecks !== 'object') sushi.unlockedDecks = {};
       sushi.unlockedDecks.outlit = true;
       sushi.maxSeenUtc = Math.max(SLOP_SUSHI_START_UTC, Number(sushi.maxSeenUtc || 0));
       if (!sushi.run || typeof sushi.run !== 'object') sushi.run = { active:false, brawler:null, stage:0, cards:[] };
       if (!Array.isArray(sushi.run.cards)) sushi.run.cards = [];
+      sushi.run.floor = Math.max(1, Math.min(TOWER_TROUBLE_FLOORS, Math.floor(sushi.run.floor || sushi.run.stage || 1)));
+      sushi.run.fusionLevel = Math.max(0, Math.floor(sushi.run.fusionLevel || 0));
+      sushi.bestTowerFloor = Math.max(0, Math.floor(sushi.bestTowerFloor || 0));
+      sushi.towerRunsCompleted = Math.max(0, Math.floor(sushi.towerRunsCompleted || 0));
       if (!sushi.powerLevels || typeof sushi.powerLevels !== 'object') sushi.powerLevels = {};
       if (!sushi.eventStats || typeof sushi.eventStats !== 'object') sushi.eventStats = {};
       sushi.eventStats.matches = Math.max(0, Math.floor(sushi.eventStats.matches || 0));
@@ -5232,7 +5278,10 @@
   function hasSlopSushiDeck(id) { ensureSlopSushiState(); return !!playerData.slopSushi.unlockedDecks[id]; }
   function getSlopCards() { return getActiveSlopSushiDeck(selectedBrawler).filter(c => slopSushiActiveCards.includes(c.id)); }
   function getSlopPowerLevel(cardId) { ensureSlopSushiState(); return Math.max(0, Number(playerData.slopSushi.powerLevels[cardId] || 0)); }
-  function getSlopEffectTotal(key) { return getSlopCards().reduce((sum,c) => sum + Number(c.effects?.[key] || 0) * (1 + getSlopPowerLevel(c.id) * .10), 0); }
+  function getSlopEffectTotal(key) {
+      const base=getSlopCards().reduce((sum,c)=>sum+Number(c.effects?.[key]||0)*(1+getSlopPowerLevel(c.id)*.10),0);
+      return base * (isTowerTroubleMode ? towerFusionStrength : 1);
+  }
   function hasSlopEffect(key) { return getSlopCards().some(c => !!c.effects?.[key]); }
 
   function getEntitySlopCards(entity) {
@@ -5241,7 +5290,8 @@
   }
   function getEntitySlopEffectTotal(entity, key) {
       if (entity === player) return getSlopEffectTotal(key);
-      return getEntitySlopCards(entity).reduce((sum, card) => sum + Number(card.effects?.[key] || 0), 0);
+      const base=getEntitySlopCards(entity).reduce((sum,card)=>sum+Number(card.effects?.[key]||0),0);
+      return base * (isTowerTroubleMode ? (entity.towerFusionStrength || towerFusionStrength) : 1);
   }
   function applySlopSushiProjectileMutation(projectile) {
       if (!isSlopSushiMode || !projectile || projectile.slopMutationInitialized) return;
@@ -5504,7 +5554,58 @@
       choices.forEach(c=>{const b=document.createElement('button');const rc=c.rarity==='Exotic'?'#55f7ff':(c.rarity==='Legendary'?'#ffb347':(c.rarity==='Mythic'?'#ff5ba7':'#9b8cff'));const level=getSlopPowerLevel(c.id);b.style.cssText=`width:220px;min-height:250px;padding:22px;border:2px solid ${rc};border-radius:20px;background:linear-gradient(160deg,#3b1734,#10263a);color:white;cursor:pointer;box-shadow:0 0 25px ${rc}55`;b.innerHTML=`<div style="font-size:12px;font-weight:900;color:${rc};letter-spacing:.12em">${c.rarity.toUpperCase()}${level?` • POWER +${level*10}%`:''}</div><div style="font-size:60px">${c.icon}</div><h2>${c.name}</h2><p>${c.desc}</p>`;b.onclick=()=>{run.cards.push(c.id);slopSushiActiveCards=[...run.cards];o.remove();saveProgress();onPick();};wrap.appendChild(b);});document.body.appendChild(o);
   }
 
+  function prepareTowerTroubleMatch() {
+      ensureSlopSushiState();
+      const season=playerData.slopSushi;
+      const run=season.run;
+      const validPool=allBrawlers.filter(id=>!disabledBrawlers.has(id)&&getActiveSlopSushiDeck(id).length>=8);
+      if(!validPool.length){alert('Tower Trouble needs at least one complete Transformation deck.');return;}
+      if(!run.active||!validPool.includes(run.brawler)){
+          run.active=true;
+          run.brawler=validPool[Math.floor(Math.random()*validPool.length)];
+          run.floor=1;
+          run.stage=1;
+          run.cards=[];
+          run.fusionLevel=0;
+      }
+      selectedBrawler=run.brawler;
+      slopSushiActiveCards=[];
+      sushiMatchArmed=true;
+      isTowerTroubleMode=true;
+      const deck=getActiveSlopSushiDeck(run.brawler);
+      const floor=Math.max(1,Math.min(TOWER_TROUBLE_FLOORS,run.floor||1));
+      towerFusionStrength=1.55+floor*.10;
+      const chosen=[];
+      const pick=(pickNumber)=>{
+          if(pickNumber>TOWER_FUSION_CARD_COUNT){
+              run.cards=[...chosen];run.stage=floor;run.fusionLevel=floor;
+              slopSushiActiveCards=[...chosen];
+              saveProgress();
+              launchShowdownMatch();
+              return;
+          }
+          const candidates=deck.filter(card=>!chosen.includes(card.id)).sort(()=>Math.random()-.5);
+          const choices=candidates.slice(0,3);
+          const overlay=document.createElement('div');
+          overlay.className='sushi-mobile-overlay tower-trouble-draft';
+          overlay.style.cssText='position:fixed;inset:0;z-index:2800;background:radial-gradient(circle at 50% 20%,#44306d,#10152c 55%,#050813);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif';
+          const brawlerName=brawlerData[run.brawler]?.name||run.brawler;
+          overlay.innerHTML=`<div style="font-size:12px;font-weight:1000;letter-spacing:.18em;color:#8ee9ff">SEASON 2 • BATTLE OF THE TOWERS</div><h1 style="margin:8px 0;color:#ffd66b">TOWER TROUBLE — FLOOR ${floor}/${TOWER_TROUBLE_FLOORS}</h1><p style="margin:0 0 6px"><b>${brawlerName}</b> is maxed for this run • ${TOWER_FLOOR_BIOMES[floor-1]}</p><p style="color:#d4b5ff">Choose Transformation ${pickNumber}/4. All four fuse at <b>${Math.round(towerFusionStrength*100)}% power</b>.</p><div class="sushi-match-picks" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"></div><div style="margin-top:16px;color:#95a8c7">FUSION: ${chosen.length?chosen.map(id=>deck.find(c=>c.id===id)?.name).filter(Boolean).join(' + '):'waiting for first power'}</div>`;
+          const wrap=overlay.querySelector('.sushi-match-picks');
+          choices.forEach(card=>{
+              const color=card.rarity==='Exotic'?'#55f7ff':(card.rarity==='Legendary'?'#ffb347':(card.rarity==='Mythic'?'#ff5ba7':'#9b8cff'));
+              const button=document.createElement('button');button.className='sushi-mobile-card tower-transformation-card';
+              button.style.cssText=`width:230px;min-height:260px;padding:20px;border:2px solid ${color};border-radius:22px;background:linear-gradient(155deg,#251b47,#102b3b);color:white;cursor:pointer;box-shadow:0 0 28px ${color}55`;
+              button.innerHTML=`<div style="font-size:11px;font-weight:1000;color:${color};letter-spacing:.12em">${card.rarity.toUpperCase()} • TOWER TRANSFORMATION</div><div style="font-size:52px">${card.icon}</div><h2>${card.name}</h2><p>${card.desc}</p>`;
+              button.onclick=()=>{chosen.push(card.id);overlay.remove();pick(pickNumber+1);};wrap.appendChild(button);
+          });
+          document.body.appendChild(overlay);
+      };
+      pick(1);
+  }
+
   function prepareSlopSushiMatch() {
+      if(showdownMode==='slop_sushi'){prepareTowerTroubleMatch();return;}
       if(!isSlopSushiEventLive()){alert('The SlopSushi event has ended.');return;}
       ensureSlopSushiState();
       if(!hasSlopSushiDeck(selectedBrawler)){alert('Unlock this brawler’s Sushi Deck with a Sushi Tapper first.');return;}
@@ -14788,6 +14889,123 @@
         }
     }
 
+  function getDuckStar(owner) {
+      return owner?.id === player.id ? selectedStar : (owner?.selectedStar || 'none');
+  }
+
+  function getDuckSummons(owner) {
+      if (!owner) return [];
+      return bots.filter(entity => entity?.isDuckling && entity.ownerId === owner.id && entity.hp > 0 && !entity.isDead);
+  }
+
+  function healDuckWithOverflow(entity, amount, owner = null) {
+      if (!entity || entity.hp <= 0 || amount <= 0) return;
+      const missing = Math.max(0, (entity.maxHp || 0) - entity.hp);
+      const healed = Math.min(missing, amount);
+      if (healed > 0) {
+          entity.hp += healed;
+          entity.healFlashUntil = performance.now() + 220;
+          spawnFloatingText(entity.x + (Math.random()*14-7), entity.y - 22, `+${Math.round(healed)}`, '#5df2c2');
+      }
+      const overflow = amount - healed;
+      if (overflow > 0 && owner && getDuckStar(owner) === 'slow') {
+          grantShield(entity, overflow, Math.max(entity.shieldMax || 0, entity === owner ? 3200 : 1800));
+          spawnFloatingText(entity.x, entity.y - 36, `+${Math.round(overflow)} SHIELD`, '#ffe27a');
+      }
+  }
+
+  function spawnDuckHealOrb(owner, target, amount, startX = null, startY = null) {
+      if (!owner || !target || amount <= 0) return;
+      duckHealOrbs.push({ ownerId:owner.id, targetId:target.id, x:Number.isFinite(startX)?startX:owner.x, y:Number.isFinite(startY)?startY:owner.y-(owner.z||0), amount, createdAt:performance.now(), maxLife:900 });
+  }
+
+  function distributeDuckLifesteal(owner, amount, fromMainAttack = false) {
+      if (!owner || amount <= 0) return;
+      healDuckWithOverflow(owner, amount, owner);
+      if (fromMainAttack) for (const duckling of getDuckSummons(owner)) spawnDuckHealOrb(owner, duckling, amount);
+  }
+
+  function grantDuckAttachieDamageShield(owner, damageAmount) {
+      if (!owner || damageAmount <= 0 || !hasEntityAttachie(owner, 'star', 'slow')) return;
+      const shieldAmount=damageAmount*.30;
+      grantShield(owner, shieldAmount, Math.max(owner.shieldMax||0,4200));
+      spawnFloatingText(owner.x,owner.y-46,`+${Math.round(shieldAmount)} SHIELD`,'#ffe27a');
+  }
+
+  function fireDuckCrumb(owner, angle, damage, speed, hyperMain, index) {
+      bullets.push({ownerBrawler:'duck',isDuckCrumb:true,x:owner.x+Math.cos(angle)*(owner.radius+8),y:owner.y+Math.sin(angle)*(owner.radius+8),vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:0,maxLife:.663,damage,pierce:false,ownerId:owner.id,hitIds:{},hitboxMod:1.48,hyperVisual:!!hyperMain,duckCrumbIndex:index,xrayHoming:!!hyperMain,homingStrength:hyperMain ? .25 : 0});
+  }
+
+  function castDuckMain(owner, targetX, targetY, isBot=false, hyperMain=false) {
+      if (!owner) return;
+      const baseAngle=Math.atan2(targetY-owner.y,targetX-owner.x), speed=hyperMain?780:720;
+      const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11);
+      const baseDamage=Math.round((isBot?385:520)*getLevelDamageScale(level));
+      const volleyIndex=owner.duckCrumbVolleyIndex||0;
+      const sweepPattern=[-.5,-.24,.06,.34,.5,.26,-.04,-.36,-.5,0];
+      fireDuckCrumb(owner,baseAngle+sweepPattern[volleyIndex]*.378,baseDamage,speed,hyperMain,volleyIndex);
+      owner.duckCrumbVolleyIndex=(volleyIndex+1)%sweepPattern.length;
+      explosions.push({x:owner.x+Math.cos(baseAngle)*28,y:owner.y+Math.sin(baseAngle)*28,radius:28,life:0,maxLife:.16,color:hyperMain?'rgba(218,104,255,.64)':'rgba(255,212,94,.62)',fxKind:'duckBread'});
+  }
+
+  function spawnDuckling(owner, angle, hyper=false) {
+      if (!owner) return;
+      const now=performance.now(), radius=hyper?22:15;
+      bots.push({id:`duckling_${owner.id}_${Math.floor(now)}_${Math.floor(Math.random()*9999)}`,brawler:'duckling',isDuckling:true,x:clamp(owner.x+Math.cos(angle)*54,radius,WORLD_W-radius),y:clamp(owner.y+Math.sin(angle)*54,radius,WORLD_H-radius),z:0,vx:0,vy:0,hp:2100,maxHp:2100,powerCubes:owner.powerCubes||0,isDead:false,shield:0,shieldMax:0,radius,speed:hyper?287:221,slowUntil:0,lastTargetId:null,targetLockUntil:0,lastShot:now-400,superCharge:0,hyperChargeCharge:0,isHypercharged:false,gadgetArmed:false,selectedStar:'none',selectedGadget:'g1',isPet:true,isSummon:true,noPowerupDrop:true,noPassiveRegen:true,ownerId:owner.id,team:owner.team,ducklingHyper:!!hyper,duckFlatDecayNextAt:now+1000,duckSwipeCooldownUntil:0,duckHopStartedAt:now});
+  }
+
+  function castDuckSuper(owner, hyper=false) {
+      if (!owner) return;
+      for (const oldDuck of getDuckSummons(owner)) { oldDuck.hp=0; oldDuck.isDead=true; }
+      const count=5+(getDuckStar(owner)==='long'?1:0);
+      for(let i=0;i<count;i++) spawnDuckling(owner,(Math.PI*2*i/count)-Math.PI/2,hyper);
+      explosions.push({x:owner.x,y:owner.y,radius:96,life:0,maxLife:.36,color:hyper?'rgba(218,104,255,.72)':'rgba(255,212,94,.66)',legendary:true,fxKind:'duckFlock'});
+      spawnFloatingText(owner.x,owner.y-42,'DUCK DUCK GOOSE!','#ffd45e');
+  }
+
+  function updateDuckHealOrbs(now, dt) {
+      for(let i=duckHealOrbs.length-1;i>=0;i--){
+          const orb=duckHealOrbs[i],target=getEntityById(orb.targetId),owner=getEntityById(orb.ownerId);
+          if(!target||target.hp<=0||!owner||owner.hp<=0||now-(orb.createdAt||now)>orb.maxLife){duckHealOrbs.splice(i,1);continue;}
+          const dx=target.x-orb.x,dy=(target.y-(target.z||0))-orb.y,dist=Math.hypot(dx,dy)||1,step=Math.min(dist,620*dt);
+          orb.x+=dx/dist*step; orb.y+=dy/dist*step;
+          if(dist<=18){healDuckWithOverflow(target,orb.amount,owner);duckHealOrbs.splice(i,1);}
+      }
+  }
+
+  function getIceCreamStar(owner) { return owner?.id === player.id ? selectedStar : (owner?.selectedStar || 'none'); }
+  function applyIceCreamFreeze(owner,target,amount) {
+    if(!owner||!target||target.hp<=0||areAlliedEntities(owner,target))return false;
+    const now=performance.now();if(now<(target.iceCreamFreezeImmuneUntil||0))return false;
+    target.iceCreamFreeze=Math.min(100,(target.iceCreamFreeze||0)+Math.max(0,amount));
+    target.iceCreamFreezeLastHitAt=now;target.iceCreamFreezeDecayDelay=getIceCreamStar(owner)==='long'?3500:2000;target.iceCreamFreezeOwnerId=owner.id;
+    spawnFloatingText(target.x,target.y-42,`${Math.round(target.iceCreamFreeze)}% FREEZE`,'#8ee9ff');
+    if(target.iceCreamFreeze<100)return false;
+    target.iceCreamFreeze=0;target.stunUntil=Math.max(target.stunUntil||0,now+1000);target.iceCreamFreezeImmuneUntil=now+2500;
+    explosions.push({x:target.x,y:target.y,radius:72,life:0,maxLife:.36,color:'rgba(142,233,255,.82)',legendary:true,fxKind:'iceCreamFreeze'});
+    spawnFloatingText(target.x,target.y-50,'FROZEN!','#e8fbff');
+    if(getIceCreamStar(owner)==='slow')checkHit(target,{ownerBrawler:'ice_cream',ownerId:owner.id,damage:700,pierce:true,hitIds:{},isIceCreamFreezeBurst:true},-1);
+    return true;
+  }
+  function spawnIceCreamPuddle(owner,x,y,opts={}) {
+    if(!owner)return;const now=performance.now();
+    iceCreamPuddles.push({x:clamp(x,28,WORLD_W-28),y:clamp(y,28,WORLD_H-28),radius:(opts.radius||86)*(opts.hyper ? .6 : 1),ownerId:owner.id,until:now+(opts.durationMs||1000),nextTickAt:now,damage:opts.damage??90,freeze:opts.freeze??7,hyper:!!opts.hyper});
+    explosions.push({x,y,radius:(opts.radius||86)*(opts.hyper ? .6 : 1),life:0,maxLife:.28,color:opts.hyper?'rgba(205,105,255,.58)':'rgba(112,224,255,.55)'});
+  }
+  function launchIceCreamScoop(owner,x,y,angle,opts={}) {
+    bullets.push({ownerBrawler:'ice_cream',isIceCreamScoop:true,isIceCreamSuperScoop:!!opts.super,iceCreamPuddleOnEnd:!!opts.puddle,iceCreamFreezeAmount:opts.freeze??(opts.super?12:34),x,y,vx:Math.cos(angle)*(opts.speed||720),vy:Math.sin(angle)*(opts.speed||720),life:0,maxLife:opts.maxLife||.82,damage:opts.damage??1650,pierce:!!opts.pierce,ownerId:owner.id,hitIds:{},hitboxMod:opts.hitboxMod||1.75,hyperVisual:!!opts.hyper,super:!!opts.super});
+  }
+  function castIceCreamSuper(owner,hyper,targetX,targetY) {
+    if(!owner)return;const now=performance.now(),angle=Math.atan2(targetY-owner.y,targetX-owner.x),distance=clamp(Math.hypot(targetX-owner.x,targetY-owner.y),360,600),startX=owner.x,startY=owner.y,endX=clamp(startX+Math.cos(angle)*distance,owner.radius,WORLD_W-owner.radius),endY=clamp(startY+Math.sin(angle)*distance,owner.radius,WORLD_H-owner.radius),dashDuration=480;
+    owner.isDashing=true;owner.dashStartX=startX;owner.dashStartY=startY;owner.dashTargetX=endX;owner.dashTargetY=endY;owner.dashDuration=dashDuration;owner.dashElapsed=0;owner.dashHitCooldowns={};owner.iceCreamDashUntil=now+dashDuration;
+    const coneCount=hyper?5:4,volleys=hyper?2:1;
+    for(let cone=0;cone<coneCount;cone++){const progress=(cone+.7)/(coneCount+.4),cx=startX+(endX-startX)*progress,cy=startY+(endY-startY)*progress;setTimeout(()=>{if(!playing||gameOver)return;explosions.push({x:cx,y:cy,radius:34,life:0,maxLife:.45,color:hyper?'#d986ff':'#8ee9ff',fxKind:'iceCreamCone'});for(let volley=0;volley<volleys;volley++)setTimeout(()=>{for(const offset of [-Math.PI/2,Math.PI/2])launchIceCreamScoop(owner,cx,cy,angle+offset,{super:true,hyper,puddle:hyper,damage:750,freeze:12,maxLife:.72,hitboxMod:1.45});},volley*170);},cone*Math.max(58,dashDuration/(coneCount+1)));}
+  }
+  function updateIceCreamEffects(now,dt) {
+    for(const entity of [player,...bots])if(entity&&(entity.iceCreamFreeze||0)>0&&now>(entity.iceCreamFreezeLastHitAt||0)+(entity.iceCreamFreezeDecayDelay||2000))entity.iceCreamFreeze=Math.max(0,entity.iceCreamFreeze-24*dt);
+    for(let i=iceCreamPuddles.length-1;i>=0;i--){const puddle=iceCreamPuddles[i];if(now>=puddle.until){iceCreamPuddles.splice(i,1);continue;}if(now<(puddle.nextTickAt||0))continue;puddle.nextTickAt=now+250;const owner=getEntityById(puddle.ownerId);if(!owner)continue;for(const target of [player,...bots]){if(!target||target.hp<=0||target.id===owner.id||areAlliedEntities(owner,target)||Math.hypot(target.x-puddle.x,target.y-puddle.y)>puddle.radius+(target.radius||14))continue;target.slowUntil=Math.max(target.slowUntil||0,now+420);applyIceCreamFreeze(owner,target,puddle.freeze);if(puddle.damage>0)checkHit(target,{ownerBrawler:'ice_cream',ownerId:owner.id,damage:puddle.damage,pierce:true,super:true,hitIds:{},isIceCreamPuddle:true},-1);}}
+  }
+
     function fire(fromEntity, targetX, targetY, isBot=false, isMoving=false){
         normalizeSelectedBrawler();
     const now = performance.now();
@@ -14822,6 +15040,7 @@
             }
         }
     let fireDelay = isBot ? 920 : getFireDelay(brawler, isBot ? fromEntity : null);
+    if (brawler === 'duck') fireDelay = isBot ? 170 : 92;
     if (isBot && fromEntity.isImpossibleAI) fireDelay *= 0.72;
     if (!isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getSlopEffectTotal('fireDelayPct'));
     if (isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getEntitySlopEffectTotal(fromEntity, 'fireDelayPct'));
@@ -14841,7 +15060,8 @@
     if(!isBot) {
         if (brawler === 'beam') return; // Beam uses its own continuous system, skip fire()
         const steamerCost = brawler === 'steamer' ? 5 : 2;
-        const cost = crystalModeActive ? 1 : ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1);
+        const duckCost = brawler === 'duck' ? 4 : null;
+        const cost = crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1));
         if (ammo < cost) return;
     } else if (brawler === 'minigunnin') {
         if ((fromEntity.minigunAmmo || 0) < 2) return;
@@ -14886,9 +15106,10 @@
     } else {
         lastShot = now;
         const steamerCost = brawler === 'steamer' ? 5 : 2;
+        const duckCost = brawler === 'duck' ? 4 : null;
         const classyUnlimitedAmmo = brawler === 'classy' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'classyEndlessEncore') > 0;
         const robberUnlimitedAmmo = brawler === 'robber' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'robberPerfectCrime') > 0;
-        if (!classyUnlimitedAmmo && !robberUnlimitedAmmo) ammo -= (crystalModeActive ? 1 : ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1));
+        if (!classyUnlimitedAmmo && !robberUnlimitedAmmo) ammo -= (crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1)));
         else ammo = maxAmmo;
         player.lastAttackAt = now;
         applySlopSushiOnAttack();
@@ -14897,7 +15118,71 @@
     const dy = targetY - fromEntity.y;
     const ang = Math.atan2(dy,dx);
 
-    if (brawler === 'rocketeer') {
+    // Recovery kits: these brawlers were restored to the roster from backup,
+    // so route them through their own attacks instead of the generic projectile.
+    if (brawler === 'ice_cream') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const shots=hyper?2:1;
+        for(let shot=0;shot<shots;shot++)launchIceCreamScoop(fromEntity,fromEntity.x+Math.cos(ang)*(fromEntity.radius+8),fromEntity.y+Math.sin(ang)*(fromEntity.radius+8),ang+(shots===2?(shot?0.075:-0.075):0),{hyper,damage:isBot?820:1250,freeze:34,maxLife:.82,hitboxMod:1.75});
+        return;
+    } else if (brawler === 'swimmer') {
+        const strength = Math.max(0, Math.min(8, fromEntity.swimmerStrength || 0));
+        const range = 92 + strength * 26;
+        const damage = Math.round((isBot ? 850 : 1250) * (1 + strength * 0.10));
+        const hitX = fromEntity.x + Math.cos(ang) * range * .55;
+        const hitY = fromEntity.y + Math.sin(ang) * range * .55;
+        AOEDamage(hitX, hitY, 48 + strength * 4, damage, fromEntity.id, false);
+        fromEntity.swimmerStrength = Math.min(8, strength + .4);
+        explosions.push({x:hitX,y:hitY,radius:62 + strength*4,life:0,maxLife:.22,color:isHypercharged?'rgba(191,87,255,.72)':'rgba(53,214,232,.66)',fxKind:'swimmerStroke'});
+        return;
+    } else if (brawler === 'boomer') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const count = hyper ? 5 : 3;
+        for (let i=0;i<count;i++) {
+            const shotAng = ang + (i-(count-1)/2)*.18;
+            bullets.push({ownerBrawler:'boomer',isBoomerNite:true,x:fromEntity.x+Math.cos(shotAng)*(fromEntity.radius+8),y:fromEntity.y+Math.sin(shotAng)*(fromEntity.radius+8),vx:Math.cos(shotAng)*515,vy:Math.sin(shotAng)*515,life:0,maxLife:.78,damage:isBot?820:1180,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.45,hyperVisual:hyper});
+        }
+        return;
+    } else if (brawler === 'blade_vane') {
+        const frenzy = now < (fromEntity.bladeVaneFrenzyUntil || 0);
+        const stage = Math.min(15, fromEntity.bladeVaneStage || 0);
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const range = hyper ? 142 : 120;
+        const damage = Math.round((isBot ? 1050 : 1550) * (1 + (frenzy ? stage * .05 : 0)));
+        AOEDamage(fromEntity.x + Math.cos(ang)*range*.55, fromEntity.y + Math.sin(ang)*range*.55, range*.58, damage, fromEntity.id, false);
+        if (frenzy) {
+            fromEntity.bladeVaneStage = Math.min(15, stage + 1);
+            doHeal(fromEntity, Math.round(damage*.20));
+        }
+        explosions.push({x:fromEntity.x+Math.cos(ang)*range*.5,y:fromEntity.y+Math.sin(ang)*range*.5,radius:range*.58,life:0,maxLife:.18,color:hyper?'rgba(224,59,255,.7)':'rgba(233,85,104,.65)',fxKind:'bladeVaneSwing'});
+        return;
+    } else if (brawler === 'daggershard') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const stage = hyper ? 3 : Math.max(1, Math.min(3, fromEntity.daggershardStage || 1));
+        for (let i=0;i<stage;i++) {
+            const shotAng = ang + (i-(stage-1)/2)*.11;
+            bullets.push({ownerBrawler:'daggershard',isDaggershardDagger:true,daggershardStage:stage,x:fromEntity.x+Math.cos(shotAng)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(shotAng)*(fromEntity.radius+7),vx:Math.cos(shotAng)*820,vy:Math.sin(shotAng)*820,life:0,maxLife:.72,damage:isBot?720:1050,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.25,hyperVisual:hyper});
+        }
+        return;
+    } else if (brawler === 'adlof') {
+        bullets.push({ownerBrawler:'adlof',isAdlofCommand:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+6),vx:Math.cos(ang)*650,vy:Math.sin(ang)*650,life:0,maxLife:.84,damage:0,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.9,hyperVisual:isBot?!!fromEntity.isHypercharged:!!isHypercharged});
+        return;
+    } else if (brawler === 'cluster') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const count = hyper ? 5 : 3;
+        for (let i=0;i<count;i++) {
+            const shotAng=ang+(i-(count-1)/2)*.22;
+            bullets.push({ownerBrawler:'cluster',isClusterBomb:true,x:fromEntity.x+Math.cos(shotAng)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(shotAng)*(fromEntity.radius+7),vx:Math.cos(shotAng)*520,vy:Math.sin(shotAng)*520,life:0,maxLife:.88,damage:isBot?700:1050,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.55,hyperVisual:hyper});
+        }
+        return;
+    } else if (brawler === 'duck') {
+        castDuckMain(fromEntity,targetX,targetY,isBot,isBot?!!fromEntity.isHypercharged:!!isHypercharged);
+        return;
+    } else if (brawler === 'witch') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        bullets.push({ownerBrawler:'witch',isWitchPotion:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+8),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+8),vx:Math.cos(ang)*590,vy:Math.sin(ang)*590,life:0,maxLife:.82,damage:isBot?820:1180,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:hyper?2.1:1.75,hyperVisual:hyper});
+        return;
+    } else if (brawler === 'rocketeer') {
         const hyperMain=isBot?!!fromEntity.isHypercharged:!!isHypercharged;
         launchRocketeerMain(fromEntity,ang,hyperMain,1);
         if(hyperMain){
@@ -16965,6 +17250,48 @@
     if (combatBrawler === 'snapper') { castSnapperSuper(player, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'homer') { castHomerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'orbo') { castOrboSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'ice_cream') {
+        castIceCreamSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return;
+    }
+    if (combatBrawler === 'swimmer') {
+        const strength=Math.max(0,Math.min(8,player.swimmerStrength||0)),radius=130+strength*32,damage=Math.round(1250+strength*420);
+        AOEDamage(player.x,player.y,radius,damage,player.id,true);
+        for(const target of [player,...bots]) if(target&&target.hp>0&&target.id!==player.id&&Math.hypot(target.x-player.x,target.y-player.y)<=radius) target.slowUntil=Math.max(target.slowUntil||0,now+1200);
+        player.swimmerStrength=0; explosions.push({x:player.x,y:player.y,radius,life:0,maxLife:.44,color:isHypercharged?'rgba(196,94,255,.74)':'rgba(53,214,232,.7)',legendary:true}); updateSuperButton(); return;
+    }
+    if (combatBrawler === 'boomer') {
+        const dist=Math.min(560,Math.max(100,Math.hypot(dx,dy)||1)),x=clamp(player.x+Math.cos(ang)*dist,30,WORLD_W-30),y=clamp(player.y+Math.sin(ang)*dist,30,WORLD_H-30),damage=isHypercharged?3100:2400;
+        explosions.push({x,y,radius:isHypercharged?190:150,life:0,maxLife:1.3,color:isHypercharged?'rgba(222,86,255,.72)':'rgba(255,177,46,.72)',legendary:true});
+        setTimeout(()=>{AOEDamage(x,y,isHypercharged?190:150,damage,player.id,true);},1000); updateSuperButton(); return;
+    }
+    if (combatBrawler === 'blade_vane') {
+        player.bladeVaneFrenzyUntil=now+6000; player.bladeVaneStage=0;
+        AOEDamage(player.x,player.y,isHypercharged?150:122,isHypercharged?1250:950,player.id,true);
+        explosions.push({x:player.x,y:player.y,radius:isHypercharged?150:122,life:0,maxLife:.4,color:isHypercharged?'rgba(225,56,255,.8)':'rgba(233,85,104,.72)',legendary:true}); updateSuperButton(); return;
+    }
+    if (combatBrawler === 'daggershard') {
+        const dist=Math.min(440,Math.max(90,Math.hypot(dx,dy)||1)),x=clamp(player.x+Math.cos(ang)*dist,35,WORLD_W-35),y=clamp(player.y+Math.sin(ang)*dist,35,WORLD_H-35),hp=isHypercharged?6500:5000;
+        bots.push({id:`daggershard_glass_${player.id}_${Math.floor(now)}`,brawler:'daggershard_glass',x,y,z:0,radius:26,hp,maxHp:hp,speed:0,team:player.team,ownerId:player.id,isPet:true,isSummon:true,noPowerupDrop:true,selectedStar:'none',selectedGadget:'g1'});
+        setTimeout(()=>{AOEDamage(x,y,isHypercharged?150:115,isHypercharged?2400:1800,player.id,true);},5500); explosions.push({x,y,radius:80,life:0,maxLife:.34,color:'#aeefff',legendary:true}); updateSuperButton(); return;
+    }
+    if (combatBrawler === 'adlof') {
+        bullets.push({ownerBrawler:'adlof',isAdlofTakeover:true,x:player.x+Math.cos(ang)*8,y:player.y+Math.sin(ang)*8,vx:Math.cos(ang)*670,vy:Math.sin(ang)*670,life:0,maxLife:1.0,damage:0,pierce:false,ownerId:player.id,hitIds:{},hitboxMod:2.4,hyperVisual:!!isHypercharged,super:true}); updateSuperButton(); return;
+    }
+    if (combatBrawler === 'cluster') {
+        const count=5,spread=isHypercharged?.88:.65;
+        for(let i=0;i<count;i++){const a=ang+(i-(count-1)/2)*spread;const d=180+(i%2)*70;const x=clamp(player.x+Math.cos(a)*d,25,WORLD_W-25),y=clamp(player.y+Math.sin(a)*d,25,WORLD_H-25); explosions.push({x,y,radius:isHypercharged?110:80,life:0,maxLife:.8,color:'rgba(255,154,93,.55)'}); setTimeout(()=>{AOEDamage(x,y,isHypercharged?110:80,isHypercharged?1500:1100,player.id,true);for(const t of [player,...bots])if(t&&t.hp>0&&t.id!==player.id&&Math.hypot(t.x-x,t.y-y)<120)t.slowUntil=Math.max(t.slowUntil||0,performance.now()+(isHypercharged?5000:900));},800);}
+        updateSuperButton(); return;
+    }
+    if (combatBrawler === 'duck') {
+        castDuckSuper(player,!!isHypercharged);
+        updateSuperButton(); return;
+    }
+    if (combatBrawler === 'witch') {
+        const dist=Math.min(430,Math.max(80,Math.hypot(dx,dy)||1)),x=clamp(player.x+Math.cos(ang)*dist,32,WORLD_W-32),y=clamp(player.y+Math.sin(ang)*dist,32,WORLD_H-32);
+        bots.push({id:`witch_tombstone_${player.id}_${Math.floor(now)}`,brawler:'witch_tombstone',x,y,z:0,radius:28,hp:4000,maxHp:4000,speed:0,team:player.team,ownerId:player.id,isPet:true,isSummon:true,noPowerupDrop:true,selectedStar:'none',selectedGadget:'g1'});
+        for(let i=0;i<(isHypercharged?4:3);i++){const a=i*Math.PI*2/(isHypercharged?4:3);bots.push({id:`witch_skeleton_${player.id}_${Math.floor(now)}_${i}`,brawler:'skeletrooper',x:x+Math.cos(a)*38,y:y+Math.sin(a)*38,z:0,radius:13,hp:isHypercharged?950:760,maxHp:isHypercharged?950:760,speed:175,team:player.team,ownerId:player.id,isPet:true,isSummon:true,noPowerupDrop:true,selectedStar:'none',selectedGadget:'g1',lastShot:0});}
+        explosions.push({x,y,radius:100,life:0,maxLife:.4,color:'rgba(184,108,255,.7)',legendary:true}); updateSuperButton(); return;
+    }
 
     // In Beast Boss crystal form, super is converted into a full ammo reload.
     if (isEntityEmpoweredBeast(player, true)) {
@@ -23265,6 +23592,25 @@
         explosions.push({x:target.x,y:target.y,radius:46,life:0,maxLife:0.28,color:b.hyperVisual?'#d66cff':'#79f7ff'});
     }
     if (b.isAngelLight) applyStatusEffect(target, 'slow', 500);
+    if ((b.isIceCreamScoop || b.isIceCreamCone) && owner) applyIceCreamFreeze(owner,target,b.iceCreamFreezeAmount ?? (b.hyperVisual?34:25));
+    if (b.isAdlofCommand) {
+        target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + 4000);
+        target.adlofCommandUntil = performance.now() + 4000;
+        spawnFloatingText(target.x, target.y - 32, 'CONFUSED!', '#f0d28a');
+    }
+    if (b.isDaggershardDagger && owner) {
+        owner.daggershardStage = Math.min(3, Math.max(owner.daggershardStage || 1, (b.daggershardStage || 1) + 1));
+        if ((b.daggershardStage || 1) >= 3) {
+            AOEDamage(target.x, target.y, 72, Math.round((b.damage || 0) * .48), owner.id, false);
+            target.poisonUntil = Math.max(target.poisonUntil || 0, performance.now() + 1800);
+            target.poisonDamage = Math.max(target.poisonDamage || 0, 150);
+            target.poisonTicksLeft = Math.max(target.poisonTicksLeft || 0, 3);
+        }
+    }
+    if (b.isWitchPotion && owner) {
+        target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + (b.hyperVisual ? 900 : 550));
+        bots.push({ id:`witch_skeleton_${owner.id}_${Math.floor(performance.now())}_${Math.floor(Math.random()*999)}`, brawler:'skeletrooper', x:target.x, y:target.y, z:0, radius:13, hp:b.hyperVisual?950:760, maxHp:b.hyperVisual?950:760, speed:175, team:owner.team, ownerId:owner.id, isPet:true, isSummon:true, noPowerupDrop:true, selectedStar:'none', selectedGadget:'g1', lastShot:0 });
+    }
     let mult = 1.0 + ((owner ? owner.powerCubes : 0) || 0) * 0.1;
     let dealtDamage = b.damage * mult;
     if (b.isArenaForgeTowerShell && owner) {
@@ -23671,6 +24017,28 @@
     const rawDmg = dealtDamage;
     dealtDamage = applyShieldDamage(target, dealtDamage);
     target.hp -= dealtDamage;
+    if (b.isDuckCrumb && owner && rawDmg > 0) {
+        if (dealtDamage > 0) {
+            const healAmount=dealtDamage*.18;
+            distributeDuckLifesteal(owner,healAmount,true);
+            grantDuckAttachieDamageShield(owner,dealtDamage);
+        }
+        if (b.hyperVisual && !b.duckExplosionResolved) {
+            b.duckExplosionResolved=true;
+            const burstRadius=82;
+            explosions.push({x:target.x,y:target.y,radius:burstRadius,life:0,maxLife:.24,color:'rgba(216,104,255,.72)',fxKind:'duckBread',legendary:true});
+            for(const nearby of [player,...bots]){
+                if(!nearby||nearby.hp<=0||nearby.id===target.id||nearby.id===owner.id||areAlliedEntities(owner,nearby))continue;
+                if(Math.hypot(nearby.x-target.x,nearby.y-target.y)>burstRadius+(nearby.radius||14))continue;
+                checkHit(nearby,{ownerBrawler:'duck',ownerId:owner.id,damage:(b.damage||0)*.32,pierce:true,hitIds:{},isDuckCrumbSplash:true,hyperVisual:true},-1);
+            }
+        }
+    }
+    if (b.isDuckSwipe && owner && dealtDamage > 0) {
+        const healAmount=dealtDamage*.18;
+        spawnDuckHealOrb(owner,owner,healAmount,target.x,target.y-(target.z||0));
+        grantDuckAttachieDamageShield(owner,dealtDamage);
+    }
     if (isArenaForgeMode && target?.isArenaForgeTower) updateArenaForgeTowerArmor(target);
     grantPressureCharge(target, dealtDamage);
     recordTrainingBotDamage(target,dealtDamage,b.ownerId);
@@ -26667,6 +27035,8 @@
     }
 
         updateRocketeerEffects(now);
+        updateDuckHealOrbs(now, dt);
+        updateIceCreamEffects(now, dt);
 
         for (let i=chickpigEggZones.length-1;i>=0;i--) {
             const zone=chickpigEggZones[i];
@@ -27441,6 +27811,11 @@
             if (b.isUpiedownMiniPie) {
                 burstUpiedownMiniPie(b);
                 bullets.splice(i,1); i--; continue;
+            }
+            if (b.isIceCreamScoop && b.iceCreamPuddleOnEnd && !b.iceCreamPuddleSpawned) {
+                b.iceCreamPuddleSpawned=true;
+                const scoopOwner=getEntityById(b.ownerId);
+                if(scoopOwner)spawnIceCreamPuddle(scoopOwner,b.x,b.y,{hyper:true,durationMs:1000,radius:86,damage:90,freeze:7});
             }
             if (b.isWarriorSpear) triggerWarriorSpearLanding(b);
             if (b.isParadoxMain) {
@@ -28663,6 +29038,41 @@
               t.x=clamp(t.x+Math.cos(a)*t.speed*dt,t.radius,WORLD_W-t.radius);t.y=clamp(t.y+Math.sin(a)*t.speed*dt,t.radius,WORLD_H-t.radius);
               t.z=Math.abs(Math.sin((now-(t.pickleHopStartedAt||now))/145))*18;
               if(dist<target.radius+t.radius+7){t.pickleAttachedTargetId=target.id;t.pickleAttachedUntil=now+1600;t.pickleAttachTickAt=now;spawnFloatingText(target.x,target.y-28,'PICKLED!','#a5e85f');}
+          }
+          continue;
+      }
+
+      if(t.isDuckling){
+          const owner=getEntityById(t.ownerId);
+          if(!owner||owner.hp<=0){t.hp=0;t.isDead=true;continue;}
+          const decayAt=t.duckFlatDecayNextAt||now+1000;
+          if(now>=decayAt){
+              const steps=1+Math.floor((now-decayAt)/1000);
+              t.hp-=steps*250;t.duckFlatDecayNextAt=decayAt+steps*1000;
+              if(t.hp>0)spawnFloatingText(t.x,t.y-28,'-250','#f5d36a');
+          }
+          if(t.hp<=0){t.hp=0;t.isDead=true;t.noPowerupDrop=true;continue;}
+          const siblings=bots.filter(other=>other?.isDuckling&&other.ownerId===t.ownerId&&other.id!==t.id&&other.hp>0&&!other.isDead);
+          const pressure=new Map();
+          for(const sibling of siblings)if(sibling.lastTargetId)pressure.set(sibling.lastTargetId,(pressure.get(sibling.lastTargetId)||0)+1);
+          const target=[player,...aliveBots].filter(candidate=>candidate&&candidate.hp>0&&candidate.id!==t.id&&candidate.id!==t.ownerId&&!candidate.isDuckling&&!candidate.isPet&&!areAlliedEntities(t,candidate)).sort((a,b)=>{
+              const da=Math.hypot(a.x-t.x,a.y-t.y)+(pressure.get(a.id)||0)*190+(t.lastTargetId===a.id?45:0);
+              const db=Math.hypot(b.x-t.x,b.y-t.y)+(pressure.get(b.id)||0)*190+(t.lastTargetId===b.id?45:0);return da-db;
+          })[0];
+          if(target){
+              t.lastTargetId=target.id;
+              const dist=Math.hypot(target.x-t.x,target.y-t.y)||1,angle=Math.atan2(target.y-t.y,target.x-t.x),desired=t.radius+(target.radius||14)+96;
+              const moveSpeed=t.speed*(now<(t.duckSpeedSlowUntil||0)?.8:1),travel=Math.max(0,Math.min(moveSpeed*dt,dist-desired));
+              if(travel>0){const nx=clamp(t.x+Math.cos(angle)*travel,t.radius,WORLD_W-t.radius),ny=clamp(t.y+Math.sin(angle)*travel,t.radius,WORLD_H-t.radius);if(canMoveToPosition(t,nx,ny)){t.x=nx;t.y=ny;}}
+              t.z=4+Math.abs(Math.sin((now-(t.duckHopStartedAt||now))/130))*8;
+              if(dist<=desired+22&&now>=(t.duckSwipeCooldownUntil||0)){
+                  t.duckSwipeCooldownUntil=now+(t.ducklingHyper?520:680);t.duckSpeedSlowUntil=now+2000;
+                  checkHit(target,{ownerBrawler:'duck',ownerId:t.ownerId,damage:t.ducklingHyper?780:650,pierce:true,super:true,hitIds:{},isDuckSwipe:true,hyperVisual:!!t.ducklingHyper},-1);
+                  const knock=76*(t.ducklingHyper?1.18:1);
+                  target.x=clamp(target.x+Math.cos(angle)*knock,target.radius,WORLD_W-target.radius);target.y=clamp(target.y+Math.sin(angle)*knock,target.radius,WORLD_H-target.radius);
+                  t.x=clamp(t.x-Math.cos(angle)*14,t.radius,WORLD_W-t.radius);t.y=clamp(t.y-Math.sin(angle)*14,t.radius,WORLD_H-t.radius);
+                  explosions.push({x:target.x,y:target.y,radius:t.ducklingHyper?46:34,life:0,maxLife:.2,color:t.ducklingHyper?'rgba(220,104,255,.65)':'rgba(255,214,94,.58)',fxKind:'duckSwipe'});
+              }
           }
           continue;
       }
@@ -32908,6 +33318,12 @@
     }
 
     // draw bullets 
+    for (const orb of duckHealOrbs) {
+      ctx.save();ctx.globalAlpha=.86;ctx.strokeStyle='rgba(255,226,122,.34)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(orb.x,orb.y);ctx.lineTo(orb.x-10,orb.y+8);ctx.stroke();
+      ctx.shadowColor='#ffd45e';ctx.shadowBlur=12;ctx.fillStyle='#fff0a0';ctx.beginPath();ctx.arc(orb.x,orb.y,5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#5df2c2';ctx.beginPath();ctx.arc(orb.x+2,orb.y-1,2,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
     for(const b of bullets){ 
       if (b.isArenaForgeBasicShot) {
           const angle = Math.atan2(b.vy, b.vx);
