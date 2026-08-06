@@ -17,7 +17,7 @@
     evil_doctor:['Infectious Shot','Spread My Virus','Virus'],splitter:['Split Grenade','Splitin Off','Fractal'],scuba_diver:['Bubble Barrage','Dash Underwater','Deep Sea'],hoop:['Bounce Breaker','Full-Court Crash','Heat Check'],
     screener:['Projected Sweep','Projected Charge','Pixel'],malakor:['Putting You Down','Hell Is Forever','Infernal'],beam:['Focus Beam','Golden Beam','Prism'],paradox:['Temporal Skip','Relativity Zone','Time'],
     sera_eclipse:['Eclipse Flare','Eclipse Orbit','Corona'],boom_arang:['Boomerang Toss','Gravity Recall','Orbit'],teether:['Bite Pattern','Tooth Fairy','Dental'],fuel:['Finger Flames','Five Flame Finger','Blowtorch'],
-    xray:['Infrared Reading','Full Body Scan','Radiology'],angel:['Guiding Light','Second Life','Halo'],demon:['Hellblade','Demonic Doom','Abyss'],warrior:['Twin Spears','Final Stand','Phalanx'],relay:['Shield Signal','Move My Damage','Bandwidth'],upiedown:['Pie in the Sky','Upside-Down Pie','Bakery'],chickpig:['Breakfast Blast','Farmyard Rush','Farmhouse'],jetpack:['Crash Landing','I Drop Bombs','Flight Deck'],robber:['Stolen Fortune','Grand Theft Ammo','Heist']
+    xray:['Infrared Reading','Full Body Scan','Radiology'],angel:['Guiding Light','Second Life','Halo'],demon:['Hellblade','Demonic Doom','Abyss'],warrior:['Twin Spears','Final Stand','Phalanx'],relay:['Shield Signal','Move My Damage','Bandwidth'],upiedown:['Pie in the Sky','Upside-Down Pie','Bakery'],chickpig:['Breakfast Blast','Farmyard Rush','Farmhouse'],jetpack:['Crash Landing','I Drop Bombs','Flight Deck'],snapper:['Marking Orb','Snap!','Perfect Mark'],robber:['Stolen Fortune','Grand Theft Ammo','Heist'],ice_cream:['Frozen Cone','Brain Freeze Dash','Soft Serve'],swimmer:['Power Stroke','Release the Tide','Gold Medal'],boomer:['Boom-Nite Quartet','Big Boomer','Powder Keg'],blade_vane:['Vane Cleave','Blood Cyclone','Bloodline'],adlof:['Master Plan','Hostile Takeover','Scheme'],cluster:['Airburst Cluster','Uppercut Minefield','Demolition']
   };
 
   S.rocketeer=['Breakup Rocket','Triple Impact','Warhead'];
@@ -50,7 +50,7 @@
     'cheseypuff','decayer','unopcoloco','dashaholic','trapper','classy','hyperorigin',
     'steamer','hunter','chaird','forest','tempo_maker','overlord','copyphase','beast',
     'amplifier','skeleflying','crystila','scuba_diver','screener','malakor','beam',
-    'paradox','sera_eclipse','fuel','xray','angel','demon','warrior','relay','upiedown','chickpig','jetpack','unstable','predator'
+    'paradox','sera_eclipse','fuel','xray','angel','demon','warrior','relay','upiedown','chickpig','jetpack','snapper','unstable','predator','ice_cream','swimmer','boomer','blade_vane','cluster'
   ]);
   const castSuperMutations=[
     (s,n)=>[`${n} Aftershock`,`Casting ${s} grants 2400 shield and 28% speed for 4 seconds.`,{superShield:2400,superSpeedPct:.28,superSpeedMs:4000,shieldCap:5200}],
@@ -87,11 +87,84 @@
 
   // Signature overrides use dedicated runtime hooks for the most identity-heavy kits.
   const O=(id,slot,card)=>{decks[id][slot]=card;};
+  O('ice_cream',0,C('Epic','Triple Scoop Stack','Frozen Cone becomes 3 tightly packed scoops. Each deals 55% damage and adds 18% Freeze.',{iceCreamTripleScoop:1}));
+  O('ice_cream',1,C('Epic','Waffle Cone Shatter','Frozen Cone grows 65% wider and shatters into 2 side scoops on its first enemy hit.',{iceCreamWaffleShatter:1}));
+  O('ice_cream',2,C('Epic','Deep Freezer Dial','Every Ice Cream attack, dash scoop, and puddle applies 45% more Freeze.',{iceCreamFreezePct:.45}));
+  O('ice_cream',3,C('Mythic','Brain Freeze Express','Brain Freeze Dash plants 3 additional firing cones along its route.',{iceCreamExtraDashCones:3}));
+  O('ice_cream',4,C('Mythic','Black Ice Sundae','Hyper puddles become 80% larger and remain for 1.5 additional seconds.',{iceCreamPuddleRadiusPct:.8,iceCreamPuddleBonusMs:1500}));
+  O('ice_cream',5,C('Mythic','Scoop Crossfire','Every Brain Freeze cone fires forward and backward in addition to left and right.',{iceCreamCrossfire:1}));
+  O('ice_cream',6,C('Legendary','Shatter Celebration','Freezing an enemy bursts for 450 damage and adds 25% Freeze to every nearby enemy.',{iceCreamFreezeBurst:450}));
+  O('ice_cream',7,C('Exotic','ABSOLUTE ZERO','A direct Frozen Cone sets enemies to at least 70% Freeze. Super scoops pierce, and Hyper puddles pull enemies toward their frozen center.',{iceCreamAbsoluteZero:1}));
+  O('swimmer',0,C('Epic','Olympic Lane','Power Stroke becomes 55% wider without reducing its center-hit reward.',{swimmerWidthPct:.55}));
+  O('swimmer',1,C('Epic','Dolphin Kick','Every Power Stroke swims 85% farther forward.',{swimmerDashPct:.85}));
+  O('swimmer',2,C('Epic','Center-Lane Buoys','The perfect center lane becomes 100% wider.',{swimmerCenterWidthPct:1}));
+  O('swimmer',3,C('Mythic','Protein Tide','All successful strokes build 50% more Strength.',{swimmerStrengthGainPct:.5}));
+  O('swimmer',4,C('Mythic','High-Tide Release','Release the Tide splash areas become 45% larger.',{swimmerSuperRadiusPct:.45}));
+  O('swimmer',5,C('Mythic','Ice-Bath Current','Release the Tide slows enemies for 1.5 additional seconds.',{swimmerSuperSlowMs:1500}));
+  O('swimmer',6,C('Legendary','Backwash Championship','Every Super splash smoothly carries enemies away from its center.',{swimmerSuperBackwash:1}));
+  O('swimmer',7,C('Exotic','PERFECT OLYMPIAN','Power Stroke calculates range and damage with +2 Strength and every hit earns the center reward. Release the Tide always creates 3 splash areas.',{swimmerOlympic:1}));
+  O('boomer',0,C('Epic','Three Becomes Five','Every Boom-Nite throw carries 2 additional sticks.',{boomerExtraSticks:2}));
+  O('boomer',1,C('Epic','Blast-Cap Buffet','Every Boom-Nite blast becomes 40% larger.',{boomerBlastRadiusPct:.4}));
+  O('boomer',2,C('Epic','Lightning Fuse Braid','Ignited sticks chain 55% faster.',{boomerChainSpeedPct:.55}));
+  O('boomer',3,C('Mythic','Practice Ricochets','Boom-Nite always records one extra bounce explosion, even outside Hypercharge.',{boomerPracticeBounce:1}));
+  O('boomer',4,C('Mythic','Patient Powder Keg','Big Boomer gains 0.9 seconds of fuse time for feeding.',{boomerFuseBonusMs:900}));
+  O('boomer',5,C('Mythic','Overfeed the Beast','Each absorbed volley adds 20% more Big Boomer damage.',{boomerFeedPct:.2}));
+  O('boomer',6,C('Legendary','Compass of Chaos','Hyper Big Boomer gains 4 additional release directions.',{boomerRadialDirections:4}));
+  O('boomer',7,C('Exotic','THE LAST BOOM','Every main throw records all 3 bounce explosions. Hyper Big Boomer releases a third 360-degree wave.',{boomerGrandFinale:1}));
   O('money_and_tax',0,C('Epic','Money Printer Platter','Money mode fires 2 additional waves of coins.',{moneyExtraWaves:2}));
   O('money_and_tax',1,C('Epic','Center-Coin Stimulus','At full ammo, center coins grow 90% and deal 35% more damage.',{moneyCenterSizePct:.9,moneyCenterDamagePct:.35}));
-  O('bouncin_balls',0,C('Epic','Around-the-World Roll','Every ball travels 400% farther through its bounces.',{bouncyRangePct:4}));
-  O('bouncin_balls',1,C('Epic','Multiply on Contact','Balls split into smaller rebound shots on their first enemy hit.',{bouncySplitOnHit:1}));
-  O('bouncin_balls',7,C('Exotic','Perpetual Motion','Every attack and Super ball bounces forever, never loses damage, and has infinite range.',{bouncyInfiniteBounce:1}));
+  // Bouncin' Balls has a fully bespoke deck. Every card changes his volley,
+  // wall-bank, split-ball, or Bouncy House loop instead of borrowing a shared
+  // projectile/stat template.
+  O('bouncin_balls',0,C('Epic','Around-the-World Roll','Every attack and Super ball gets 400% more travel distance for absurd cross-map bank shots.',{bouncyRangePct:4}));
+  O('bouncin_balls',1,C('Epic','Ball Pit Collision','The first enemy hit by each ball bursts it into 2 smaller balls that rebound in opposite directions.',{bouncySplitOnHit:1}));
+  O('bouncin_balls',2,C('Epic','Rapid-Fire Rack','Ricochet Volley loads 4 extra balls and releases the entire rack 35% faster.',{bouncyExtraBalls:4,bouncyVolleyDelayPct:.35}));
+  O('bouncin_balls',3,C('Mythic','Bank Interest','Each wall bounce grows that ball by 18% and raises its current damage by 12%, stacking up to 5 banks.',{bouncyBounceSizePct:.18,bouncyBounceDamagePct:.12}));
+  O('bouncin_balls',4,C('Mythic','Called Bank','After its first wall bounce, each ball locks onto the nearest enemy while keeping its rebound speed.',{bouncyCalledBank:1}));
+  O('bouncin_balls',5,C('Mythic','Bouncy House Speakers','Every Bouncy House ball creates a 420-damage, 82-radius shockwave whenever it hits a wall.',{bouncySuperBounceBlast:420,bouncySuperBounceBlastRadius:82}));
+  O('bouncin_balls',6,C('Legendary','Third-Bank Jackpot','On its third wall bounce, each ball explodes and launches 6 mini-balls in every direction. This happens once per ball.',{bouncyThirdBounceBurst:6}));
+  O('bouncin_balls',7,C('Exotic','Perpetual Motion','Every attack and Super ball bounces forever, keeps full damage, pierces enemies, and has infinite range.',{bouncyInfiniteBounce:1}));
+  // Minigunnin's deck is built around his belt-fed firing loop, permanent
+  // Max-HP growth, and the walls/healing/turret pieces of Healing Fort.
+  O('minigunnin',0,C('Epic','Bottomless Belt Buffet','Minigun Stream consumes 1 belt round per shot instead of 2, effectively doubling sustained fire time.',{minigunAmmoCost:1}));
+  O('minigunnin',1,C('Epic','Brass Avalanche','Every trigger tick fires 2 additional rounds in a wider layered spray.',{minigunExtraRounds:2}));
+  O('minigunnin',2,C('Epic','Redline Receiver','Continuous fire builds 1 Redline stage per shot, up to 20. Each stage adds 4% bullet damage; pausing resets the engine.',{minigunRedlinePct:.04,minigunRedlineCap:20}));
+  O('minigunnin',3,C('Mythic','Wall-Eater Tracer','Every 8th round becomes a huge piercing tracer that explodes for 520 damage on its first enemy hit.',{minigunTracerEvery:8,minigunTracerBlast:520}));
+  O('minigunnin',4,C('Mythic','Hospital-Sized Hospital','Healing Fort gains 55% healing radius and restores 80% more HP every pulse.',{minigunFortRadiusPct:.55,minigunFortHealPct:.8}));
+  O('minigunnin',5,C('Mythic','Concrete Donut','Healing Fort builds 12 additional wall blocks, and every block gains 60% more HP.',{minigunExtraWalls:12,minigunWallHpPct:.6}));
+  O('minigunnin',6,C('Legendary','Fort With Benefits','Healing Fort is always armed—even without Hypercharge. Its attack pulses 65% faster and deal 75% more damage.',{minigunArmedFort:1,minigunTurretSpeedPct:.65,minigunTurretDamagePct:.75}));
+  O('minigunnin',7,C('Exotic','THE ENTIRE AMMO FACTORY','Minigunnin has unlimited belt ammo, always fires 5 rounds, stays at maximum Redline, and every round becomes an explosive piercing tracer. Healing Fort receives every fort upgrade.',{minigunAmmoFactory:1}));
+  // Boom-Arang's deck is entirely built around his one-weapon throw/catch,
+  // enemy tags, returning lane, and Gravity Recall pull path.
+  O('boom_arang',0,C('Epic','Twin Flight Plan','Boomerang Toss throws a second angled boomerang dealing 65% damage. Both must return before the next throw.',{boomTwinToss:1}));
+  O('boom_arang',1,C('Epic','Tag Popcorn','Every TAG BOOM launches 4 mini-boomerangs outward from the tagged enemy.',{boomTagBurst:4}));
+  O('boom_arang',2,C('Epic','Express Return','Returning boomerangs fly 65% faster, deal 105% of outgoing damage instead of 80%, and heal 900 HP when caught.',{boomReturnSpeedPct:.65,boomReturnDamagePct:.25,boomCatchHeal:900}));
+  O('boom_arang',3,C('Mythic','Catch and Release','Catching a main boomerang instantly sprays 6 mini-boomerangs in a full circle.',{boomCatchBurst:6}));
+  O('boom_arang',4,C('Mythic','Tag, You Are All It','Applying a fresh tag copies it to the 2 nearest enemies around the target.',{boomTagRelay:2}));
+  O('boom_arang',5,C('Mythic','Gravity Traffic Jam','Gravity Recall launches 5 boomerangs instead of 3 and each path has 75% more pull radius.',{boomSuperExtra:2,boomPullRadiusPct:.75}));
+  O('boom_arang',6,C('Legendary','Orbit Guard','Every catch creates 3 orbiting boomerangs for 5 seconds. They repeatedly slice enemies who approach Boom-Arang.',{boomOrbitGuard:3}));
+  O('boom_arang',7,C('Exotic','Boomerang Galaxy','Boom-Arang gains unlimited throws: every main attack launches 5 boomerangs and Gravity Recall launches 9.',{boomGalaxy:1}));
+  // Skeleflying turns the arena itself into an airborne skeleton invasion.
+  // These cards mutate his para-shoot formations, landing events, portals,
+  // and summoned troopers instead of using shared projectile stat templates.
+  O('skeleflying',0,C('Epic','Bone Carpet Formation','Para-Shoot Barrage drops 7 parachutes across a much wider formation instead of 3.',{skeleMainExtraDrops:4,skeleMainSpreadPct:.7}));
+  O('skeleflying',1,C('Epic','Dead-Air Encore','Every para-shoot landing calls down a smaller encore parachute on the same spot 0.55 seconds later.',{skeleDropEcho:1}));
+  O('skeleflying',2,C('Epic','Vacuum Landing Permit','Each falling skeleton drags nearby enemies into its landing marker immediately before exploding.',{skeleDropVacuum:260}));
+  O('skeleflying',3,C('Mythic','Surprise Skeleton Passenger','Every main-attack parachute leaves behind a temporary skeletrooper, even without Hypercharge.',{skeleMainPassenger:1}));
+  O('skeleflying',4,C('Mythic','Portal Constellation','Comin Down! opens 7 portals in a huge curved constellation instead of 3.',{skeleSuperExtraPortals:4,skeleSuperSpreadPct:.8}));
+  O('skeleflying',5,C('Mythic','Two Skeletons, One Chute','Every Super portal lands with 2 skeletroopers shoulder-to-shoulder.',{skelePortalTroopers:2}));
+  O('skeleflying',6,C('Legendary','Ossuary Titans','All summoned troopers become giant Bone Titans with 250% more HP, 80% larger sword swipes, and double sword damage.',{skeleTitanHpPct:2.5,skeleTitanSizePct:.7,skeleTitanSwordPct:1,skeleTitanSlashSizePct:.8}));
+  O('skeleflying',7,C('Exotic','THE SKY HAS BONES','Main attacks rain 9 homing parachutes that all leave troopers; Comin Down! tears open 12 moving portals, each carrying 2 troopers.',{skeleSkyTakeover:1}));
+  // Heater Miser's deck rewires the tether ramp, reconnection economy, Flux
+  // network, and Furnace Zone rather than borrowing generic projectile stats.
+  O('heater_miser',0,C('Epic','Industrial Extension Cord','Thermal Tether gains 70% lock and hold range. The starter spark and aiming line extend to match.',{heaterRangePct:.7}));
+  O('heater_miser',1,C('Epic','Microwave Preheat Button','Every new tether begins with 4 seconds of heat already built, starting at Ramp Stage 3.',{heaterPreheatMs:4000}));
+  O('heater_miser',2,C('Epic','Heat Insurance Policy','When a tether breaks, bank 70% of its ramp for 5 seconds. Your next connection resumes from that stored heat.',{heaterHeatBankPct:.7,heaterHeatBankMs:5000}));
+  O('heater_miser',3,C('Mythic','Neighborhood Heating Grid','Every tether tick chains to the 3 nearest matching targets at 65% power—even without Three-Way Flux.',{heaterFluxTargets:3,heaterFluxPowerPct:.65}));
+  O('heater_miser',4,C('Mythic','Closed-Loop Radiator','Hostile tether damage heals Heater Miser for 30% of every direct and chained heat tick.',{heaterFeedbackHealPct:.3}));
+  O('heater_miser',5,C('Mythic','Three-Furnace Problem','Intergalactic Heat creates 3 Furnace Zones in a triangular formation instead of one.',{heaterExtraZones:2}));
+  O('heater_miser',6,C('Legendary','Stage Seven: Core Meltdown','At maximum ramp, Thermal Tether detonates a 420-damage heat blast around its target every 0.9 seconds.',{heaterMeltdownDamage:420,heaterMeltdownRadius:180}));
+  O('heater_miser',7,C('Exotic','GLOBAL WARMING SPEEDRUN','Thermal Tether has map-wide range, ignores walls, begins at Stage 7, and chains to 5 targets. Intergalactic Heat creates 5 pulling Furnace Zones.',{heaterGlobalHeating:1}));
   O('classy',7,C('Exotic','Endless Encore','Note Burst has unlimited ammo, infinite range, perfect homing, and pierces every enemy.',{classyEndlessEncore:1}));
   O('outlit',0,C('Epic','Open-Faced Scatter','Scatter Pump opens into a much wider fan and fires 2 extra pellets.',{outlitSpreadMult:1.85,outlitExtraPellets:2}));
   O('outlit',1,C('Epic','Cannonball Crumbs','Pellets become 70% larger but travel 15% slower.',{outlitProjectileSizePct:.7,outlitProjectileSpeedPct:-.15}));
@@ -126,6 +199,14 @@
   O('robber',5,C('Mythic','Getaway Convoy','Grand Theft Ammo travels twice as far, steals from every enemy crossed and grants 2500 shield per victim.',{robberDashRangePct:1,robberVictimShield:2500}));
   O('robber',6,C('Legendary','Hostile Takeover','Casting Grand Theft Ammo grants 12 waves and 9 maximum ammo for 10 seconds.',{robberTakeoverMs:10000,robberTakeoverWaves:12,robberTakeoverAmmo:9}));
   O('robber',7,C('Exotic','The Perfect Crime','Stolen Fortune has unlimited ammo, fires 16 waves with infinite range, perfect homing and piercing; every hit steals ammo.',{robberPerfectCrime:1}));
+  O('blade_vane',0,C('Epic','Longsword License','Vane Cleave gains 45% reach and a wider swing arc.',{bladeVaneRangePct:.45,bladeVaneArcBonus:.18}));
+  O('blade_vane',1,C('Epic','Floor Is Blood','Every sword hit drops a damaging blood pool, even outside Hypercharge.',{bladeVaneBloodEveryHit:1}));
+  O('blade_vane',2,C('Epic','Five Percent Is Cowardice','Each Blood Cyclone step adds 12% damage instead of 5%.',{bladeVaneDamageStepPct:.07}));
+  O('blade_vane',3,C('Mythic','Vane Turbine','Each Blood Cyclone stage adds 35% swing speed instead of 20%.',{bladeVaneSpeedStepPct:.15}));
+  O('blade_vane',4,C('Mythic','Blood Bank','Blood Cyclone lifesteal increases from 20% to 40%.',{bladeVaneLifestealPct:.20}));
+  O('blade_vane',5,C('Mythic','Room-Sized Cyclone','Blood Cyclone’s opening blast becomes 65% larger.',{bladeVaneCycloneRadiusPct:.65}));
+  O('blade_vane',6,C('Legendary','Six Seconds Was Nothing','Blood Cyclone lasts 6 additional seconds.',{bladeVaneFrenzyBonusMs:6000}));
+  O('blade_vane',7,C('Exotic','THE RED WEDDING','Every swing permanently uses maximum frenzy speed, drops blood, and consumes no ammo.',{bladeVaneRedWedding:1,bladeVaneBloodEveryHit:1}));
 
   window.SLOP_SUSHI_DECKS={};
   ids.forEach(id=>window.SLOP_SUSHI_DECKS[id]=D(id,decks[id]));

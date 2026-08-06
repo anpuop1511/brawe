@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
     <title>Arena Forge</title>
-    <link rel="stylesheet" href="./styles.css?v=20260721-pathbots1" />
+    <link rel="stylesheet" href="./styles.css?v=20260728-orbosuper1" />
   </head>
   <body>
     <div id="hud" style="display:none">
@@ -33,6 +33,7 @@
           <option value="overlord">Overlord (Exotic)</option>
         </select>
         <select id="brawlerSortSelect" style="padding:6px;border-radius:4px;margin-left:12px;background:#334;color:#fff;border:none">
+          <option value="newest">🆕 Newest to Oldest</option>
           <option value="rarity-desc">⭐ Rarity (High)</option>
           <option value="rarity-asc">⭐ Rarity (Low)</option>
           <option value="power-level">💪 Power Level</option>
@@ -54,6 +55,7 @@
     <canvas id="gameCanvas"></canvas>
 
     <div id="homeScreen" style="position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;padding:14px 16px 20px;z-index:30;background:linear-gradient(160deg,rgba(3,7,16,0.82),rgba(5,11,22,0.76));font-family:'Trebuchet MS','Gill Sans','Verdana',sans-serif;pointer-events:none;overflow-y:auto;">
+      <div class="home-atmosphere" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
       <div id="homePanel" style="width:min(1060px,calc(100vw - 28px));display:flex;flex-direction:column;gap:12px;pointer-events:auto;background:linear-gradient(165deg,rgba(8,16,34,0.94),rgba(6,11,24,0.92));border:1px solid rgba(140,190,255,0.24);border-radius:18px;box-shadow:0 16px 40px rgba(0,0,0,0.35);padding:14px;">
 
         <!-- Header -->
@@ -66,11 +68,18 @@
           <button id="fullscreenBtn" type="button" aria-label="Enter fullscreen" style="min-height:44px;padding:9px 13px;border-radius:12px;border:1px solid rgba(93,220,255,.45);background:rgba(16,39,68,.92);color:#e8f8ff;font-weight:900;cursor:pointer;">⛶ Fullscreen</button>
         </div>
 
+        <div class="home-command-strip">
+          <div><b>FIGHT</b><span>Choose an event and forge your run</span></div>
+          <div class="home-command-strip__pulse"><i></i> LIVE ROTATIONS</div>
+          <div class="home-command-strip__hint">BRAWLER + MODE + PLAY</div>
+        </div>
+
         <!-- Main 2-column grid -->
         <div id="homeMain" style="display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:12px;align-items:start;">
 
           <!-- Left column: brawler card, rank card, play button, secondary actions -->
           <div id="homePlaySection" style="display:flex;flex-direction:column;gap:9px;">
+            <div class="home-section-kicker">YOUR LOADOUT</div>
             <div id="homeBrawlerCard" style="background:linear-gradient(145deg,rgba(8,18,42,0.96),rgba(6,13,30,0.92));border:1px solid rgba(140,190,255,0.2);border-radius:13px;padding:13px;min-height:78px;"></div>
             <div id="homeRankCard" style="background:linear-gradient(145deg,rgba(28,20,6,0.96),rgba(18,13,4,0.92));border:1px solid rgba(255,209,100,0.24);border-radius:13px;padding:11px;"></div>
             <button id="startMatch" style="padding:13px 16px;border-radius:12px;background:linear-gradient(135deg,#5df2c2,#29c996);border:none;font-weight:900;cursor:pointer;font-family:inherit;font-size:15px;color:#041810;width:100%;box-shadow:0 4px 20px rgba(93,242,194,0.26);letter-spacing:0.02em;">▶ Start Solo Showdown</button>
@@ -81,6 +90,7 @@
 
           <!-- Right column: mode selection -->
           <div id="homeModesSection" style="display:flex;flex-direction:column;gap:9px;">
+            <div class="home-event-heading"><span>EVENT BOARD</span><small>CHOOSE YOUR BATTLE</small></div>
             <div style="font-weight:900;color:#cfeef7;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.85;">Event Board</div>
             <div id="homeModeCompactRow" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;"></div>
             <div id="showdownModeRow" style="display:none;gap:8px;flex-wrap:wrap;"></div>
@@ -97,7 +107,7 @@
       </div>
     </div>
 
-    <script src="./slopsushi-cards.js?v=20260721-rosterrestore2"></script>
-    <script src="./bootstrap.js?v=20260721-rosterrestore2"></script>
+    <script src="./slopsushi-cards.js?v=20260729-adlof1"></script>
+    <script src="./bootstrap.js?v=20260806-roster-recover2"></script>
   </body>
 </html>

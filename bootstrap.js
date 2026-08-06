@@ -22,14 +22,43 @@ if (legacyCanvas) legacyCanvas.style.display = 'block';
 if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
-const gameScript = document.createElement('script');
-// Keep this release token aligned with index.html. GitHub Pages and browsers
-// may cache the large runtime, so a versioned URL ensures new game content is
-// loaded immediately after a deployment.
-gameScript.src = './game.js?v=20260721-rosterrestore2';
-gameScript.addEventListener('load', () => { if (homeScreen) homeScreen.style.display = ''; });
-gameScript.addEventListener('error', () => {
+const RELEASE_TOKEN = '20260806-roster-recover2';
+
+function loadClassicScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = `${src}?v=${RELEASE_TOKEN}`;
+    script.addEventListener('load', () => resolve(src));
+    script.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)));
+    document.body.appendChild(script);
+  });
+}
+
+async function startLegacyRuntime() {
+  // These are classic scripts rather than ES modules so local file downloads
+  // continue working on mobile browsers without a web server.
+  const moduleFiles = [
+    './modules/core/registry.js',
+    './modules/brawlers/common/roster.js',
+    './modules/brawlers/common/outlit.js',
+    './modules/brawlers/rare/roster.js',
+    './modules/brawlers/super-rare/roster.js',
+    './modules/brawlers/epic/roster.js',
+    './modules/brawlers/mythic/roster.js',
+    './modules/brawlers/legendary/roster.js',
+    './modules/brawlers/exotic/roster.js'
+  ];
+
+  for (const file of moduleFiles) {
+    await loadClassicScript(file);
+    window.ArenaForgeModules?.loadedFiles.push(file);
+  }
+
+  await loadClassicScript('./game.js');
   if (homeScreen) homeScreen.style.display = '';
-  homeScreen?.insertAdjacentHTML('afterbegin','<div style="padding:10px;border:2px solid #ff6b81;border-radius:10px;background:#260d19;color:#ffe8ee;font-weight:900">Game script failed to load. Refresh this page once.</div>');
+}
+
+startLegacyRuntime().catch((error) => {
+  if (homeScreen) homeScreen.style.display = '';
+  homeScreen?.insertAdjacentHTML('afterbegin', `<div style="padding:10px;border:2px solid #ff6b81;border-radius:10px;background:#260d19;color:#ffe8ee;font-weight:900">${error.message}. Refresh this page once.</div>`);
 });
-document.body.appendChild(gameScript);
