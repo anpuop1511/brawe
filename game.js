@@ -21020,7 +21020,7 @@
       owner.fastpassHyperTravelEligible = !!hyper;
       owner.fastpassTravelLastX = owner.x;
       owner.fastpassTravelLastY = owner.y;
-      explosions.push({x:owner.x,y:owner.y,radius,life:0,maxLife:.42,color:hyper?'rgba(222,90,255,.72)':'rgba(70,232,255,.72)',legendary:true,fxKind:'fastpassLane'});
+      explosions.push({x:owner.x,y:owner.y,radius,life:0,maxLife:.52,color:hyper?'rgba(222,90,255,.72)':'rgba(70,232,255,.72)',legendary:true,fxKind:'fastpassLane',hyperVisual:!!hyper});
   }
 
   function triggerFastpassHealingAura(owner) {
@@ -34400,7 +34400,7 @@
 
     for (const entity of [player, ...bots]) {
         if(entity&&entity.hp>0&&performance.now()<(entity.fastpassLaneFxUntil||0)){
-            const pulse=1+Math.sin(performance.now()/110)*.08;ctx.save();ctx.strokeStyle=(entity.fastpassLaneSpeedMult||1)>=1.8?'#e37bff':'#55efff';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=14;ctx.lineWidth=3;ctx.beginPath();ctx.arc(entity.x,entity.y,(entity.radius+9)*pulse,0,Math.PI*2);ctx.stroke();ctx.restore();
+            const now=performance.now(),hyper=(entity.fastpassLaneSpeedMult||1)>=1.8,pulse=1+Math.sin(now/105)*.07,primary=hyper?'#df72ff':'#55efff',secondary=hyper?'#ff80dc':'#dfffff';ctx.save();ctx.translate(entity.x,entity.y);ctx.shadowColor=primary;ctx.shadowBlur=18;ctx.fillStyle=hyper?'rgba(181,63,255,.11)':'rgba(52,225,255,.09)';ctx.beginPath();ctx.arc(0,0,(entity.radius+18)*pulse,0,Math.PI*2);ctx.fill();ctx.strokeStyle=primary;ctx.lineWidth=3.5;ctx.setLineDash([10,6]);ctx.lineDashOffset=-now/24;ctx.beginPath();ctx.arc(0,0,(entity.radius+15)*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle=secondary;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,(entity.radius+8)*(2-pulse),0,Math.PI*2);ctx.stroke();ctx.rotate(now/430);for(let i=0;i<4;i++){ctx.rotate(Math.PI/2);const r=entity.radius+21;ctx.strokeStyle=i%2?secondary:primary;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(r-7,-5);ctx.lineTo(r,0);ctx.lineTo(r-7,5);ctx.stroke();}ctx.restore();
         }
         if(entity&&entity.hp>0&&performance.now()<(entity.fastpassHealAuraUntil||0)){
             const now=performance.now(),remaining=clamp(((entity.fastpassHealAuraUntil||0)-now)/500,0,1),pulse=1+Math.sin((now-(entity.fastpassHealAuraPulseAt||now))/60)*.06;ctx.save();ctx.globalAlpha=.38+.42*remaining;ctx.fillStyle='rgba(174,73,255,.18)';ctx.strokeStyle='#d879ff';ctx.shadowColor='#b94dff';ctx.shadowBlur=22;ctx.lineWidth=4;ctx.beginPath();ctx.arc(entity.x,entity.y,117*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.globalAlpha=.75*remaining;ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(entity.x,entity.y,93*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
@@ -36881,8 +36881,11 @@
             ctx.restore();
             continue;
         }
-        ctx.beginPath();
         const alpha = Math.max(0, 1 - ex.life/ex.maxLife);
+        if(ex.fxKind==='fastpassLane'){
+            const progress=clamp(ex.life/ex.maxLife,0,1),ease=1-Math.pow(1-progress,3),hyper=!!ex.hyperVisual,primary=hyper?'223,92,255':'69,235,255',secondary=hyper?'255,103,220':'220,255,255',rotation=(performance.now()/360)*(hyper?-1:1);ctx.save();ctx.translate(ex.x,ex.y);ctx.globalCompositeOperation='lighter';const glow=ctx.createRadialGradient(0,0,0,0,0,ex.radius*.58);glow.addColorStop(0,`rgba(${secondary},${alpha*.42})`);glow.addColorStop(.38,`rgba(${primary},${alpha*.22})`);glow.addColorStop(1,`rgba(${primary},0)`);ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,ex.radius*.58,0,Math.PI*2);ctx.fill();ctx.rotate(rotation);for(let ring=0;ring<3;ring++){const r=ex.radius*(.16+ease*(.48+ring*.18));ctx.strokeStyle=`rgba(${ring===1?secondary:primary},${alpha*(.95-ring*.18)})`;ctx.lineWidth=hyper?5-ring:4-ring*.7;ctx.setLineDash(ring===1?[18,10]:[]);ctx.lineDashOffset=ring===1?-performance.now()/14:0;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);const streaks=hyper?24:16;for(let i=0;i<streaks;i++){const a=i*Math.PI*2/streaks+(i%2?progress*.16:-progress*.11),inner=ex.radius*(.13+progress*.14),outer=ex.radius*(.42+ease*(.46+(i%3)*.035));ctx.strokeStyle=`rgba(${i%3===0?secondary:primary},${alpha*(i%2?.72:.95)})`;ctx.lineWidth=i%3===0?3.5:2;ctx.beginPath();ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);ctx.lineTo(Math.cos(a)*outer,Math.sin(a)*outer);ctx.stroke();}for(let i=0;i<6;i++){const a=i*Math.PI/3-progress*.7,r=ex.radius*(.28+ease*.48),size=hyper?13:10;ctx.save();ctx.translate(Math.cos(a)*r,Math.sin(a)*r);ctx.rotate(a);ctx.strokeStyle=`rgba(${secondary},${alpha*.9})`;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-size,-size*.55);ctx.lineTo(0,0);ctx.lineTo(-size,size*.55);ctx.stroke();ctx.restore();}ctx.restore();continue;
+        }
+        ctx.beginPath();
         if (ex.color === '#f1c40f' && ex.fxKind === 'takedown') {
             // Custom takedown rendering for Gold and Silver
             // We draw shiny gold and silver rotating rings/streaks!

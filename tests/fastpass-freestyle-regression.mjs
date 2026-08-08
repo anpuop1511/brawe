@@ -35,6 +35,9 @@ assert.match(game, /Math\.min\(1\.88, multiplier\)/, 'Fastpass maximum stacked m
 assert.match(game, /projectileSpeed=900\*\.6\*\(1\+momentum\*\.8\)/, 'Fastpass projectile-speed Momentum scaling caps at 80%');
 assert.match(game, /fastpassLaneDamageMult = 1\.15/, 'Fast Lane grants 15% damage for seven seconds');
 assert.match(game, /addFastpassMomentum\(player,\.32,true\)/, 'Green Light grants 32% Momentum');
+assert.match(game, /fxKind:'fastpassLane',hyperVisual:!!hyper/, 'Fast Lane launch burst preserves its normal or Hyper visual identity');
+assert.match(game, /if\(ex\.fxKind==='fastpassLane'\)/, 'Fast Lane uses its custom layered pulse renderer');
+assert.match(game, /const streaks=hyper\?24:16/, 'Express Route adds denser purple speed streaks');
 assert.match(game, /fastpassHyperTravelCharged.*< 50/, 'Movement Super recharge caps at 50%');
 assert.match(game, /distance >= \.5 && distance <= 30/, 'Tiny movement and teleports do not generate meaningful recharge');
 
