@@ -144,8 +144,8 @@
         const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
         if (brawlerId === 'fastpass' || brawlerId === 'freestyle') {
             const scale = 0.55 + (level - 1) * 0.045;
-            const p11Hp = brawlerId === 'fastpass' ? 6900 : 7400;
-            const p11Dmg = brawlerId === 'fastpass' ? 1050 : 1700;
+            const p11Hp = brawlerId === 'fastpass' ? 6600 : 7400;
+            const p11Dmg = brawlerId === 'fastpass' ? 1100 : 1850;
             return {
                 hp: Math.round(p11Hp * scale),
                 dmg: Math.round(p11Dmg * scale),
@@ -4303,9 +4303,9 @@
                 name:'Fastpass', role:'Support / Assassin', color:'#44e7ff',
                 desc:'Builds Momentum by landing twin speed tickets, then shares a perfectly timed team-wide push.',
                 attack:'Speed Ticket', attackDesc:'Fire 2 tickets. Every projectile hit adds 8% Momentum, increasing movement and projectile speed together up to 100%. Momentum decays after a hit drought.',
-                super:'Fast Lane', superDesc:'Instantly pulse around Fastpass. Allies inside at activation gain +60% movement speed and +20% damage for 7 seconds; the area does not linger.',
-                hyper:'Express Route: Speed from Fast Lane becomes +80%. Main attack fires 3 staggered tickets; each hit refreshes a quick purple healing aura attached to Fastpass and heals nearby allies for 850 HP. Real distance traveled can recharge up to 50% of the next Super.',
-                g1:'Green Light (Instantly gain 40% Momentum)',
+                super:'Fast Lane', superDesc:'Instantly pulse around Fastpass. Allies inside at activation gain +60% movement speed and +15% damage for 7 seconds; the area does not linger.',
+                hyper:'Express Route: Speed from Fast Lane becomes +80%. Main attack fires 3 staggered tickets; each hit refreshes a quick, enlarged purple aura that heals Fastpass for 350 HP and nearby teammates for 850 HP. Real distance traveled can recharge up to 50% of the next Super.',
+                g1:'Green Light (Instantly gain 32% Momentum)',
                 g2:'Express Checkpoint (5s checkpoint; each ally crossing gets +25% speed for 2.5s once)',
                 sp1:'Keep Rolling (Decay starts after 5s and is 50% slower)',
                 sp2:'Slipstream (At 64% Momentum, reload 15% faster and trails intensify)'
@@ -4313,13 +4313,13 @@
             'freestyle': {
                 name:'Freestyle', role:'Controller / Support', color:'#ff67d8',
                 desc:'Cycles through three instruments: precision disco poke, a spreading key cone, then a healing microphone pickup.',
-                attack:'Setlist', attackDesc:'Cycle Disco Ball -> DJ Board -> Microphone. The microphone remains as a pickup and heals Freestyle for 30% max HP.',
+                attack:'Setlist', attackDesc:'Cycle Disco Ball -> DJ Board -> Microphone. The microphone remains as a pickup and heals Freestyle for 25% max HP.',
                 super:'Center Stage', superDesc:'Launch 4 giant speakers through a medium-range cone. They explode for damage, and one designated speaker drops a microphone pickup.',
                 hyper:'Encore: heal 30% of all Setlist damage dealt. Center Stage speakers become temporary physical walls for 3 seconds after exploding.',
                 g1:'Bass Boost (The next DJ Board fires more keys in a wider cone; waits for that Setlist slot)',
                 g2:'Sound Check (Spawn a collectible microphone at a safe nearby position)',
                 sp1:'Crowd Favorite (Microphone pickup also heals nearby teammates for 700)',
-                sp2:'Remix (Hit with all three Setlist instruments in one cycle for +15% reload speed for 4s)'
+                sp2:'Remix (Hit with all three Setlist instruments in one cycle for +18% reload speed for 4s)'
             },
             'tower_core': { name: 'The Core', color: '#ffea00', role: 'Objective' },
             'turret': { name: 'Defensive Turret', color: '#00ffff', role: 'Defense' },
@@ -12742,7 +12742,7 @@
         if (brawler === 'upiedown' && performance.now() < (player.upiedownReloadBuffUntil || 0)) base *= 0.85;
         if (brawler === 'robber' && selectedStar === 'long' && maxAmmo > 3) base *= 0.75;
         if (brawler === 'fastpass' && selectedStar === 'long' && (player.fastpassMomentum || 0) >= .64) base /= 1.15;
-        if (brawler === 'freestyle' && performance.now() < (player.freestyleRemixUntil || 0)) base /= 1.15;
+        if (brawler === 'freestyle' && performance.now() < (player.freestyleRemixUntil || 0)) base /= 1.18;
         return (isSlopSushiMode && brawler === selectedBrawler)
             ? base * Math.max(0.4, 1 - getSlopEffectTotal('reloadPct'))
             : base;
@@ -13762,7 +13762,7 @@
       if ((entity.amplifierDamageBuffUntil || 0) > now) mult *= (entity.amplifierDamageBuffMult || AMPLIFIER_DAMAGE_BUFF_MULT);
       if ((entity.amplifierDamageDebuffUntil || 0) > now) mult *= (entity.amplifierDamageDebuffMult || AMPLIFIER_DAMAGE_DEBUFF_MULT);
       if ((entity.amplifierScrewDamageMultUntil || 0) > now) mult *= (entity.amplifierScrewDamageMult || 1);
-      if ((entity.fastpassLaneUntil || 0) > now) mult *= entity.fastpassLaneDamageMult || 1.20;
+      if ((entity.fastpassLaneUntil || 0) > now) mult *= entity.fastpassLaneDamageMult || 1.15;
       if (isSlopSushiMode) {
           mult *= 1 + getEntitySlopEffectTotal(entity, 'damagePct');
           if (entity.hp <= entity.maxHp * 0.35) mult *= 1 + getEntitySlopEffectTotal(entity, 'lowHpDamagePct');
@@ -15640,7 +15640,7 @@
         }
     let fireDelay = isBot ? 920 : getFireDelay(brawler, isBot ? fromEntity : null);
     if(isBot&&brawler==='fastpass'&&fromEntity.selectedStar==='long'&&(fromEntity.fastpassMomentum||0)>=.64)fireDelay/=1.15;
-    if(isBot&&brawler==='freestyle'&&now<(fromEntity.freestyleRemixUntil||0))fireDelay/=1.15;
+    if(isBot&&brawler==='freestyle'&&now<(fromEntity.freestyleRemixUntil||0))fireDelay/=1.18;
     if (brawler === 'duck') fireDelay = isBot ? 170 : 92;
     if (isBot && fromEntity.isImpossibleAI) fireDelay *= 0.72;
     if (!isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getSlopEffectTotal('fireDelayPct'));
@@ -15728,7 +15728,7 @@
         const momentum=clamp(fromEntity.fastpassMomentum||0,0,1);
         const hyper=isBot?isEntityHyperchargedNow(fromEntity,now):!!isHypercharged;
         const count=hyper?3:2;
-        const projectileSpeed=900*.6*(1+momentum);
+        const projectileSpeed=900*.6*(1+momentum*.8);
         const range=790;
         for(let shot=0;shot<count;shot++){
             const lane=count===3?(shot-1)*.065:(shot===0?-.024:.024);
@@ -15736,7 +15736,7 @@
             const a=ang+lane;
             const launchTicket=()=>{
                 if(!playing||!fromEntity||fromEntity.hp<=0)return;
-                bullets.push({ownerBrawler:'fastpass',ownerId:fromEntity.id,isFastpassTicket:true,x:fromEntity.x+Math.cos(a)*(fromEntity.radius+8)+Math.cos(ang+Math.PI/2)*sideOffset,y:fromEntity.y+Math.sin(a)*(fromEntity.radius+8)+Math.sin(ang+Math.PI/2)*sideOffset,vx:Math.cos(a)*projectileSpeed,vy:Math.sin(a)*projectileSpeed,life:0,maxLife:range/projectileSpeed,damage:1050,pierce:false,hitIds:{},hitboxMod:1.15,hyperVisual:hyper,fastpassMomentumAtFire:momentum,fastpassStrongTrail:getEntityStarChoice(fromEntity)==='long'&&momentum>=.64});
+                bullets.push({ownerBrawler:'fastpass',ownerId:fromEntity.id,isFastpassTicket:true,x:fromEntity.x+Math.cos(a)*(fromEntity.radius+8)+Math.cos(ang+Math.PI/2)*sideOffset,y:fromEntity.y+Math.sin(a)*(fromEntity.radius+8)+Math.sin(ang+Math.PI/2)*sideOffset,vx:Math.cos(a)*projectileSpeed,vy:Math.sin(a)*projectileSpeed,life:0,maxLife:range/projectileSpeed,damage:1100,pierce:false,hitIds:{},hitboxMod:1.15,hyperVisual:hyper,fastpassMomentumAtFire:momentum,fastpassStrongTrail:getEntityStarChoice(fromEntity)==='long'&&momentum>=.64});
             };
             const delay=count===1?0:shot*(200/(count-1));
             if(delay===0)launchTicket();else setTimeout(launchTicket,delay);
@@ -15750,14 +15750,14 @@
         fromEntity.freestyleSetlistStage=(stage+1)%3;
         if(stage===0){
             const speed=940*.6,range=930;
-            bullets.push({ownerBrawler:'freestyle',ownerId:fromEntity.id,isFreestyleMain:true,isFreestyleDisco:true,freestyleStage:0,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+9),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+9),vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:range/speed,damage:1700,pierce:false,hitIds:{},hitboxMod:1.5,hyperVisual:hyper});
+            bullets.push({ownerBrawler:'freestyle',ownerId:fromEntity.id,isFreestyleMain:true,isFreestyleDisco:true,freestyleStage:0,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+9),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+9),vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:range/speed,damage:1850,pierce:false,hitIds:{},hitboxMod:1.65,hyperVisual:hyper});
         }else if(stage===1){
             const empowered=!!fromEntity.freestyleBassBoostArmed;
             const count=empowered?9:5,spread=empowered?.72:.46,speed=720*.6,range=560,sharedHits={};
             fromEntity.freestyleBassBoostArmed=false;
             for(let key=0;key<count;key++){
                 const lane=count===1?0:(key/(count-1)-.5),a=ang+lane*spread;
-                bullets.push({ownerBrawler:'freestyle',ownerId:fromEntity.id,isFreestyleMain:true,isFreestyleDJKey:true,freestyleStage:1,freestyleKeyIndex:key,freestyleKeyCount:count,x:fromEntity.x+Math.cos(a)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(a)*(fromEntity.radius+7),vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:0,maxLife:range/speed,damage:1428,pierce:true,hitIds:sharedHits,hitboxMod:empowered?1.42:1.2,hyperVisual:hyper,bassBoosted:empowered});
+                bullets.push({ownerBrawler:'freestyle',ownerId:fromEntity.id,isFreestyleMain:true,isFreestyleDJKey:true,freestyleStage:1,freestyleKeyIndex:key,freestyleKeyCount:count,x:fromEntity.x+Math.cos(a)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(a)*(fromEntity.radius+7),vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:0,maxLife:range/speed,damage:1500,pierce:true,hitIds:sharedHits,hitboxMod:empowered?1.42:1.2,hyperVisual:hyper,bassBoosted:empowered});
             }
         }else{
             const speed=650*.6,range=540;
@@ -18907,7 +18907,7 @@
     else ang = bot.angle || 0;
 
     if (bot.brawler === 'fastpass' && g === 'g1') {
-      addFastpassMomentum(bot,.40,true); explosions.push({x:bot.x,y:bot.y,radius:58,life:0,maxLife:.24,color:'rgba(76,239,255,.68)'});
+      addFastpassMomentum(bot,.32,true); explosions.push({x:bot.x,y:bot.y,radius:58,life:0,maxLife:.24,color:'rgba(76,239,255,.68)'});
     } else if (bot.brawler === 'fastpass' && g === 'g2') {
       spawnFastpassCheckpoint(bot);
     } else if (bot.brawler === 'freestyle' && g === 'g1') {
@@ -19916,7 +19916,7 @@
     progressSeasonPassQuest('use_gadget');
     
     if (curBrawler === 'fastpass' && curGadget === 'g1') {
-      addFastpassMomentum(player,.40,true);explosions.push({x:player.x,y:player.y,radius:58,life:0,maxLife:.24,color:'rgba(76,239,255,.68)'});gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
+      addFastpassMomentum(player,.32,true);explosions.push({x:player.x,y:player.y,radius:58,life:0,maxLife:.24,color:'rgba(76,239,255,.68)'});gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
     } else if (curBrawler === 'fastpass' && curGadget === 'g2') {
       spawnFastpassCheckpoint(player);gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
     } else if (curBrawler === 'freestyle' && curGadget === 'g1') {
@@ -21012,7 +21012,7 @@
           if (Math.hypot(ally.x - owner.x, ally.y - owner.y) > radius + (ally.radius || 14)) continue;
           ally.fastpassLaneUntil = now + FASTPASS_LANE_DURATION_MS;
           ally.fastpassLaneSpeedMult = speedMult;
-          ally.fastpassLaneDamageMult = 1.20;
+          ally.fastpassLaneDamageMult = 1.15;
           ally.fastpassLaneFxUntil = now + FASTPASS_LANE_DURATION_MS;
           spawnFloatingText(ally.x, ally.y - 42, hyper ? 'EXPRESS LANE!' : 'FAST LANE!', hyper ? '#ef8cff' : '#55efff');
       }
@@ -21025,12 +21025,12 @@
 
   function triggerFastpassHealingAura(owner) {
       if (!owner) return;
-      const radius = 78;
+      const radius = 117;
       owner.fastpassHealAuraUntil = performance.now() + 500;
       owner.fastpassHealAuraPulseAt = performance.now();
       for (const ally of [player, ...bots]) {
           if (!ally || ally.hp <= 0 || !areAlliedEntities(owner, ally)) continue;
-          if (Math.hypot(ally.x - owner.x, ally.y - owner.y) <= radius + (ally.radius || 14)) doHeal(ally, 850);
+          if (Math.hypot(ally.x - owner.x, ally.y - owner.y) <= radius + (ally.radius || 14)) doHeal(ally, ally.id === owner.id ? 350 : 850);
       }
   }
 
@@ -21050,7 +21050,7 @@
           const index = freestyleMicrophones.indexOf(oldest);
           if (index >= 0) freestyleMicrophones.splice(index, 1);
       }
-      const mic = {x:spot.x,y:spot.y,ownerId:owner.id,team:getEntityTeam(owner),source,createdAt:performance.now(),expiresAt:performance.now()+10000,radius:15};
+      const mic = {x:spot.x,y:spot.y,ownerId:owner.id,team:getEntityTeam(owner),source,createdAt:performance.now(),expiresAt:performance.now()+12000,radius:15};
       freestyleMicrophones.push(mic);
       return mic;
   }
@@ -21081,7 +21081,7 @@
           const horizontal = Math.abs(Math.cos(angle)) < Math.abs(Math.sin(angle));
           const w = horizontal ? 112 : 28;
           const h = horizontal ? 28 : 112;
-          const wall={x:projectile.x-w/2,y:projectile.y-h/2,w,h,hp:999999,maxHp:999999,ownerId:null,freestyleSpeakerWall:true,unbreakable:true,expiresAt:performance.now()+3000};
+          const wall={x:projectile.x-w/2,y:projectile.y-h/2,w,h,hp:999999,maxHp:999999,ownerId:null,freestyleSpeakerWall:true,unbreakable:true,expiresAt:performance.now()+2500};
           destructibleWalls.push(wall);
           for(const entity of [player,...bots])if(entity&&entity.hp>0&&rectCircleCollides(wall.x,wall.y,wall.w,wall.h,entity.x,entity.y,entity.radius||14)){const safe=findNearestOpenSpot(entity.x,entity.y,(entity.radius||14)+2,180);entity.x=safe.x;entity.y=safe.y;}
       }
@@ -21102,7 +21102,7 @@
           if (!entity || entity.hp <= 0) continue;
           if (getEntityBrawlerId(entity) === 'fastpass') {
               const keepRolling = getEntityStarChoice(entity) === 'slow';
-              const delay = keepRolling ? 5000 : 3000;
+              const delay = keepRolling ? 5000 : 3500;
               if ((entity.fastpassMomentum || 0) > 0 && now - (entity.fastpassLastHitAt || 0) > delay) {
                   entity.fastpassMomentum = Math.max(0, entity.fastpassMomentum - (keepRolling ? .05 : .10) * dt);
               }
@@ -21139,7 +21139,7 @@
           const owner=getEntityById(mic.ownerId);
           if(!owner||owner.hp<=0){freestyleMicrophones.splice(i,1);continue;}
           if(Math.hypot(owner.x-mic.x,owner.y-mic.y)<=mic.radius+(owner.radius||14)){
-              doHeal(owner,owner.maxHp*.30);
+              doHeal(owner,owner.maxHp*.25);
               if(getEntityStarChoice(owner)==='slow'){
                   for(const ally of [player,...bots])if(ally&&ally.hp>0&&ally.id!==owner.id&&areAlliedEntities(owner,ally)&&Math.hypot(ally.x-owner.x,ally.y-owner.y)<=190)doHeal(ally,700);
                   explosions.push({x:owner.x,y:owner.y,radius:190,life:0,maxLife:.28,color:'rgba(114,255,220,.5)',fxKind:'freestyleCrowd'});
@@ -34403,7 +34403,7 @@
             const pulse=1+Math.sin(performance.now()/110)*.08;ctx.save();ctx.strokeStyle=(entity.fastpassLaneSpeedMult||1)>=1.8?'#e37bff':'#55efff';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=14;ctx.lineWidth=3;ctx.beginPath();ctx.arc(entity.x,entity.y,(entity.radius+9)*pulse,0,Math.PI*2);ctx.stroke();ctx.restore();
         }
         if(entity&&entity.hp>0&&performance.now()<(entity.fastpassHealAuraUntil||0)){
-            const now=performance.now(),remaining=clamp(((entity.fastpassHealAuraUntil||0)-now)/500,0,1),pulse=1+Math.sin((now-(entity.fastpassHealAuraPulseAt||now))/60)*.06;ctx.save();ctx.globalAlpha=.38+.42*remaining;ctx.fillStyle='rgba(174,73,255,.18)';ctx.strokeStyle='#d879ff';ctx.shadowColor='#b94dff';ctx.shadowBlur=22;ctx.lineWidth=4;ctx.beginPath();ctx.arc(entity.x,entity.y,78*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.globalAlpha=.75*remaining;ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(entity.x,entity.y,62*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+            const now=performance.now(),remaining=clamp(((entity.fastpassHealAuraUntil||0)-now)/500,0,1),pulse=1+Math.sin((now-(entity.fastpassHealAuraPulseAt||now))/60)*.06;ctx.save();ctx.globalAlpha=.38+.42*remaining;ctx.fillStyle='rgba(174,73,255,.18)';ctx.strokeStyle='#d879ff';ctx.shadowColor='#b94dff';ctx.shadowBlur=22;ctx.lineWidth=4;ctx.beginPath();ctx.arc(entity.x,entity.y,117*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.globalAlpha=.75*remaining;ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(entity.x,entity.y,93*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
         }
         if (entity && entity.hp > 0 && performance.now() < (entity.chickpigChickenUntil||0)) {
             const flap=Math.sin(performance.now()/75)*5;ctx.save();ctx.translate(entity.x,entity.y+entity.radius*.55);ctx.shadowColor=entity.chickpigChickenSpeedMult>=1.5?'#d66cff':'#ffd16b';ctx.shadowBlur=16;ctx.fillStyle='#fff4cf';ctx.beginPath();ctx.ellipse(0,0,entity.radius+8,11,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffbd32';ctx.beginPath();ctx.moveTo(entity.radius+5,-2);ctx.lineTo(entity.radius+15,2);ctx.lineTo(entity.radius+5,6);ctx.closePath();ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-5,0);ctx.lineTo(-18,-8-flap);ctx.moveTo(5,0);ctx.lineTo(18,-8+flap);ctx.stroke();ctx.restore();
