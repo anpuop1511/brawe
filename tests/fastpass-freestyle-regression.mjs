@@ -24,8 +24,11 @@ assert.match(game, /const count=hyper\?3:2/, 'Fastpass fires 2 tickets, or 3 dur
 assert.match(game, /Math\.hypot\(ally\.x - owner\.x, ally\.y - owner\.y\).*radius/, 'Fast Lane snapshots allies inside its initial pulse');
 assert.match(game, /fastpassLaneUntil\s*=\s*now \+ FASTPASS_LANE_DURATION_MS/, 'Fast Lane lasts seven seconds');
 assert.match(game, /fastpassLaneSpeedMult\s*=\s*speedMult/, 'Fast Lane stores its normal/hyper speed grant on affected allies');
-assert.match(game, /spawnFastpassHealPulse\(owner, target\.x, target\.y\)/, 'Every Hyper ticket hit creates its own healing pulse');
+assert.match(game, /triggerFastpassHealingAura\(owner\)/, 'Every Hyper ticket hit refreshes Fastpass\'s attached healing aura');
+assert.match(game, /owner\.fastpassHealAuraUntil = performance\.now\(\) \+ 1000/, 'Fastpass healing aura lasts one second');
+assert.match(game, /Math\.hypot\(ally\.x - owner\.x, ally\.y - owner\.y\)/, 'Healing is centered on Fastpass, not the enemy hit location');
 assert.match(game, /doHeal\(ally, 850\)/, 'Fastpass mini pulse heals 850 HP');
+assert.match(game, /strokeStyle='#d879ff'/, 'Fastpass healing aura is purple');
 assert.match(game, /fastpassHyperTravelCharged.*< 50/, 'Movement Super recharge caps at 50%');
 assert.match(game, /distance >= \.5 && distance <= 30/, 'Tiny movement and teleports do not generate meaningful recharge');
 
@@ -43,5 +46,8 @@ assert.match(game, /freestyleSetlistHitMask === 7/, 'Remix requires all three Se
 assert.match(game, /freestyleRemixUntil = performance\.now\(\) \+ 4000/, 'Remix lasts four seconds');
 assert.match(game, /if \(b\.hyperVisual && dealtDamage > 0\) doHeal\(owner, dealtDamage \* \.30\)/, 'Encore lifesteal is restricted to main-attack hit processing');
 assert.match(game, /freestyleSpeakerWall:true.*expiresAt:performance\.now\(\)\+3000/, 'Encore speaker walls expire after three seconds');
+assert.match(game, /count=4,speed=590\*\.6,range=430/, 'Center Stage uses medium range');
+assert.match(game, /freestyleDropsMic:n===1/, 'Only one designated Center Stage speaker drops a microphone');
+assert.match(game, /if \(projectile\.freestyleDropsMic\) spawnFreestyleMicrophone/, 'Non-designated speakers cannot flood the map with microphones');
 
 console.log('Fastpass/Freestyle regression suite passed.');
