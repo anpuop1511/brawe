@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
     <title>Arena Forge</title>
-    <link rel="stylesheet" href="./styles.css?v=20260728-orbosuper1" />
+    <link rel="stylesheet" href="./styles.css?v=20260808-perf1" />
   </head>
   <body>
     <div id="hud" style="display:none">
@@ -65,13 +65,14 @@
             <div style="color:#6a9abf;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-top:3px;">Quick Play · Ranked · Duels · Training</div>
           </div>
           <div id="homeCurrencyBar" style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;"></div>
+          <div id="homeQuickActions" aria-label="Progress and quest shortcuts"></div>
           <button id="fullscreenBtn" type="button" aria-label="Enter fullscreen" style="min-height:44px;padding:9px 13px;border-radius:12px;border:1px solid rgba(93,220,255,.45);background:rgba(16,39,68,.92);color:#e8f8ff;font-weight:900;cursor:pointer;">⛶ Fullscreen</button>
         </div>
 
         <div class="home-command-strip">
-          <div><b>FIGHT</b><span>Choose an event and forge your run</span></div>
-          <div class="home-command-strip__pulse"><i></i> LIVE ROTATIONS</div>
-          <div class="home-command-strip__hint">BRAWLER + MODE + PLAY</div>
+          <div><b>BATTLE LOBBY</b><span>Build your loadout, choose an event, then play</span></div>
+          <div class="home-command-strip__pulse"><i></i> EVENTS ONLINE</div>
+          <div class="home-command-strip__hint">SEASON 2 · BATTLE OF THE TOWERS</div>
         </div>
 
         <!-- Main 2-column grid -->
@@ -79,18 +80,18 @@
 
           <!-- Left column: brawler card, rank card, play button, secondary actions -->
           <div id="homePlaySection" style="display:flex;flex-direction:column;gap:9px;">
-            <div class="home-section-kicker">YOUR LOADOUT</div>
+            <div class="home-section-kicker">SELECTED BRAWLER</div>
             <div id="homeBrawlerCard" style="background:linear-gradient(145deg,rgba(8,18,42,0.96),rgba(6,13,30,0.92));border:1px solid rgba(140,190,255,0.2);border-radius:13px;padding:13px;min-height:78px;"></div>
             <div id="homeRankCard" style="background:linear-gradient(145deg,rgba(28,20,6,0.96),rgba(18,13,4,0.92));border:1px solid rgba(255,209,100,0.24);border-radius:13px;padding:11px;"></div>
-            <button id="startMatch" style="padding:13px 16px;border-radius:12px;background:linear-gradient(135deg,#5df2c2,#29c996);border:none;font-weight:900;cursor:pointer;font-family:inherit;font-size:15px;color:#041810;width:100%;box-shadow:0 4px 20px rgba(93,242,194,0.26);letter-spacing:0.02em;">▶ Start Solo Showdown</button>
+            <button id="startMatch" style="padding:13px 16px;border-radius:12px;background:linear-gradient(135deg,#5df2c2,#29c996);border:none;font-weight:900;cursor:pointer;font-family:inherit;font-size:15px;color:#041810;width:100%;box-shadow:0 4px 20px rgba(93,242,194,0.26);letter-spacing:0.02em;">PLAY</button>
             <div id="homeActionRow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-              <button id="brawlerBtn" class="home-action-btn" style="background:rgba(244,162,97,0.12);border-color:rgba(244,162,97,0.38);color:#f4a261;">👤 Brawler</button>
+              <button id="brawlerBtn" class="home-action-btn" style="background:rgba(244,162,97,0.12);border-color:rgba(244,162,97,0.38);color:#f4a261;"><span class="home-nav-icon">👤</span><span><b>BRAWLERS</b><small>Choose & upgrade</small></span></button>
             </div>
           </div>
 
           <!-- Right column: mode selection -->
           <div id="homeModesSection" style="display:flex;flex-direction:column;gap:9px;">
-            <div class="home-event-heading"><span>EVENT BOARD</span><small>CHOOSE YOUR BATTLE</small></div>
+            <div class="home-event-heading"><span>EVENTS</span><small>CHOOSE YOUR BATTLE</small></div>
             <div style="font-weight:900;color:#cfeef7;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.85;">Event Board</div>
             <div id="homeModeCompactRow" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;"></div>
             <div id="showdownModeRow" style="display:none;gap:8px;flex-wrap:wrap;"></div>
@@ -107,7 +108,7 @@
       </div>
     </div>
 
-    <script src="./slopsushi-cards.js?v=20260729-adlof1"></script>
-    <script src="./bootstrap.js?v=20260806-retirednine1"></script>
+    <script src="./slopsushi-cards.js?v=20260808-fastpass-freestyle1"></script>
+    <script src="./bootstrap.js?v=20260808-fastpass-freestyle1"></script>
   </body>
 </html>
