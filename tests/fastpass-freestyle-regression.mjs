@@ -25,10 +25,12 @@ assert.match(game, /Math\.hypot\(ally\.x - owner\.x, ally\.y - owner\.y\).*radiu
 assert.match(game, /fastpassLaneUntil\s*=\s*now \+ FASTPASS_LANE_DURATION_MS/, 'Fast Lane lasts seven seconds');
 assert.match(game, /fastpassLaneSpeedMult\s*=\s*speedMult/, 'Fast Lane stores its normal/hyper speed grant on affected allies');
 assert.match(game, /triggerFastpassHealingAura\(owner\)/, 'Every Hyper ticket hit refreshes Fastpass\'s attached healing aura');
-assert.match(game, /owner\.fastpassHealAuraUntil = performance\.now\(\) \+ 1000/, 'Fastpass healing aura lasts one second');
+assert.match(game, /owner\.fastpassHealAuraUntil = performance\.now\(\) \+ 500/, 'Fastpass healing aura is a quick half-second pulse');
 assert.match(game, /Math\.hypot\(ally\.x - owner\.x, ally\.y - owner\.y\)/, 'Healing is centered on Fastpass, not the enemy hit location');
 assert.match(game, /doHeal\(ally, 850\)/, 'Fastpass mini pulse heals 850 HP');
 assert.match(game, /strokeStyle='#d879ff'/, 'Fastpass healing aura is purple');
+assert.match(game, /shot\*\(200\/\(count-1\)\)/, 'Fastpass tickets fire left-to-right across a 0.2-second cadence');
+assert.match(game, /Math\.min\(1\.88, multiplier\)/, 'Fastpass maximum stacked movement speed is reduced by 20%');
 assert.match(game, /fastpassHyperTravelCharged.*< 50/, 'Movement Super recharge caps at 50%');
 assert.match(game, /distance >= \.5 && distance <= 30/, 'Tiny movement and teleports do not generate meaningful recharge');
 

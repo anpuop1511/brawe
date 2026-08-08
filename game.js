@@ -4304,7 +4304,7 @@
                 desc:'Builds Momentum by landing twin speed tickets, then shares a perfectly timed team-wide push.',
                 attack:'Speed Ticket', attackDesc:'Fire 2 tickets. Every projectile hit adds 8% Momentum, increasing movement and projectile speed together up to 100%. Momentum decays after a hit drought.',
                 super:'Fast Lane', superDesc:'Instantly pulse around Fastpass. Allies inside at activation gain +60% movement speed and +20% damage for 7 seconds; the area does not linger.',
-                hyper:'Express Route: Speed from Fast Lane becomes +80%. Main attack fires 3 tickets; each hit refreshes a purple 1-second healing aura attached to Fastpass and heals nearby allies for 850 HP. Real distance traveled can recharge up to 50% of the next Super.',
+                hyper:'Express Route: Speed from Fast Lane becomes +80%. Main attack fires 3 staggered tickets; each hit refreshes a quick purple healing aura attached to Fastpass and heals nearby allies for 850 HP. Real distance traveled can recharge up to 50% of the next Super.',
                 g1:'Green Light (Instantly gain 40% Momentum)',
                 g2:'Express Checkpoint (5s checkpoint; each ally crossing gets +25% speed for 2.5s once)',
                 sp1:'Keep Rolling (Decay starts after 5s and is 50% slower)',
@@ -15734,7 +15734,12 @@
             const lane=count===3?(shot-1)*.065:(shot===0?-.024:.024);
             const sideOffset=count===2?(shot===0?-7:7):0;
             const a=ang+lane;
-            bullets.push({ownerBrawler:'fastpass',ownerId:fromEntity.id,isFastpassTicket:true,x:fromEntity.x+Math.cos(a)*(fromEntity.radius+8)+Math.cos(ang+Math.PI/2)*sideOffset,y:fromEntity.y+Math.sin(a)*(fromEntity.radius+8)+Math.sin(ang+Math.PI/2)*sideOffset,vx:Math.cos(a)*projectileSpeed,vy:Math.sin(a)*projectileSpeed,life:0,maxLife:range/projectileSpeed,damage:1050,pierce:false,hitIds:{},hitboxMod:1.15,hyperVisual:hyper,fastpassMomentumAtFire:momentum,fastpassStrongTrail:getEntityStarChoice(fromEntity)==='long'&&momentum>=.64});
+            const launchTicket=()=>{
+                if(!playing||!fromEntity||fromEntity.hp<=0)return;
+                bullets.push({ownerBrawler:'fastpass',ownerId:fromEntity.id,isFastpassTicket:true,x:fromEntity.x+Math.cos(a)*(fromEntity.radius+8)+Math.cos(ang+Math.PI/2)*sideOffset,y:fromEntity.y+Math.sin(a)*(fromEntity.radius+8)+Math.sin(ang+Math.PI/2)*sideOffset,vx:Math.cos(a)*projectileSpeed,vy:Math.sin(a)*projectileSpeed,life:0,maxLife:range/projectileSpeed,damage:1050,pierce:false,hitIds:{},hitboxMod:1.15,hyperVisual:hyper,fastpassMomentumAtFire:momentum,fastpassStrongTrail:getEntityStarChoice(fromEntity)==='long'&&momentum>=.64});
+            };
+            const delay=count===1?0:shot*(200/(count-1));
+            if(delay===0)launchTicket();else setTimeout(launchTicket,delay);
         }
         return;
     } else if (brawler === 'freestyle') {
@@ -20994,7 +20999,7 @@
       let multiplier = getEntityBrawlerId(entity) === 'fastpass' ? 1 + clamp(entity.fastpassMomentum || 0, 0, 1) : 1;
       if (now < (entity.fastpassLaneUntil || 0)) multiplier *= entity.fastpassLaneSpeedMult || 1;
       if (now < (entity.fastpassCheckpointBuffUntil || 0)) multiplier *= 1.25;
-      return Math.min(2.35, multiplier);
+      return Math.min(1.88, multiplier);
   }
 
   function castFastLane(owner, hyper = false) {
@@ -21021,7 +21026,7 @@
   function triggerFastpassHealingAura(owner) {
       if (!owner) return;
       const radius = 78;
-      owner.fastpassHealAuraUntil = performance.now() + 1000;
+      owner.fastpassHealAuraUntil = performance.now() + 500;
       owner.fastpassHealAuraPulseAt = performance.now();
       for (const ally of [player, ...bots]) {
           if (!ally || ally.hp <= 0 || !areAlliedEntities(owner, ally)) continue;
@@ -34398,7 +34403,7 @@
             const pulse=1+Math.sin(performance.now()/110)*.08;ctx.save();ctx.strokeStyle=(entity.fastpassLaneSpeedMult||1)>=1.8?'#e37bff':'#55efff';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=14;ctx.lineWidth=3;ctx.beginPath();ctx.arc(entity.x,entity.y,(entity.radius+9)*pulse,0,Math.PI*2);ctx.stroke();ctx.restore();
         }
         if(entity&&entity.hp>0&&performance.now()<(entity.fastpassHealAuraUntil||0)){
-            const now=performance.now(),remaining=clamp(((entity.fastpassHealAuraUntil||0)-now)/1000,0,1),pulse=1+Math.sin((now-(entity.fastpassHealAuraPulseAt||now))/80)*.06;ctx.save();ctx.globalAlpha=.38+.42*remaining;ctx.fillStyle='rgba(174,73,255,.18)';ctx.strokeStyle='#d879ff';ctx.shadowColor='#b94dff';ctx.shadowBlur=22;ctx.lineWidth=4;ctx.beginPath();ctx.arc(entity.x,entity.y,78*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.globalAlpha=.75*remaining;ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(entity.x,entity.y,62*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+            const now=performance.now(),remaining=clamp(((entity.fastpassHealAuraUntil||0)-now)/500,0,1),pulse=1+Math.sin((now-(entity.fastpassHealAuraPulseAt||now))/60)*.06;ctx.save();ctx.globalAlpha=.38+.42*remaining;ctx.fillStyle='rgba(174,73,255,.18)';ctx.strokeStyle='#d879ff';ctx.shadowColor='#b94dff';ctx.shadowBlur=22;ctx.lineWidth=4;ctx.beginPath();ctx.arc(entity.x,entity.y,78*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.globalAlpha=.75*remaining;ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(entity.x,entity.y,62*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
         }
         if (entity && entity.hp > 0 && performance.now() < (entity.chickpigChickenUntil||0)) {
             const flap=Math.sin(performance.now()/75)*5;ctx.save();ctx.translate(entity.x,entity.y+entity.radius*.55);ctx.shadowColor=entity.chickpigChickenSpeedMult>=1.5?'#d66cff':'#ffd16b';ctx.shadowBlur=16;ctx.fillStyle='#fff4cf';ctx.beginPath();ctx.ellipse(0,0,entity.radius+8,11,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffbd32';ctx.beginPath();ctx.moveTo(entity.radius+5,-2);ctx.lineTo(entity.radius+15,2);ctx.lineTo(entity.radius+5,6);ctx.closePath();ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-5,0);ctx.lineTo(-18,-8-flap);ctx.moveTo(5,0);ctx.lineTo(18,-8+flap);ctx.stroke();ctx.restore();
