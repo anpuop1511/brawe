@@ -142,6 +142,10 @@
 
     function getScaledStats(brawlerId, levelOverride) {
         const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
+        if (brawlerId === 'portalo') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6800 * scale), dmg: Math.round(1500 * scale), speed: 260 };
+        }
         if (brawlerId === 'fastpass' || brawlerId === 'freestyle') {
             const scale = 0.55 + (level - 1) * 0.045;
             const p11Hp = brawlerId === 'fastpass' ? 6600 : 7400;
@@ -1417,6 +1421,10 @@
     player.fastpassHyperTravelCharged = 0;
     player.fastpassHyperTravelEligible = false;
     player.fastpassHealAuraUntil = 0;
+    player.portaloReverseArmed = false;
+    player.portaloPortalCooldownUntil = 0;
+    player.portaloExitSpeedUntil = 0;
+    player.portaloArrivalPairId = null;
     player.freestyleSetlistStage = 0;
     player.freestyleSetlistHitMask = 0;
     player.freestyleSetlistFailed = false;
@@ -1663,6 +1671,9 @@
   const iceCreamPuddles = [];
   const fastpassCheckpoints = [];
   const freestyleMicrophones = [];
+  const portaloPortalPairs = [];
+  const portaloPrisons = [];
+  const portaloShockTimers = [];
   const snapperWaves = [];
   const chickpigEggZones = [];
   const rocketeerFireZones = [];
@@ -2155,7 +2166,7 @@
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle'
+        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -2232,6 +2243,7 @@
             unstable: 'Legendary',
             fastpass: 'Mythic',
             freestyle: 'Legendary',
+            portalo: 'Mythic',
             homer: 'Mythic',
             orbo: 'Legendary',
             predator: 'Mythic',
@@ -4321,6 +4333,17 @@
                 sp1:'Crowd Favorite (Microphone pickup also heals nearby teammates for 700)',
                 sp2:'Remix (Hit with all three Setlist instruments in one cycle for +18% reload speed for 4s)'
             },
+            'portalo': {
+                name:'Portalo', role:'Controller / Specialist', color:'#8d63ff',
+                desc:'A dimensional controller who displaces enemies, links the battlefield with portals, and bends projectiles through unstable space.',
+                attack:'Portal Shot', attackDesc:'Fire a long-range portal orb for 1500 damage. On hit, send the enemy 5 tiles backward and open a linked portal pair between both positions for 1.7 seconds.',
+                super:'Portal Prison', superDesc:'Throw a portal core that expands after 0.8 seconds. For 6 seconds, enemies inside deal 15% less damage and projectiles entering the field reappear at a random edge.',
+                hyper:'Portal Collapse: Portal Prison pulls enemies inward every second. Enemy travel through attack portals becomes one-way, while allies retain both directions. Attack portals last 2.5 seconds. +20% damage, +15% speed, +10% shield.',
+                g1:'Shortcut (Place a 4-second portal beneath Portalo and another at the aimed location)',
+                g2:'Reverse Route (Next Portal Shot teleports its victim 5 tiles toward Portalo)',
+                sp1:'Stable Portals (Attack portals last 2.5 seconds; allies exit with +15% speed for 2 seconds)',
+                sp2:'Portal Shock (Teleported enemies take 600 damage after 0.5 seconds unless they immediately travel back)'
+            },
             'tower_core': { name: 'The Core', color: '#ffea00', role: 'Objective' },
             'turret': { name: 'Defensive Turret', color: '#00ffff', role: 'Defense' },
             'wall_structure': { name: 'Reinforced Wall', color: '#a8b8c8', role: 'Barrier' },
@@ -4334,13 +4357,14 @@
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
         boomer:'Artillery', cluster:'Artillery', evil_doctor:'Artillery', fightnfire:'Artillery', rocketeer:'Artillery', skeleflying:'Artillery', splitter:'Artillery', trapper:'Artillery', upiedown:'Artillery',
         amplifier:'Support', angel:'Support', echo:'Support', fastpass:'Support', freestyle:'Support', hope:'Support', relay:'Support', sera_eclipse:'Support',
-        adlof:'Controller', daggershard:'Controller', decayer:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller',
+        adlof:'Controller', daggershard:'Controller', decayer:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller',
         beam:'Damage Dealer', duck:'Damage Dealer', fuser:'Damage Dealer', heater_miser:'Damage Dealer', minigunnin:'Damage Dealer', money_and_tax:'Damage Dealer', outlit:'Damage Dealer', steamer:'Damage Dealer',
         bouncin_balls:'Skirmisher', chickpig:'Skirmisher', classy:'Skirmisher', copyphase:'Skirmisher', goonbob:'Skirmisher', hoop:'Skirmisher', hyperorigin:'Skirmisher', robber:'Skirmisher'
     };
     for (const [id, role] of Object.entries(PRIMARY_ROLE_BY_BRAWLER)) if (brawlerData[id]) brawlerData[id].role = role;
 
     const brawlerPortraitIcons = {
+        portalo: '\u{1F300}',
         fastpass: '\u{1F3CE}\uFE0F',
         freestyle: '\u{1F3A7}',
         homer: '\u{1F3AF}',
@@ -9634,6 +9658,9 @@
         bullets.length = 0;
         fastpassCheckpoints.length = 0;
         freestyleMicrophones.length = 0;
+        portaloPortalPairs.length = 0;
+        portaloPrisons.length = 0;
+        portaloShockTimers.length = 0;
         snapperWaves.length = 0;
         chickpigEggZones.length = 0;
         rocketeerFireZones.length = 0;
@@ -11379,6 +11406,10 @@
         const combatTarget = target && !target.isPowerup && !target.isBox && !['center', 'cart'].includes(target.id);
         const allyInTrouble = context.support && (context.allies || []).some((ally) => Math.hypot(ally.x - bot.x, ally.y - bot.y) < 360 && ally.hp / Math.max(1, ally.maxHp) < 0.42);
         const objectiveEmergency = isObjectiveMode && Math.hypot(bot.x - objectiveZone.x, bot.y - objectiveZone.y) < (objectiveZone.r || 240) + 80 && combatTarget;
+        if (bot.brawler === 'portalo') {
+            const valuableTarget = !!(combatTarget && ((target.maxHp || 0) >= Math.max(6800, bot.maxHp || 0) || target.isArenaForgeStructure || target.isVault));
+            return context.hpPct < .48 || objectiveEmergency || (valuableTarget && distance < 760);
+        }
         if (context.impossible) return !!(combatTarget && (distance < 720 || context.hpPct < 0.7));
         if (context.hpPct < 0.42 || allyInTrouble || objectiveEmergency) return true;
         return !!(combatTarget && distance < (context.ranged ? 520 : 340) && Math.random() < 0.48);
@@ -11393,6 +11424,9 @@
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = isObjectiveMode && Math.hypot(target.x - objectiveZone.x, target.y - objectiveZone.y) < (objectiveZone.r || 240) + 80;
         const objectiveTarget = target.isVault || target.isArenaForgeStructure;
+        if (bot.brawler === 'portalo') {
+            return distance < 760 && (objectiveFight || objectiveTarget || clustered >= 2 || targetHpPct < .42 || context.hpPct < .32);
+        }
         if (context.impossible) return distance < 980;
         if (bot.isBoss || clustered >= 2 || objectiveFight || objectiveTarget || targetHpPct < 0.38 || context.hpPct < 0.3) return true;
         const goodRange = context.ranged ? distance < 820 : distance < 470;
@@ -12736,6 +12770,7 @@
             : 1740 * 1.15;
         if (brawler === 'fastpass') base = 1550;
         else if (brawler === 'freestyle') base = 1650;
+        else if (brawler === 'portalo') base = 1700;
         else if (brawler === 'angel') base = 1700;
         else if (brawler === 'demon') base = 1800;
         if (brawler === 'warrior' && performance.now() < (player.warriorStandUntil || 0)) base /= 2.40;
@@ -12758,6 +12793,7 @@
         if (brawler === 'steamer') return 0.95 * modeMult;
         if (brawler === 'warrior') return 0.88 * modeMult;
         if (brawler === 'snapper') return 0.76 * modeMult; // about seven Power 11 orb hits
+        if (brawler === 'portalo') return (2 / 3) * modeMult; // exactly 8 successful 1500-damage Portal Shots
         return 1.0 * modeMult;
   }
 
@@ -12786,7 +12822,7 @@
   }
 
   function startDuelsRound() {
-    bullets.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0;
+    bullets.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     rocketeerAirstrikes.length = 0;
@@ -13763,6 +13799,8 @@
       if ((entity.amplifierDamageDebuffUntil || 0) > now) mult *= (entity.amplifierDamageDebuffMult || AMPLIFIER_DAMAGE_DEBUFF_MULT);
       if ((entity.amplifierScrewDamageMultUntil || 0) > now) mult *= (entity.amplifierScrewDamageMult || 1);
       if ((entity.fastpassLaneUntil || 0) > now) mult *= entity.fastpassLaneDamageMult || 1.15;
+      if (isInsideEnemyPortaloPrison(entity, now)) mult *= .85;
+      if (getEntityBrawlerId(entity) === 'portalo' && isEntityHyperchargedNow(entity, now)) mult *= 1.20;
       if (isSlopSushiMode) {
           mult *= 1 + getEntitySlopEffectTotal(entity, 'damagePct');
           if (entity.hp <= entity.maxHp * 0.35) mult *= 1 + getEntitySlopEffectTotal(entity, 'lowHpDamagePct');
@@ -15724,7 +15762,26 @@
 
     // Recovery kits: these brawlers were restored to the roster from backup,
     // so route them through their own attacks instead of the generic projectile.
-    if (brawler === 'fastpass') {
+    if (brawler === 'portalo') {
+        const hyper = isEntityHyperchargedNow(fromEntity, now);
+        const reverse = !!fromEntity.portaloReverseArmed;
+        fromEntity.portaloReverseArmed = false;
+        if (!isBot && reverse) {
+            gadgetArmed = false;
+            gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+            updateGadgetButton();
+        }
+        const speed = 820 * .6;
+        const range = 900;
+        bullets.push({
+            ownerBrawler:'portalo',ownerId:fromEntity.id,isPortaloShot:true,
+            x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+9),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+9),
+            vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:range/speed,
+            damage:1500,pierce:false,hitIds:{},hitboxMod:1.65,
+            portaloReverse:reverse,portaloHyperAtFire:hyper,hyperVisual:hyper
+        });
+        return;
+    } else if (brawler === 'fastpass') {
         const momentum=clamp(fromEntity.fastpassMomentum||0,0,1);
         const hyper=isBot?isEntityHyperchargedNow(fromEntity,now):!!isHypercharged;
         const count=hyper?3:2;
@@ -17888,6 +17945,7 @@
     const mult = (selectedStar === 'long') ? 1.38 : 1.0;
     const combatBrawler = getCombatBrawler(player, false);
 
+    if (combatBrawler === 'portalo') { castPortaloSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'fastpass') { castFastLane(player,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'freestyle') { castFreestyleSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'rocketeer') { castRocketeerSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return; }
@@ -18897,7 +18955,13 @@
     if (now >= getEntityGadgetCooldownUntil(bot, 'g1', now)) ready.push('g1');
     if (now >= getEntityGadgetCooldownUntil(bot, 'g2', now)) ready.push('g2');
     if (!ready.length) return;
-    const g = ready[Math.floor(Math.random() * ready.length)];
+    let g = ready[Math.floor(Math.random() * ready.length)];
+    if (bot.brawler === 'portalo') {
+      const highValueTarget = !!(target && !target.isPowerup && !target.isBox && ((target.maxHp || 0) >= Math.max(6800, bot.maxHp || 0) || target.isArenaForgeStructure || target.isVault));
+      if (bot.hp < bot.maxHp * .48 && ready.includes('g1')) g = 'g1';
+      else if (highValueTarget && ready.includes('g2')) g = 'g2';
+      else if (ready.includes('g1')) g = 'g1';
+    }
     bot.selectedGadget = g;
     setEntityGadgetCooldownUntil(bot, now + getGadgetCooldownMsForBrawler(bot.brawler, g), g);
 
@@ -18906,7 +18970,20 @@
     if (target) ang = Math.atan2(target.y - bot.y, target.x - bot.x);
     else ang = bot.angle || 0;
 
-    if (bot.brawler === 'fastpass' && g === 'g1') {
+    if (bot.brawler === 'portalo' && g === 'g1') {
+      const targetDistance = target ? Math.hypot(target.x-bot.x,target.y-bot.y) : 0;
+      let aimX = target ? target.x : bot.x + Math.cos(ang) * 280;
+      let aimY = target ? target.y : bot.y + Math.sin(ang) * 280;
+      if (target && bot.hp < bot.maxHp * .45) {
+          const away = Math.atan2(bot.y-target.y,bot.x-target.x);
+          aimX = bot.x + Math.cos(away) * Math.max(300, Math.min(520, targetDistance));
+          aimY = bot.y + Math.sin(away) * Math.max(300, Math.min(520, targetDistance));
+      }
+      createPortaloPortalPair(bot,bot.x,bot.y,aimX,aimY,4000,{shortcut:true});
+    } else if (bot.brawler === 'portalo' && g === 'g2') {
+      bot.portaloReverseArmed=true;
+      spawnFloatingText(bot.x,bot.y-34,'REVERSE ROUTE READY','#bb91ff');
+    } else if (bot.brawler === 'fastpass' && g === 'g1') {
       addFastpassMomentum(bot,.32,true); explosions.push({x:bot.x,y:bot.y,radius:58,life:0,maxLife:.24,color:'rgba(76,239,255,.68)'});
     } else if (bot.brawler === 'fastpass' && g === 'g2') {
       spawnFastpassCheckpoint(bot);
@@ -19257,6 +19334,7 @@
     const now = performance.now();
     const dx = targetX - bot.x; const dy = targetY - bot.y; const ang = Math.atan2(dy, dx);
 
+        if (botCombatBrawler === 'portalo') { castPortaloSuper(bot,isHyper,targetX,targetY); return; }
         if (botCombatBrawler === 'fastpass') { castFastLane(bot,isHyper); return; }
         if (botCombatBrawler === 'freestyle') { castFreestyleSuper(bot,isHyper,targetX,targetY); return; }
         if (botCombatBrawler === 'rocketeer') { castRocketeerSuper(bot,isHyper,targetX,targetY); return; }
@@ -19915,7 +19993,15 @@
     addEventQuestProgress('use_gadget');
     progressSeasonPassQuest('use_gadget');
     
-    if (curBrawler === 'fastpass' && curGadget === 'g1') {
+    if (curBrawler === 'portalo' && curGadget === 'g1') {
+      const wm=getMouseWorld();
+      createPortaloPortalPair(player,player.x,player.y,wm.x,wm.y,4000,{shortcut:true});
+      gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
+    } else if (curBrawler === 'portalo' && curGadget === 'g2') {
+      if(player.portaloReverseArmed)return;
+      player.portaloReverseArmed=true;gadgetArmed=true;
+      spawnFloatingText(player.x,player.y-34,'REVERSE ROUTE READY','#bb91ff');updateGadgetButton();
+    } else if (curBrawler === 'fastpass' && curGadget === 'g1') {
       addFastpassMomentum(player,.32,true);explosions.push({x:player.x,y:player.y,radius:58,life:0,maxLife:.24,color:'rgba(76,239,255,.68)'});gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
     } else if (curBrawler === 'fastpass' && curGadget === 'g2') {
       spawnFastpassCheckpoint(player);gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
@@ -20981,6 +21067,242 @@
   function isEntityHyperchargedNow(entity, now = performance.now()) {
       if (!entity) return false;
       return entity.id === player.id ? !!isHypercharged : !!(entity.isHypercharged && (!entity.hyperchargeUntil || entity.hyperchargeUntil > now));
+  }
+
+  const PORTALO_TELEPORT_DISTANCE = ARENA_WALL_TILE * 5;
+  const PORTALO_PORTAL_RADIUS = 31;
+  const PORTALO_PRISON_RADIUS = 260;
+
+  function getPortaloPortalDuration(owner, hyper = false) {
+      return (hyper || getEntityStarChoice(owner) === 'slow') ? 2500 : 1700;
+  }
+
+  function createPortaloPortalPair(owner, ax, ay, bx, by, durationMs, options = {}) {
+      if (!owner) return null;
+      for (let index = portaloPortalPairs.length - 1; index >= 0; index--) {
+          if (portaloPortalPairs[index].ownerId === owner.id) portaloPortalPairs.splice(index, 1);
+      }
+      const radius = PORTALO_PORTAL_RADIUS;
+      const a = findNearestOpenSpot(ax, ay, radius + 2, 360);
+      const b = findNearestOpenSpot(bx, by, radius + 2, 520);
+      const now = performance.now();
+      const pair = {
+          id:`portalo_pair_${owner.id}_${Math.floor(now)}_${Math.floor(Math.random() * 9999)}`,
+          ownerId:owner.id, team:getEntityTeam(owner),
+          ax:a.x, ay:a.y, bx:b.x, by:b.y, radius,
+          createdAt:now, expiresAt:now + durationMs,
+          oneWayEnemies:!!options.oneWayEnemies,
+          shortcut:!!options.shortcut,
+      };
+      portaloPortalPairs.push(pair);
+      explosions.push({x:a.x,y:a.y,radius:54,life:0,maxLife:.3,color:'rgba(144,91,255,.72)',fxKind:'portaloOpen'});
+      explosions.push({x:b.x,y:b.y,radius:54,life:0,maxLife:.3,color:'rgba(62,229,255,.72)',fxKind:'portaloOpen'});
+      return pair;
+  }
+
+  function cancelPortaloShockOnReturn(entity, pair, entryIndex, now) {
+      if (!entity || entryIndex !== 1) return;
+      for (const shock of portaloShockTimers) {
+          if (shock.targetId === entity.id && shock.ownerId === pair.ownerId && shock.expiresAt > now) shock.canceled = true;
+      }
+  }
+
+  function teleportEntityThroughPortalo(entity, pair, entryIndex, now) {
+      const owner = getEntityById(pair.ownerId);
+      if (!entity || !owner || entity.hp <= 0) return false;
+      const enemy = !areAlliedEntities(owner, entity);
+      if (enemy && pair.oneWayEnemies && entryIndex === 1) return false;
+      const entryX = entryIndex === 0 ? pair.ax : pair.bx;
+      const entryY = entryIndex === 0 ? pair.ay : pair.by;
+      const exitX = entryIndex === 0 ? pair.bx : pair.ax;
+      const exitY = entryIndex === 0 ? pair.by : pair.ay;
+      let moveX = Number(entity.portaloMoveX) || Number(entity.vx) || 0;
+      let moveY = Number(entity.portaloMoveY) || Number(entity.vy) || 0;
+      let moveLength = Math.hypot(moveX, moveY);
+      if (moveLength < .05) {
+          moveX = exitX - entryX;
+          moveY = exitY - entryY;
+          moveLength = Math.hypot(moveX, moveY) || 1;
+      }
+      const exitOffset = pair.radius + (entity.radius || 14) + 5;
+      const desiredX = exitX + moveX / moveLength * exitOffset;
+      const desiredY = exitY + moveY / moveLength * exitOffset;
+      const safe = findNearestOpenSpot(desiredX, desiredY, (entity.radius || 14) + 2, 300);
+      entity.x = safe.x;
+      entity.y = safe.y;
+      entity.portaloPortalCooldownUntil = now + 280;
+      entity.portaloLastX = entity.x;
+      entity.portaloLastY = entity.y;
+      cancelPortaloShockOnReturn(entity, pair, entryIndex, now);
+      if (areAlliedEntities(owner, entity) && getEntityStarChoice(owner) === 'slow') {
+          entity.portaloExitSpeedUntil = Math.max(entity.portaloExitSpeedUntil || 0, now + 2000);
+      }
+      explosions.push({x:entryX,y:entryY,radius:42,life:0,maxLife:.2,color:'rgba(148,84,255,.74)',fxKind:'portaloTransit'});
+      explosions.push({x:exitX,y:exitY,radius:46,life:0,maxLife:.24,color:'rgba(67,235,255,.76)',fxKind:'portaloTransit'});
+      entity.portaloWarpFxUntil = now + 260;
+      return true;
+  }
+
+  function updatePortaloTravel(now) {
+      for (let index = portaloPortalPairs.length - 1; index >= 0; index--) {
+          const owner = getEntityById(portaloPortalPairs[index].ownerId);
+          if (now >= portaloPortalPairs[index].expiresAt || !owner || owner.hp <= 0) portaloPortalPairs.splice(index, 1);
+      }
+      for (const entity of [player, ...bots]) {
+          if (!entity || entity.hp <= 0) continue;
+          const lastX = Number.isFinite(entity.portaloLastX) ? entity.portaloLastX : entity.x;
+          const lastY = Number.isFinite(entity.portaloLastY) ? entity.portaloLastY : entity.y;
+          entity.portaloMoveX = entity.x - lastX;
+          entity.portaloMoveY = entity.y - lastY;
+          entity.portaloLastX = entity.x;
+          entity.portaloLastY = entity.y;
+          if (now < (entity.portaloPortalCooldownUntil || 0)) continue;
+          for (const pair of portaloPortalPairs) {
+              const atA = Math.hypot(entity.x - pair.ax, entity.y - pair.ay) <= pair.radius + (entity.radius || 14);
+              const atB = Math.hypot(entity.x - pair.bx, entity.y - pair.by) <= pair.radius + (entity.radius || 14);
+              if (entity.portaloArrivalPairId === pair.id) {
+                  if (!atA && !atB) {
+                      entity.portaloArrivalPairId = null;
+                  } else if (atB) {
+                      const moveLength = Math.hypot(entity.portaloMoveX || 0, entity.portaloMoveY || 0);
+                      const backX = pair.ax - pair.bx;
+                      const backY = pair.ay - pair.by;
+                      const backLength = Math.hypot(backX, backY) || 1;
+                      const reversing = moveLength > .2 && ((entity.portaloMoveX * backX + entity.portaloMoveY * backY) / (moveLength * backLength)) > .35;
+                      if (reversing) {
+                          entity.portaloArrivalPairId = null;
+                          if (teleportEntityThroughPortalo(entity, pair, 1, now)) break;
+                      }
+                      continue;
+                  }
+              }
+              if (atA && teleportEntityThroughPortalo(entity, pair, 0, now)) break;
+              if (atB && teleportEntityThroughPortalo(entity, pair, 1, now)) break;
+          }
+      }
+  }
+
+  function handlePortaloMainHit(owner, target, projectile) {
+      if (!owner || !target || target.hp <= 0 || !projectile || projectile.portaloHitResolved) return;
+      projectile.portaloHitResolved = true;
+      if (target.isStructure || target.isArenaForgeStructure || target.isVault || target.isPowerup || target.isBox || target.isImmuneToPulls) return;
+      const now = performance.now();
+      const startX = target.x;
+      const startY = target.y;
+      let directionX;
+      let directionY;
+      if (projectile.portaloReverse) {
+          directionX = owner.x - target.x;
+          directionY = owner.y - target.y;
+      } else {
+          directionX = projectile.vx || (target.x - owner.x);
+          directionY = projectile.vy || (target.y - owner.y);
+      }
+      const length = Math.hypot(directionX, directionY) || 1;
+      const desiredX = target.x + directionX / length * PORTALO_TELEPORT_DISTANCE;
+      const desiredY = target.y + directionY / length * PORTALO_TELEPORT_DISTANCE;
+      const destination = findNearestOpenSpot(desiredX, desiredY, (target.radius || 14) + 3, PORTALO_TELEPORT_DISTANCE);
+      target.x = destination.x;
+      target.y = destination.y;
+      target.portaloPortalCooldownUntil = now + 100;
+      target.portaloLastX = target.x;
+      target.portaloLastY = target.y;
+      const pair = createPortaloPortalPair(
+          owner, startX, startY, destination.x, destination.y,
+          getPortaloPortalDuration(owner, !!projectile.portaloHyperAtFire),
+          {oneWayEnemies:!!projectile.portaloHyperAtFire}
+      );
+      if (pair) target.portaloArrivalPairId = pair.id;
+      if (getEntityStarChoice(owner) === 'long' && pair) {
+          for (let i = portaloShockTimers.length - 1; i >= 0; i--) {
+              if (portaloShockTimers[i].targetId === target.id && portaloShockTimers[i].ownerId === owner.id) portaloShockTimers.splice(i, 1);
+          }
+          portaloShockTimers.push({targetId:target.id,ownerId:owner.id,pairId:pair.id,expiresAt:now+500,canceled:false});
+          target.portaloShockFxUntil = now + 500;
+      }
+      spawnFloatingText(target.x, target.y - 36, projectile.portaloReverse ? 'REVERSE ROUTE!' : 'PORTALED!', '#87f3ff');
+  }
+
+  function castPortaloSuper(owner, hyper, targetX, targetY) {
+      if (!owner) return;
+      for (let index = portaloPrisons.length - 1; index >= 0; index--) {
+          if (portaloPrisons[index].ownerId === owner.id) portaloPrisons.splice(index, 1);
+      }
+      const now = performance.now();
+      const angle = Math.atan2(targetY - owner.y, targetX - owner.x);
+      const distance = Math.min(680, Math.max(80, Math.hypot(targetX - owner.x, targetY - owner.y) || 80));
+      const destination = findNearestOpenSpot(owner.x + Math.cos(angle) * distance, owner.y + Math.sin(angle) * distance, 24, 420);
+      portaloPrisons.push({
+          id:`portalo_prison_${owner.id}_${Math.floor(now)}`,
+          ownerId:owner.id, team:getEntityTeam(owner),
+          startX:owner.x, startY:owner.y, x:destination.x, y:destination.y,
+          radius:PORTALO_PRISON_RADIUS, thrownAt:now, activateAt:now+800, expiresAt:now+6800,
+          hyper:!!hyper, nextPullAt:now+1800, activated:false, nextDebrisAt:now+800,
+      });
+      explosions.push({x:owner.x,y:owner.y,radius:45,life:0,maxLife:.26,color:hyper?'rgba(110,31,168,.78)':'rgba(91,229,255,.7)',fxKind:'portaloCore'});
+  }
+
+  function isInsideEnemyPortaloPrison(entity, now = performance.now()) {
+      if (!entity) return false;
+      return portaloPrisons.some((field) => {
+          if (now < field.activateAt || now >= field.expiresAt) return false;
+          const owner = getEntityById(field.ownerId);
+          return owner && !areAlliedEntities(owner, entity) && Math.hypot(entity.x-field.x,entity.y-field.y) <= field.radius + (entity.radius || 14);
+      });
+  }
+
+  function updatePortaloSystems(now, dt) {
+      for (let index = portaloShockTimers.length - 1; index >= 0; index--) {
+          const shock = portaloShockTimers[index];
+          if (now < shock.expiresAt) continue;
+          portaloShockTimers.splice(index, 1);
+          const target = getEntityById(shock.targetId);
+          const owner = getEntityById(shock.ownerId);
+          if (shock.canceled || !target || !owner || target.hp <= 0 || owner.hp <= 0) continue;
+          checkHit(target,{ownerBrawler:'portalo',ownerId:owner.id,damage:600,pierce:true,super:true,isPortaloShock:true,hitIds:{}},-1);
+          explosions.push({x:target.x,y:target.y,radius:48,life:0,maxLife:.24,color:'rgba(187,87,255,.78)',fxKind:'portaloShock'});
+          spawnFloatingText(target.x,target.y-34,'PORTAL SHOCK','#df94ff');
+      }
+      for (let index = portaloPrisons.length - 1; index >= 0; index--) {
+          const field = portaloPrisons[index];
+          const owner = getEntityById(field.ownerId);
+          if (!owner || owner.hp <= 0 || now >= field.expiresAt) { portaloPrisons.splice(index,1); continue; }
+          if (now < field.activateAt) continue;
+          if (!field.activated) {
+              field.activated = true;
+              explosions.push({x:field.x,y:field.y,radius:field.radius,life:0,maxLife:.5,color:field.hyper?'rgba(92,23,143,.7)':'rgba(94,104,255,.55)',legendary:true,fxKind:'portaloPrison'});
+          }
+          if (now >= field.nextDebrisAt) {
+              field.nextDebrisAt = now + 260;
+              const debrisAngle = Math.random()*Math.PI*2;
+              const debrisRadius = field.radius*(.35+Math.random()*.58);
+              explosions.push({x:field.x+Math.cos(debrisAngle)*debrisRadius,y:field.y+Math.sin(debrisAngle)*debrisRadius,radius:12+Math.random()*10,life:0,maxLife:.32,color:field.hyper?'rgba(195,78,255,.55)':'rgba(72,229,255,.5)',fxKind:'portaloDebris'});
+          }
+          if (field.hyper && now >= field.nextPullAt) {
+              field.nextPullAt += 1000;
+              for (const target of [player,...bots]) {
+                  if (!target || target.hp <= 0 || areAlliedEntities(owner,target)) continue;
+                  const dx=field.x-target.x,dy=field.y-target.y,distance=Math.hypot(dx,dy)||1;
+                  if (distance > field.radius+(target.radius||14)) continue;
+                  const pull=Math.min(72,distance*.32);
+                  const safe=findNearestOpenSpot(target.x+dx/distance*pull,target.y+dy/distance*pull,(target.radius||14)+2,160);
+                  target.x=safe.x;target.y=safe.y;target.portaloLastX=target.x;target.portaloLastY=target.y;
+                  explosions.push({x:target.x,y:target.y,radius:30,life:0,maxLife:.2,color:'rgba(202,91,255,.64)',fxKind:'portaloPull'});
+              }
+          }
+          for (const projectile of bullets) {
+              if (!projectile || projectile.isPortaloPrisonCore || now < (projectile.portaloRedirectCooldownUntil||0)) continue;
+              if (Math.hypot(projectile.x-field.x,projectile.y-field.y) > field.radius) continue;
+              const entryX=projectile.x,entryY=projectile.y,exitAngle=Math.random()*Math.PI*2;
+              projectile.x=field.x+Math.cos(exitAngle)*(field.radius+15);
+              projectile.y=field.y+Math.sin(exitAngle)*(field.radius+15);
+              projectile.portaloRedirectCooldownUntil=now+380;
+              projectile.portaloWarpTrailUntil=now+220;
+              projectile.portaloWarpFromX=entryX;projectile.portaloWarpFromY=entryY;
+              explosions.push({x:entryX,y:entryY,radius:25,life:0,maxLife:.18,color:'rgba(141,78,255,.72)',fxKind:'portaloRedirect'});
+              explosions.push({x:projectile.x,y:projectile.y,radius:29,life:0,maxLife:.2,color:'rgba(62,235,255,.78)',fxKind:'portaloRedirect'});
+          }
+      }
   }
 
   function addFastpassMomentum(entity, amount, showText = false) {
@@ -24797,6 +25119,7 @@
         dealtDamage *= Math.max(0.75, 1 - target.decayerStackReductionPct);
     }
     if (target && performance.now() < (target.demonDoomShieldUntil || 0)) dealtDamage *= 0.45;
+    if (target && getEntityBrawlerId(target) === 'portalo' && isEntityHyperchargedNow(target)) dealtDamage *= .90;
     if (target && (target.id === player.id ? selectedBrawler : target.brawler) === 'warrior' && performance.now() < (target.warriorStandUntil || 0)) {
         const warriorStar = target.id === player.id ? selectedStar : (target.selectedStar || 'none');
         if (warriorStar === 'long') dealtDamage *= 0.80;
@@ -25022,6 +25345,7 @@
     const rawDmg = dealtDamage;
     dealtDamage = applyShieldDamage(target, dealtDamage);
     target.hp -= dealtDamage;
+    if (b.isPortaloShot && owner && rawDmg > 0) handlePortaloMainHit(owner, target, b);
     if (b.isFastpassTicket && owner && rawDmg > 0) {
         addFastpassMomentum(owner, FASTPASS_MOMENTUM_PER_HIT, false);
         if (b.hyperVisual) triggerFastpassHealingAura(owner);
@@ -25139,8 +25463,8 @@
     // Super charges only by dealing damage (and only for player bullets)
             if(!b.super && !b.isSuperDash && !target.isPet){
                 const multiplier = getSuperChargeMultiplier(b.ownerBrawler) * getTrinketSuperChargeMultiplier(owner);
-                const superGain = (rawDmg / 8000) * 100 * multiplier;
-                const hyperGain = (rawDmg / 16000) * 100 * multiplier;
+                const superGain = b.isPortaloShot ? 12.5 * getModeSuperGainMultiplier() * getTrinketSuperChargeMultiplier(owner) : (rawDmg / 8000) * 100 * multiplier;
+                const hyperGain = b.isPortaloShot ? 6.25 * getModeSuperGainMultiplier() * getTrinketSuperChargeMultiplier(owner) : (rawDmg / 16000) * 100 * multiplier;
         if(b.ownerId === player.id){
                     superCharge = clamp(superCharge + superGain, 0, 100);
             updateSuperButton();
@@ -27878,13 +28202,14 @@
       const len = Math.hypot(vx,vy) || 1;
       const isMoving = Math.hypot(vx, vy) > 0;
       player.isMovingNow = isMoving;
-      let hcSpd = (isHypercharged ? 1.2 : 1.0) * (cheseySuperActive ? 1.5 : 1.0);
+      let hcSpd = (isHypercharged ? (selectedBrawler === 'portalo' ? 1.15 : 1.2) : 1.0) * (cheseySuperActive ? 1.5 : 1.0);
       if (player.moneySpeedUntil && performance.now() < player.moneySpeedUntil) hcSpd *= 1.15;
       if (player.seraSpeedUntil && performance.now() < player.seraSpeedUntil) hcSpd *= 1.20;
       if (player.hunterSpeedUntil && performance.now() < player.hunterSpeedUntil) hcSpd *= (player.hunterHcMark ? 1.288 : 1.15);
       if (player.unopcolocoSpeedUntil && performance.now() < player.unopcolocoSpeedUntil) hcSpd *= 1.10;
       if (player.trinketQuickFeetUntil && now < player.trinketQuickFeetUntil) hcSpd *= 1.10;
       if (player.trinketComebackUntil && now < player.trinketComebackUntil) hcSpd *= 1.10;
+      if (player.portaloExitSpeedUntil && now < player.portaloExitSpeedUntil) hcSpd *= 1.15;
       if (player.evilDoctorSpeedBoostUntil && now < player.evilDoctorSpeedBoostUntil) hcSpd *= 1.3;
       if (player.hoopDriveUntil && now < player.hoopDriveUntil) hcSpd *= 1.22;
       if (player.scubaDiverOxygenSpeedUntil && now < player.scubaDiverOxygenSpeedUntil) hcSpd *= 1.16;
@@ -28120,6 +28445,7 @@
         updateDuckHealOrbs(now, dt);
         updateIceCreamEffects(now, dt);
         updateFastpassAndFreestyle(now, dt);
+        updatePortaloSystems(now, dt);
 
         for (let i=chickpigEggZones.length-1;i>=0;i--) {
             const zone=chickpigEggZones[i];
@@ -30645,6 +30971,8 @@
           if (t.trapperFenceSpeedUntil && nowTarget < t.trapperFenceSpeedUntil) activeBotSpeed *= (t.trapperFenceSpeedMult || 1.0);
           if (t.amplifierScrewSpeedUntil && nowTarget < t.amplifierScrewSpeedUntil) activeBotSpeed *= (t.amplifierScrewSpeedMult || 1.0);
           if (t.amplifierGadgetSpeedUntil && nowTarget < t.amplifierGadgetSpeedUntil) activeBotSpeed *= AMPLIFIER_G2_SPEED_MULT;
+          if (t.portaloExitSpeedUntil && nowTarget < t.portaloExitSpeedUntil) activeBotSpeed *= 1.15;
+          if (t.brawler === 'portalo' && isEntityHyperchargedNow(t, nowTarget)) activeBotSpeed *= 1.15;
           if (t.brawler === 'copyphase') {
               ensureCopyphaseState(t);
               if (t.isHypercharged && t.copyphaseTransformUntil > nowTarget && t.copyphaseTransformBrawler) activeBotSpeed *= 1.15;
@@ -30870,6 +31198,8 @@
           t.targetLockUntil = 0; // occasionally pick new target if stuck
       }
     }
+
+    updatePortaloTravel(now);
 
     if (isDuels) {
         aliveCount = 1 + (player.hp > 0 ? 0 : -1);
@@ -32778,6 +33108,18 @@
           if(hyperMain){for(const lane of [-24,24]){ctx.strokeStyle='rgba(226,118,255,.72)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(player.x+Math.cos(perp)*lane,player.y+Math.sin(perp)*lane);ctx.lineTo(endX+Math.cos(perp)*lane,endY+Math.sin(perp)*lane);ctx.stroke();}}
           ctx.fillStyle='rgba(255,95,24,.15)';ctx.strokeStyle=hyperMain?'#df79ff':'#ffad4c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(endX,endY,hyperMain?67:48,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
       }
+      if (selectedBrawler === 'portalo') {
+          ctx.save();
+          if(aimingSuper){
+              const distance=Math.min(680,Math.max(80,Math.hypot(dx,dy)||80)),tx=player.x+Math.cos(ang)*distance,ty=player.y+Math.sin(ang)*distance;
+              ctx.strokeStyle=isHypercharged?'rgba(211,105,255,.94)':'rgba(104,235,255,.9)';ctx.lineWidth=3;ctx.setLineDash([12,8]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+tx)/2,(player.y+ty)/2-82,tx,ty);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=isHypercharged?'rgba(102,25,143,.2)':'rgba(88,112,224,.16)';ctx.strokeStyle=isHypercharged?'#da70ff':'#59edff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(tx,ty,PORTALO_PRISON_RADIUS,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle='rgba(235,250,255,.6)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(tx,ty,PORTALO_PRISON_RADIUS*.68,0,Math.PI*2);ctx.stroke();
+          }else{
+              drawStandardAimCone(player.x,player.y,ang,900,.055,{fill:'rgba(127,88,255,.12)',stroke:'rgba(111,237,255,.9)',center:'rgba(235,255,255,.82)'});
+              const endX=player.x+Math.cos(ang)*900,endY=player.y+Math.sin(ang)*900;ctx.strokeStyle='#9f77ff';ctx.lineWidth=2;ctx.setLineDash([6,6]);ctx.beginPath();ctx.arc(endX,endY,PORTALO_PORTAL_RADIUS,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+              if(player.portaloReverseArmed){ctx.strokeStyle='#e6a5ff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(endX,endY);ctx.lineTo(endX-Math.cos(ang)*PORTALO_TELEPORT_DISTANCE,endY-Math.sin(ang)*PORTALO_TELEPORT_DISTANCE);ctx.stroke();}
+          }
+          ctx.restore();
+      }
       if (selectedBrawler === 'fastpass') {
           ctx.save();
           if(aimingSuper){ctx.fillStyle='rgba(68,231,255,.13)';ctx.strokeStyle=isHypercharged?'#e37bff':'#65efff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(player.x,player.y,285,0,Math.PI*2);ctx.fill();ctx.stroke();}
@@ -34423,6 +34765,20 @@
     for(const checkpoint of fastpassCheckpoints){
         const life=clamp((checkpoint.expiresAt-performance.now())/5000,0,1),pulse=1+Math.sin(performance.now()/130)*.08;ctx.save();ctx.globalAlpha=.45+.45*life;ctx.strokeStyle='#55efff';ctx.shadowColor='#55efff';ctx.shadowBlur=18;ctx.lineWidth=5;ctx.setLineDash([10,6]);ctx.beginPath();ctx.arc(checkpoint.x,checkpoint.y,checkpoint.radius*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(68,231,255,.12)';ctx.beginPath();ctx.arc(checkpoint.x,checkpoint.y,checkpoint.radius,0,Math.PI*2);ctx.fill();ctx.restore();
     }
+    for (const pair of portaloPortalPairs) {
+        const now=performance.now(),life=clamp((pair.expiresAt-now)/Math.max(1,pair.expiresAt-pair.createdAt),0,1),spin=now/260;
+        ctx.save();ctx.globalAlpha=.18+.72*life;ctx.setLineDash([8,12]);ctx.lineDashOffset=-now/32;ctx.strokeStyle='rgba(132,201,255,.42)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pair.ax,pair.ay);ctx.lineTo(pair.bx,pair.by);ctx.stroke();ctx.setLineDash([]);
+        const drawVortex=(x,y,color,secondary,index)=>{const pulse=1+Math.sin(now/100+index)*.08;ctx.save();ctx.translate(x,y);ctx.rotate((index?1:-1)*spin);ctx.shadowColor=color;ctx.shadowBlur=23;const g=ctx.createRadialGradient(0,0,3,0,0,pair.radius*pulse);g.addColorStop(0,'rgba(3,7,24,.96)');g.addColorStop(.48,'rgba(25,14,67,.86)');g.addColorStop(.76,color);g.addColorStop(1,'rgba(255,255,255,.84)');ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,0,pair.radius*pulse,pair.radius*.62*pulse,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle=secondary;ctx.lineWidth=3;ctx.setLineDash([11,7]);ctx.beginPath();ctx.ellipse(0,0,pair.radius*.76*pulse,pair.radius*.42*pulse,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);for(let arc=0;arc<3;arc++){ctx.rotate(Math.PI*2/3);ctx.strokeStyle=arc%2?secondary:color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,pair.radius*(.48+arc*.08),-.72,.72);ctx.stroke();}ctx.restore();};
+        drawVortex(pair.ax,pair.ay,'#8e5cff','#dfb8ff',0);drawVortex(pair.bx,pair.by,'#37e6ff','#c7fbff',1);
+        if(pair.oneWayEnemies){ctx.fillStyle='#ffb2fa';ctx.font='900 13px sans-serif';ctx.textAlign='center';ctx.fillText('A > B',pair.ax,pair.ay-40);ctx.textAlign='left';}
+        ctx.restore();
+    }
+    for (const field of portaloPrisons) {
+        const now=performance.now();
+        if(now<field.activateAt){const progress=clamp((now-field.thrownAt)/800,0,1),arc=Math.sin(progress*Math.PI)*82,x=field.startX+(field.x-field.startX)*progress,y=field.startY+(field.y-field.startY)*progress-arc;ctx.save();ctx.translate(x,y);ctx.rotate(now/90);ctx.shadowColor=field.hyper?'#c73cff':'#50ecff';ctx.shadowBlur=22;ctx.fillStyle=field.hyper?'#5b137c':'#6e56db';ctx.strokeStyle='#dfffff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle=field.hyper?'#ec79ff':'#59efff';ctx.beginPath();ctx.arc(0,0,22,.2,2.6);ctx.stroke();ctx.restore();continue;}
+        const remaining=clamp((field.expiresAt-now)/6000,0,1),pulse=1+Math.sin(now/150)*.025,spin=now/(field.hyper?260:420);ctx.save();ctx.translate(field.x,field.y);ctx.globalAlpha=.55+.28*remaining;ctx.shadowColor=field.hyper?'#8f21d0':'#45e8ff';ctx.shadowBlur=field.hyper?34:25;const g=ctx.createRadialGradient(0,0,18,0,0,field.radius*pulse);g.addColorStop(0,field.hyper?'rgba(18,2,28,.48)':'rgba(25,19,72,.34)');g.addColorStop(.55,field.hyper?'rgba(79,18,112,.23)':'rgba(94,79,217,.18)');g.addColorStop(.88,field.hyper?'rgba(150,38,201,.28)':'rgba(47,217,240,.25)');g.addColorStop(1,'rgba(223,250,255,.08)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,field.radius*pulse,0,Math.PI*2);ctx.fill();ctx.rotate(spin);for(let ring=0;ring<3;ring++){ctx.strokeStyle=ring===1?(field.hyper?'#df74ff':'#4ee9ff'):'rgba(196,190,255,.68)';ctx.lineWidth=ring===1?5:2;ctx.setLineDash([18-ring*3,10+ring*4]);ctx.beginPath();ctx.arc(0,0,field.radius*(.62+ring*.18),ring*.8,Math.PI*2-ring*.35);ctx.stroke();}ctx.setLineDash([]);for(let debris=0;debris<9;debris++){const a=debris*Math.PI*2/9-spin*(debris%2?1:-1),r=field.radius*(.32+(debris%4)*.13);ctx.fillStyle=debris%2?(field.hyper?'#d56bff':'#5eeeff'):'#d9d2ff';ctx.beginPath();ctx.arc(Math.cos(a)*r,Math.sin(a)*r,2+(debris%3),0,Math.PI*2);ctx.fill();}if(field.hyper){ctx.strokeStyle='#efb1ff';ctx.lineWidth=2.5;for(let bolt=0;bolt<4;bolt++){const a=bolt*Math.PI/2-spin;ctx.beginPath();ctx.moveTo(Math.cos(a)*54,Math.sin(a)*54);ctx.lineTo(Math.cos(a+.09)*112,Math.sin(a+.09)*112);ctx.lineTo(Math.cos(a-.05)*176,Math.sin(a-.05)*176);ctx.stroke();}}ctx.restore();
+    }
+    for(const entity of [player,...bots]){if(entity&&entity.hp>0&&performance.now()<(entity.portaloShockFxUntil||0)){const pct=clamp(((entity.portaloShockFxUntil||0)-performance.now())/500,0,1);ctx.save();ctx.strokeStyle='#dc78ff';ctx.shadowColor='#9c42ff';ctx.shadowBlur=16;ctx.lineWidth=3;ctx.setLineDash([7,5]);ctx.beginPath();ctx.arc(entity.x,entity.y,(entity.radius||14)+12+10*(1-pct),0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();}}
     for(const mic of freestyleMicrophones){
         const bob=Math.sin((performance.now()+mic.createdAt)/180)*3;ctx.save();ctx.translate(mic.x,mic.y+bob);ctx.rotate(-.45);ctx.shadowColor='#ff72dc';ctx.shadowBlur=14;ctx.fillStyle='#d9e5f2';ctx.beginPath();ctx.roundRect(-4,-2,18,7,3);ctx.fill();ctx.fillStyle='#ff72dc';ctx.beginPath();ctx.arc(-6,1.5,7,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();ctx.restore();
     }
@@ -34474,6 +34830,9 @@
       ctx.fillStyle='#5df2c2';ctx.beginPath();ctx.arc(orb.x+2,orb.y-1,2,0,Math.PI*2);ctx.fill();ctx.restore();
     }
     for(const b of bullets){ 
+      if(b.portaloWarpTrailUntil>performance.now()){
+          const fade=clamp((b.portaloWarpTrailUntil-performance.now())/220,0,1);ctx.save();ctx.globalAlpha=.62*fade;ctx.strokeStyle='#7cecff';ctx.shadowColor='#a65dff';ctx.shadowBlur=16;ctx.lineWidth=3;ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(b.portaloWarpFromX||b.x,b.portaloWarpFromY||b.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      }
       if(b.towerVisualSignature){
           const hue=(b.towerVisualSignature*137.508)%360;
           ctx.save();ctx.globalAlpha=.55;ctx.strokeStyle=`hsl(${hue} 92% 70%)`;ctx.lineWidth=1.5;
@@ -34495,6 +34854,7 @@
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
       const earlyProjectileSkin = getActiveSkinForBrawler(earlyProjectileBrawler);
       if (renderUniversalSkinProjectile(b, earlyProjectileSkin)) continue;
+      if(b.isPortaloShot){const a=Math.atan2(b.vy,b.vx),pulse=1+Math.sin(performance.now()/70)*.12;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);ctx.shadowColor=b.hyperVisual?'#c847ff':'#45eaff';ctx.shadowBlur=b.hyperVisual?24:18;ctx.globalAlpha=.36;ctx.strokeStyle=b.hyperVisual?'#df79ff':'#63efff';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-35,0);ctx.lineTo(-9,0);ctx.stroke();ctx.globalAlpha=1;ctx.rotate(performance.now()/120);const g=ctx.createRadialGradient(0,0,2,0,0,12*pulse);g.addColorStop(0,'#f3ffff');g.addColorStop(.35,b.hyperVisual?'#e68aff':'#65efff');g.addColorStop(.72,'#7553dc');g.addColorStop(1,'#160e43');ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,12*pulse,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#dffcff';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(0,0,16*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();continue;}
       if(b.isFastpassTicket){
           const a=Math.atan2(b.vy,b.vx),momentum=clamp(b.fastpassMomentumAtFire||0,0,1);ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);ctx.shadowColor=b.hyperVisual?'#df72ff':'#55efff';ctx.shadowBlur=10+momentum*18;ctx.strokeStyle=b.hyperVisual?'rgba(223,114,255,.78)':'rgba(85,239,255,.76)';ctx.lineWidth=3+momentum*3;ctx.beginPath();ctx.moveTo(-14-momentum*20,0);ctx.lineTo(-4,0);ctx.stroke();if(b.fastpassStrongTrail){ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-34,4);ctx.lineTo(-8,4);ctx.moveTo(-30,-4);ctx.lineTo(-8,-4);ctx.stroke();}ctx.fillStyle=b.hyperVisual?'#d972ff':'#eaffff';ctx.strokeStyle='#219db8';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-7,-5,16,10,3);ctx.fill();ctx.stroke();ctx.restore();continue;
       }

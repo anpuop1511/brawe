@@ -1292,3 +1292,71 @@ html,body{overflow-x:hidden !important}
   animation:none !important;transition:none !important;
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto !important;animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}}
+
+/* Mobile lobby: a compact, scrollable loadout-first flow with no desktop overflow. */
+@media (max-width:680px), (pointer:coarse) and (max-width:920px) {
+  #homeScreen{
+    display:block !important;overflow-x:hidden !important;overflow-y:auto !important;
+    padding:0 !important;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;
+  }
+  #homePanel{
+    width:100% !important;height:auto !important;min-height:100svh !important;
+    padding:max(7px,env(safe-area-inset-top)) 8px max(12px,env(safe-area-inset-bottom)) !important;
+    gap:7px !important;overflow:visible !important;box-sizing:border-box !important;
+  }
+  #homeHeader{
+    position:sticky !important;top:0;z-index:30;display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto !important;align-items:center !important;
+    gap:6px !important;min-height:0 !important;padding:6px 3px 8px !important;
+    background:linear-gradient(180deg,rgba(5,49,105,.98) 78%,rgba(5,49,105,0)) !important;
+  }
+  #homeHeader>div:first-child{min-width:0}
+  #homeTitle{font-size:clamp(24px,8vw,31px) !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #fullscreenBtn{grid-column:2;grid-row:1;min-height:36px !important;padding:6px 9px !important;font-size:0 !important}
+  #fullscreenBtn::after{content:'\26F6';font-size:20px;line-height:1}
+  #homeCurrencyBar{
+    grid-column:1/-1;grid-row:2;width:100%;margin:0 !important;display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr));gap:5px !important;
+  }
+  .home-currency-pill{min-width:0 !important;min-height:31px !important;padding:4px 6px !important;font-size:10px !important;box-sizing:border-box}
+  #homeQuickActions{
+    grid-column:1/-1;grid-row:3;width:100%;display:flex !important;gap:5px !important;
+    overflow-x:auto;overflow-y:hidden;padding:1px 0 5px;scrollbar-width:none;
+  }
+  #homeQuickActions::-webkit-scrollbar{display:none}
+  #homeQuickActions>*{flex:0 0 auto;min-height:33px !important;padding:5px 9px !important;font-size:9px !important}
+  #homeMain{display:flex !important;flex-direction:column !important;width:100%;gap:9px !important;overflow:visible !important;min-width:0}
+  #homePlaySection{position:relative;min-height:365px !important;width:100%;flex:none;overflow:hidden}
+  #homeBrawlerCard{height:350px !important;min-height:350px !important;width:100%;box-sizing:border-box}
+  .home-brawler-stage{inset:38px 0 91px !important}
+  .home-brawler-stage__burst{width:205px !important;height:205px !important}
+  .home-brawler-avatar{width:145px !important;border-width:4px !important}
+  .home-brawler-avatar span{font-size:68px !important}
+  .home-brawler-identity{left:13px !important;bottom:67px !important}.home-brawler-identity strong{font-size:23px !important;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .home-brawler-power{right:12px !important;top:11px !important;width:45px !important;height:45px !important}
+  #homeActionRow{top:39px !important;left:9px !important;width:112px !important}
+  #brawlerBtn{min-height:45px !important;padding:6px !important;font-size:9px !important}
+  #startMatch{right:10px !important;bottom:69px !important;width:122px !important;min-height:48px !important;font-size:12px !important}
+  #homeModesSection{width:100%;padding:8px !important;overflow:visible !important;box-sizing:border-box}
+  .home-event-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:7px !important}
+  .home-mode-card{min-width:0 !important;min-height:82px !important;padding:7px !important}
+  .home-mode-card-content{height:50px !important;min-width:0}
+  .home-mode-card-content *{min-width:0}
+  .home-mode-card-content strong,.home-mode-card-content [style*="font-weight:900"]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+@media (max-width:410px) {
+  .home-event-grid{grid-template-columns:1fr !important}
+  #homePlaySection{min-height:345px !important}
+  #homeBrawlerCard{height:330px !important;min-height:330px !important}
+}
+@media (pointer:coarse) and (max-height:520px) and (orientation:landscape) {
+  #homePanel{min-height:100svh !important}
+  #homeHeader{position:relative !important;grid-template-columns:minmax(150px,.8fr) minmax(280px,1.3fr) auto !important}
+  #homeCurrencyBar{grid-column:2;grid-row:1}
+  #fullscreenBtn{grid-column:3;grid-row:1}
+  #homeQuickActions{grid-column:1/-1;grid-row:2}
+  #homeMain{display:grid !important;grid-template-columns:minmax(270px,38%) minmax(0,1fr) !important;align-items:start}
+  #homePlaySection{min-height:330px !important}
+  #homeBrawlerCard{height:318px !important;min-height:318px !important}
+  .home-event-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+}

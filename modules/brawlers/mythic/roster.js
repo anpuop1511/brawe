@@ -5,6 +5,6 @@
     'fightnfire', 'amplifier', 'crystila', 'evil_doctor', 'splitter',
     'screener', 'beam', 'fuel', 'warrior', 'upiedown', 'jetpack',
     'snapper', 'peter_pickle', 'homer', 'predator', 'swimmer', 'blade_vane',
-    'daggershard', 'witch', 'fastpass'
+    'daggershard', 'witch', 'fastpass', 'portalo'
   ]);
 })(window);
