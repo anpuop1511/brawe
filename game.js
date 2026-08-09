@@ -19118,6 +19118,7 @@
   function activateGadgetBot(bot) {
         if (!bot.gadgetUnlocked) return;
     const now = performance.now();
+    const target = bot.lastTargetId === player.id ? player : bots.find(b=>b.id===bot.lastTargetId);
     absorbLegacyEntityGadgetCooldownWrite(bot, bot.selectedGadget || 'g1', now);
     const ready = [];
     if (now >= getEntityGadgetCooldownUntil(bot, 'g1', now)) ready.push('g1');
@@ -19142,7 +19143,6 @@
     setEntityGadgetCooldownUntil(bot, now + getGadgetCooldownMsForBrawler(bot.brawler, g), g);
 
     let ang = 0;
-    const target = bot.lastTargetId === player.id ? player : bots.find(b=>b.id===bot.lastTargetId);
     if (target) ang = Math.atan2(target.y - bot.y, target.x - bot.x);
     else ang = bot.angle || 0;
 

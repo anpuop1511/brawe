@@ -40,6 +40,9 @@ assert.match(game, /SUPER_CHARGE_HITS_BY_BRAWLER[\s\S]*?portalo:7/, 'Portalo fol
 assert.match(game, /bot\.brawler === 'portalo'[\s\S]*?valuableTarget/, 'Portalo bot AI evaluates valuable Reverse Route targets');
 assert.match(game, /bot\.brawler === 'portalo'[\s\S]*?objectiveFight/, 'Portalo bot AI prioritizes Portal Prison on objectives');
 assert.match(game, /if \(bot\.hp < bot\.maxHp \* \.48 && ready\.includes\('g1'\)\)/, 'Portalo bots prefer Shortcut when endangered');
+const botGadgetTargetDeclaration = game.indexOf("const target = bot.lastTargetId === player.id ? player : bots.find(b=>b.id===bot.lastTargetId);");
+const portaloGadgetTargetUse = game.indexOf("const highValueTarget = !!(target", botGadgetTargetDeclaration);
+assert.ok(botGadgetTargetDeclaration >= 0 && portaloGadgetTargetUse > botGadgetTargetDeclaration, 'Bot gadget targets are initialized before Portalo evaluates them');
 assert.match(game, /owner\.hp <= 0/, 'Portalo entities clean up when their owner dies');
 
 assert.match(styles, /Mobile lobby: a compact, scrollable loadout-first flow/, 'The mobile lobby override is present');
