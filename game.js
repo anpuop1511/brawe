@@ -142,6 +142,14 @@
 
     function getScaledStats(brawlerId, levelOverride) {
         const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
+        if (brawlerId === 'jacktrade') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(7200 * scale), dmg: Math.round(900 * scale), speed: 260 };
+        }
+        if (brawlerId === 'ghoul') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6500 * scale), dmg: Math.round(1050 * scale), speed: 300 };
+        }
         if (brawlerId === 'portalo') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6800 * scale), dmg: Math.round(1500 * scale), speed: 260 };
@@ -1427,6 +1435,20 @@
     player.portaloPortalCooldownUntil = 0;
     player.portaloExitSpeedUntil = 0;
     player.portaloArrivalPairId = null;
+    player.ghoulPhantomReachArmed = false;
+    player.ghoulAimSessionActive = false;
+    player.ghoulAimStartedAt = 0;
+    player.ghoulInvisStartedAt = 0;
+    player.ghoulInvisibleUntil = 0;
+    player.ghoulSuperUntil = 0;
+    player.ghoulSuperStartedAt = 0;
+    player.ghoulShadowSpeedUntil = 0;
+    player.jackTradeStage = 1;
+    player.jackTradeHotStreak = 0;
+    player.jackTradeJackpotArmed = false;
+    player.jackTradeSafeBetArmed = false;
+    player.jackTradeRushUntil = 0;
+    player.jackTradeLuckyUntil = 0;
     player.freestyleSetlistStage = 0;
     player.freestyleSetlistHitMask = 0;
     player.freestyleSetlistFailed = false;
@@ -1676,6 +1698,11 @@
   const portaloPortalPairs = [];
   const portaloPrisons = [];
   const portaloShockTimers = [];
+  const ghoulHaunts = [];
+  const jackTradeVolleys = [];
+  const jackTradeThrownEffects = [];
+  const jackTradeZones = [];
+  const jackTradeEndpointShots = [];
   const snapperWaves = [];
   const chickpigEggZones = [];
   const rocketeerFireZones = [];
@@ -2170,7 +2197,7 @@
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo'
+        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -2248,6 +2275,8 @@
             fastpass: 'Mythic',
             freestyle: 'Legendary',
             portalo: 'Mythic',
+            ghoul: 'Exotic',
+            jacktrade: 'Exotic',
             homer: 'Mythic',
             orbo: 'Legendary',
             predator: 'Mythic',
@@ -4348,6 +4377,28 @@
                 sp1:'Stable Portals (Attack portals last 2.5 seconds; allies exit with +15% speed for 2 seconds)',
                 sp2:'Portal Shock (Teleported enemies take 600 damage after 0.5 seconds unless they immediately travel back)'
             },
+            'ghoul': {
+                name:'Ghoul', role:'Controller / Assassin', color:'#7c3aed',
+                desc:'An ancient spirit who vanishes while aiming and calls enormous ghost hands down from the magical sky.',
+                attack:'Haunt', attackDesc:'Fade into mist while aiming for up to 1.8 seconds, then summon two ghost hands. Each hand deals 1050 damage; attacking ends invisibility.',
+                super:'Invisible Party', superDesc:'For 8 seconds, phase visible and invisible. Haunt summons three hands that smoothly shove enemies away.',
+                hyper:'Nightmare: hands slam twice as fast, aim invisibility lasts 2.4 seconds, and each hand stacks 0.8 seconds of Darkness up to 4 seconds. +20% damage, +15% speed, +10% shield.',
+                g1:'Phantom Reach (Next Haunt gains 25% range; double-hand victims are slowed 25% for 1.5s)',
+                g2:'False Presence (Spawn a fading 4-second ghost clone that disappears when hit)',
+                sp1:'Lingering Fear (Aim invisibly for 1s before Haunt to deal 20% more damage)',
+                sp2:'Shadow Walker (Leaving invisibility grants 18% movement speed for 2s)'
+            },
+            'jacktrade': {
+                name:'JackTrade', role:'Damage Dealer / Specialist', color:'#8b5cf6',
+                desc:'A card dealer who turns accurate volleys into a four-card jackpot and never reveals the next trade before it lands.',
+                attack:'Double or Nothing', attackDesc:'Land a complete volley to upgrade the next attack from 1 to 2 to 4 cards. A total miss resets the chain; one hit per volley is enough.',
+                super:'Trade of Fate', superDesc:'Instantly rolls one hidden trade: regeneration, demolition, rush reload, toxic spray, a growing slow zone, or a healing pot.',
+                hyper:'ALL IN: every attack stays at four cards and leaves small slowing puddles. Super collapses demolition, poison, slow, healing, regeneration, and Rush Order into one impact.',
+                g1:'Jackpot (Next normal Super activates two different random trades together)',
+                g2:'Safe Bet (The next complete miss does not reset Double or Nothing)',
+                sp1:'Hot Streak (Every third successful four-card attack gains 15% speed and 10% damage)',
+                sp2:'Lucky Break (After a normal random Super, gain 12% movement speed for 2.5s)'
+            },
             'tower_core': { name: 'The Core', color: '#ffea00', role: 'Objective' },
             'turret': { name: 'Defensive Turret', color: '#00ffff', role: 'Defense' },
             'wall_structure': { name: 'Reinforced Wall', color: '#a8b8c8', role: 'Barrier' },
@@ -4362,12 +4413,14 @@
         boomer:'Artillery', cluster:'Artillery', evil_doctor:'Artillery', fightnfire:'Artillery', rocketeer:'Artillery', skeleflying:'Artillery', splitter:'Artillery', trapper:'Artillery', upiedown:'Artillery',
         amplifier:'Support', angel:'Support', echo:'Support', fastpass:'Support', freestyle:'Support', hope:'Support', relay:'Support', sera_eclipse:'Support',
         adlof:'Controller', daggershard:'Controller', decayer:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller',
-        beam:'Damage Dealer', duck:'Damage Dealer', fuser:'Damage Dealer', heater_miser:'Damage Dealer', minigunnin:'Damage Dealer', money_and_tax:'Damage Dealer', outlit:'Damage Dealer', steamer:'Damage Dealer',
+        beam:'Damage Dealer', duck:'Damage Dealer', fuser:'Damage Dealer', heater_miser:'Damage Dealer', jacktrade:'Damage Dealer', minigunnin:'Damage Dealer', money_and_tax:'Damage Dealer', outlit:'Damage Dealer', steamer:'Damage Dealer',
         bouncin_balls:'Skirmisher', chickpig:'Skirmisher', classy:'Skirmisher', copyphase:'Skirmisher', goonbob:'Skirmisher', hoop:'Skirmisher', hyperorigin:'Skirmisher', robber:'Skirmisher'
     };
     for (const [id, role] of Object.entries(PRIMARY_ROLE_BY_BRAWLER)) if (brawlerData[id]) brawlerData[id].role = role;
 
     const brawlerPortraitIcons = {
+        jacktrade: '\u{1F0CF}',
+        ghoul: '\u{1F47B}',
         portalo: '\u{1F300}',
         fastpass: '\u{1F3CE}\uFE0F',
         freestyle: '\u{1F3A7}',
@@ -9654,6 +9707,8 @@
         entity.lastDamagerId = null;
         entity._mirrorDeathCounted = false;
         entity.malakorHellTickAt = 0;
+        entity.ghoulAimSessionActive=false;entity.ghoulAimInvisibleUntil=0;entity.ghoulSuperUntil=0;entity.ghoulDarknessUntil=0;
+        entity.jackTradeStage=1;entity.jackTradeHotStreak=0;entity.jackTradeJackpotArmed=false;entity.jackTradeSafeBetArmed=false;entity.jackTradeRushUntil=0;entity.jackTradeLuckyUntil=0;entity.jackTradeRegenRemaining=0;
         clearPoisonState(entity);
     }
 
@@ -9665,6 +9720,11 @@
         portaloPortalPairs.length = 0;
         portaloPrisons.length = 0;
         portaloShockTimers.length = 0;
+        ghoulHaunts.length = 0;
+        jackTradeVolleys.length = 0;
+        jackTradeThrownEffects.length = 0;
+        jackTradeZones.length = 0;
+        jackTradeEndpointShots.length = 0;
         snapperWaves.length = 0;
         chickpigEggZones.length = 0;
         rocketeerFireZones.length = 0;
@@ -10924,10 +10984,11 @@
 
     function getBotLivingEnemies(bot) {
         const enemies = [];
-        if (player.hp > 0 && player.id !== bot.ownerId && !areAlliedEntities(bot, player)) enemies.push(player);
+        const canSee=(enemy)=>!isGhoulHiddenFromObserver(enemy,bot)&&!((bot.ghoulDarknessUntil||0)>performance.now()&&Math.hypot(enemy.x-bot.x,enemy.y-bot.y)>125);
+        if (player.hp > 0 && player.id !== bot.ownerId && !areAlliedEntities(bot, player) && canSee(player)) enemies.push(player);
         for (const other of bots) {
             if (!other || other.id === bot.id || other.id === bot.ownerId || other.hp <= 0 || other.isDead || other.isDummy) continue;
-            if (!areAlliedEntities(bot, other)) enemies.push(other);
+            if (!areAlliedEntities(bot, other) && canSee(other)) enemies.push(other);
         }
         return enemies;
     }
@@ -11414,6 +11475,11 @@
             const valuableTarget = !!(combatTarget && ((target.maxHp || 0) >= Math.max(6800, bot.maxHp || 0) || target.isArenaForgeStructure || target.isVault));
             return context.hpPct < .48 || objectiveEmergency || (valuableTarget && distance < 760);
         }
+        if (bot.brawler === 'ghoul') {
+            const grouped=getBotLivingEnemies(bot).filter(enemy=>Math.hypot(enemy.x-(target?.x||bot.x),enemy.y-(target?.y||bot.y))<170).length;
+            return context.hpPct<.5||distance>GHOUL_HAUNT_RANGE*.78||grouped>=2;
+        }
+        if (bot.brawler === 'jacktrade') return (bot.superCharge||0)>=100||getJackTradeStage(bot)===4||distance>700;
         if (context.impossible) return !!(combatTarget && (distance < 720 || context.hpPct < 0.7));
         if (context.hpPct < 0.42 || allyInTrouble || objectiveEmergency) return true;
         return !!(combatTarget && distance < (context.ranged ? 520 : 340) && Math.random() < 0.48);
@@ -11431,6 +11497,11 @@
         if (bot.brawler === 'portalo') {
             return distance < 760 && (objectiveFight || objectiveTarget || clustered >= 2 || targetHpPct < .42 || context.hpPct < .32);
         }
+        if (bot.brawler === 'ghoul') {
+            const grouped=getBotLivingEnemies(bot).filter(enemy=>Math.hypot(enemy.x-target.x,enemy.y-target.y)<210).length;
+            return distance<GHOUL_HAUNT_RANGE&&(grouped>=2||objectiveFight||context.hpPct<.38);
+        }
+        if (bot.brawler === 'jacktrade') return distance<760&&(clustered>=2||objectiveFight||objectiveTarget||context.hpPct<.4||targetHpPct<.45);
         if (context.impossible) return distance < 980;
         if (bot.isBoss || clustered >= 2 || objectiveFight || objectiveTarget || targetHpPct < 0.38 || context.hpPct < 0.3) return true;
         const goodRange = context.ranged ? distance < 820 : distance < 470;
@@ -11440,9 +11511,10 @@
     function shouldBotShootTarget(bot, target, context, distance) {
         if (!target || target.isPowerup || ['center', 'cart'].includes(target.id)) return false;
         if ((target.invulnerableUntil || 0) > context.now || target.isFlying || (target.angelLiftUntil || 0) > context.now) return false;
-        const maxRange = context.artillery || context.marksman ? 960 : context.support || context.controller ? 820 : context.tank ? 570 : 760;
+        const maxRange = bot.brawler==='jacktrade'?900:(context.artillery || context.marksman ? 960 : context.support || context.controller ? 820 : context.tank ? 570 : 760);
         if (distance > maxRange) return false;
         let cadence = context.impossible ? 360 : (context.marksman ? 640 : context.artillery ? 700 : context.tank ? 500 : 570);
+        if(bot.brawler==='jacktrade')cadence=getFireDelay('jacktrade',bot);
         if (isArenaForgeMode) cadence *= bot.arenaForgeReloadMult || 1;
         return context.now - (bot.lastShot || 0) >= cadence;
     }
@@ -12775,10 +12847,13 @@
         if (brawler === 'fastpass') base = 1550;
         else if (brawler === 'freestyle') base = 1650;
         else if (brawler === 'portalo') base = 1700;
+        else if (brawler === 'ghoul') base = 1700;
+        else if (brawler === 'jacktrade') base = 1650;
         else if (brawler === 'angel') base = 1700;
         else if (brawler === 'demon') base = 1800;
         if (brawler === 'warrior' && performance.now() < (player.warriorStandUntil || 0)) base /= 2.50;
         if (brawler === 'upiedown' && performance.now() < (player.upiedownReloadBuffUntil || 0)) base *= 0.85;
+        if (brawler === 'jacktrade' && performance.now() < (player.jackTradeRushUntil || 0)) base /= 3;
         if (brawler === 'robber' && selectedStar === 'long' && maxAmmo > 3) base *= 0.75;
         if (brawler === 'fastpass' && selectedStar === 'long' && (player.fastpassMomentum || 0) >= .64) base /= 1.15;
         if (brawler === 'freestyle' && performance.now() < (player.freestyleRemixUntil || 0)) base /= 1.18;
@@ -12802,6 +12877,10 @@
   }
 
   function getFireDelay(brawler, fromEntity){
+    if (brawler === 'jacktrade') {
+       const entity=fromEntity||player;
+       return performance.now() < (entity.jackTradeRushUntil||0) ? 310 : 920;
+    }
     if (brawler === 'warrior' && fromEntity && performance.now() < (fromEntity.warriorStandUntil || 0)) return 130;
     if(brawler === 'minigunnin') {
        const last = fromEntity ? fromEntity.lastShot : lastShot;
@@ -12826,7 +12905,7 @@
   }
 
   function startDuelsRound() {
-    bullets.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0;
+    bullets.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     rocketeerAirstrikes.length = 0;
@@ -13213,13 +13292,13 @@
 
       if(bot.lastTargetId != null && nowTarget < bot.targetLockUntil){
           const locked = (bot.lastTargetId === player.id) ? player : bots.find(o => o.id === bot.lastTargetId && o.hp > 0);
-          if(locked && locked.id !== bot.ownerId && !(bot.team && locked.team && bot.team === locked.team) && canDetectThroughBush(bot, locked)){
+          if(locked && locked.id !== bot.ownerId && !(bot.team && locked.team && bot.team === locked.team) && canDetectThroughBush(bot, locked) && !isGhoulHiddenFromObserver(locked,bot,nowTarget) && !((bot.ghoulDarknessUntil||0)>nowTarget&&Math.hypot(locked.x-bot.x,locked.y-bot.y)>125)){
               target = locked;
               bestScore = Math.hypot(locked.x - bot.x, locked.y - bot.y) + locked.hp * 1.2;
           }
       }
 
-      if(player.hp > 0 && bot.ownerId !== player.id && !(bot.team && player.team && bot.team === player.team) && canDetectThroughBush(bot, player)){
+      if(player.hp > 0 && bot.ownerId !== player.id && !(bot.team && player.team && bot.team === player.team) && canDetectThroughBush(bot, player) && !isGhoulHiddenFromObserver(player,bot,nowTarget) && !((bot.ghoulDarknessUntil||0)>nowTarget&&Math.hypot(player.x-bot.x,player.y-bot.y)>125)){
           const d = Math.hypot(player.x - bot.x, player.y - bot.y);
           const bushPenalty = (isEntityInsideBush(player) && d > 280) ? 220 : 0;
           const score = d + (player.hp / player.maxHp) * 300 + bushPenalty;
@@ -13230,7 +13309,7 @@
       }
 
       for (const other of bots) {
-          if (other.hp > 0 && other.id !== bot.id && other.id !== bot.ownerId && !(bot.team && other.team && bot.team === other.team) && canDetectThroughBush(bot, other)) {
+          if (other.hp > 0 && other.id !== bot.id && other.id !== bot.ownerId && !(bot.team && other.team && bot.team === other.team) && canDetectThroughBush(bot, other) && !isGhoulHiddenFromObserver(other,bot,nowTarget) && !((bot.ghoulDarknessUntil||0)>nowTarget&&Math.hypot(other.x-bot.x,other.y-bot.y)>125)) {
               const d = Math.hypot(other.x - bot.x, other.y - bot.y);
               const bushPenalty = (isEntityInsideBush(other) && d > 280) ? 220 : 0;
               const score = d + (other.hp / other.maxHp) * 300 + bushPenalty;
@@ -13805,6 +13884,7 @@
       if ((entity.fastpassLaneUntil || 0) > now) mult *= entity.fastpassLaneDamageMult || 1.15;
       if (isInsideEnemyPortaloPrison(entity, now)) mult *= .85;
       if (getEntityBrawlerId(entity) === 'portalo' && isEntityHyperchargedNow(entity, now)) mult *= 1.20;
+      if (getEntityBrawlerId(entity) === 'ghoul' && isEntityHyperchargedNow(entity, now)) mult *= 1.20;
       if (isSlopSushiMode) {
           mult *= 1 + getEntitySlopEffectTotal(entity, 'damagePct');
           if (entity.hp <= entity.maxHp * 0.35) mult *= 1 + getEntitySlopEffectTotal(entity, 'lowHpDamagePct');
@@ -15785,7 +15865,18 @@
 
     // Recovery kits: these brawlers were restored to the roster from backup,
     // so route them through their own attacks instead of the generic projectile.
-    if (brawler === 'portalo') {
+    if (brawler === 'ghoul') {
+        if(isBot){const group=getBotLivingEnemies(fromEntity).filter(enemy=>Math.hypot(enemy.x-targetX,enemy.y-targetY)<180);if(group.length>1){targetX=group.reduce((sum,enemy)=>sum+enemy.x,0)/group.length;targetY=group.reduce((sum,enemy)=>sum+enemy.y,0)/group.length;}}
+        const phantom=!!fromEntity.ghoulPhantomReachArmed;
+        fromEntity.ghoulPhantomReachArmed=false;
+        if(!isBot&&phantom){gadgetArmed=false;gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();}
+        endGhoulInvisibility(fromEntity,now,true);
+        spawnGhoulHaunt(fromEntity,targetX,targetY,{phantom});
+        return;
+    } else if (brawler === 'jacktrade') {
+        spawnJackTradeAttack(fromEntity,ang);
+        return;
+    } else if (brawler === 'portalo') {
         const hyper = isEntityHyperchargedNow(fromEntity, now);
         const reverse = !!fromEntity.portaloReverseArmed;
         fromEntity.portaloReverseArmed = false;
@@ -17971,6 +18062,8 @@
     const mult = (selectedStar === 'long') ? 1.38 : 1.0;
     const combatBrawler = getCombatBrawler(player, false);
 
+    if (combatBrawler === 'ghoul') { castGhoulSuper(player,!!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'jacktrade') { castJackTradeSuper(player,wm.x,wm.y,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'portalo') { castPortaloSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'fastpass') { castFastLane(player,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'freestyle') { castFreestyleSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return; }
@@ -18989,6 +19082,14 @@
       else if (highValueTarget && ready.includes('g2')) g = 'g2';
       else if (ready.includes('g1')) g = 'g1';
     }
+    if (bot.brawler === 'ghoul') {
+      if ((bot.lastTargetDistance || 0) > GHOUL_HAUNT_RANGE*.82 && ready.includes('g1')) g='g1';
+      else if (ready.includes('g2')) g='g2';
+    }
+    if (bot.brawler === 'jacktrade') {
+      if ((bot.superCharge||0)>=100 && ready.includes('g1')) g='g1';
+      else if (getJackTradeStage(bot)===4 && ready.includes('g2')) g='g2';
+    }
     bot.selectedGadget = g;
     setEntityGadgetCooldownUntil(bot, now + getGadgetCooldownMsForBrawler(bot.brawler, g), g);
 
@@ -18997,7 +19098,15 @@
     if (target) ang = Math.atan2(target.y - bot.y, target.x - bot.x);
     else ang = bot.angle || 0;
 
-    if (bot.brawler === 'portalo' && g === 'g1') {
+    if (bot.brawler === 'ghoul' && g === 'g1') {
+      bot.ghoulPhantomReachArmed=true;spawnFloatingText(bot.x,bot.y-34,'PHANTOM REACH','#c895ff');
+    } else if (bot.brawler === 'ghoul' && g === 'g2') {
+      spawnGhoulClone(bot);
+    } else if (bot.brawler === 'jacktrade' && g === 'g1') {
+      bot.jackTradeJackpotArmed=true;spawnFloatingText(bot.x,bot.y-34,'JACKPOT READY','#ffd85c');
+    } else if (bot.brawler === 'jacktrade' && g === 'g2') {
+      bot.jackTradeSafeBetArmed=true;spawnFloatingText(bot.x,bot.y-34,'SAFE BET READY','#7ef4ff');
+    } else if (bot.brawler === 'portalo' && g === 'g1') {
       const targetDistance = target ? Math.hypot(target.x-bot.x,target.y-bot.y) : 0;
       let aimX = target ? target.x : bot.x + Math.cos(ang) * 280;
       let aimY = target ? target.y : bot.y + Math.sin(ang) * 280;
@@ -19361,6 +19470,8 @@
     const now = performance.now();
     const dx = targetX - bot.x; const dy = targetY - bot.y; const ang = Math.atan2(dy, dx);
 
+        if (botCombatBrawler === 'ghoul') { castGhoulSuper(bot,isHyper); return; }
+        if (botCombatBrawler === 'jacktrade') { castJackTradeSuper(bot,targetX,targetY,isHyper); return; }
         if (botCombatBrawler === 'portalo') { castPortaloSuper(bot,isHyper,targetX,targetY); return; }
         if (botCombatBrawler === 'fastpass') { castFastLane(bot,isHyper); return; }
         if (botCombatBrawler === 'freestyle') { castFreestyleSuper(bot,isHyper,targetX,targetY); return; }
@@ -20020,7 +20131,18 @@
     addEventQuestProgress('use_gadget');
     progressSeasonPassQuest('use_gadget');
     
-    if (curBrawler === 'portalo' && curGadget === 'g1') {
+    if (curBrawler === 'ghoul' && curGadget === 'g1') {
+      if(player.ghoulPhantomReachArmed)return;
+      player.ghoulPhantomReachArmed=true;gadgetArmed=true;spawnFloatingText(player.x,player.y-34,'PHANTOM REACH READY','#c895ff');updateGadgetButton();
+    } else if (curBrawler === 'ghoul' && curGadget === 'g2') {
+      spawnGhoulClone(player);gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
+    } else if (curBrawler === 'jacktrade' && curGadget === 'g1') {
+      if(player.jackTradeJackpotArmed)return;
+      player.jackTradeJackpotArmed=true;gadgetArmed=true;spawnFloatingText(player.x,player.y-34,'JACKPOT READY','#ffd85c');updateGadgetButton();
+    } else if (curBrawler === 'jacktrade' && curGadget === 'g2') {
+      if(player.jackTradeSafeBetArmed)return;
+      player.jackTradeSafeBetArmed=true;gadgetArmed=true;spawnFloatingText(player.x,player.y-34,'SAFE BET READY','#7ef4ff');updateGadgetButton();
+    } else if (curBrawler === 'portalo' && curGadget === 'g1') {
       const wm=getMouseWorld();
       createPortaloPortalPair(player,player.x,player.y,wm.x,wm.y,4000,{shortcut:true});
       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
@@ -21328,6 +21450,403 @@
               projectile.portaloWarpFromX=entryX;projectile.portaloWarpFromY=entryY;
               explosions.push({x:entryX,y:entryY,radius:25,life:0,maxLife:.18,color:'rgba(141,78,255,.72)',fxKind:'portaloRedirect'});
               explosions.push({x:projectile.x,y:projectile.y,radius:29,life:0,maxLife:.2,color:'rgba(62,235,255,.78)',fxKind:'portaloRedirect'});
+          }
+      }
+  }
+
+  const JACKTRADE_CARD_DAMAGE = 900;
+  const JACKTRADE_CARD_RANGE = 830;
+  const JACKTRADE_CARD_SPEED = 940;
+  const JACKTRADE_SLOW_ZONE_MS = 7000;
+  const JACKTRADE_HYPER_PUDDLE_MS = 2000;
+  const JACKTRADE_SUPER_OUTCOMES = ['regeneration','demolition','rush','toxic','slow','healing'];
+
+  function isJackTradeEntity(entity) {
+      return !!entity && getEntityBrawlerId(entity) === 'jacktrade';
+  }
+
+  function getJackTradeStage(entity) {
+      const stage = Number(entity?.jackTradeStage) || 1;
+      return stage >= 4 ? 4 : stage >= 2 ? 2 : 1;
+  }
+
+  function setJackTradeStage(entity, stage) {
+      if (!entity) return;
+      entity.jackTradeStage = stage >= 4 ? 4 : stage >= 2 ? 2 : 1;
+      if (entity.jackTradeStage === 1) entity.jackTradeHotStreak = 0;
+  }
+
+  function getJackTradeDamageScale(owner) {
+      if (!owner) return 1;
+      const level = owner.id === player.id ? getSelectedBrawlerLevel() : (owner.powerLevel || owner.level || 11);
+      return getScaledStats('jacktrade', level).dmg / JACKTRADE_CARD_DAMAGE;
+  }
+
+  function spawnJackTradeAttack(owner, angle) {
+      if (!owner || owner.hp <= 0) return;
+      const now = performance.now();
+      const hyper = isEntityHyperchargedNow(owner, now);
+      const stage = hyper ? 4 : getJackTradeStage(owner);
+      const hotBonus = !hyper && stage === 4 && getEntityStarChoice(owner) === 'slow' && (owner.jackTradeHotStreak || 0) === 2;
+      const volleyId = `jacktrade_${owner.id}_${Math.floor(now)}_${Math.floor(Math.random()*99999)}`;
+      const offsets = stage === 1 ? [0] : stage === 2 ? [-.032,.032] : [-.067,-.022,.022,.067];
+      const speed = JACKTRADE_CARD_SPEED * (hotBonus ? 1.15 : 1);
+      const damage = JACKTRADE_CARD_DAMAGE * (hotBonus ? 1.10 : 1);
+      const volley = {id:volleyId,ownerId:owner.id,stage,hyper,hotBonus,hit:false,createdAt:now,resolveAt:now+(JACKTRADE_CARD_RANGE/speed)*1000+180};
+      jackTradeVolleys.push(volley);
+      offsets.forEach((spread,index) => {
+          const shotAngle=angle+spread;
+          const card={
+              ownerBrawler:'jacktrade', ownerId:owner.id, isJackTradeCard:true, jackTradeVolleyId:volleyId,
+              jackTradeCardIndex:index, jackTradeStage:stage, x:owner.x+Math.cos(shotAngle)*(owner.radius+9), y:owner.y+Math.sin(shotAngle)*(owner.radius+9),
+              vx:Math.cos(shotAngle)*speed, vy:Math.sin(shotAngle)*speed, life:0, maxLife:JACKTRADE_CARD_RANGE/speed,
+              damage, pierce:false, hitIds:{}, hitboxMod:1.08, hyperVisual:hyper, jackTradeHotBonus:hotBonus,
+          };
+          bullets.push(card);
+          if (hyper) jackTradeEndpointShots.push({projectile:card,ownerId:owner.id,spawned:false,expiresAt:now+1800});
+      });
+      explosions.push({x:owner.x+Math.cos(angle)*24,y:owner.y+Math.sin(angle)*24,radius:stage===4?34:22,life:0,maxLife:.18,color:stage===4?'rgba(255,205,63,.72)':'rgba(153,91,255,.62)',fxKind:'jackTradeMuzzle',ringCount:stage});
+  }
+
+  function registerJackTradeVolleyHit(owner, projectile) {
+      if (!owner || !projectile?.jackTradeVolleyId) return;
+      const volley = jackTradeVolleys.find(entry=>entry.id===projectile.jackTradeVolleyId);
+      if (!volley || volley.hit) return;
+      volley.hit = true;
+      if (volley.hyper) return;
+      if (volley.stage === 1) setJackTradeStage(owner,2);
+      else if (volley.stage === 2) setJackTradeStage(owner,4);
+      else {
+          owner.jackTradeHotStreak=((owner.jackTradeHotStreak||0)+1)%3;
+          setJackTradeStage(owner,4);
+      }
+      spawnFloatingText(owner.x,owner.y-42,`NEXT: ${getJackTradeStage(owner)} CARDS`,getJackTradeStage(owner)===4?'#ffd85c':'#c59aff');
+  }
+
+  function spawnJackTradeZone(type, owner, x, y, options={}) {
+      const now=performance.now();
+      const duration=options.duration ?? (type==='hyperPuddle'?JACKTRADE_HYPER_PUDDLE_MS:JACKTRADE_SLOW_ZONE_MS);
+      const zone={id:`jt_zone_${nextId++}`,type,ownerId:owner.id,x,y,angle:options.angle||0,radius:options.radius||130,startRadius:options.radius||130,
+          createdAt:now,expiresAt:now+duration,nextTickAt:now,hyper:!!options.hyper,damagePerSecond:options.damagePerSecond||0,healPerSecond:options.healPerSecond||0};
+      jackTradeZones.push(zone);
+      explosions.push({x,y,radius:zone.radius,life:0,maxLife:.35,color:type==='toxicCone'||type==='toxicRing'?'rgba(102,241,110,.56)':type==='healingAura'?'rgba(90,255,177,.5)':'rgba(151,91,255,.5)',fxKind:'jackTradeZone'});
+      return zone;
+  }
+
+  function damageJackTradeWalls(owner,x,y,radius,damage) {
+      for(let index=destructibleWalls.length-1;index>=0;index--){
+          const wall=destructibleWalls[index];
+          if(!wall||wall.indestructible||wall.isPlatform||wall.isVault)continue;
+          const dx=x-clamp(x,wall.x,wall.x+wall.w),dy=y-clamp(y,wall.y,wall.y+wall.h);
+          if(Math.hypot(dx,dy)>radius)continue;
+          wall.hp-=Math.max(damage,wall.isArenaWall?wall.hp:0);
+          if(wall.hp<=0){if(wall.isPowerBox)spawnShowdownPowerBoxReward(wall);destructibleWalls.splice(index,1);if(owner.id===player.id){addEventQuestProgress('destroy_walls');progressSeasonPassQuest('destroy_walls');}}
+      }
+  }
+
+  function healJackTradePot(owner,x,y) {
+      for(const ally of [player,...bots]){
+          if(!ally||ally.hp<=0||!areAlliedEntities(owner,ally)||Math.hypot(ally.x-x,ally.y-y)>180+(ally.radius||14))continue;
+          doHeal(ally,ally.id===owner.id?4000:3000);
+      }
+      explosions.push({x,y,radius:180,life:0,maxLife:.55,color:'rgba(100,255,173,.68)',legendary:true,fxKind:'jackTradeHealing'});
+  }
+
+  function resolveJackTradeImpact(effect, now=performance.now()) {
+      const owner=getEntityById(effect.ownerId);
+      if(!owner||owner.hp<=0)return;
+      const scale=getJackTradeDamageScale(owner);
+      const demolition=effect.type==='demolition'||effect.type==='allin';
+      if(demolition){
+          AOEDamage(effect.x,effect.y,155,2200*scale,owner.id,true);
+          damageJackTradeWalls(owner,effect.x,effect.y,185,2600*scale);
+          for(const target of [player,...bots]){
+              if(!target||target.hp<=0||areAlliedEntities(owner,target)||Math.hypot(target.x-effect.x,target.y-effect.y)>175+(target.radius||14))continue;
+              const dx=target.x-effect.x,dy=target.y-effect.y,length=Math.hypot(dx,dy)||1,mult=getEntityKnockbackMultiplier(target,now);
+              if(mult>0){target.jackTradePushVX=dx/length*300*mult;target.jackTradePushVY=dy/length*300*mult;target.jackTradePushUntil=now+420;}
+          }
+          explosions.push({x:effect.x,y:effect.y,radius:175,life:0,maxLife:.55,color:'rgba(255,186,58,.78)',legendary:true,fxKind:'jackTradeDemo'});
+      }
+      if(effect.type==='slow')spawnJackTradeZone('slow',owner,effect.x,effect.y,{radius:130,duration:7000,damagePerSecond:740*scale});
+      if(effect.type==='healing')healJackTradePot(owner,effect.x,effect.y);
+      if(effect.type==='allin'){
+          spawnJackTradeZone('toxicRing',owner,effect.x,effect.y,{radius:185,duration:2000,damagePerSecond:800*scale,hyper:true});
+          spawnJackTradeZone('slow',owner,effect.x,effect.y,{radius:145,duration:7000,damagePerSecond:740*scale,healPerSecond:300,hyper:true});
+          healJackTradePot(owner,effect.x,effect.y);
+          spawnFloatingText(effect.x,effect.y-58,'ALL IN!','#ffd85c');
+      }
+  }
+
+  function throwJackTradeEffect(owner,type,targetX,targetY,options={}) {
+      const now=performance.now(),angle=Math.atan2(targetY-owner.y,targetX-owner.x),distance=Math.min(650,Math.max(70,Math.hypot(targetX-owner.x,targetY-owner.y)||70));
+      jackTradeThrownEffects.push({id:`jt_throw_${nextId++}`,type,ownerId:owner.id,startX:owner.x,startY:owner.y,x:owner.x,y:owner.y,
+          targetX:clamp(owner.x+Math.cos(angle)*distance,20,WORLD_W-20),targetY:clamp(owner.y+Math.sin(angle)*distance,20,WORLD_H-20),createdAt:now,impactAt:now+520,hyper:!!options.hyper});
+  }
+
+  function activateJackTradeOutcome(owner,outcome,targetX,targetY) {
+      const now=performance.now();
+      if(outcome==='regeneration'){owner.jackTradeRegenRemaining=(owner.jackTradeRegenRemaining||0)+6000;owner.jackTradeRegenUntil=now+10000;spawnFloatingText(owner.x,owner.y-42,'REGENERATION','#64ffad');}
+      else if(outcome==='rush'){owner.jackTradeRushUntil=Math.max(owner.jackTradeRushUntil||0,now+5000);spawnFloatingText(owner.x,owner.y-42,'RUSH ORDER','#ffd85c');}
+      else if(outcome==='toxic')spawnJackTradeZone('toxicCone',owner,owner.x,owner.y,{angle:Math.atan2(targetY-owner.y,targetX-owner.x),radius:300,duration:2000,damagePerSecond:1000*getJackTradeDamageScale(owner)});
+      else throwJackTradeEffect(owner,outcome,targetX,targetY);
+  }
+
+  function castJackTradeSuper(owner,targetX,targetY,hyper=false) {
+      if(!owner)return;
+      const now=performance.now();
+      if(hyper){
+          owner.jackTradeRushUntil=Math.max(owner.jackTradeRushUntil||0,now+5000);
+          owner.jackTradeRegenRemaining=(owner.jackTradeRegenRemaining||0)+6000;
+          owner.jackTradeRegenUntil=now+6000;
+          throwJackTradeEffect(owner,'allin',targetX,targetY,{hyper:true});
+          return;
+      }
+      const jackpot=!!owner.jackTradeJackpotArmed;
+      const count=jackpot?2:1;
+      owner.jackTradeJackpotArmed=false;
+      if(jackpot&&owner.id===player.id){gadgetArmed=false;gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();}
+      const pool=[...JACKTRADE_SUPER_OUTCOMES],rolled=[];
+      while(rolled.length<count&&pool.length){const index=Math.floor(Math.random()*pool.length);rolled.push(pool.splice(index,1)[0]);}
+      rolled.forEach(outcome=>activateJackTradeOutcome(owner,outcome,targetX,targetY));
+      if(getEntityStarChoice(owner)==='long')owner.jackTradeLuckyUntil=now+2500;
+      spawnFloatingText(owner.x,owner.y-48,rolled.map(v=>v.toUpperCase()).join(' + '),'#f8c95f');
+  }
+
+  function updateJackTradeSystems(now,dt) {
+      for(let index=jackTradeVolleys.length-1;index>=0;index--){
+          const volley=jackTradeVolleys[index];
+          if(now<volley.resolveAt)continue;
+          jackTradeVolleys.splice(index,1);
+          const owner=getEntityById(volley.ownerId);
+          if(!owner||owner.hp<=0||volley.hit||volley.hyper)continue;
+          if(owner.jackTradeSafeBetArmed){owner.jackTradeSafeBetArmed=false;if(owner.id===player.id){gadgetArmed=false;gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();}spawnFloatingText(owner.x,owner.y-40,'SAFE BET','#7ef4ff');}
+          else setJackTradeStage(owner,1);
+      }
+      for(let index=jackTradeEndpointShots.length-1;index>=0;index--){
+          const endpoint=jackTradeEndpointShots[index];
+          const live=bullets.includes(endpoint.projectile);
+          if(live&&now<endpoint.expiresAt)continue;
+          jackTradeEndpointShots.splice(index,1);
+          const owner=getEntityById(endpoint.ownerId),shot=endpoint.projectile;
+          if(owner&&owner.hp>0)spawnJackTradeZone('hyperPuddle',owner,clamp(shot.x,16,WORLD_W-16),clamp(shot.y,16,WORLD_H-16),{radius:42,duration:JACKTRADE_HYPER_PUDDLE_MS,hyper:true});
+      }
+      for(let index=jackTradeThrownEffects.length-1;index>=0;index--){
+          const effect=jackTradeThrownEffects[index],progress=clamp((now-effect.createdAt)/(effect.impactAt-effect.createdAt),0,1),arc=Math.sin(progress*Math.PI)*80;
+          effect.x=effect.startX+(effect.targetX-effect.startX)*progress;effect.y=effect.startY+(effect.targetY-effect.startY)*progress-arc;
+          if(now>=effect.impactAt){effect.x=effect.targetX;effect.y=effect.targetY;resolveJackTradeImpact(effect,now);jackTradeThrownEffects.splice(index,1);}
+      }
+      for(let index=jackTradeZones.length-1;index>=0;index--){
+          const zone=jackTradeZones[index],owner=getEntityById(zone.ownerId);
+          if(!owner||owner.hp<=0||now>=zone.expiresAt){jackTradeZones.splice(index,1);continue;}
+          if(zone.type==='slow'){const progress=clamp((now-zone.createdAt)/(zone.expiresAt-zone.createdAt),0,1);zone.radius=zone.startRadius*(1+.5*progress);}
+          for(const target of [player,...bots]){
+              if(!target||target.hp<=0)continue;
+              const dx=target.x-zone.x,dy=target.y-zone.y,distance=Math.hypot(dx,dy),hostile=!areAlliedEntities(owner,target);
+              const insideCone=zone.type!=='toxicCone'||(distance<=zone.radius&&Math.abs(Math.atan2(Math.sin(Math.atan2(dy,dx)-zone.angle),Math.cos(Math.atan2(dy,dx)-zone.angle)))<=.48);
+              if(hostile&&insideCone&&distance<=zone.radius+(target.radius||14)&&(zone.type==='slow'||zone.type==='hyperPuddle'))target.slowUntil=Math.max(target.slowUntil||0,now+180);
+          }
+          if(now>=zone.nextTickAt){
+              zone.nextTickAt=now+500;
+              if(zone.damagePerSecond>0){
+                  if(zone.type==='toxicCone'){
+                      for(const target of [player,...bots]){if(!target||target.hp<=0||areAlliedEntities(owner,target))continue;const dx=target.x-zone.x,dy=target.y-zone.y,d=Math.hypot(dx,dy),delta=Math.abs(Math.atan2(Math.sin(Math.atan2(dy,dx)-zone.angle),Math.cos(Math.atan2(dy,dx)-zone.angle)));if(d<=zone.radius+(target.radius||14)&&delta<=.48)checkHit(target,{ownerBrawler:'jacktrade',ownerId:owner.id,damage:zone.damagePerSecond*.5,pierce:true,super:true,isJackTradeZone:true,hitIds:{}},-1);}
+                  } else AOEDamage(zone.x,zone.y,zone.radius,zone.damagePerSecond*.5,owner.id,true);
+              }
+              if(zone.healPerSecond>0)for(const ally of [player,...bots])if(ally&&ally.hp>0&&areAlliedEntities(owner,ally)&&Math.hypot(ally.x-zone.x,ally.y-zone.y)<=zone.radius+(ally.radius||14))doHeal(ally,zone.healPerSecond*.5);
+          }
+      }
+      for(const entity of [player,...bots]){
+          if(!entity||entity.hp<=0)continue;
+          if(entity.jackTradeRegenRemaining>0&&now<(entity.jackTradeRegenUntil||0)){const heal=Math.min(entity.jackTradeRegenRemaining,entity.jackTradeRegenRemaining*dt/Math.max(.001,(entity.jackTradeRegenUntil-now)/1000));entity.jackTradeRegenRemaining-=heal;doHeal(entity,heal);}
+          if(now<(entity.jackTradePushUntil||0)){const nx=entity.x+(entity.jackTradePushVX||0)*dt,ny=entity.y+(entity.jackTradePushVY||0)*dt;if(canMoveToPosition(entity,nx,ny)){entity.x=nx;entity.y=ny;}entity.jackTradePushVX*=Math.pow(.02,dt);entity.jackTradePushVY*=Math.pow(.02,dt);}
+      }
+  }
+
+  const GHOUL_BASE_INVIS_MS = 1800;
+  const GHOUL_HYPER_INVIS_MS = 2400;
+  const GHOUL_REVEAL_RADIUS = 150;
+  const GHOUL_HAUNT_RANGE = 760;
+  const GHOUL_HAND_DAMAGE = 1050;
+  const GHOUL_SUPER_DURATION_MS = 8000;
+
+  function isGhoulEntity(entity) {
+      return !!entity && getEntityBrawlerId(entity) === 'ghoul';
+  }
+
+  function getGhoulInvisibilityDuration(entity, now = performance.now()) {
+      return isEntityHyperchargedNow(entity, now) ? GHOUL_HYPER_INVIS_MS : GHOUL_BASE_INVIS_MS;
+  }
+
+  function isGhoulInvisible(entity, now = performance.now()) {
+      if (!isGhoulEntity(entity) || entity.hp <= 0 || now < (entity.ghoulForcedVisibleUntil || 0)) return false;
+      if (now < (entity.ghoulAimInvisibleUntil || 0)) return true;
+      if (now < (entity.ghoulSuperUntil || 0)) {
+          const phase = Math.floor((now - (entity.ghoulSuperStartedAt || now)) / 420);
+          return phase % 2 === 1;
+      }
+      return false;
+  }
+
+  function isGhoulHiddenFromObserver(target, observer, now = performance.now()) {
+      if (!isGhoulInvisible(target, now) || !observer || areAlliedEntities(target, observer)) return false;
+      return Math.hypot(target.x - observer.x, target.y - observer.y) > GHOUL_REVEAL_RADIUS + (observer.radius || 14);
+  }
+
+  function beginGhoulInvisibility(entity, now = performance.now()) {
+      if (!isGhoulEntity(entity) || entity.hp <= 0 || now < (entity.ghoulForcedVisibleUntil || 0)) return;
+      if (entity.ghoulAimSessionActive) return;
+      entity.ghoulAimSessionActive = true;
+      entity.ghoulAimInvisibleStartedAt = now;
+      entity.ghoulAimInvisibleUntil = now + getGhoulInvisibilityDuration(entity, now);
+  }
+
+  function endGhoulInvisibility(entity, now = performance.now(), triggerShadowWalker = true) {
+      if (!isGhoulEntity(entity)) return;
+      const wasInvisible = isGhoulInvisible(entity, now);
+      entity.ghoulAimInvisibleUntil = 0;
+      entity.ghoulAimSessionActive = false;
+      entity.ghoulForcedVisibleUntil = now + 180;
+      if (wasInvisible && triggerShadowWalker && getEntityStarChoice(entity) === 'long') {
+          entity.ghoulShadowSpeedUntil = Math.max(entity.ghoulShadowSpeedUntil || 0, now + 2000);
+          spawnFloatingText(entity.x, entity.y - 38, 'SHADOW WALKER', '#ca8cff');
+      }
+  }
+
+  function applyGhoulDarkness(target, now = performance.now()) {
+      if (!target || target.hp <= 0) return;
+      const remaining = Math.max(0, (target.ghoulDarknessUntil || 0) - now);
+      target.ghoulDarknessUntil = now + Math.min(4000, remaining + 800);
+      target.ghoulDarknessFxUntil = target.ghoulDarknessUntil;
+      spawnFloatingText(target.x, target.y - 42, `DARKNESS ${Math.ceil((target.ghoulDarknessUntil - now) / 100) / 10}s`, '#bd79ff');
+  }
+
+  function spawnGhoulHaunt(owner, targetX, targetY, options = {}) {
+      if (!owner || owner.hp <= 0) return null;
+      const now = performance.now();
+      const angle = Math.atan2(targetY - owner.y, targetX - owner.x);
+      const phantom = !!options.phantom;
+      const maxRange = GHOUL_HAUNT_RANGE * (phantom ? 1.25 : 1);
+      const distance = Math.min(maxRange, Math.max(55, Math.hypot(targetX - owner.x, targetY - owner.y) || 55));
+      const destination = {x:clamp(owner.x + Math.cos(angle) * distance,18,WORLD_W-18),y:clamp(owner.y + Math.sin(angle) * distance,18,WORLD_H-18)};
+      const hyper = isEntityHyperchargedNow(owner, now);
+      const party = now < (owner.ghoulSuperUntil || 0);
+      const invisHeld = Math.max(0, now - (owner.ghoulAimInvisibleStartedAt || now));
+      const lingering = getEntityStarChoice(owner) === 'slow' && invisHeld >= 1000;
+      const handCount = party ? 3 : 2;
+      const slamDelay = hyper ? 260 : 520;
+      const haunt = {
+          id:`ghoul_haunt_${owner.id}_${Math.floor(now)}_${Math.floor(Math.random()*9999)}`,
+          ownerId:owner.id, team:getEntityTeam(owner), x:destination.x, y:destination.y,
+          angle, handCount, phantom, hyper, party, lingering,
+          damage:GHOUL_HAND_DAMAGE * (lingering ? 1.2 : 1),
+          createdAt:now, slamAt:now+slamDelay, returnAt:now+slamDelay+(hyper?170:300), expiresAt:now+slamDelay+(hyper?390:650),
+          resolved:false,
+      };
+      ghoulHaunts.push(haunt);
+      explosions.push({x:destination.x,y:destination.y-40,radius:64,life:0,maxLife:hyper?.22:.36,color:hyper?'rgba(102,30,156,.7)':'rgba(103,211,220,.56)',fxKind:'ghoulPortal'});
+      return haunt;
+  }
+
+  function resolveGhoulHaunt(haunt, now = performance.now()) {
+      if (!haunt || haunt.resolved) return;
+      haunt.resolved = true;
+      const owner = getEntityById(haunt.ownerId);
+      if (!owner || owner.hp <= 0) return;
+      const perpendicularX = -Math.sin(haunt.angle);
+      const perpendicularY = Math.cos(haunt.angle);
+      const offsets = haunt.handCount === 3 ? [-48, 0, 48] : [-27, 27];
+      const landed = new Map();
+      for (let handIndex = 0; handIndex < offsets.length; handIndex++) {
+          const handX = haunt.x + perpendicularX * offsets[handIndex];
+          const handY = haunt.y + perpendicularY * offsets[handIndex];
+          let target = null;
+          let bestDistance = Infinity;
+          for (const candidate of [player, ...bots]) {
+              if (!candidate || candidate.hp <= 0 || candidate.id === owner.id || areAlliedEntities(owner, candidate)) continue;
+              const distance = Math.hypot(candidate.x - handX, candidate.y - handY);
+              if (distance <= 46 + (candidate.radius || 14) && distance < bestDistance) { target = candidate; bestDistance = distance; }
+          }
+          if (target) {
+              const hit = checkHit(target, {
+                  ownerBrawler:'ghoul', ownerId:owner.id, damage:haunt.damage, pierce:true, super:false,
+                  isGhoulHand:true, ghoulHyper:haunt.hyper, ghoulHauntId:haunt.id, ghoulHandIndex:handIndex, hitIds:{},
+              }, -1);
+              if (hit) {
+                  landed.set(target.id, (landed.get(target.id) || 0) + 1);
+                  if (haunt.party) {
+                      const dx = target.x - haunt.x, dy = target.y - haunt.y, length = Math.hypot(dx,dy) || 1;
+                      const knockbackMult=getEntityKnockbackMultiplier(target,now);
+                      if(knockbackMult>0){target.ghoulPushVX = dx / length * 190*knockbackMult;target.ghoulPushVY = dy / length * 190*knockbackMult;target.ghoulPushUntil = Math.max(target.ghoulPushUntil || 0, now + 440);}
+                  }
+              }
+          } else {
+              const wallIndex=destructibleWalls.findIndex(wall=>wall&&wall.isPowerBox&&wall.hp>0&&Math.hypot(clamp(handX,wall.x,wall.x+wall.w)-handX,clamp(handY,wall.y,wall.y+wall.h)-handY)<=46);
+              if(wallIndex>=0){const wall=destructibleWalls[wallIndex],levelScale=owner.id===player.id?getPlayerDamageScale():getLevelDamageScale(owner.level||owner.powerLevel||11),boxDamage=normalizeDamageBreakpoint(haunt.damage*(1+(owner.powerCubes||0)*.1)*levelScale*getOutgoingDamageMultiplier(owner,now));wall.hp-=boxDamage;if(wall.hp<=0){spawnShowdownPowerBoxReward(wall);destructibleWalls.splice(wallIndex,1);if(owner.id===player.id){addEventQuestProgress('destroy_walls');progressSeasonPassQuest('destroy_walls');}}}
+          }
+          explosions.push({x:handX,y:handY,radius:46,life:0,maxLife:.25,color:haunt.hyper?'rgba(108,31,169,.82)':'rgba(101,223,218,.68)',fxKind:'ghoulSlap'});
+      }
+      if (haunt.phantom) {
+          for (const [targetId, hitCount] of landed) {
+              if (hitCount < 2) continue;
+              const target = getEntityById(targetId);
+              if (target) target.ghoulPhantomSlowUntil = Math.max(target.ghoulPhantomSlowUntil || 0, now + 1500);
+          }
+      }
+  }
+
+  function castGhoulSuper(owner, hyper = false) {
+      if (!owner) return;
+      const now = performance.now();
+      owner.ghoulSuperStartedAt = now;
+      owner.ghoulSuperUntil = now + GHOUL_SUPER_DURATION_MS;
+      owner.ghoulSuperHyper = !!hyper;
+      owner.ghoulForcedVisibleUntil = 0;
+      spawnFloatingText(owner.x, owner.y - 44, hyper ? 'NIGHTMARE PARTY!' : 'INVISIBLE PARTY!', hyper ? '#d873ff' : '#8ff9ef');
+      explosions.push({x:owner.x,y:owner.y,radius:205,life:0,maxLife:.7,color:hyper?'rgba(104,25,153,.76)':'rgba(78,215,204,.58)',legendary:true,fxKind:'ghoulParty'});
+  }
+
+  function spawnGhoulClone(owner) {
+      if (!owner) return;
+      const now = performance.now();
+      const spot = findNearestOpenSpot(owner.x + Math.cos(owner.angle || 0) * 38, owner.y + Math.sin(owner.angle || 0) * 38, owner.radius || 16, 180);
+      const stats = getScaledStats('ghoul', owner.id === player.id ? getSelectedBrawlerLevel() : (owner.powerLevel || owner.level || 11));
+      bots.push({
+          id:nextId++, x:spot.x, y:spot.y, radius:owner.radius || 17, angle:owner.angle || 0,
+          hp:1, maxHp:1, speed:stats.speed*.92, damage:0, brawler:'ghoul', team:getEntityTeam(owner), ownerId:owner.id,
+          isGhoulClone:true, ghoulCloneExpiresAt:now+4000, ghoulCloneStartedAt:now, noPowerupDrop:true,
+          gadgetUsed:true, super:0, ammo:0, maxAmmo:0, lastShot:now, spawnTime:now, lastDamageTaken:now,
+      });
+      explosions.push({x:spot.x,y:spot.y,radius:50,life:0,maxLife:.35,color:'rgba(145,102,202,.7)',fxKind:'ghoulClone'});
+  }
+
+  function updateGhoulSystems(now, dt) {
+      for (let index = ghoulHaunts.length - 1; index >= 0; index--) {
+          const haunt = ghoulHaunts[index];
+          if (!haunt.resolved && now >= haunt.slamAt) resolveGhoulHaunt(haunt, now);
+          if (now >= haunt.expiresAt) ghoulHaunts.splice(index, 1);
+      }
+      for (const entity of [player, ...bots]) {
+          if (!entity || entity.hp <= 0) continue;
+          if (entity.isGhoulClone) {
+              if (now >= (entity.ghoulCloneExpiresAt || 0)) { entity.hp = 0; continue; }
+              const target = getNearestHostileTarget(entity);
+              if (target) {
+                  const dx=target.x-entity.x,dy=target.y-entity.y,length=Math.hypot(dx,dy)||1,step=(entity.speed||270)*dt;
+                  const nx=entity.x+dx/length*step,ny=entity.y+dy/length*step;
+                  if (canMoveToPosition(entity,nx,ny)) { entity.x=nx;entity.y=ny;entity.angle=Math.atan2(dy,dx); }
+              }
+              continue;
+          }
+          if (isGhoulEntity(entity)) {
+              const invisible = isGhoulInvisible(entity, now);
+              if (entity.ghoulWasInvisible && !invisible && getEntityStarChoice(entity) === 'long') entity.ghoulShadowSpeedUntil = Math.max(entity.ghoulShadowSpeedUntil || 0, now + 2000);
+              entity.ghoulWasInvisible = invisible;
+              if (entity.id !== player.id && now >= (entity.ghoulAimInvisibleUntil || 0) && now - (entity.lastShot || 0) > 650) beginGhoulInvisibility(entity, now);
+          }
+          if (now < (entity.ghoulPushUntil || 0)) {
+              const stepX=(entity.ghoulPushVX||0)*dt,stepY=(entity.ghoulPushVY||0)*dt;
+              if (canMoveToPosition(entity,entity.x+stepX,entity.y+stepY)) { entity.x+=stepX;entity.y+=stepY; }
+              entity.ghoulPushVX *= Math.pow(.02,dt); entity.ghoulPushVY *= Math.pow(.02,dt);
           }
       }
   }
@@ -24866,6 +25385,7 @@
   function checkHit(target, b, i){
         // If target has temporary invulnerability (e.g., overlord transform), ignore the hit
         if (target && target.invulnerableUntil && target.invulnerableUntil > performance.now()) return false;
+        if (target?.isGhoulClone) { target.hp=0; explosions.push({x:target.x,y:target.y,radius:46,life:0,maxLife:.28,color:'rgba(157,102,220,.62)',fxKind:'ghoulClone'}); return true; }
         if (isArenaForgeMode && target?.isArenaForgeCore && !isArenaForgeCoreVulnerable(target.team)) {
             if (performance.now() >= (target.forgeShieldTextAt || 0)) {
                 spawnFloatingText(target.x, target.y - 74, 'CORE SHIELDED - BREAK BOTH TOWERS', '#9be7ff');
@@ -25157,7 +25677,7 @@
         dealtDamage *= Math.max(0.75, 1 - target.decayerStackReductionPct);
     }
     if (target && performance.now() < (target.demonDoomShieldUntil || 0)) dealtDamage *= 0.45;
-    if (target && getEntityBrawlerId(target) === 'portalo' && isEntityHyperchargedNow(target)) dealtDamage *= .90;
+    if (target && (getEntityBrawlerId(target) === 'portalo' || getEntityBrawlerId(target) === 'ghoul') && isEntityHyperchargedNow(target)) dealtDamage *= .90;
     if (target && (target.id === player.id ? selectedBrawler : target.brawler) === 'warrior' && performance.now() < (target.warriorStandUntil || 0)) {
         const warriorStar = target.id === player.id ? selectedStar : (target.selectedStar || 'none');
         if (warriorStar === 'long') dealtDamage *= 0.80;
@@ -25384,6 +25904,8 @@
     dealtDamage = applyShieldDamage(target, dealtDamage);
     target.hp -= dealtDamage;
     if (b.isPortaloShot && owner && rawDmg > 0) handlePortaloMainHit(owner, target, b);
+    if (b.isJackTradeCard && owner && rawDmg > 0) registerJackTradeVolleyHit(owner,b);
+    if (b.isGhoulHand && b.ghoulHyper && rawDmg > 0) applyGhoulDarkness(target);
     if (b.isFastpassTicket && owner && rawDmg > 0) {
         addFastpassMomentum(owner, FASTPASS_MOMENTUM_PER_HIT, false);
         if (b.hyperVisual) triggerFastpassHealingAura(owner);
@@ -25501,8 +26023,9 @@
     // Super charges only by dealing damage (and only for player bullets)
             if(!b.super && !b.isSuperDash && !target.isPet){
                 const multiplier = getSuperChargeMultiplier(b.ownerBrawler) * getTrinketSuperChargeMultiplier(owner);
-                const superGain = b.isPortaloShot ? 12.5 * getModeSuperGainMultiplier() * getTrinketSuperChargeMultiplier(owner) : (rawDmg / 8000) * 100 * multiplier;
-                const hyperGain = b.isPortaloShot ? 6.25 * getModeSuperGainMultiplier() * getTrinketSuperChargeMultiplier(owner) : (rawDmg / 16000) * 100 * multiplier;
+                const exactHandGain = b.isGhoulHand || b.isPortaloShot || b.isJackTradeCard;
+                const superGain = exactHandGain ? 12.5 * getModeSuperGainMultiplier() * getTrinketSuperChargeMultiplier(owner) : (rawDmg / 8000) * 100 * multiplier;
+                const hyperGain = exactHandGain ? 6.25 * getModeSuperGainMultiplier() * getTrinketSuperChargeMultiplier(owner) : (rawDmg / 16000) * 100 * multiplier;
         if(b.ownerId === player.id){
                     superCharge = clamp(superCharge + superGain, 0, 100);
             updateSuperButton();
@@ -28240,7 +28763,7 @@
       const len = Math.hypot(vx,vy) || 1;
       const isMoving = Math.hypot(vx, vy) > 0;
       player.isMovingNow = isMoving;
-      let hcSpd = (isHypercharged ? (selectedBrawler === 'portalo' ? 1.15 : 1.2) : 1.0) * (cheseySuperActive ? 1.5 : 1.0);
+      let hcSpd = (isHypercharged ? ((selectedBrawler === 'portalo' || selectedBrawler === 'ghoul') ? 1.15 : 1.2) : 1.0) * (cheseySuperActive ? 1.5 : 1.0);
       if (player.moneySpeedUntil && performance.now() < player.moneySpeedUntil) hcSpd *= 1.15;
       if (player.seraSpeedUntil && performance.now() < player.seraSpeedUntil) hcSpd *= 1.20;
       if (player.hunterSpeedUntil && performance.now() < player.hunterSpeedUntil) hcSpd *= (player.hunterHcMark ? 1.288 : 1.15);
@@ -28248,6 +28771,9 @@
       if (player.trinketQuickFeetUntil && now < player.trinketQuickFeetUntil) hcSpd *= 1.10;
       if (player.trinketComebackUntil && now < player.trinketComebackUntil) hcSpd *= 1.10;
       if (player.portaloExitSpeedUntil && now < player.portaloExitSpeedUntil) hcSpd *= 1.15;
+      if (player.ghoulShadowSpeedUntil && now < player.ghoulShadowSpeedUntil) hcSpd *= 1.18;
+      if (player.jackTradeLuckyUntil && now < player.jackTradeLuckyUntil) hcSpd *= 1.12;
+      if (player.ghoulPhantomSlowUntil && now < player.ghoulPhantomSlowUntil) hcSpd *= .75;
       if (player.evilDoctorSpeedBoostUntil && now < player.evilDoctorSpeedBoostUntil) hcSpd *= 1.3;
       if (player.hoopDriveUntil && now < player.hoopDriveUntil) hcSpd *= 1.22;
       if (player.scubaDiverOxygenSpeedUntil && now < player.scubaDiverOxygenSpeedUntil) hcSpd *= 1.16;
@@ -28374,6 +28900,11 @@
       for (const flyingBot of aliveBots) if (flyingBot.brawler === 'jetpack') updateJetpackFlight(flyingBot, now);
 
       // firing
+      if(selectedBrawler==='ghoul'){
+          const aiming=!!(mouse.down||mobileInput.aimHeld||mobileInput.attackActive);
+          if(aiming)beginGhoulInvisibility(player,now);
+          else if(player.ghoulAimSessionActive&&now>=(player.ghoulAimInvisibleUntil||0))player.ghoulAimSessionActive=false;
+      }
       if(selectedBrawler === 'jetpack') {
           const held = mouse.down || mobileInput.attackActive;
           const jetpackReady = now >= (player.jetpackNextJumpAt || 0) && now >= (player.jetpackLandingRecoveryUntil || 0);
@@ -28484,6 +29015,8 @@
         updateIceCreamEffects(now, dt);
         updateFastpassAndFreestyle(now, dt);
         updatePortaloSystems(now, dt);
+        updateGhoulSystems(now, dt);
+        updateJackTradeSystems(now, dt);
 
         for (let i=chickpigEggZones.length-1;i>=0;i--) {
             const zone=chickpigEggZones[i];
@@ -31041,6 +31574,10 @@
           if (t.amplifierGadgetSpeedUntil && nowTarget < t.amplifierGadgetSpeedUntil) activeBotSpeed *= AMPLIFIER_G2_SPEED_MULT;
           if (t.portaloExitSpeedUntil && nowTarget < t.portaloExitSpeedUntil) activeBotSpeed *= 1.15;
           if (t.brawler === 'portalo' && isEntityHyperchargedNow(t, nowTarget)) activeBotSpeed *= 1.15;
+          if (t.brawler === 'ghoul' && isEntityHyperchargedNow(t, nowTarget)) activeBotSpeed *= 1.15;
+          if (t.ghoulShadowSpeedUntil && nowTarget < t.ghoulShadowSpeedUntil) activeBotSpeed *= 1.18;
+          if (t.jackTradeLuckyUntil && nowTarget < t.jackTradeLuckyUntil) activeBotSpeed *= 1.12;
+          if (t.ghoulPhantomSlowUntil && nowTarget < t.ghoulPhantomSlowUntil) activeBotSpeed *= .75;
           if (t.brawler === 'copyphase') {
               ensureCopyphaseState(t);
               if (t.isHypercharged && t.copyphaseTransformUntil > nowTarget && t.copyphaseTransformBrawler) activeBotSpeed *= 1.15;
@@ -32946,7 +33483,12 @@
           ctx.fillStyle='#dffcff';ctx.font='bold 7px sans-serif';ctx.textAlign='center';ctx.fillText(`MOMENTUM ${Math.round(pct*100)}%`,player.x,meterY-3);ctx.textAlign='left';
       }else if(selectedBrawler==='freestyle'){
           const names=['DISCO','DJ BOARD','MIC'],colors=['#78e8ff','#ffd45f','#ff72dc'],stage=player.freestyleSetlistStage||0;
-          ctx.fillStyle='rgba(3,10,18,.78)';ctx.beginPath();ctx.roundRect(player.x-27,drawY-14,54,10,5);ctx.fill();ctx.strokeStyle=colors[stage];ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle=colors[stage];ctx.font='bold 7px sans-serif';ctx.textAlign='center';ctx.fillText(`NEXT: ${names[stage]}`,player.x,drawY-7);ctx.textAlign='left';
+           ctx.fillStyle='rgba(3,10,18,.78)';ctx.beginPath();ctx.roundRect(player.x-27,drawY-14,54,10,5);ctx.fill();ctx.strokeStyle=colors[stage];ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle=colors[stage];ctx.font='bold 7px sans-serif';ctx.textAlign='center';ctx.fillText(`NEXT: ${names[stage]}`,player.x,drawY-7);ctx.textAlign='left';
+      }else if(selectedBrawler==='jacktrade'){
+          const stage=isHypercharged?4:getJackTradeStage(player),color=stage===4?'#ffd85c':stage===2?'#c792ff':'#8ee7ff';
+          ctx.fillStyle='rgba(18,8,31,.82)';ctx.beginPath();ctx.roundRect(player.x-28,drawY-15,56,11,5);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle=color;ctx.font='bold 8px sans-serif';ctx.textAlign='center';ctx.fillText(`NEXT: ${stage} CARD${stage===1?'':'S'}`,player.x,drawY-7);ctx.textAlign='left';
+      }else if (selectedBrawler === 'ghoul') {
+          const invisible=isGhoulInvisible(player,performance.now());ctx.fillStyle='rgba(18,8,31,.82)';ctx.beginPath();ctx.roundRect(player.x-30,drawY-15,60,11,5);ctx.fill();ctx.strokeStyle=invisible?'#d99cff':'#76eee5';ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle=invisible?'#eec6ff':'#aefcf5';ctx.font='bold 7px sans-serif';ctx.textAlign='center';ctx.fillText(invisible?'PHASED':'HOLD TO PHASE',player.x,drawY-7);ctx.textAlign='left';
       }
 
       if (selectedBrawler === 'copyphase') {
@@ -33175,6 +33717,18 @@
           for(const off of [-.105,0,.105]){ctx.strokeStyle=hyperMain?'rgba(230,126,255,.58)':'rgba(255,190,96,.62)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(endX,endY);ctx.lineTo(endX+Math.cos(ang+off)*300,endY+Math.sin(ang+off)*300);ctx.stroke();}
           if(hyperMain){for(const lane of [-24,24]){ctx.strokeStyle='rgba(226,118,255,.72)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(player.x+Math.cos(perp)*lane,player.y+Math.sin(perp)*lane);ctx.lineTo(endX+Math.cos(perp)*lane,endY+Math.sin(perp)*lane);ctx.stroke();}}
           ctx.fillStyle='rgba(255,95,24,.15)';ctx.strokeStyle=hyperMain?'#df79ff':'#ffad4c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(endX,endY,hyperMain?67:48,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+      }
+      if (selectedBrawler === 'ghoul') {
+          ctx.save();
+          if(aimingSuper){ctx.fillStyle='rgba(91,36,137,.16)';ctx.strokeStyle=isHypercharged?'#db73ff':'#8ff9ef';ctx.lineWidth=4;ctx.beginPath();ctx.arc(player.x,player.y,205,0,Math.PI*2);ctx.fill();ctx.stroke();}
+          else{const phantom=!!player.ghoulPhantomReachArmed,range=GHOUL_HAUNT_RANGE*(phantom?1.25:1),distance=Math.min(range,Math.max(55,Math.hypot(dx,dy)||55)),tx=player.x+Math.cos(ang)*distance,ty=player.y+Math.sin(ang)*distance,perp=ang+Math.PI/2,count=performance.now()<(player.ghoulSuperUntil||0)?3:2,offsets=count===3?[-48,0,48]:[-27,27],hyper=getPlayerHyperMainActive('ghoul');ctx.strokeStyle=hyper?'rgba(198,92,255,.9)':'rgba(117,239,228,.82)';ctx.lineWidth=3;ctx.setLineDash([10,7]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(tx,ty);ctx.stroke();ctx.setLineDash([]);for(const off of offsets){ctx.fillStyle=hyper?'rgba(107,31,169,.22)':'rgba(98,225,215,.18)';ctx.strokeStyle=hyper?'#d477ff':'#8ff9ef';ctx.lineWidth=2;ctx.beginPath();ctx.arc(tx+Math.cos(perp)*off,ty+Math.sin(perp)*off,46,0,Math.PI*2);ctx.fill();ctx.stroke();}}
+          ctx.restore();
+      }
+      if (selectedBrawler === 'jacktrade') {
+          ctx.save();
+          if(aimingSuper){const distance=Math.min(650,Math.max(70,Math.hypot(dx,dy)||70)),tx=player.x+Math.cos(ang)*distance,ty=player.y+Math.sin(ang)*distance;ctx.strokeStyle=isHypercharged?'#f1a4ff':'#ffd85c';ctx.lineWidth=3;ctx.setLineDash([11,7]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+tx)/2,(player.y+ty)/2-80,tx,ty);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=isHypercharged?'rgba(139,52,203,.2)':'rgba(255,208,62,.16)';ctx.strokeStyle=isHypercharged?'#dc75ff':'#ffd85c';ctx.lineWidth=3;ctx.beginPath();ctx.arc(tx,ty,isHypercharged?155:72,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#fff4bd';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(isHypercharged?'ALL IN':'?',tx,ty+5);ctx.textAlign='left';}
+          else{const stage=isHypercharged?4:getJackTradeStage(player),half=stage===4?.085:stage===2?.05:.025;drawStandardAimCone(player.x,player.y,ang,JACKTRADE_CARD_RANGE,half,{fill:'rgba(145,83,255,.12)',stroke:stage===4?'rgba(255,216,92,.94)':'rgba(190,145,255,.88)',center:'rgba(255,247,205,.8)'});}
+          ctx.restore();
       }
       if (selectedBrawler === 'portalo') {
           ctx.save();
@@ -34833,6 +35387,25 @@
     for(const checkpoint of fastpassCheckpoints){
         const life=clamp((checkpoint.expiresAt-performance.now())/5000,0,1),pulse=1+Math.sin(performance.now()/130)*.08;ctx.save();ctx.globalAlpha=.45+.45*life;ctx.strokeStyle='#55efff';ctx.shadowColor='#55efff';ctx.shadowBlur=18;ctx.lineWidth=5;ctx.setLineDash([10,6]);ctx.beginPath();ctx.arc(checkpoint.x,checkpoint.y,checkpoint.radius*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(68,231,255,.12)';ctx.beginPath();ctx.arc(checkpoint.x,checkpoint.y,checkpoint.radius,0,Math.PI*2);ctx.fill();ctx.restore();
     }
+    for (const entity of [player,...bots]) {
+        if (!entity || entity.hp<=0 || !isGhoulEntity(entity)) continue;
+        const now=performance.now();
+        if (now < (entity.ghoulSuperUntil||0)) {
+            const hyper=!!entity.ghoulSuperHyper,pulse=1+Math.sin(now/105)*.08;
+            ctx.save();ctx.translate(entity.x,entity.y);ctx.globalAlpha=.55;ctx.fillStyle=hyper?'rgba(54,5,73,.28)':'rgba(74,194,188,.16)';ctx.strokeStyle=hyper?'#d367ff':'#87f2e8';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=22;ctx.lineWidth=4;ctx.setLineDash([18,9]);ctx.lineDashOffset=-now/23;ctx.beginPath();ctx.arc(0,0,72*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);for(let w=0;w<7;w++){const a=w*Math.PI*2/7+now/900,r=34+(w%3)*13;ctx.globalAlpha=.25+(w%2)*.15;ctx.fillStyle=w%2?'#c67aff':'#9ff8ef';ctx.beginPath();ctx.arc(Math.cos(a)*r,Math.sin(a)*r-10,3+(w%3),0,Math.PI*2);ctx.fill();}ctx.restore();
+        }
+        if (isGhoulInvisible(entity,now)) {ctx.save();ctx.globalAlpha=.28;ctx.fillStyle='#aeece8';for(let m=0;m<5;m++){const a=m*Math.PI*2/5-now/700,r=(entity.radius||16)+10+m%2*6;ctx.beginPath();ctx.ellipse(entity.x+Math.cos(a)*r,entity.y+Math.sin(a)*r,7,3,a,0,Math.PI*2);ctx.fill();}ctx.restore();}
+    }
+    for (const haunt of ghoulHaunts) {
+        const now=performance.now(),descending=now<haunt.slamAt,returning=now>=haunt.returnAt,descendProgress=clamp((now-haunt.createdAt)/Math.max(1,haunt.slamAt-haunt.createdAt),0,1),returnProgress=returning?clamp((now-haunt.returnAt)/Math.max(1,haunt.expiresAt-haunt.returnAt),0,1):0,slamEase=descending?1-Math.pow(1-descendProgress,3):1,lift=descending?(1-slamEase)*150:returning?returnProgress*155:0,squeeze=!descending&&!returning?1.22:1,perpendicularX=-Math.sin(haunt.angle),perpendicularY=Math.cos(haunt.angle),offsets=haunt.handCount===3?[-48,0,48]:[-27,27];
+        ctx.save();ctx.globalAlpha=returning?1-returnProgress:.25+.75*slamEase;const portalRadius=72*(.84+.12*Math.sin(now/85));ctx.fillStyle=haunt.hyper?'rgba(25,1,42,.72)':'rgba(24,72,82,.56)';ctx.strokeStyle=haunt.hyper?'#cd6aff':'#8cf9ec';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=25;ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(haunt.x,haunt.y-116-lift*.25,portalRadius,22,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+        for(let index=0;index<offsets.length;index++){const outward=offsets[index]*(descending?(1+.75*(1-slamEase)):1),hx=haunt.x+perpendicularX*outward,hy=haunt.y+perpendicularY*outward-lift;ctx.save();ctx.translate(hx,hy);ctx.rotate(haunt.angle+(index%2?Math.PI:0));ctx.scale(squeeze,1/squeeze);ctx.fillStyle=haunt.hyper?'rgba(52,14,74,.92)':'rgba(144,229,220,.82)';ctx.strokeStyle=haunt.hyper?'#df8aff':'#d6fffa';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(0,0,29,39,0,0,Math.PI*2);ctx.fill();ctx.stroke();for(let finger=-2;finger<=2;finger++){ctx.beginPath();ctx.roundRect(18,finger*9-4,25+Math.abs(finger)*3,8,5);ctx.fill();ctx.stroke();}if(haunt.hyper){ctx.strokeStyle='#b84cff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-13,-22);ctx.lineTo(2,-7);ctx.lineTo(-5,9);ctx.lineTo(14,23);ctx.stroke();}ctx.restore();}ctx.restore();
+    }
+    for(const zone of jackTradeZones){const now=performance.now(),life=clamp((zone.expiresAt-now)/Math.max(1,zone.expiresAt-zone.createdAt),0,1),pulse=1+Math.sin(now/120)*.04;ctx.save();ctx.globalAlpha=.28+.5*life;ctx.translate(zone.x,zone.y);ctx.rotate(now/900);ctx.fillStyle=zone.type==='toxicCone'||zone.type==='toxicRing'?'rgba(79,220,92,.22)':zone.healPerSecond?'rgba(80,242,169,.18)':'rgba(130,72,219,.2)';ctx.strokeStyle=zone.type==='toxicCone'||zone.type==='toxicRing'?'#8cff92':zone.healPerSecond?'#75ffc0':'#c28cff';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=16;ctx.lineWidth=3;ctx.setLineDash([12,8]);ctx.beginPath();if(zone.type==='toxicCone'){ctx.moveTo(0,0);ctx.arc(0,0,zone.radius,zone.angle-.48,zone.angle+.48);ctx.closePath();}else ctx.arc(0,0,zone.radius*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);for(let chip=0;chip<5;chip++){const a=chip*Math.PI*2/5-now/700,r=zone.radius*.55;ctx.fillStyle=chip%2?'#ffd85c':'#ad72ff';ctx.beginPath();ctx.arc(Math.cos(a)*r,Math.sin(a)*r,4,0,Math.PI*2);ctx.fill();}ctx.restore();}
+    for(const effect of jackTradeThrownEffects){
+        const look=effect.type==='demolition'?{fill:'#df5b35',glow:'#ffb34d',mark:'!'}:effect.type==='slow'?{fill:'#6542b8',glow:'#c89cff',mark:'S'}:effect.type==='healing'?{fill:'#279968',glow:'#79ffc0',mark:'+'}:{fill:'#531064',glow:'#ef70ff',mark:'A'};
+        ctx.save();ctx.translate(effect.x,effect.y);ctx.rotate(performance.now()/80);ctx.shadowColor=look.glow;ctx.shadowBlur=effect.hyper?26:18;ctx.fillStyle=look.fill;ctx.strokeStyle=effect.hyper?'#fff0ff':'#fff2a8';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-12,-16,24,32,5);ctx.fill();ctx.stroke();ctx.fillStyle=look.glow;ctx.font='900 15px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(look.mark,0,1);ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    }
     for (const pair of portaloPortalPairs) {
         const now=performance.now(),life=clamp((pair.expiresAt-now)/Math.max(1,pair.expiresAt-pair.createdAt),0,1),spin=now/260;
         ctx.save();ctx.globalAlpha=.18+.72*life;ctx.setLineDash([8,12]);ctx.lineDashOffset=-now/32;ctx.strokeStyle='rgba(132,201,255,.42)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pair.ax,pair.ay);ctx.lineTo(pair.bx,pair.by);ctx.stroke();ctx.setLineDash([]);
@@ -34922,6 +35495,7 @@
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
       const earlyProjectileSkin = getActiveSkinForBrawler(earlyProjectileBrawler);
       if (renderUniversalSkinProjectile(b, earlyProjectileSkin)) continue;
+      if(b.isJackTradeCard){const a=Math.atan2(b.vy,b.vx),gold=b.jackTradeStage===4||b.jackTradeHotBonus;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a+Math.sin(performance.now()/75+b.jackTradeCardIndex)*.08);ctx.shadowColor=b.hyperVisual?'#dc69ff':gold?'#ffd85c':'#a879ff';ctx.shadowBlur=b.hyperVisual?22:gold?16:11;ctx.globalAlpha=.35;ctx.strokeStyle=ctx.shadowColor;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-27,0);ctx.lineTo(-11,0);ctx.stroke();ctx.globalAlpha=1;ctx.fillStyle=b.hyperVisual?'#6b208f':gold?'#44246f':'#f4ecff';ctx.strokeStyle=gold?'#ffd85c':'#9d6bdf';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-9,-12,18,24,3);ctx.fill();ctx.stroke();ctx.fillStyle=gold?'#fff0a3':'#8d4fc4';ctx.font='bold 13px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText((b.jackTradeCardIndex%2)?'♦':'♠',0,1);ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';continue;}
       if(b.isPortaloShot){const a=Math.atan2(b.vy,b.vx),pulse=1+Math.sin(performance.now()/70)*.12;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);ctx.shadowColor=b.hyperVisual?'#c847ff':'#45eaff';ctx.shadowBlur=b.hyperVisual?24:18;ctx.globalAlpha=.36;ctx.strokeStyle=b.hyperVisual?'#df79ff':'#63efff';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-35,0);ctx.lineTo(-9,0);ctx.stroke();ctx.globalAlpha=1;ctx.rotate(performance.now()/120);const g=ctx.createRadialGradient(0,0,2,0,0,12*pulse);g.addColorStop(0,'#f3ffff');g.addColorStop(.35,b.hyperVisual?'#e68aff':'#65efff');g.addColorStop(.72,'#7553dc');g.addColorStop(1,'#160e43');ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,12*pulse,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#dffcff';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(0,0,16*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();continue;}
       if(b.isFastpassTicket){
           const a=Math.atan2(b.vy,b.vx),momentum=clamp(b.fastpassMomentumAtFire||0,0,1);ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);ctx.shadowColor=b.hyperVisual?'#df72ff':'#55efff';ctx.shadowBlur=10+momentum*18;ctx.strokeStyle=b.hyperVisual?'rgba(223,114,255,.78)':'rgba(85,239,255,.76)';ctx.lineWidth=3+momentum*3;ctx.beginPath();ctx.moveTo(-14-momentum*20,0);ctx.lineTo(-4,0);ctx.stroke();if(b.fastpassStrongTrail){ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-34,4);ctx.lineTo(-8,4);ctx.moveTo(-30,-4);ctx.lineTo(-8,-4);ctx.stroke();}ctx.fillStyle=b.hyperVisual?'#d972ff':'#eaffff';ctx.strokeStyle='#219db8';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-7,-5,16,10,3);ctx.fill();ctx.stroke();ctx.restore();continue;
@@ -37604,6 +38178,11 @@
     ctx.textAlign = 'left';
 
     ctx.restore();
+
+    if (player.hp > 0 && performance.now() < (player.ghoulDarknessUntil || 0)) {
+        const now=performance.now(),remaining=clamp(((player.ghoulDarknessUntil||0)-now)/4000,0,1),radius=108+Math.sin(now/85)*5;
+        ctx.save();const fog=ctx.createRadialGradient(innerWidth/2,innerHeight/2,radius*.62,innerWidth/2,innerHeight/2,radius*2.7);fog.addColorStop(0,'rgba(12,3,19,0)');fog.addColorStop(.38,'rgba(12,3,19,.18)');fog.addColorStop(.58,'rgba(7,1,13,.88)');fog.addColorStop(1,'rgba(1,0,4,.985)');ctx.fillStyle=fog;ctx.fillRect(0,0,innerWidth,innerHeight);ctx.strokeStyle=`rgba(180,92,255,${.5+remaining*.35})`;ctx.shadowColor='#8e35d4';ctx.shadowBlur=22;ctx.lineWidth=4;ctx.setLineDash([13,10]);ctx.lineDashOffset=-now/25;ctx.beginPath();ctx.arc(innerWidth/2,innerHeight/2,radius,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#d99cff';ctx.font='1000 12px sans-serif';ctx.textAlign='center';ctx.fillText(`DARKNESS ${Math.ceil((player.ghoulDarknessUntil-now)/100)/10}s`,innerWidth/2,40);ctx.restore();ctx.textAlign='left';
+    }
 
     if (isBossFight && player.hp <= 0 && !gameOver) {
         ctx.fillStyle = 'rgba(0,0,0,0.5)';

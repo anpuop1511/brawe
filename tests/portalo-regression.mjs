@@ -27,7 +27,7 @@ assert.match(game, /exitAngle=Math\.random\(\)\*Math\.PI\*2/, 'Projectiles exit 
 assert.match(game, /field\.hyper && now >= field\.nextPullAt/, 'Portal Collapse pulls once per scheduled interval');
 assert.match(game, /field\.nextPullAt \+= 1000/, 'Portal Collapse pull interval is one second');
 assert.match(game, /getEntityBrawlerId\(entity\) === 'portalo'.*mult \*= 1\.20/, 'Portalo Hypercharge grants 20% damage');
-assert.match(game, /selectedBrawler === 'portalo' \? 1\.15 : 1\.2/, 'Portalo Hypercharge grants 15% speed');
+assert.match(game, /selectedBrawler === 'portalo' \|\| selectedBrawler === 'ghoul'\) \? 1\.15/, 'Portalo Hypercharge grants 15% speed');
 assert.match(game, /getEntityBrawlerId\(target\) === 'portalo'.*dealtDamage \*= \.90/, 'Portalo Hypercharge grants 10% defense');
 
 assert.match(game, /createPortaloPortalPair\(player,player\.x,player\.y,wm\.x,wm\.y,4000,\{shortcut:true\}\)/, 'Shortcut places a four-second aimed portal pair');

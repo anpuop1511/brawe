@@ -104,8 +104,8 @@ const displayIds = runtimeSource.includes('for (const id of allBrawlers)')
   : getTopLevelQuotedKeys(runtimeSource, 'const brawlerData =');
 const displayMissing = runtimeIds.filter((id) => !displayIds.includes(id));
 
-if (definitions.length !== 69) {
-  throw new Error(`Expected 69 modular brawlers, received ${definitions.length}`);
+if (definitions.length !== 71) {
+  throw new Error(`Expected 71 modular brawlers, received ${definitions.length}`);
 }
 if (duplicateIds.length) {
   throw new Error(`Duplicate modular brawlers: ${[...new Set(duplicateIds)].join(', ')}`);
@@ -147,8 +147,8 @@ if (registry.runBrawlerHook('fuser', 'super', { audit: true })) {
   throw new Error('Missing brawler hooks must fall back to the classic runtime');
 }
 const migrationReport = registry.getMigrationReport(ids);
-if (migrationReport.length !== 69) {
-  throw new Error(`Expected 69 migration report entries, received ${migrationReport.length}`);
+if (migrationReport.length !== 71) {
+  throw new Error(`Expected 71 migration report entries, received ${migrationReport.length}`);
 }
 if (expectedHookNames.some((hookName) => !(hookName in migrationReport[0].hooks))) {
   throw new Error('Migration report is missing one or more gameplay hook columns');
