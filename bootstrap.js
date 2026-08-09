@@ -54,7 +54,7 @@ async function startLegacyRuntime() {
     window.ArenaForgeModules?.loadedFiles.push(file);
   }
 
-  await loadClassicScript('./game.js?v=20260809-targetfix1');
+  await loadClassicScript('./game.js?v=20260809-towercrew1');
   if (homeScreen) homeScreen.style.display = '';
 }
 

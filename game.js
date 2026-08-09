@@ -6177,11 +6177,11 @@
       if(!available.length){run.active=false;saveProgress();alert('No brawlers remain in this Tower run. Start a new run.');return;}
       const board=document.createElement('div');board.className='tower-run-board';
       const currentReward=getTowerTroubleFloorReward(floor,run.losses||0);
-      board.innerHTML=`<section class="tower-run-board__panel"><header><div><small>SEASON 2 • BATTLE OF THE TOWERS</small><h1>TOWER TROUBLE</h1><p>Choose one of 12 random maxed guest brawlers, including fighters you have not unlocked. A loss knocks that brawler out and halves later floor rewards.</p></div><button class="tower-run-board__close" aria-label="Close">×</button></header><div class="tower-run-board__status"><b>FLOOR ${floor}/10</b><span>${challenge.name} • ${TOWER_FLOOR_BIOMES[floor-1]} • ${currentReward.toLocaleString()} COINS</span><strong>${run.losses||0}/3 KNOCKOUTS • ${Math.round(getTowerTroubleRewardMultiplier(run.losses)*100)}% PAYOUT</strong></div><div class="tower-run-board__body"><div class="tower-run-board__tower"></div><div class="tower-run-board__roster"><h2>YOUR 12-BRAWLER CREW</h2><p>${challenge.desc} Every guest fighter is Power 11 with a complete kit whether owned or locked.</p><div class="tower-run-board__fighters"></div></div></div></section>`;
+      board.innerHTML=`<section class="tower-run-board__panel"><header><div><small>SEASON 2 • BATTLE OF THE TOWERS</small><h1>TOWER TROUBLE</h1><p>Choose one of 12 random maxed guest brawlers, including fighters you have not unlocked. Every fighter can battle only once per run, whether they win or lose. A loss also halves later floor rewards.</p></div><button class="tower-run-board__close" aria-label="Close">×</button></header><div class="tower-run-board__status"><b>FLOOR ${floor}/10</b><span>${challenge.name} • ${TOWER_FLOOR_BIOMES[floor-1]} • ${currentReward.toLocaleString()} COINS</span><strong>${run.losses||0}/3 KNOCKOUTS • ${Math.round(getTowerTroubleRewardMultiplier(run.losses)*100)}% PAYOUT</strong></div><div class="tower-run-board__body"><div class="tower-run-board__tower"></div><div class="tower-run-board__roster"><h2>YOUR 12-BRAWLER CREW</h2><p>${challenge.desc} Every guest fighter is Power 11 with a complete kit whether owned or locked. Win or lose, that fighter retires for the rest of this Tower run.</p><div class="tower-run-board__fighters"></div></div></div></section>`;
       const tower=board.querySelector('.tower-run-board__tower');
       for(let i=TOWER_TROUBLE_FLOORS;i>=1;i--){const rule=TOWER_FLOOR_CHALLENGES[i-1],state=i<floor?'is-cleared':(i===floor?'is-current':'is-locked'),level=document.createElement('div');level.className=`tower-run-floor ${state}`;level.innerHTML=`<i>${i<floor?'✓':i}</i><span><b>${rule.name}</b><small>${TOWER_FLOOR_BIOMES[i-1]} • ${getTowerTroubleFloorReward(i,run.losses).toLocaleString()} coins</small></span>`;tower.appendChild(level);}
       const fighters=board.querySelector('.tower-run-board__fighters');
-      for(const id of run.roster){const dead=eliminated.has(id),button=document.createElement('button');button.className=`tower-run-fighter${dead?' is-eliminated':''}`;button.disabled=dead;const data=brawlerData[id]||{};button.innerHTML=`<span>${data.icon||String(data.name||id).slice(0,2).toUpperCase()}</span><b>${data.name||id}</b><small>${dead?'KNOCKED OUT':'POWER 11 • READY'}</small>`;if(!dead)button.onclick=()=>{run.brawler=id;run.cards=[];selectedBrawler=id;saveProgress();board.remove();draftTowerTroubleBrawler(run,floor);};fighters.appendChild(button);}
+      for(const id of run.roster){const used=eliminated.has(id),button=document.createElement('button');button.className=`tower-run-fighter${used?' is-eliminated':''}`;button.disabled=used;const data=brawlerData[id]||{};button.innerHTML=`<span>${data.icon||String(data.name||id).slice(0,2).toUpperCase()}</span><b>${data.name||id}</b><small>${used?'USED THIS RUN':'POWER 11 • READY'}</small>`;if(!used)button.onclick=()=>{run.brawler=id;run.cards=[];selectedBrawler=id;saveProgress();board.remove();draftTowerTroubleBrawler(run,floor);};fighters.appendChild(button);}
       board.querySelector('.tower-run-board__close').onclick=()=>board.remove();document.body.appendChild(board);
   }
 
@@ -39048,6 +39048,10 @@
                 if (won) sushi.eventStats.wins += 1;
                 sushi.eventStats.powersPicked += slopSushiActiveCards.length;
                 const floorReward = won ? getTowerTroubleFloorReward(floor, run.losses || 0) : 0;
+                // Resolving any floor retires its fighter. With 12 fighters for
+                // 10 floors, the player can finish only if they lose at most twice.
+                if(!Array.isArray(run.eliminated))run.eliminated=[];
+                if(run.brawler&&!run.eliminated.includes(run.brawler))run.eliminated.push(run.brawler);
                 if (won) {
                     sushi.tappers = (sushi.tappers || 0) + 1;
                     sushi.towerDrops = sushi.tappers;
@@ -39067,7 +39071,7 @@
                     run.floor=floor+1;run.stage=floor+1;run.cards=[];run.fusionLevel=floor+1;run.active=true;
                     awardSeasonPassXp(40+floor*10);
                     matchText=`FLOOR ${floor} CLEARED!`;
-                    rankText=`+${floorReward.toLocaleString()} Coins • +1 Tower Drop • Next: ${TOWER_FLOOR_BIOMES[floor]} • +${40+floor*10} Pass XP`;
+                    rankText=`+${floorReward.toLocaleString()} Coins • +1 Tower Drop • ${Math.max(0,run.roster.length-run.eliminated.length)} fighters remain • Next: ${TOWER_FLOOR_BIOMES[floor]} • +${40+floor*10} Pass XP`;
                 }else{
                     sushi.bestTowerFloor=Math.max(sushi.bestTowerFloor||0,floor-1);
                     matchText=`TOWER RUN ENDED ON FLOOR ${floor}`;
@@ -39076,8 +39080,6 @@
                 }
                 if(won&&floor<TOWER_TROUBLE_FLOORS)run.brawler=null;
                 if(!won){
-                    if(!Array.isArray(run.eliminated))run.eliminated=[];
-                    if(run.brawler&&!run.eliminated.includes(run.brawler))run.eliminated.push(run.brawler);
                     run.losses=Math.min(3,(run.losses||0)+1);run.cards=[];run.brawler=null;
                     if(run.losses<3){
                         run.active=true;sushi.run=run;

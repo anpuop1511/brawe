@@ -50,5 +50,8 @@ assert.match(game, /towerGuestPick[\s\S]{0,220}!towerGuestPick && !isBrawlerUnlo
 assert.match(game, /validPool=allBrawlers\.filter\(id=>!disabledBrawlers\.has\(id\)&&getActiveSlopSushiDeck\(id\)\.length>=8\)/, 'Tower roster rolls do not filter out locked brawlers');
 assert.match(game, /if \(won\) \{[\s\S]{0,260}playerData\.coins = \(playerData\.coins \|\| 0\) \+ floorReward/, 'Floor coins are awarded only after a clear');
 assert.match(game, /run\.losses=Math\.min\(3,[\s\S]{0,420}Rewards now \$\{Math\.round\(getTowerTroubleRewardMultiplier\(run\.losses\)\*100\)\}%/, 'Each knockout updates and displays the reduced reward multiplier');
+assert.match(game, /if\(run\.brawler&&!run\.eliminated\.includes\(run\.brawler\)\)run\.eliminated\.push\(run\.brawler\);[\s\S]{0,260}if \(won\)/, 'The selected Tower fighter retires before either the win or loss outcome is processed');
+assert.match(game, /Every fighter can battle only once per run, whether they win or lose/, 'Tower crew rules explain that wins also consume a fighter');
+assert.match(game, /used\?'USED THIS RUN':'POWER 11 • READY'/, 'Consumed Tower fighters display a neutral used status');
 
 console.log('Super charge + Tower Trouble regression suite passed.');
