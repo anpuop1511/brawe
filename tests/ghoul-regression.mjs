@@ -30,8 +30,8 @@ assert.match(game, /ghoulDarknessUntil\|\|0\)>[^&]+&&Math\.hypot\([^\)]+\)>125/,
 
 assert.match(game, /GHOUL_SUPER_DURATION_MS = 8000/, 'Invisible Party lasts eight seconds');
 assert.match(game, /Math\.floor\(\(now - \(entity\.ghoulSuperStartedAt \|\| now\)\) \/ 420\)/, 'Invisible Party repeatedly phases visibility');
-assert.match(game, /exactHandGain = b\.isGhoulHand \|\| b\.isPortaloShot/, 'Each successful Ghoul hand receives exact hit-based charge');
-assert.match(game, /superGain = exactHandGain \? 12\.5/, 'Eight successful hand hits charge Super');
+assert.match(game, /SUPER_CHARGE_HITS_BY_BRAWLER[\s\S]*?ghoul:6/, 'Ghoul follows the six-connected-attack Super charge rework');
+assert.match(game, /chargedMainAttackActivations\.includes\(activationId\)/, 'Multiple hands from one Haunt cannot grant duplicate charge');
 
 assert.match(game, /ghoulPhantomReachArmed=true/, 'Phantom Reach arms the next Haunt');
 assert.match(game, /GHOUL_HAUNT_RANGE \* \(phantom \? 1\.25 : 1\)/, 'Phantom Reach grants 25 percent range');

@@ -35,7 +35,7 @@ assert.match(game, /player\.portaloReverseArmed=true/, 'Reverse Route arms the n
 assert.match(game, /entity\.portaloExitSpeedUntil = Math\.max[\s\S]*?now \+ 2000/, 'Stable Portals grant allies two seconds of exit speed');
 assert.match(game, /checkHit\(target,\{ownerBrawler:'portalo'.*damage:600/, 'Portal Shock deals 600 delayed damage');
 assert.match(game, /cancelPortaloShockOnReturn\(entity, pair, entryIndex, now\)/, 'Immediate return travel cancels Portal Shock');
-assert.match(game, /12\.5 \* getModeSuperGainMultiplier\(\)/, 'Each Portal Shot hit charges one eighth of Super');
+assert.match(game, /SUPER_CHARGE_HITS_BY_BRAWLER[\s\S]*?portalo:7/, 'Portalo follows the proposed seven-hit Super charge rule');
 
 assert.match(game, /bot\.brawler === 'portalo'[\s\S]*?valuableTarget/, 'Portalo bot AI evaluates valuable Reverse Route targets');
 assert.match(game, /bot\.brawler === 'portalo'[\s\S]*?objectiveFight/, 'Portalo bot AI prioritizes Portal Prison on objectives');

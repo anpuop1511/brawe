@@ -1726,6 +1726,18 @@
   const pendingClones = [];
   const explosions = [];
   const bots = []; // Added Chaird specific properties to bot initialization later
+  // Stamp every projectile with the main-attack activation that created it.
+  // Super charge can then count one connected attack instead of every pellet,
+  // fragment, poison tick, or other repeated damage event from that attack.
+  const nativeBulletPush = Array.prototype.push;
+  bullets.push = function(...entries) {
+      for (const entry of entries) {
+          if (!entry || entry.mainAttackActivationId != null || entry.ownerId == null) continue;
+          const owner = entry.ownerId === player.id ? player : bots.find(bot => bot.id === entry.ownerId);
+          if (owner?.currentMainAttackActivationId != null) entry.mainAttackActivationId = owner.currentMainAttackActivationId;
+      }
+      return nativeBulletPush.apply(this, entries);
+  };
   const destructibleWalls = [];
   const ARENA_WALL_TILE = 48;
   let nextDestructibleWallHitId = 1;
@@ -5143,7 +5155,8 @@
   let selectedBrawler = 'outlit';
     function normalizeSelectedBrawler() {
         if (isSplitterPoweredMode && selectedBrawler === 'splitter') return selectedBrawler;
-        if (!allBrawlers.includes(selectedBrawler) || disabledBrawlers.has(selectedBrawler) || (!isTraining && !isBrawlerUnlocked(selectedBrawler))) selectedBrawler = 'outlit';
+        const towerGuestPick = isTowerTroubleMode || (sushiMatchArmed && showdownMode === 'slop_sushi');
+        if (!allBrawlers.includes(selectedBrawler) || disabledBrawlers.has(selectedBrawler) || (!isTraining && !towerGuestPick && !isBrawlerUnlocked(selectedBrawler))) selectedBrawler = 'outlit';
         return selectedBrawler;
     }
         let selectedStar = 'none';
@@ -5540,6 +5553,14 @@
   const SLOP_SUSHI_END_UTC = Date.UTC(2026, 10, 6, 0, 0, 0);
   const TOWER_TROUBLE_FLOORS = 10;
   const TOWER_FUSION_CARD_COUNT = 4;
+  const TOWER_FLOOR_COIN_REWARDS = Object.freeze([100,100,100,100,100,200,200,200,200,200]);
+  function getTowerTroubleRewardMultiplier(losses = 0) {
+      return Math.pow(.5, Math.max(0, Math.min(2, Math.floor(losses || 0))));
+  }
+  function getTowerTroubleFloorReward(floor, losses = 0) {
+      const index = Math.max(0, Math.min(TOWER_TROUBLE_FLOORS - 1, Math.floor(floor || 1) - 1));
+      return Math.round((TOWER_FLOOR_COIN_REWARDS[index] || 0) * getTowerTroubleRewardMultiplier(losses));
+  }
   const TOWER_FLOOR_BIOMES = ['Verdant Gate','Rust Ramparts','Ember Bastion','Lotus Watch','Frost Keep','Sunset Citadel','Crownspire Keep','Gearfall Foundry','Stormglass Heights','Voidtower Ruins'];
   const TOWER_FLOOR_CHALLENGES = [
       {name:'Solo Scramble',desc:'Classic survival. Learn the tower.',modifier:null},
@@ -5653,6 +5674,7 @@
       sushi.run.losses = Math.max(0, Math.min(3, Math.floor(sushi.run.losses || 0)));
       sushi.run.floor = Math.max(1, Math.min(TOWER_TROUBLE_FLOORS, Math.floor(sushi.run.floor || sushi.run.stage || 1)));
       sushi.run.fusionLevel = Math.max(0, Math.floor(sushi.run.fusionLevel || 0));
+      sushi.run.coinsEarned = Math.max(0, Math.floor(sushi.run.coinsEarned || 0));
       sushi.bestTowerFloor = Math.max(0, Math.floor(sushi.bestTowerFloor || 0));
       sushi.towerRunsCompleted = Math.max(0, Math.floor(sushi.towerRunsCompleted || 0));
       if (!sushi.powerLevels || typeof sushi.powerLevels !== 'object') sushi.powerLevels = {};
@@ -6133,7 +6155,8 @@
           const overlay=document.createElement('div');overlay.className='sushi-mobile-overlay tower-trouble-draft';
           overlay.style.cssText='position:fixed;inset:0;z-index:2800;background:radial-gradient(circle at 50% 20%,#44306d,#10152c 55%,#050813);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif';
           const brawlerName=brawlerData[run.brawler]?.name||run.brawler,challenge=TOWER_FLOOR_CHALLENGES[floor-1];
-          overlay.innerHTML=`<div style="font-size:12px;font-weight:1000;letter-spacing:.18em;color:#8ee9ff">${challenge.name.toUpperCase()} • ${TOWER_FLOOR_BIOMES[floor-1]}</div><h1 style="margin:8px 0;color:#ffd66b">TOWER TROUBLE — FLOOR ${floor}/10</h1><p style="margin:0 0 6px"><b>${brawlerName}</b> • POWER 11 • ${3-(run.losses||0)} lives remain</p><p style="color:#d4b5ff">Choose Transformation ${pickNumber}/4. Fusion strength: <b>${Math.round(towerFusionStrength*100)}%</b>.</p><div class="sushi-match-picks" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"></div>`;
+          const floorReward=getTowerTroubleFloorReward(floor,run.losses||0);
+          overlay.innerHTML=`<div style="font-size:12px;font-weight:1000;letter-spacing:.18em;color:#8ee9ff">${challenge.name.toUpperCase()} • ${TOWER_FLOOR_BIOMES[floor-1]}</div><h1 style="margin:8px 0;color:#ffd66b">TOWER TROUBLE — FLOOR ${floor}/10</h1><p style="margin:0 0 6px"><b>${brawlerName}</b> • POWER 11 GUEST • ${3-(run.losses||0)} lives remain</p><p style="margin:5px 0;color:#75f0b8;font-weight:900">FLOOR REWARD: ${floorReward.toLocaleString()} COINS${run.losses?` • ${Math.round(getTowerTroubleRewardMultiplier(run.losses)*100)}% PAYOUT AFTER KNOCKOUTS`:''}</p><p style="color:#d4b5ff">Choose Transformation ${pickNumber}/4. Fusion strength: <b>${Math.round(towerFusionStrength*100)}%</b>.</p><div class="sushi-match-picks" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"></div>`;
           const wrap=overlay.querySelector('.sushi-match-picks');
           for(const card of choices){const color=card.rarity==='Exotic'?'#55f7ff':(card.rarity==='Legendary'?'#ffb347':(card.rarity==='Mythic'?'#ff5ba7':'#9b8cff')),button=document.createElement('button');button.className='sushi-mobile-card tower-transformation-card';button.style.cssText=`width:230px;min-height:260px;padding:20px;border:2px solid ${color};border-radius:22px;background:linear-gradient(155deg,#251b47,#102b3b);color:white;cursor:pointer;box-shadow:0 0 28px ${color}55`;button.innerHTML=`<div style="font-size:11px;font-weight:1000;color:${color};letter-spacing:.12em">${card.rarity.toUpperCase()} • TOWER TRANSFORMATION</div><div style="font-size:52px">${card.icon}</div><h2>${card.name}</h2><p>${card.desc}</p>`;button.onclick=()=>{chosen.push(card.id);overlay.remove();pick(pickNumber+1);};wrap.appendChild(button);}
           document.body.appendChild(overlay);
@@ -6147,15 +6170,16 @@
       if(!validPool.length){alert('Tower Trouble needs at least one complete Transformation deck.');return;}
       const validRoster=run.active&&Array.isArray(run.roster)&&run.roster.length===Math.min(12,validPool.length)&&run.roster.every(id=>validPool.includes(id));
       if(!validRoster){
-          Object.assign(run,{active:true,originalBrawler:allBrawlers.includes(selectedBrawler)?selectedBrawler:'outlit',roster:createTowerTroubleRoster(validPool),eliminated:[],losses:0,brawler:null,floor:1,stage:1,cards:[],fusionLevel:0,runId:`tower_${Date.now()}_${Math.floor(Math.random()*100000)}`});
+          Object.assign(run,{active:true,originalBrawler:allBrawlers.includes(selectedBrawler)?selectedBrawler:'outlit',roster:createTowerTroubleRoster(validPool),eliminated:[],losses:0,brawler:null,floor:1,stage:1,cards:[],fusionLevel:0,coinsEarned:0,runId:`tower_${Date.now()}_${Math.floor(Math.random()*100000)}`});
           saveProgress();
       }
       const floor=Math.max(1,Math.min(TOWER_TROUBLE_FLOORS,run.floor||1)),challenge=TOWER_FLOOR_CHALLENGES[floor-1],eliminated=new Set(run.eliminated||[]),available=run.roster.filter(id=>!eliminated.has(id));
       if(!available.length){run.active=false;saveProgress();alert('No brawlers remain in this Tower run. Start a new run.');return;}
       const board=document.createElement('div');board.className='tower-run-board';
-      board.innerHTML=`<section class="tower-run-board__panel"><header><div><small>SEASON 2 • BATTLE OF THE TOWERS</small><h1>TOWER TROUBLE</h1><p>Choose one of your 12 maxed brawlers. A loss knocks that brawler out for this run.</p></div><button class="tower-run-board__close" aria-label="Close">×</button></header><div class="tower-run-board__status"><b>FLOOR ${floor}/10</b><span>${challenge.name} • ${TOWER_FLOOR_BIOMES[floor-1]}</span><strong>${run.losses||0}/3 KNOCKOUTS</strong></div><div class="tower-run-board__body"><div class="tower-run-board__tower"></div><div class="tower-run-board__roster"><h2>YOUR 12-BRAWLER CREW</h2><p>${challenge.desc} All fighters are Power 11 with their complete kit.</p><div class="tower-run-board__fighters"></div></div></div></section>`;
+      const currentReward=getTowerTroubleFloorReward(floor,run.losses||0);
+      board.innerHTML=`<section class="tower-run-board__panel"><header><div><small>SEASON 2 • BATTLE OF THE TOWERS</small><h1>TOWER TROUBLE</h1><p>Choose one of 12 random maxed guest brawlers, including fighters you have not unlocked. A loss knocks that brawler out and halves later floor rewards.</p></div><button class="tower-run-board__close" aria-label="Close">×</button></header><div class="tower-run-board__status"><b>FLOOR ${floor}/10</b><span>${challenge.name} • ${TOWER_FLOOR_BIOMES[floor-1]} • ${currentReward.toLocaleString()} COINS</span><strong>${run.losses||0}/3 KNOCKOUTS • ${Math.round(getTowerTroubleRewardMultiplier(run.losses)*100)}% PAYOUT</strong></div><div class="tower-run-board__body"><div class="tower-run-board__tower"></div><div class="tower-run-board__roster"><h2>YOUR 12-BRAWLER CREW</h2><p>${challenge.desc} Every guest fighter is Power 11 with a complete kit whether owned or locked.</p><div class="tower-run-board__fighters"></div></div></div></section>`;
       const tower=board.querySelector('.tower-run-board__tower');
-      for(let i=TOWER_TROUBLE_FLOORS;i>=1;i--){const rule=TOWER_FLOOR_CHALLENGES[i-1],state=i<floor?'is-cleared':(i===floor?'is-current':'is-locked'),level=document.createElement('div');level.className=`tower-run-floor ${state}`;level.innerHTML=`<i>${i<floor?'✓':i}</i><span><b>${rule.name}</b><small>${TOWER_FLOOR_BIOMES[i-1]}</small></span>`;tower.appendChild(level);}
+      for(let i=TOWER_TROUBLE_FLOORS;i>=1;i--){const rule=TOWER_FLOOR_CHALLENGES[i-1],state=i<floor?'is-cleared':(i===floor?'is-current':'is-locked'),level=document.createElement('div');level.className=`tower-run-floor ${state}`;level.innerHTML=`<i>${i<floor?'✓':i}</i><span><b>${rule.name}</b><small>${TOWER_FLOOR_BIOMES[i-1]} • ${getTowerTroubleFloorReward(i,run.losses).toLocaleString()} coins</small></span>`;tower.appendChild(level);}
       const fighters=board.querySelector('.tower-run-board__fighters');
       for(const id of run.roster){const dead=eliminated.has(id),button=document.createElement('button');button.className=`tower-run-fighter${dead?' is-eliminated':''}`;button.disabled=dead;const data=brawlerData[id]||{};button.innerHTML=`<span>${data.icon||String(data.name||id).slice(0,2).toUpperCase()}</span><b>${data.name||id}</b><small>${dead?'KNOCKED OUT':'POWER 11 • READY'}</small>`;if(!dead)button.onclick=()=>{run.brawler=id;run.cards=[];selectedBrawler=id;saveProgress();board.remove();draftTowerTroubleBrawler(run,floor);};fighters.appendChild(button);}
       board.querySelector('.tower-run-board__close').onclick=()=>board.remove();document.body.appendChild(board);
@@ -12862,18 +12886,60 @@
             : base;
   }
 
-  function getSuperChargeMultiplier(brawler) {
-        const modeMult = getModeSuperGainMultiplier() * ((isSlopSushiMode && brawler === selectedBrawler) ? 1 + getSlopEffectTotal('superGainPct') : 1);
-        if (brawler === 'echo') return 0.75 * modeMult; // Slower super (high dmg)
-        if (brawler === 'bowlin_rida') return 1.4 * modeMult; // Faster super (low dmg)
-        if (brawler === 'dashaholic') return 1.25 * modeMult; // Reward aggressive hits
-        if (brawler === 'beast') return 1.0 * modeMult; // Fixed: old charge penalty stacked with Beast's damage nerf
-                if (brawler === 'tempo_maker') return 0.9 * modeMult;
-        if (brawler === 'steamer') return 0.95 * modeMult;
-        if (brawler === 'warrior') return 0.88 * modeMult;
-        if (brawler === 'snapper') return 0.76 * modeMult; // about seven Power 11 orb hits
-        if (brawler === 'portalo') return (2 / 3) * modeMult; // exactly 8 successful 1500-damage Portal Shots
-        return 1.0 * modeMult;
+  // Successful normal attacks required to fill one Super. A connected attack
+  // counts once even when it contains multiple pellets, fragments, or ticks.
+  const SUPER_CHARGE_HITS_BY_BRAWLER = Object.freeze({
+      beast:5, chaird:5, forest:4, overlord:6, unopcoloco:6, warrior:6,
+      blade_vane:5, bowlin_rida:4, dashaholic:2, demon:5, jetpack:4, malakor:5, predator:5, swimmer:5, teether:6,
+      boom_arang:4, cheseypuff:6, crystila:5, homer:4, hunter:5, orbo:5, snapper:7, xray:5,
+      boomer:5, cluster:6, evil_doctor:6, fightnfire:6, rocketeer:5, skeleflying:6, splitter:6, trapper:5, upiedown:4,
+      amplifier:6, angel:6, echo:7, fastpass:6, freestyle:5, hope:6, relay:6, sera_eclipse:6,
+      adlof:6, daggershard:5, decayer:6, fuel:6, ice_cream:6, paradox:6, peter_pickle:6, scuba_diver:5, screener:6, tempo_maker:7, unstable:5, witch:7,
+      beam:8, duck:6, fuser:6, heater_miser:7, minigunnin:10, money_and_tax:6, outlit:6, steamer:8,
+      bouncin_balls:6, chickpig:6, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:7,
+      portalo:7, ghoul:6, jacktrade:6
+  });
+  let nextMainAttackActivationId = 1;
+  function getSuperChargeHitsForBrawler(brawler) {
+      return Math.max(1, SUPER_CHARGE_HITS_BY_BRAWLER[brawler] || 6);
+  }
+  function beginMainAttackActivation(entity, brawler, now = performance.now()) {
+      if (!entity) return null;
+      const id = `${entity.id}:${nextMainAttackActivationId++}`;
+      entity.currentMainAttackActivationId = id;
+      entity.currentMainAttackBrawler = brawler || entity.brawler || 'outlit';
+      entity.currentMainAttackStartedAt = now;
+      return id;
+  }
+  function getAttackChargeMultiplier(owner) {
+      let multiplier = getModeSuperGainMultiplier() * getTrinketSuperChargeMultiplier(owner);
+      if (isSlopSushiMode) {
+          const bonus = owner?.id === player.id ? getSlopEffectTotal('superGainPct') : getEntitySlopEffectTotal(owner, 'superGainPct');
+          multiplier *= 1 + Math.max(0, Number(bonus) || 0);
+      }
+      return multiplier;
+  }
+  function grantMainAttackCharge(owner, source = null) {
+      if (!owner || owner.hp <= 0 || owner.isPet || owner.isSummon || owner.isBoss || source?.super || source?.isSuperDash) return false;
+      const activationId = source?.mainAttackActivationId ?? owner.currentMainAttackActivationId;
+      if (activationId == null) return false;
+      if (!Array.isArray(owner.chargedMainAttackActivations)) owner.chargedMainAttackActivations = [];
+      if (owner.chargedMainAttackActivations.includes(activationId)) return false;
+      owner.chargedMainAttackActivations.push(activationId);
+      if (owner.chargedMainAttackActivations.length > 24) owner.chargedMainAttackActivations.splice(0, owner.chargedMainAttackActivations.length - 24);
+      const brawler = source?.ownerBrawler || owner.currentMainAttackBrawler || owner.brawler || (owner.id === player.id ? selectedBrawler : 'outlit');
+      const gain = (100 / getSuperChargeHitsForBrawler(brawler)) * getAttackChargeMultiplier(owner);
+      const hyperGain = gain * .5;
+      if (owner.id === player.id) {
+          superCharge = clamp(superCharge + gain, 0, 100);
+          if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + hyperGain, 0, 100);
+          updateSuperButton();
+          updateHyperButton();
+      } else {
+          owner.superCharge = clamp((owner.superCharge || 0) + gain, 0, 100);
+          if (!owner.isHypercharged) owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + hyperGain, 0, 100);
+      }
+      return true;
   }
 
   function getFireDelay(brawler, fromEntity){
@@ -13384,6 +13450,7 @@
       }
 
       if (wantToFire) {
+          if (!entity.beamActive) beginMainAttackActivation(entity, 'beam', now);
           const ammoDrain = 22 * dt;
           if (isBot) {
               entity.beamAmmo = Math.max(0, entity.beamAmmo - ammoDrain);
@@ -14720,18 +14787,7 @@
                 bot.lastDamagerId = ownerId;
             }
             if (dealt > 0) registerConstructionCartDamage(ownerId, dealt);
-            if(!isSuper && !bot.isPet) {
-                const multiplier = getSuperChargeMultiplier(owner ? (owner.brawler || 'outlit') : 'outlit') * getTrinketSuperChargeMultiplier(owner);
-                const superGain = (damage / 8000) * 100 * multiplier;
-                const hyperGain = (damage / 16000) * 100 * multiplier;
-                if(ownerId === player.id) {
-                    superCharge = clamp(superCharge + superGain, 0, 100);
-                    if(!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + hyperGain, 0, 100);
-                } else if(owner) {
-                    owner.superCharge = clamp((owner.superCharge || 0) + superGain, 0, 100);
-                    if(!owner.isHypercharged) owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + hyperGain, 0, 100);
-                }
-            }
+            if(!isSuper && !bot.isPet) grantMainAttackCharge(owner, {ownerBrawler:owner?.currentMainAttackBrawler,mainAttackActivationId:owner?.currentMainAttackActivationId});
             spawnDamageText(bot, dealt, '#ff4d4d'); // Added damage numbers for bots
             if (bot.brawler === 'hyperorigin' && !bot.isHypercharged && dealt > 0) {
                 bot.hyperChargeCharge = clamp((bot.hyperChargeCharge || 0) + (dealt / 18000) * 100, 0, 100);
@@ -14756,12 +14812,7 @@
                     player.lastDamagerId = ownerId;
                 }
                 if (dealt > 0) registerConstructionCartDamage(ownerId, dealt);
-                if(!isSuper && owner) {
-                    const superGain = (damage / 8000) * 100;
-                    const hyperGain = (damage / 16000) * 100;
-                    owner.superCharge = clamp((owner.superCharge || 0) + superGain, 0, 100);
-                    if(!owner.isHypercharged) owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + hyperGain, 0, 100);
-                }
+                if(!isSuper && owner) grantMainAttackCharge(owner, {ownerBrawler:owner.currentMainAttackBrawler,mainAttackActivationId:owner.currentMainAttackActivationId});
             }
             if (dealt > 0) spawnDamageText(player, dealt, '#ff4d4d'); // Damage numbers for player
             if (selectedBrawler === 'hyperorigin' && !isHypercharged && dealt > 0) {
@@ -15455,11 +15506,7 @@
       const dealt=applyShieldDamage(target,Math.max(0,Math.round(rawDamage)));
       target.hp-=dealt;target.lastDamagedAt=performance.now();target.lastDamagerId=owner.id;
       spawnDamageText(target,dealt,color);recordTrainingBotDamage(target,dealt,owner.id);
-      if(charge&&dealt>0){
-          const mult=getSuperChargeMultiplier('predator'),superGain=(dealt/8000)*100*mult,hyperGain=(dealt/16000)*100*mult;
-          if(owner.id===player.id){superCharge=clamp(superCharge+superGain,0,100);if(!isHypercharged)hyperChargeCharge=clamp(hyperChargeCharge+hyperGain,0,100);updateSuperButton();updateHyperButton();}
-          else{owner.superCharge=clamp((owner.superCharge||0)+superGain,0,100);if(!owner.isHypercharged)owner.hyperChargeCharge=clamp((owner.hyperChargeCharge||0)+hyperGain,0,100);}
-      }
+      if(charge&&dealt>0) grantMainAttackCharge(owner, {ownerBrawler:'predator',mainAttackActivationId:owner.currentMainAttackActivationId});
       return dealt;
   }
 
@@ -15859,6 +15906,7 @@
         player.lastAttackAt = now;
         applySlopSushiOnAttack();
     }
+    beginMainAttackActivation(fromEntity, brawler, now);
     const dx = targetX - fromEntity.x;
     const dy = targetY - fromEntity.y;
     const ang = Math.atan2(dy,dx);
@@ -26020,29 +26068,9 @@
         setHyperoriginEnergy(owner, getHyperoriginEnergy(owner) + 1);
         if (owner.id === player.id) updateSuperButton();
     }
-    // Super charges only by dealing damage (and only for player bullets)
-            if(!b.super && !b.isSuperDash && !target.isPet){
-                const multiplier = getSuperChargeMultiplier(b.ownerBrawler) * getTrinketSuperChargeMultiplier(owner);
-                const exactHandGain = b.isGhoulHand || b.isPortaloShot || b.isJackTradeCard;
-                const superGain = exactHandGain ? 12.5 * getModeSuperGainMultiplier() * getTrinketSuperChargeMultiplier(owner) : (rawDmg / 8000) * 100 * multiplier;
-                const hyperGain = exactHandGain ? 6.25 * getModeSuperGainMultiplier() * getTrinketSuperChargeMultiplier(owner) : (rawDmg / 16000) * 100 * multiplier;
-        if(b.ownerId === player.id){
-                    superCharge = clamp(superCharge + superGain, 0, 100);
-            updateSuperButton();
-            if(!isHypercharged){
-                        hyperChargeCharge = clamp(hyperChargeCharge + hyperGain, 0, 100);
-                updateHyperButton();
-            }
-        } else {
-            const ownerBot = bots.find(bt => bt.id === b.ownerId);
-            if(ownerBot) {
-                        ownerBot.superCharge = clamp((ownerBot.superCharge || 0) + superGain, 0, 100);
-                if(!ownerBot.isHypercharged){
-                            ownerBot.hyperChargeCharge = clamp((ownerBot.hyperChargeCharge || 0) + hyperGain, 0, 100);
-                }
-            }
-        }
-    }
+    // One connected main-attack activation grants one charge step, regardless
+    // of pellet count, fragments, repeated damage, or raw damage dealt.
+    if(!b.super && !b.isSuperDash && !target.isPet) grantMainAttackCharge(owner, b);
     if(b.ownerBrawler === 'decayer' && b.shieldGain){
       const decayerOwner = b.ownerId === player.id ? player : (bots.find(bt => bt.id === b.ownerId) || null);
       grantShield(decayerOwner, b.shieldGain, b.shieldCap);
@@ -28918,6 +28946,7 @@
           } else if (!held && player.jetpackChargeStartedAt && !player.jetpackFlight && jetpackReady) {
               const charge=clamp((now-player.jetpackChargeStartedAt)/1200,.12,1);
               ammo=Math.max(0,ammo-1);lastShot=now;ammoReloadTimer=0;player.lastAttackAt=now;
+              beginMainAttackActivation(player,'jetpack',now);
               applySlopSushiOnAttack();
               startJetpackFlight(player,player.jetpackAimX??player.x,player.jetpackAimY??player.y,{charge,hyper:getPlayerHyperMainActive('jetpack')});
               player.jetpackChargeStartedAt=0;player.jetpackChargePct=0;
@@ -30158,23 +30187,8 @@
           if(Math.hypot(b.x - pod.x, b.y - pod.y) < pod.radius + 4){
               pod.hp -= b.damage;
               if(!b.super && !b.isSuperDash){
-                  const rawDmg = b.damage;
-                  const superGain = (rawDmg / 8000) * 100;
-                  const hyperGain = (rawDmg / 16000) * 100;
-                  if(b.ownerId === player.id) {
-                      superCharge = clamp(superCharge + superGain, 0, 100);
-                      updateSuperButton();
-                      if(!isHypercharged){
-                          hyperChargeCharge = clamp(hyperChargeCharge + hyperGain, 0, 100);
-                          updateHyperButton();
-                      }
-                  } else {
-                      const ownerBot = bots.find(bt => bt.id === b.ownerId);
-                      if(ownerBot) {
-                          ownerBot.superCharge = clamp((ownerBot.superCharge || 0) + superGain, 0, 100);
-                          if(!ownerBot.isHypercharged) ownerBot.hyperChargeCharge = clamp((ownerBot.hyperChargeCharge || 0) + hyperGain, 0, 100);
-                      }
-                  }
+                  const chargeOwner=b.ownerId===player.id?player:bots.find(bt=>bt.id===b.ownerId);
+                  grantMainAttackCharge(chargeOwner,b);
               }
               
               if(b.isEchoRingProj){
@@ -39030,31 +39044,35 @@
                 const floor = Math.max(1, Math.min(TOWER_TROUBLE_FLOORS, run.floor || 1));
                 // Tower Trouble requires an actual first-place clear.
                 won = rankNum === 1 && player.hp > 0;
-                sushi.tappers = (sushi.tappers || 0) + 1;
-                sushi.towerDrops = sushi.tappers;
                 sushi.eventStats.matches += 1;
                 if (won) sushi.eventStats.wins += 1;
                 sushi.eventStats.powersPicked += slopSushiActiveCards.length;
+                const floorReward = won ? getTowerTroubleFloorReward(floor, run.losses || 0) : 0;
+                if (won) {
+                    sushi.tappers = (sushi.tappers || 0) + 1;
+                    sushi.towerDrops = sushi.tappers;
+                    playerData.coins = (playerData.coins || 0) + floorReward;
+                    run.coinsEarned = (run.coinsEarned || 0) + floorReward;
+                }
                 if(won && floor>=TOWER_TROUBLE_FLOORS){
                     sushi.towerRunsCompleted=(sushi.towerRunsCompleted||0)+1;
                     sushi.completedRuns=(sushi.completedRuns||0)+1;
                     sushi.tappers+=3;sushi.towerDrops=sushi.tappers;
-                    playerData.coins=(playerData.coins||0)+1500;
                     awardSeasonPassXp(250);
                     matchText='TOWER CONQUERED!';
-                    rankText=`Floor 10 cleared • +4 Tower Drops • +1,500 Coins • +250 Pass XP`;
-                    sushi.run={active:false,brawler:null,floor:1,stage:0,cards:[],fusionLevel:0,originalBrawler:run.originalBrawler||'outlit'};
+                    rankText=`Floor 10 cleared • +4 Tower Drops • +${floorReward.toLocaleString()} Coins • ${run.coinsEarned.toLocaleString()} run total • +250 Pass XP`;
+                    sushi.run={active:false,brawler:null,floor:1,stage:0,cards:[],fusionLevel:0,coinsEarned:0,originalBrawler:run.originalBrawler||'outlit'};
                 }else if(won){
                     sushi.bestTowerFloor=Math.max(sushi.bestTowerFloor||0,floor);
                     run.floor=floor+1;run.stage=floor+1;run.cards=[];run.fusionLevel=floor+1;run.active=true;
                     awardSeasonPassXp(40+floor*10);
                     matchText=`FLOOR ${floor} CLEARED!`;
-                    rankText=`Next: ${TOWER_FLOOR_BIOMES[floor]} • +1 Tower Drop • +${40+floor*10} Pass XP`;
+                    rankText=`+${floorReward.toLocaleString()} Coins • +1 Tower Drop • Next: ${TOWER_FLOOR_BIOMES[floor]} • +${40+floor*10} Pass XP`;
                 }else{
                     sushi.bestTowerFloor=Math.max(sushi.bestTowerFloor||0,floor-1);
                     matchText=`TOWER RUN ENDED ON FLOOR ${floor}`;
-                    rankText='The tower resets • +1 Tower Drop for the attempt';
-                    sushi.run={active:false,brawler:null,floor:1,stage:0,cards:[],fusionLevel:0,originalBrawler:run.originalBrawler||'outlit'};
+                    rankText='No floor reward • This knockout cuts later rewards in half';
+                    sushi.run={active:false,brawler:null,floor:1,stage:0,cards:[],fusionLevel:0,coinsEarned:0,originalBrawler:run.originalBrawler||'outlit'};
                 }
                 if(won&&floor<TOWER_TROUBLE_FLOORS)run.brawler=null;
                 if(!won){
@@ -39064,7 +39082,7 @@
                     if(run.losses<3){
                         run.active=true;sushi.run=run;
                         matchText=`BRAWLER KNOCKED OUT ON FLOOR ${floor}`;
-                        rankText=`${run.losses}/3 knockouts • Retry Floor ${floor} with one of ${Math.max(0,run.roster.length-run.eliminated.length)} remaining brawlers`;
+                        rankText=`${run.losses}/3 knockouts • Rewards now ${Math.round(getTowerTroubleRewardMultiplier(run.losses)*100)}% • Retry Floor ${floor} with one of ${Math.max(0,run.roster.length-run.eliminated.length)} remaining brawlers`;
                     }else{
                         matchText=`TOWER RUN ENDED ON FLOOR ${floor}`;
                         rankText='3 brawlers knocked out • The next run rolls a new crew of 12';
