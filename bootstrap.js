@@ -22,7 +22,7 @@ if (legacyCanvas) legacyCanvas.style.display = 'block';
 if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
-const RELEASE_TOKEN = '20260808-portalo1';
+const RELEASE_TOKEN = '20260810-tugzone1';
 
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {
@@ -54,7 +54,7 @@ async function startLegacyRuntime() {
     window.ArenaForgeModules?.loadedFiles.push(file);
   }
 
-  await loadClassicScript('./game.js?v=20260809-towercrew1');
+  await loadClassicScript('./game.js');
   if (homeScreen) homeScreen.style.display = '';
 }
 

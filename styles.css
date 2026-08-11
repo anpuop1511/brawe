@@ -794,6 +794,7 @@ button:disabled {
 #fullscreenBtn{min-height:36px !important;padding:6px 10px !important;border:2px solid #fff8 !important;border-radius:9px !important;background:#183e72 !important;box-shadow:0 4px 0 #062454 !important;text-transform:uppercase}
 #homeQuickActions{display:flex !important;gap:7px !important;position:static !important;transform:none !important;margin:0 !important;max-width:none !important}
 #homeQuickActions>button,#homeQuickActions>a{position:static !important;min-height:36px !important;padding:6px 10px !important;border-radius:9px !important;transform:none !important;font-size:10px !important}
+#attachiesBtn{flex:0 0 auto !important;border-color:#e3a3ff !important;background:linear-gradient(180deg,#9c43dc,#6526ad) !important;color:#fff !important;box-shadow:0 4px 0 #35105f !important;white-space:nowrap !important}
 .home-command-strip{min-height:39px;padding:6px 12px;border:2px solid rgba(255,255,255,.32);border-radius:10px;background:linear-gradient(90deg,#143e78cc,#102b5acc);box-shadow:0 4px 0 #04295d}
 .home-command-strip b{font-size:13px;text-shadow:0 2px #041d42}.home-command-strip span{color:#b9e5ff}.home-command-strip__pulse{color:#65ffbd}.home-command-strip__hint{color:#ffe46b}
 #homeMain{min-height:0;grid-template-columns:minmax(320px,40%) minmax(0,1fr) !important;gap:13px !important;align-items:stretch !important;flex:1}
@@ -1360,3 +1361,13 @@ html,body{overflow-x:hidden !important}
   #homeBrawlerCard{height:318px !important;min-height:318px !important}
   .home-event-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
 }
+#super { position: relative; }
+#super[data-locked-outcome]::after {
+  content: attr(data-locked-outcome);
+  position: absolute;
+  left: 50%; bottom: calc(100% + 5px); transform: translateX(-50%);
+  min-width: max-content; padding: 3px 7px; border-radius: 7px;
+  background: rgba(24, 8, 44, .94); border: 1px solid #e083ff;
+  color: #f4d7ff; font-size: 10px; font-weight: 900; pointer-events: none;
+}
+.super-aim-cancel { background: #a31639 !important; border-color: #ff8da7 !important; box-shadow: 0 0 0 4px rgba(255,70,110,.24) !important; }

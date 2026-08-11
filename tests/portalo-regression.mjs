@@ -48,5 +48,8 @@ assert.match(game, /owner\.hp <= 0/, 'Portalo entities clean up when their owner
 assert.match(styles, /Mobile lobby: a compact, scrollable loadout-first flow/, 'The mobile lobby override is present');
 assert.match(styles, /min-height:100svh/, 'The mobile lobby respects the small viewport height');
 assert.match(styles, /#homeQuickActions\{[\s\S]*?overflow-x:auto/, 'Mobile progression actions are horizontally scrollable instead of overflowing');
+assert.match(game, /attachiesBtn\.id = 'attachiesBtn'/, 'Attachies has a stable visible shortcut id');
+assert.match(game, /visibleHomeShortcuts\.appendChild\(attachiesBtn\)/, 'Attachies is mounted in the visible home shortcut row');
+assert.match(styles, /#attachiesBtn\{[\s\S]*?white-space:nowrap/, 'Attachies remains compact and readable in the shortcut row');
 
 console.log('Portalo and mobile-home regression suite passed.');
