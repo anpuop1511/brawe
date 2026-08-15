@@ -60,7 +60,8 @@ assert.equal(rewardSandbox.reward(6, 2), 50, 'Two knockouts quarter a later 200-
 assert.equal([1,2,3,4,5,6,7,8,9,10].reduce((sum, floor) => sum + rewardSandbox.reward(floor, 0), 0), 1500, 'A flawless run still totals 1500 floor coins');
 
 assert.match(game, /towerGuestPick[\s\S]{0,220}!towerGuestPick && !isBrawlerUnlocked/, 'Tower Trouble can keep a locked guest brawler selected');
-assert.match(game, /validPool=allBrawlers\.filter\(id=>!disabledBrawlers\.has\(id\)&&getActiveSlopSushiDeck\(id\)\.length>=8\)/, 'Tower roster rolls do not filter out locked brawlers');
+assert.match(game, /function getTowerTroubleBrawlerPool\(\)[\s\S]{0,420}getActiveSlopSushiDeck\(id\)\.length >= 8/, 'Tower roster rolls use the centralized complete-deck pool');
+assert.doesNotMatch(game.match(/function getTowerTroubleBrawlerPool\(\)[\s\S]*?\n  \}/)?.[0]||'', /isBrawlerUnlocked/, 'Tower guest pool does not filter out locked brawlers');
 assert.match(game, /if \(won\) \{[\s\S]{0,260}playerData\.coins = \(playerData\.coins \|\| 0\) \+ floorReward/, 'Floor coins are awarded only after a clear');
 assert.match(game, /run\.losses=Math\.min\(3,[\s\S]{0,420}Rewards now \$\{Math\.round\(getTowerTroubleRewardMultiplier\(run\.losses\)\*100\)\}%/, 'Each knockout updates and displays the reduced reward multiplier');
 assert.match(game, /if\(run\.brawler&&!run\.eliminated\.includes\(run\.brawler\)\)run\.eliminated\.push\(run\.brawler\);[\s\S]{0,260}if \(won\)/, 'The selected Tower fighter retires before either the win or loss outcome is processed');

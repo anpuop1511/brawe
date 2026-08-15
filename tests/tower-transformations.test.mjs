@@ -8,7 +8,7 @@ const context={window:{}};
 vm.runInNewContext(cardsSource,context);
 const decks=context.window.SLOP_SUSHI_DECKS;
 assert.ok(decks&&typeof decks==='object','Transformation decks load');
-assert.equal(Object.keys(decks).length,66,'All 66 active brawlers have decks');
+assert.equal(Object.keys(decks).length,71,'Every registered brawler has a Transformation deck');
 for(const [id,deck] of Object.entries(decks)){
   assert.equal(deck.length,8,`${id} has exactly 8 Transformations`);
   assert.equal(new Set(deck.map(card=>card.id)).size,8,`${id} card ids are unique`);
@@ -87,7 +87,17 @@ for(const key of ['bouncyBounceSizePct','bouncyBounceRangeGainPct','bouncyAttack
 }
 assert.match(gameSource,/unlockedCards\[pickedId\]\s*=\s*deck\.map\(card=>card\.id\)/,'A Tower Drop grants every card in its chosen deck');
 assert.match(gameSource,/name:brawlerData\[pickedId\]\?\.name\|\|pickedId/,'Tower Drop reward names the brawler');
-assert.match(gameSource,/shuffled\.slice\(0,Math\.min\(12,shuffled\.length\)\)/,'Tower Trouble rolls a 12-brawler crew');
+assert.match(gameSource,/shuffled\.slice\(0,Math\.min\(size,shuffled\.length\)\)/,'Tower Trouble can roll differently sized unique crews');
+assert.match(gameSource,/function getTowerTroubleBrawlerPool\(\)/,'Tower Trouble uses one centralized guest roster pool');
+assert.match(gameSource,/const validPool=getTowerTroubleBrawlerPool\(\)/,'Tower Trouble run generation uses the full guest roster pool');
+assert.match(gameSource,/TOWER_GAUNTLET_FLOORS = 20/,'Grand Tour has twenty floors');
+assert.match(gameSource,/TOWER_GAUNTLET_ROSTER_SIZE = 20/,'Grand Tour rolls twenty guest brawlers');
+assert.match(gameSource,/TOWER_GAUNTLET_CREW_SIZE = 4/,'Grand Tour locks a four-brawler crew');
+assert.match(gameSource,/TOWER_GAUNTLET_LIVES_PER_BRAWLER = 3/,'Each Grand Tour fighter has three knockout lives');
+assert.match(gameSource,/run\.roster\.map\(id=>\[id,picked\.has\(id\)\?TOWER_GAUNTLET_LIVES_PER_BRAWLER:1\]\)/,'All twenty guests get a life while four selected guests get three');
+assert.match(gameSource,/for\(const id of run\.roster\)/,'The complete twenty-brawler roster is selectable on every floor');
+assert.match(gameSource,/rankNum<=15/,'Tower Showdown floors clear in the top fifteen');
+assert.match(gameSource,/unlockedTitles\.includes\('tower_toopled'\)/,'Low-loss Grand Tour clears award the Tower Toopled title');
 assert.match(gameSource,/run\.floor=floor\+1/,'Clearing a Tower floor advances progression');
 assert.match(gameSource,/run\.losses<3/,'A run survives its first two brawler knockouts');
 assert.match(gameSource,/run\.eliminated\.push\(run\.brawler\)/,'A losing brawler is removed from the current run');

@@ -1371,3 +1371,89 @@ html,body{overflow-x:hidden !important}
   color: #f4d7ff; font-size: 10px; font-weight: 900; pointer-events: none;
 }
 .super-aim-cancel { background: #a31639 !important; border-color: #ff8da7 !important; box-shadow: 0 0 0 4px rgba(255,70,110,.24) !important; }
+#brickBonBtn,#downloadSaveBtn,#importSaveBtn{flex:0 0 auto !important;white-space:nowrap !important;border-width:2px !important;box-shadow:0 4px 0 #041c44 !important}
+#brickBonBtn{border-color:#83e6ff !important;background:linear-gradient(180deg,#2088d7,#1559a8) !important;color:#fff !important}
+#downloadSaveBtn{border-color:#8ff5d3 !important;background:linear-gradient(180deg,#1b9d77,#11664f) !important;color:#fff !important}
+#importSaveBtn{border-color:#a8cfff !important;background:linear-gradient(180deg,#367fc8,#245393) !important;color:#fff !important}
+
+/* Brick Bon 2.0 and Profile: static layered panels designed to avoid costly repaint effects. */
+.brick-bon-v2-overlay,.profile-edit-overlay{position:fixed;inset:0;z-index:3900;display:grid;place-items:center;padding:18px;background:rgba(2,10,28,.88);font-family:Trebuchet MS,Arial,sans-serif;color:#fff}
+.brick-bon-v2{width:min(1180px,96vw);height:min(850px,94vh);display:grid;grid-template-rows:auto auto minmax(0,1fr);overflow:hidden;border:4px solid #78ddff;border-radius:22px;background:#071c43;box-shadow:0 12px 0 #03132d,0 28px 70px #0009}
+.brick-bon-v2>header{display:flex;align-items:center;justify-content:space-between;padding:17px 22px;background:linear-gradient(100deg,#147ccb,#254bb5 58%,#6326a8);border-bottom:3px solid #9be8ff}
+.brick-bon-v2 h1{margin:1px 0;font-size:clamp(26px,4vw,43px);line-height:1;text-shadow:0 3px #07366c}.brick-bon-v2 header p,.brick-bon-v2 header small{margin:4px 0;color:#d6f5ff;font-weight:900;letter-spacing:.08em}.brick-bon-close{width:44px;height:44px;border:3px solid #fff;border-radius:11px;background:#e84757;color:#fff;font-size:18px;font-weight:1000;box-shadow:0 4px 0 #7f1422}
+.brick-bon-v2>nav{display:grid;grid-template-columns:repeat(3,1fr);padding:8px;gap:7px;background:#05142f;border-bottom:2px solid #294f88}.brick-bon-v2>nav button{min-height:43px;border:2px solid #3e6ba7;border-radius:10px;background:#102c59;color:#bcd6fa;font-weight:1000}.brick-bon-v2>nav button.active{background:#ffd44f;border-color:#fff;color:#192344;box-shadow:0 4px 0 #af7816}
+.brick-bon-v2>main{overflow:auto;padding:16px;background:linear-gradient(180deg,#0c2b5b,#071b3e)}
+.bon-overall-progress{position:sticky;top:-16px;z-index:3;padding:12px 14px;margin:-2px 0 15px;border:2px solid #66dfff;border-radius:12px;background:#0a2149}.bon-overall-progress>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#caecff}.bon-progress-track{height:11px;margin-top:8px;overflow:hidden;border:2px solid #061022;border-radius:999px;background:#020916}.bon-progress-track i{display:block;height:100%;background:linear-gradient(90deg,#32d5ff,#6b6dff);transition:none}
+.bon-road{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);gap:10px;overflow-x:auto;padding:8px 3px 18px;scroll-snap-type:x proximity}.bon-node{scroll-snap-align:start;min-height:205px;display:flex;flex-direction:column;align-items:center;text-align:center;padding:12px;border:3px solid #35577e;border-radius:16px;background:#102a52;color:#9bb4d1;box-shadow:0 5px 0 #04152e}.bon-node.claimable{border-color:#ffd54e;background:#214a73;color:#fff}.bon-node.claimed{border-color:#4ee2ac;background:#123e4c;color:#aef3dc}.bon-node.architect{min-width:200px;border-color:#d5a7ff;background:linear-gradient(150deg,#294c7c,#552f82)}.bon-threshold{font-size:20px;font-weight:1000}.bon-node-icon{width:62px;height:62px;display:grid;place-items:center;margin:11px;border:4px solid currentColor;border-radius:15px;background:#07172f;font-size:23px;font-weight:1000}.bon-node h3{min-height:36px;margin:3px;font-size:13px}.bon-node p{margin:2px;font-size:12px}.bon-node button,.bon-challenge button{width:100%;min-height:36px;margin-top:auto;border:2px solid #fff;border-radius:9px;background:#ffd64f;color:#182445;font-weight:1000}.bon-node button:disabled,.bon-challenge button:disabled{border-color:#526984;background:#1b2a43;color:#8493a9}
+.bon-challenge-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:12px}.bon-challenge{min-height:210px;display:flex;flex-direction:column;padding:15px;border:3px solid #31537f;border-radius:15px;background:#0c244b;box-shadow:0 5px 0 #03132d}.bon-challenge.complete{border-color:#6be7bb}.bon-challenge small{color:#65dfff;font-weight:1000;letter-spacing:.1em}.bon-challenge h3{margin:7px 0 3px}.bon-challenge p{min-height:36px;margin:3px 0;color:#b7c9df}.bon-challenge strong{margin-top:6px}.bon-challenge em{margin:8px 0;color:#ffd66b;font-style:normal;font-weight:900}
+.profile-hero,.profile-section{position:relative;margin-bottom:13px;padding:17px;border:3px solid #3769a4;border-radius:17px;background:#0b2854;box-shadow:0 5px 0 #03152e}.profile-hero{display:grid;grid-template-columns:minmax(170px,1fr) minmax(320px,1.3fr) auto;align-items:center;gap:16px;border-color:#71dbff;background:linear-gradient(115deg,#0d5b9a,#193f8a 65%,#532b83)}.profile-hero.brick_architect{background:linear-gradient(115deg,#244d7b,#55327b)}.profile-hero.brick_frame{border-color:#e8bd76}.profile-hero.architect_frame{border-color:#d5a7ff;box-shadow:inset 0 0 0 4px #67418e,0 5px 0 #241337}.profile-hero h2{margin:1px 0;font-size:30px}.profile-hero strong{color:#ffd763}.profile-hero button,.profile-section button,.profile-edit-actions button{padding:9px 12px;border:2px solid #fff;border-radius:9px;background:#ffd450;color:#132348;font-weight:1000}.profile-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.profile-summary span,.career-grid span{display:flex;flex-direction:column;padding:9px;border:2px solid #4380bb;border-radius:10px;background:#061a39;color:#9cc3e9;font-size:10px;font-weight:900}.profile-summary b,.career-grid b{color:#fff;font-size:19px}.profile-section h3{margin:0 0 12px}.profile-favorites{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:10px}.profile-favorite{display:flex;align-items:center;gap:10px;padding:11px;border:2px solid #4475ad;border-radius:12px;background:#071d40}.profile-favorite.primary{border-color:#ffd44f}.profile-favorite-icon{width:55px;height:55px;display:grid;place-items:center;border-radius:50%;background:#1481cc;font-size:28px}.profile-favorite small{display:block;color:#a9c3df}.profile-badges{display:flex;gap:9px;flex-wrap:wrap}.profile-badges>div{min-width:90px;padding:10px;text-align:center;border:2px solid #6a82b8;border-radius:12px;background:#071a39}.profile-badges b{display:block;font-size:22px}.profile-badges small{font-size:10px}.profile-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.profile-top-list{display:grid;gap:5px}.profile-top-list>div{display:grid;grid-template-columns:42px minmax(130px,1fr) repeat(2,minmax(90px,.55fr));align-items:center;gap:7px;padding:8px 10px;border:1px solid #315888;border-radius:9px;background:#071b3b}.profile-top-list .podium-1{border-color:#ffd44f}.profile-top-list .podium-2{border-color:#cdd9e7}.profile-top-list .podium-3{border-color:#c98b58}.career-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px}.profile-section>p{color:#86a3c2;font-size:11px}
+.profile-edit-panel{width:min(620px,94vw);max-height:92vh;overflow:auto;padding:22px;border:4px solid #77ddff;border-radius:20px;background:#0a2248;box-shadow:0 10px 0 #031328}.profile-edit-panel h2{margin:0}.profile-edit-panel>input,.profile-edit-panel label{width:100%;box-sizing:border-box;margin-top:10px}.profile-edit-panel>input,.profile-edit-panel select{min-height:42px;padding:8px;border:2px solid #4773a8;border-radius:9px;background:#051630;color:#fff}.profile-edit-panel label{display:grid;grid-template-columns:145px 1fr;align-items:center;gap:9px;font-weight:900}.profile-edit-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+
+/* Brawler progression readability and static Brick presentation. */
+.brawler-upgrade-summary{width:100%;box-sizing:border-box;margin:0 0 11px;padding:12px;text-align:center;border:2px solid #4378ab;border-radius:12px;background:#071a38}.brawler-upgrade-summary small{display:block;color:#81dfff;font-size:10px;font-weight:1000;letter-spacing:.12em}.brawler-upgrade-summary b{display:block;margin:3px;font-size:25px;color:#fff}.brawler-upgrade-summary b span{color:#7f9bb7;font-size:13px}.brawler-upgrade-summary p{margin:4px;color:#aac3dc;font-size:12px}.brawler-detail-view{background:linear-gradient(150deg,#091b3c,#123e76) !important}.brawler-detail-view .brawler-detail__layout{padding-bottom:34px}.brawler-detail-view .brawler-upgrade-card{box-shadow:0 7px 0 #04162f !important}
+
+@media(max-width:700px){.brick-bon-v2-overlay,.profile-edit-overlay{padding:5px}.brick-bon-v2{width:100%;height:98svh;border-radius:13px;border-width:2px}.brick-bon-v2>header{padding:11px}.brick-bon-v2>main{padding:9px}.bon-overall-progress{top:-9px}.bon-road{grid-auto-columns:142px}.profile-hero{grid-template-columns:1fr}.profile-summary{grid-template-columns:1fr}.profile-favorites{grid-template-columns:1fr}.profile-top-list>div{grid-template-columns:30px minmax(100px,1fr) 76px}.profile-top-list>div small:last-child{display:none}.profile-edit-panel label{grid-template-columns:1fr}.brawler-detail-view .brawler-detail__layout{flex-direction:column !important;gap:14px !important;align-items:stretch !important}.brawler-detail-view .brawler-upgrade-card{width:auto !important}}
+
+/* Brick Bon polish: lightweight opacity/border animations only. */
+.bon-progress-track i{transition:width .45s ease-out !important}.bon-node.major{border-color:#db9cff;background:linear-gradient(150deg,#173e70,#533276)}.bon-node.veteran{border-style:double;border-width:5px;background:#152f52}.bon-node.architect{min-width:230px;border-width:5px;outline:3px solid #7146a0;outline-offset:3px;background:linear-gradient(145deg,#1b4779,#63348a);box-shadow:0 7px 0 #241339,inset 0 0 0 3px #d5a7ff55}.bon-node.major:not(.claimed) .bon-node-icon{animation:bon-major-pulse 1.6s ease-in-out infinite}@keyframes bon-major-pulse{50%{opacity:.68}}
+.bon-major-celebration{position:fixed;z-index:6000;left:50%;top:18%;transform:translateX(-50%);min-width:min(460px,88vw);padding:20px;text-align:center;border:4px solid #fff;border-radius:18px;background:linear-gradient(135deg,#135c9d,#63338e);color:#fff;box-shadow:0 10px 0 #1e1236,0 24px 70px #000a;animation:bon-claim-in .22s ease-out}.bon-major-celebration small,.bon-major-celebration span{display:block}.bon-major-celebration small{color:#94e8ff;font-weight:1000;letter-spacing:.14em}.bon-major-celebration b{display:block;margin:6px;font-size:28px;color:#ffe678}.bon-major-celebration span{color:#e5d7ff;font-weight:900}.bon-major-celebration.architect{border-color:#ffe678;background:linear-gradient(135deg,#173e70,#763994)}@keyframes bon-claim-in{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(prefers-reduced-motion:reduce){.bon-node.major,.bon-major-celebration{animation:none !important}}
+
+/* Brick-rank card frame: the frame itself fills clockwise toward the next rank. */
+.brawler-card{
+  --brick-color:#6f91b8;
+  --brick-progress:0;
+  border:4px solid transparent !important;
+  border-radius:14px !important;
+  background:
+    linear-gradient(165deg,#111a28 0%,#090f19 55%,#060a11 100%) padding-box,
+    conic-gradient(from -90deg,var(--brick-color) 0 var(--brick-stop),#293547 var(--brick-stop) 100%) border-box !important;
+  background-clip:padding-box,border-box !important;
+  box-shadow:0 5px 0 #02060c,0 12px 22px #0008,inset 0 1px #ffffff0d !important;
+  color:#eaf2fb !important;
+}
+.brawler-card--prestige{
+  background:
+    linear-gradient(165deg,#111827 0%,#080d17 55%,#05080e 100%) padding-box,
+    conic-gradient(from -90deg,#50edff 0 var(--prestige-stop-1),#6f7cff var(--prestige-stop-1) var(--prestige-stop-2),#c36cff var(--prestige-stop-2) var(--prestige-stop-3),#ffd45e var(--prestige-stop-3) var(--brick-stop),#293547 var(--brick-stop) 100%) border-box !important;
+  box-shadow:0 5px 0 #02060c,0 12px 22px #0009,0 0 10px #50edff66,0 0 18px #8a72ff55,0 0 25px #ffd45e33 !important;
+}
+.brawler-card.brawler-card--prestige:hover{box-shadow:0 5px 0 #02060c,0 16px 28px #000a,0 0 12px #50edff88,0 0 23px #a66dff66,0 0 31px #ffd45e44 !important}
+.brawler-card:hover{box-shadow:0 5px 0 #02060c,0 15px 28px #000a,0 0 16px color-mix(in srgb,var(--brick-color) 38%,transparent) !important}
+.brawler-card__portrait{
+  border:1px solid color-mix(in srgb,var(--brawler-accent,#6f91b8) 58%,#263449) !important;
+  background:
+    radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--brawler-accent,#6f91b8) 30%,transparent),transparent 48%),
+    linear-gradient(170deg,#172334,#080d15) !important;
+  box-shadow:inset 0 -18px 30px #0007 !important;
+}
+.brawler-card__portrait>.brawler-card__emoji{
+  width:70px !important;
+  height:70px !important;
+  padding:0 !important;
+  display:grid !important;
+  place-items:center !important;
+  font-size:var(--portrait-icon-size,40px) !important;
+  line-height:1 !important;
+  letter-spacing:0 !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  border-radius:50% !important;
+  box-sizing:border-box !important;
+  margin:0 auto !important;
+  text-align:center !important;
+  text-indent:0 !important;
+  transform:none !important;
+}
+.brawler-card__portrait>.brawler-card__emoji.is-multi{letter-spacing:-3px !important}
+.brawler-card__name{color:#f5f8fc !important;text-shadow:0 2px 0 #000 !important}
+.brawler-card__role,.brawler-card__rank{color:var(--brick-color) !important}
+.brawler-card__abilities{background:linear-gradient(90deg,#0b121d,color-mix(in srgb,var(--brick-color) 58%,#142033)) !important;border-color:#02060c !important}
+.brawler-card__rankbar{display:none !important}
+.brawler-card__chips>div{background:#101a29 !important}
+@supports not (background:color-mix(in srgb,#fff,#000)){
+  .brawler-card:hover{box-shadow:0 5px 0 #02060c,0 15px 28px #000a !important}
+  .brawler-card__portrait{background:linear-gradient(170deg,#172334,#080d15) !important}
+  .brawler-card__abilities{background:linear-gradient(90deg,#0b121d,#26364b) !important}
+}
+@media(max-width:780px){.charged-quest-packs{grid-template-columns:1fr !important}}
