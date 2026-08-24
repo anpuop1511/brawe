@@ -9,8 +9,16 @@ assert.match(source, /TOWER_DUELS_WEEKEND_END = new Date\(2026, 7, 17/);
 assert.match(source, /tower_duelar:\{name:'TOWER DUELAR'/);
 assert.match(source, /playerTeam = createTowerTroubleRoster\(pool, 3\)/);
 assert.match(source, /botTeam = createTowerTroubleRoster\(pool, 3\)/);
+assert.match(source, /function showTowerDuelsCrewPreview\(event\)/);
+assert.match(source, /YOUR RANDOM DUEL CREW/);
+assert.match(source, /TOWER POWER ACTIVE - 2 transformations per fighter/);
+assert.match(source, /towerDuelPowerLoadouts = rollTowerDuelPowerLoadouts\(playerTeam\)/);
+assert.match(source, /towerDuelBotPowerLoadouts = rollTowerDuelPowerLoadouts\(botTeam\)/);
+assert.match(source, /towerDuelPreset\.map\(id => deck\.find/);
 assert.match(source, /const duelPlayerLevel = isTowerDuelEvent \? 11/);
 assert.match(source, /const botLevel = isTowerDuelEvent \? 11/);
+assert.match(source, /function getNativeAmmoCapacity\(brawlerId\)[\s\S]{0,260}minigunnin[\s\S]{0,120}return 100/);
+assert.match(source, /function startDuelsRound\([\s\S]{0,3000}resetPlayerAmmoForBrawler\(selectedBrawler, true\)/);
 assert.match(source, /event\.matchesCompleted = Math\.min\(5/);
 assert.match(source, /bon\.unlockedTitles\.push\('tower_duelar'\)/);
 

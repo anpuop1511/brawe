@@ -1,0 +1,259 @@
+/* ========================================================================== 
+   2026-08-20 BRAWE FIGHTERS — unified tactical shell
+   Final override layer. Replaces the legacy bright lobby/roster presentation
+   while retaining every existing DOM action and progression control.
+   ========================================================================== */
+:root{
+  --bf-bg:#070d20;--bf-surface:#0c1225;--bf-low:#11192c;--bf-panel:#191f32;
+  --bf-high:#23293d;--bf-line:#344158;--bf-cyan:#74f5ff;--bf-cyan-2:#00dbe7;
+  --bf-gold:#ffba20;--bf-purple:#ce5dff;--bf-text:#e6ebff;--bf-muted:#9eabc5;
+}
+body{background:var(--bf-bg)!important;color:var(--bf-text);font-family:"Trebuchet MS","Arial Narrow",Arial,sans-serif}
+button,select,input{font:inherit}
+
+/* Home tactical shell */
+#homeScreen{
+  padding:0!important;background:
+    radial-gradient(circle at 15% 18%,rgba(0,219,231,.11),transparent 31%),
+    radial-gradient(circle at 88% 72%,rgba(206,93,255,.09),transparent 34%),
+    linear-gradient(145deg,#070d20,#0c1225 58%,#070d20)!important;
+}
+#homeScreen:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.19;background-image:linear-gradient(rgba(116,245,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(116,245,255,.07) 1px,transparent 1px);background-size:42px 42px}
+#homePanel{width:100%!important;max-width:none!important;min-height:100dvh!important;padding:0 34px 28px!important;gap:14px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;box-sizing:border-box}
+#homeHeader{position:sticky;top:0;z-index:30;min-height:74px;padding:0!important;flex-wrap:nowrap!important;border-bottom:1px solid var(--bf-line)!important;background:rgba(12,18,37,.94);backdrop-filter:blur(14px);box-shadow:0 8px 24px #0006}
+.home-brand-lockup{display:flex;align-items:center;gap:14px;min-width:max-content}
+.home-menu-btn{width:42px;height:42px;border:1px solid var(--bf-line);border-radius:9px;background:#151d31;color:var(--bf-cyan);font-size:22px;font-weight:900;cursor:pointer}
+#homeTitle{font-size:25px!important;line-height:1!important;color:var(--bf-cyan)!important;letter-spacing:-.035em!important;text-shadow:0 0 16px rgba(116,245,255,.2)}
+.home-brand-subtitle{margin-top:5px;color:#71809c;font:900 9px/1.1 "Courier New",monospace;letter-spacing:.15em;text-transform:uppercase}
+.home-top-nav{display:flex;align-self:stretch;margin-left:14px}
+.home-top-nav button{min-width:86px;padding:0 15px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--bf-muted);font-size:12px;font-weight:1000;letter-spacing:.09em;cursor:pointer}
+.home-top-nav button:hover,.home-top-nav button.is-active{color:var(--bf-cyan);border-bottom-color:var(--bf-cyan-2);background:linear-gradient(180deg,transparent,rgba(0,219,231,.08))}
+#homeCurrencyBar{margin-left:auto!important;flex-wrap:nowrap!important}
+.home-currency-pill{height:36px!important;min-width:68px!important;padding:0 10px!important;border:1px solid var(--bf-line)!important;border-radius:8px!important;background:#151d31!important;box-shadow:inset 0 1px rgba(255,255,255,.04)!important}
+#homeQuickActions{display:flex!important;align-items:center;gap:6px;max-width:360px;overflow-x:auto;padding:2px}
+#homeQuickActions button{min-height:36px!important;padding:6px 9px!important;border:1px solid var(--bf-line)!important;border-radius:8px!important;background:#151d31!important;color:#cbd8ee!important;box-shadow:none!important;font-size:9px!important;white-space:nowrap}
+#fullscreenBtn{width:42px!important;min-width:42px!important;height:42px!important;overflow:hidden;text-indent:-999px;position:relative;padding:0!important;border-color:var(--bf-line)!important;background:#151d31!important}
+#fullscreenBtn:after{content:"⛶";position:absolute;inset:0;display:grid;place-items:center;text-indent:0;color:var(--bf-cyan);font-size:20px}
+.home-command-strip{margin-top:0!important;min-height:40px!important;border:1px solid var(--bf-line)!important;border-radius:8px!important;background:#10182b!important;box-shadow:none!important}
+.home-command-strip b{color:var(--bf-text)!important}.home-command-strip__pulse{color:#64e7c5!important}
+#homeMain{grid-template-columns:minmax(320px,38%) minmax(0,1fr)!important;gap:16px!important;min-height:0;flex:1}
+#homePlaySection,#homeModesSection{border:1px solid var(--bf-line);border-radius:14px;background:rgba(17,25,44,.82);box-shadow:inset 0 1px rgba(255,255,255,.03),0 18px 35px #0004;overflow:hidden}
+#homePlaySection{position:relative;min-height:620px;padding:18px!important}
+#homeModesSection{padding:18px!important}
+.home-section-kicker,.home-event-heading{font:1000 11px/1 "Courier New",monospace!important;letter-spacing:.15em!important;color:#8fa0bd!important}
+#homeBrawlerCard{position:relative;flex:1;min-height:390px!important;margin:0!important;padding:0!important;border:0!important;border-radius:12px!important;background:radial-gradient(circle at 50% 44%,rgba(0,219,231,.19),transparent 37%),linear-gradient(155deg,#132a4c,#0c1730)!important;overflow:hidden;box-shadow:inset 0 0 60px #0006!important}
+#homeBrawlerCard:before{content:"";position:absolute;inset:0;background:repeating-radial-gradient(circle at 50% 48%,transparent 0 46px,rgba(116,245,255,.045) 47px 48px);pointer-events:none}
+.home-brawler-stage{height:72%!important}.home-brawler-avatar{width:min(52%,260px)!important;aspect-ratio:1;border:4px solid var(--bf-cyan)!important;border-radius:48% 52% 44% 56%!important;background:linear-gradient(145deg,var(--hero-color),#0b5c8c)!important;box-shadow:0 0 0 7px #07152d,0 24px 38px #0008,0 0 38px color-mix(in srgb,var(--hero-color) 45%,transparent)!important}
+.home-brawler-avatar span{font-size:clamp(62px,9vw,122px)!important}.home-brawler-stage__burst{opacity:.34!important}
+.home-brawler-identity{left:18px!important;right:18px!important;bottom:53px!important}.home-brawler-identity small{font:900 9px/1 "Courier New",monospace!important;color:var(--bf-cyan)!important}.home-brawler-identity strong{font-size:clamp(26px,3vw,42px)!important;color:#fff!important;text-shadow:0 3px #050a15!important}.home-brawler-identity span{font:900 10px/1.2 "Courier New",monospace!important}
+.home-brawler-power{top:15px!important;right:15px!important;width:66px!important;height:66px!important;border:3px solid var(--bf-cyan)!important;background:#17233b!important;color:#fff!important;box-shadow:0 0 18px rgba(116,245,255,.25)!important}.home-brawler-stats{height:42px!important;background:#080f20e8!important;border-top:1px solid var(--bf-line)!important}
+#homeRankCard{border-color:#554622!important;background:linear-gradient(135deg,#241c0d,#121629)!important}
+#startMatch{min-height:58px!important;border:2px solid #fff5!important;border-radius:9px!important;background:linear-gradient(135deg,#ffe167,#ffb51d)!important;color:#241800!important;font-size:18px!important;text-transform:uppercase;letter-spacing:.08em!important;box-shadow:0 5px 0 #8c5d00,0 12px 22px #0006!important;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+#homeActionRow{grid-template-columns:repeat(4,minmax(0,1fr))!important}.home-action-btn{min-height:58px!important;border:1px solid var(--bf-line)!important;border-radius:9px!important;background:#151d31!important;color:#dce8fa!important;box-shadow:none!important}.home-action-btn small{color:#7586a4!important}
+#homeModeCompactRow{display:block!important}.home-event-section{margin-bottom:14px!important;border:1px solid #26344c!important;border-radius:13px!important;background:#080f20!important;padding:12px!important}.home-event-grid{grid-template-columns:repeat(3,minmax(150px,1fr))!important;gap:9px!important}.home-mode-card{min-height:112px!important;border:1px solid #40516d!important;border-radius:10px!important;background:linear-gradient(145deg,#182842,#10182b)!important;box-shadow:0 4px 0 #050b16!important;overflow:hidden}.home-mode-card:hover{transform:translateY(-2px)!important;border-color:var(--bf-cyan)!important}.home-mode-card h3,.home-mode-card strong{color:#f4f8ff!important}.home-mode-card p,.home-mode-card small{color:#8fa1bd!important}
+#homeUtilityDetails{margin-bottom:0!important;border-color:var(--bf-line)!important;background:#0d1426!important}#homeUtilityDetails summary{color:var(--bf-cyan)!important}#homeUtilityRow{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px!important}#homeUtilityRow button{min-height:42px!important;border:1px solid var(--bf-line)!important;border-radius:8px!important;background:#151d31!important;color:#dce8fa!important;box-shadow:none!important;font-size:11px!important}
+.home-mobile-nav{display:none}
+
+/* Collection — actual two-panel tactical roster */
+.brawler-browser:not(.brawler-detail-view){
+  display:grid!important;grid-template-columns:minmax(330px,410px) minmax(500px,1fr)!important;
+  grid-template-rows:74px auto minmax(0,1fr)!important;gap:14px!important;
+  align-items:stretch!important;justify-content:stretch!important;padding:0 28px 24px!important;
+  overflow:hidden!important;background:radial-gradient(circle at 82% 23%,rgba(0,219,231,.09),transparent 33%),linear-gradient(145deg,#070d20,#0c1225)!important;
+  font-family:"Trebuchet MS",Arial,sans-serif!important;
+}
+.brawler-browser:not(.brawler-detail-view):before{content:"";position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(116,245,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(116,245,255,.035) 1px,transparent 1px);background-size:38px 38px}
+.brawler-browser__header{grid-column:1/-1;grid-row:1;width:auto!important;max-width:none!important;height:74px;margin:0!important;align-items:center!important;border-bottom:1px solid var(--bf-line);background:rgba(12,18,37,.94);z-index:2}
+.brawler-browser__title{font-size:26px!important;line-height:1!important;color:var(--bf-cyan)!important;text-transform:uppercase;letter-spacing:-.03em}.brawler-browser__title:before{content:"BRAWE FIGHTERS  /  ";font:900 9px/1 "Courier New",monospace;color:#64738e;letter-spacing:.12em}
+.brawler-browser__wallet{gap:6px!important;max-width:68%;overflow-x:auto}.brawler-browser__wallet>div,.brawler-browser__wallet>button{flex:none!important;min-height:34px!important;padding:7px 10px!important;border:1px solid var(--bf-line)!important;border-radius:7px!important;background:#151d31!important;color:#dce8fa!important;box-shadow:none!important;font-size:10px!important;white-space:nowrap}
+.brawler-browser__controls{grid-column:1;grid-row:2;width:auto!important;max-width:none!important;margin:0!important;padding:10px;border:1px solid var(--bf-line);border-radius:10px;background:#11192c;display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px!important;z-index:2}.brawler-browser__controls>span{display:none}.brawler-browser__controls input{grid-column:1/-1;width:100%!important;box-sizing:border-box}.brawler-browser__controls input,.brawler-browser__controls select{min-width:0!important;height:36px!important;padding:6px 8px!important;border:1px solid #3c4b64!important;border-radius:7px!important;background:#080f20!important;color:#dfe8f9!important;font-size:10px!important}.brawler-browser__controls select:last-child{grid-column:1/-1}
+.brawler-browser__grid{grid-column:1;grid-row:3;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-content:start!important;justify-content:stretch!important;width:auto!important;max-width:none!important;min-height:0;padding:3px 5px 24px 3px;gap:9px!important;overflow-y:auto!important;overflow-x:hidden}.brawler-browser__grid::-webkit-scrollbar{width:7px}.brawler-browser__grid::-webkit-scrollbar-thumb{background:#35445e;border-radius:9px}
+.brawler-browser__selected{grid-column:2;grid-row:2/4;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:14px!important;width:auto!important;max-width:none!important;min-height:0!important;margin:0!important;padding:22px!important;border:1px solid var(--bf-line)!important;border-radius:14px!important;background:radial-gradient(circle at 76% 10%,color-mix(in srgb,var(--selected-brawler-color) 16%,transparent),transparent 34%),linear-gradient(150deg,#192238,#0b1121)!important;box-shadow:inset 0 1px rgba(255,255,255,.04),0 20px 44px #0005!important;overflow-y:auto!important;box-sizing:border-box}
+.brawler-browser__selected-hero{display:grid;grid-template-columns:150px 1fr auto;gap:18px;align-items:end;padding-bottom:16px;border-bottom:1px solid var(--bf-line)}
+.brawler-browser__selected-portrait{grid-row:auto!important;width:150px!important;height:150px!important;border:2px solid var(--selected-rarity-color)!important;border-radius:12px!important;background:radial-gradient(circle,color-mix(in srgb,var(--selected-brawler-color) 58%,#18365c),#070d20)!important;font-size:72px!important;box-shadow:0 0 26px color-mix(in srgb,var(--selected-brawler-color) 28%,transparent)!important}
+.brawler-browser__selected-copy{align-self:end}.brawler-browser__selected-copy small{font:900 9px/1 "Courier New",monospace!important;letter-spacing:.15em;color:var(--bf-cyan)!important}.brawler-browser__selected-copy strong{font-size:clamp(30px,4vw,54px)!important;line-height:.95!important;color:#fff!important;text-transform:uppercase;text-shadow:0 3px #000}.brawler-browser__selected-copy span{margin-top:8px!important;font:900 10px/1.3 "Courier New",monospace!important;color:var(--selected-rarity-color)!important}
+.brawler-browser__selected-power{align-self:start;display:grid;place-items:center;width:68px;height:68px;border:2px solid var(--bf-cyan);border-radius:50%;background:#17213a;box-shadow:0 0 15px rgba(116,245,255,.25)}.brawler-browser__selected-power small{font-size:8px;color:#93a4c0}.brawler-browser__selected-power b{font-size:24px;color:#fff}
+.brawler-browser__selected-rank{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid #51431e;border-radius:9px;background:#18170f}.brawler-browser__selected-rank span{font:900 10px/1 "Courier New",monospace;color:var(--bf-gold)}.brawler-browser__selected-rank>div{height:7px;border-radius:9px;background:#060b14;overflow:hidden}.brawler-browser__selected-rank i{display:block;height:100%;background:linear-gradient(90deg,var(--bf-gold),#ffe184);box-shadow:0 0 8px var(--bf-gold)}.brawler-browser__selected-rank small{font:900 9px/1 "Courier New",monospace;color:#929db1}
+.brawler-browser__selected-stats{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}.brawler-browser__selected-stats span{min-width:0!important;padding:10px!important;border:1px solid var(--bf-line)!important;border-radius:8px!important;background:#11192c!important;text-align:center!important;font-size:17px!important;color:#fff!important}.brawler-browser__selected-stats b{display:block!important;margin-bottom:3px;font:900 8px/1 "Courier New",monospace!important;color:#7f8fa9!important}
+.brawler-browser__selected-kit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.brawler-browser__selected-kit article{min-height:92px;padding:13px;border:1px solid #34435b;border-top-color:var(--bf-cyan-2);border-radius:9px;background:#11192c;overflow:hidden}.brawler-browser__selected-kit article.is-tool,.brawler-browser__selected-kit article.is-talent,.brawler-browser__selected-kit article.is-core{min-height:62px}.brawler-browser__selected-kit article.is-tool{border-top-color:#55e599}.brawler-browser__selected-kit article.is-talent{border-top-color:#ffd15d}.brawler-browser__selected-kit article.is-core{border-top-color:#d56cff}.brawler-browser__selected-kit article.is-signature{border-color:#3da7bc;background:#092438}.brawler-browser__selected-kit small{display:block;margin-bottom:7px;font:900 8px/1 "Courier New",monospace;letter-spacing:.12em;color:#7f90ad}.brawler-browser__selected-kit b{display:block;color:#f3f7ff;font-size:13px;line-height:1.2;text-transform:uppercase}.brawler-browser__selected-kit p{margin:6px 0 0;color:#92a1bb;font-size:11px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.brawler-browser__selected-open{margin-top:auto!important;min-height:52px!important;border:1px solid #fff8!important;border-radius:8px!important;background:linear-gradient(135deg,var(--bf-cyan),#00dbe7)!important;color:#002022!important;font-size:13px!important;font-weight:1000!important;letter-spacing:.09em;box-shadow:0 5px 0 #00696f!important;cursor:pointer}
+.brawler-browser__close{position:fixed!important;top:17px!important;right:18px!important;z-index:10!important;width:38px!important;height:38px!important;margin:0!important;padding:0!important;border:1px solid #ff7888!important;border-radius:8px!important;background:#33151f!important;color:transparent!important;font-size:0!important}.brawler-browser__close:after{content:"×";color:#ffb8c0;font-size:25px;line-height:34px}
+
+/* Smaller, dark fighter tiles. The border itself remains Brick progress. */
+.brawler-browser:not(.brawler-detail-view) .brawler-card{min-height:202px!important;padding:6px!important;border-radius:10px!important;background:linear-gradient(170deg,#172334,#080d15)!important;box-shadow:0 4px 0 #02060c,0 9px 16px #0009!important}.brawler-browser:not(.brawler-detail-view) .brawler-card__portrait{height:94px!important;background:radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--portrait-color) 38%,transparent),transparent 47%),#090f1c!important}.brawler-browser:not(.brawler-detail-view) .brawler-card__name{font-size:14px!important}.brawler-browser:not(.brawler-detail-view) .brawler-card__abilities{min-height:33px!important;padding-left:36px!important}.brawler-browser:not(.brawler-detail-view) .brawler-card__abilities>div:first-child{width:29px!important;height:29px!important}.brawler-browser:not(.brawler-detail-view) .brawler-card__abilities>div:not(:first-child){width:24px!important;height:24px!important}.brawler-browser:not(.brawler-detail-view) .brawler-card__rank{font-size:7px!important}
+
+/* Full loadout/upgrade page shares the same visual language. */
+.brawler-browser.brawler-detail-view{padding:22px 28px 70px!important;background:radial-gradient(circle at 18% 20%,rgba(0,219,231,.08),transparent 28%),#070d20!important;color:var(--bf-text)!important}
+.brawler-detail__layout,.trinket-loadout{width:min(1180px,96vw)!important;box-sizing:border-box!important;border:1px solid var(--bf-line)!important;border-radius:14px!important;background:#11192c!important;box-shadow:0 18px 42px #0006!important}.brawler-upgrade-card{border:1px solid var(--bf-line)!important;background:linear-gradient(155deg,#17243a,#0a1121)!important}.trinket-loadout{padding:18px!important;margin-top:14px!important}.trinket-catalog{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))!important;gap:9px!important}.trinket-card{background:#0a1121!important}.trinket-card__action{cursor:pointer}
+
+@media(max-width:980px){
+  #homePanel{padding:0 14px 20px!important}.home-top-nav{display:none}#homeQuickActions{max-width:210px}#homeMain{grid-template-columns:minmax(285px,36%) minmax(0,1fr)!important}.home-event-grid{grid-template-columns:repeat(2,minmax(130px,1fr))!important}
+  .brawler-browser:not(.brawler-detail-view){grid-template-columns:minmax(300px,36%) minmax(410px,1fr)!important;padding-left:14px!important;padding-right:14px!important}.brawler-browser__selected-hero{grid-template-columns:110px 1fr auto}.brawler-browser__selected-portrait{width:110px!important;height:110px!important;font-size:54px!important}.brawler-browser__selected-kit{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  #homePanel{padding:0 8px 78px!important}#homeHeader{min-height:58px!important;padding:0 5px!important}.home-brand-lockup{gap:8px}.home-menu-btn{width:36px;height:36px}.home-brand-subtitle{display:none}#homeTitle{font-size:20px!important}#homeCurrencyBar{gap:3px!important}.home-currency-pill{height:31px!important;min-width:46px!important;padding:0 6px!important;font-size:9px!important}#homeQuickActions,#fullscreenBtn{display:none!important}.home-command-strip{display:none!important}#homeMain{display:flex!important;flex-direction:column!important;overflow:visible!important}#homePlaySection{min-height:540px!important;padding:10px!important}#homeBrawlerCard{min-height:330px!important}.home-brawler-avatar{width:min(57%,220px)!important}.home-brawler-identity strong{font-size:28px!important}#homeActionRow{grid-template-columns:repeat(2,1fr)!important}#homeModesSection{padding:10px!important}.home-event-grid{grid-template-columns:repeat(2,minmax(120px,1fr))!important}.home-mode-card{min-height:103px!important}#homeUtilityRow{grid-template-columns:repeat(2,1fr)!important}
+  .home-mobile-nav{position:fixed;z-index:80;left:0;right:0;bottom:0;display:flex;justify-content:space-around;padding:6px max(6px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));border-top:1px solid #3a4963;background:rgba(17,25,44,.97);backdrop-filter:blur(12px);box-shadow:0 -8px 24px #0008}.home-mobile-nav button{min-width:54px;padding:5px 4px;border:0;border-radius:7px;background:transparent;color:#8392ad;font-size:7px;font-weight:1000;letter-spacing:.05em}.home-mobile-nav button span{display:block;margin-bottom:2px;font-size:19px}.home-mobile-nav button.is-active{background:#123341;color:var(--bf-cyan)}body:has(#homeScreen[style*="display: none"]) .home-mobile-nav{display:none}
+  .brawler-browser:not(.brawler-detail-view){display:flex!important;flex-direction:column!important;height:100dvh!important;padding:0 7px 64px!important;overflow-y:auto!important}.brawler-browser__header{position:sticky;top:0;width:100%!important;min-height:58px;height:auto!important;flex:none!important;padding:7px 4px!important;box-sizing:border-box}.brawler-browser__title{font-size:18px!important}.brawler-browser__title:before{display:none}.brawler-browser__wallet{max-width:65%!important}.brawler-browser__wallet>div,.brawler-browser__wallet>button{min-height:29px!important;padding:5px 7px!important;font-size:8px!important}.brawler-browser__selected{order:2;flex:none!important;width:100%!important;min-height:0!important;padding:10px!important;overflow:visible!important}.brawler-browser__selected-hero{grid-template-columns:70px 1fr 50px;gap:8px;padding-bottom:9px}.brawler-browser__selected-portrait{width:70px!important;height:70px!important;font-size:36px!important}.brawler-browser__selected-copy strong{font-size:22px!important}.brawler-browser__selected-power{width:48px;height:48px}.brawler-browser__selected-power b{font-size:18px}.brawler-browser__selected-rank,.brawler-browser__selected-kit{display:none}.brawler-browser__selected-stats span{padding:6px!important;font-size:12px!important}.brawler-browser__selected-open{min-height:42px!important}.brawler-browser__controls{order:3;flex:none!important;width:100%!important;box-sizing:border-box}.brawler-browser__grid{order:4;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%!important;overflow:visible!important;padding-bottom:20px}.brawler-browser__close{top:auto!important;bottom:9px!important;right:9px!important}.brawler-browser:not(.brawler-detail-view) .brawler-card{min-height:190px!important}.brawler-browser:not(.brawler-detail-view) .brawler-card__portrait{height:87px!important}
+  .brawler-browser.brawler-detail-view{padding:12px 7px 68px!important}.brawler-detail__layout{display:flex!important;flex-direction:column!important}.trinket-catalog{grid-template-columns:1fr!important}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* ========================================================================== 
+   2026-08-20 clean lobby + universal Special triangle
+   ========================================================================== */
+#homePanel{max-width:1440px!important;margin:0 auto!important;padding:0 22px 24px!important;gap:10px!important}
+#homeHeader{min-height:64px!important;padding:0 10px!important;border-radius:0 0 12px 12px!important}
+#homeTitle{font-size:23px!important}
+.home-top-nav{margin-left:8px!important}
+.home-top-nav button{min-width:76px!important;padding:0 11px!important}
+.home-command-strip{display:none!important}
+.home-progress-dock{display:flex;align-items:center;gap:10px;min-height:46px;padding:5px 8px 5px 12px;border:1px solid var(--bf-line);border-radius:10px;background:rgba(12,18,37,.92);box-shadow:0 7px 18px #0004;overflow:hidden}
+.home-progress-dock__label{flex:none;font:1000 9px/1 "Courier New",monospace;letter-spacing:.15em;color:#72829f}
+.home-progress-dock #homeQuickActions{display:flex!important;flex:1!important;max-width:none!important;min-width:0;gap:6px;overflow-x:auto;scrollbar-width:thin}
+.home-progress-dock #homeQuickActions button{min-height:32px!important;height:32px!important;padding:5px 10px!important;border-color:#2d3b54!important;background:#121b2e!important;color:#d8e2f3!important;font-size:9px!important}
+#homeMain{grid-template-columns:minmax(300px,360px) minmax(0,1fr)!important;gap:10px!important}
+#homePlaySection,#homeModesSection{border-radius:11px!important;background:rgba(13,20,36,.9)!important;box-shadow:0 10px 28px #0004!important}
+#homePlaySection{min-height:555px!important;padding:13px!important}
+#homeModesSection{padding:13px!important}
+#homeBrawlerCard{min-height:338px!important;background:radial-gradient(circle at 50% 42%,rgba(0,219,231,.15),transparent 35%),linear-gradient(155deg,#102440,#091225)!important}
+.home-brawler-stage{height:70%!important}
+.home-brawler-avatar{width:min(49%,220px)!important}
+#homeRankCard{padding:8px 10px!important}
+#startMatch{min-height:54px!important}
+#homeActionRow{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.home-action-btn{min-height:48px!important}
+.home-event-section{margin-bottom:9px!important;padding:10px!important;background:#080e1c!important}
+.home-event-grid{gap:7px!important}
+.home-mode-card{min-height:96px!important;background:linear-gradient(145deg,#142139,#0d1527)!important;box-shadow:0 3px 0 #040914!important}
+#homeUtilityDetails{padding:5px 9px!important}
+
+/* Every card has this mark. Availability and owned pieces alter only its fill. */
+.brawler-card__special-triangle{position:absolute;z-index:8;top:2px;left:50%;width:52px;height:53px;transform:translateX(-50%);pointer-events:auto;filter:drop-shadow(0 3px 3px #000b)}
+.brawler-card__special-triangle svg{display:block;width:52px;height:46px;overflow:visible}
+.special-triangle__segment{fill:#222b39;stroke:#788397;stroke-width:2.2;stroke-linejoin:round;transition:fill .15s ease,filter .15s ease}
+.brawler-card__special-triangle.has-special .special-triangle__segment{fill:color-mix(in srgb,var(--special-color) 12%,#111827);stroke:var(--special-color)}
+.brawler-card__special-triangle.has-special .special-triangle__segment.is-filled{fill:var(--special-color);filter:drop-shadow(0 0 4px var(--special-color))}
+.brawler-card__special-triangle.no-special .special-triangle__segment{fill:#394353;stroke:#687386}
+.brawler-card__special-triangle.is-complete svg{filter:drop-shadow(0 0 5px var(--special-color))}
+.brawler-card__special-triangle small{position:absolute;left:50%;bottom:0;transform:translateX(-50%);min-width:25px;padding:1px 4px;border:1px solid #52617a;border-radius:6px;background:#080e19;color:#aab6ca;font:1000 7px/1.25 "Courier New",monospace;text-align:center}
+.brawler-card__special-triangle.has-special small{border-color:var(--special-color);color:var(--special-color)}
+.brawler-card__special-triangle.is-complete small{background:var(--special-color);color:#07101c}
+
+@media(max-width:980px){
+  #homePanel{padding:0 10px 20px!important}
+  #homeMain{grid-template-columns:minmax(285px,335px) minmax(0,1fr)!important}
+}
+@media(max-width:700px){
+  #homePanel{padding:0 7px 78px!important;gap:8px!important}
+  #homeHeader{min-height:56px!important;padding:0 4px!important}
+  .home-progress-dock{min-height:42px;padding:4px 6px!important}
+  .home-progress-dock__label{display:none}
+  .home-progress-dock #homeQuickActions{display:flex!important;max-width:none!important}
+  .home-progress-dock #homeQuickActions button{display:inline-flex!important;min-height:31px!important}
+  #homePlaySection{min-height:485px!important}
+  #homeBrawlerCard{min-height:292px!important}
+  #homeModesSection{padding:8px!important}
+  .home-event-grid{grid-template-columns:1fr 1fr!important}
+  .brawler-card__special-triangle{top:1px;width:44px;height:47px}
+  .brawler-card__special-triangle svg{width:44px;height:40px}
+}
+/* Home VNext: lightweight tabbed lobby and Forge Market */
+#homeScreen{background:radial-gradient(circle at 18% 14%,rgba(41,198,255,.19),transparent 34%),radial-gradient(circle at 88% 76%,rgba(150,76,255,.16),transparent 38%),linear-gradient(145deg,#04101f,#071b32 58%,#061124)!important}
+#homePanel{width:min(1180px,calc(100vw - 24px))!important;background:linear-gradient(160deg,rgba(7,19,39,.97),rgba(4,11,25,.98))!important;border:1px solid rgba(104,211,255,.24)!important;border-radius:24px!important;padding:14px 16px 16px!important;box-shadow:0 22px 65px rgba(0,0,0,.55)!important}
+#homeHeader{background:rgba(6,18,38,.72);border:1px solid rgba(110,200,255,.16)!important;border-radius:17px;padding:10px 12px!important}
+#homeTitle{font-size:29px!important;letter-spacing:.11em!important;background:linear-gradient(90deg,#fff,#70e8ff);-webkit-background-clip:text;background-clip:text;color:transparent!important}
+.home-top-nav{background:#030c1b;border:1px solid rgba(115,191,255,.2);border-radius:13px;padding:4px;gap:3px!important}
+.home-top-nav button{min-height:38px;padding:8px 15px!important;border-radius:9px!important;color:#87a9c9!important}
+.home-top-nav button.is-active{color:#071421!important;background:linear-gradient(135deg,#6cf3d0,#52c9ff)!important;box-shadow:none!important}
+.home-command-strip{background:linear-gradient(90deg,rgba(30,91,151,.42),rgba(17,52,91,.2))!important;border-color:rgba(90,203,255,.18)!important}
+#homeMain{display:block!important;min-height:470px}
+.home-tab-view{display:none}
+.home-tab-view.is-active{display:block}
+#homeLobbyView.is-active{display:grid;grid-template-columns:minmax(300px,390px) minmax(360px,1fr);gap:15px;align-items:stretch}
+#homeEventsView.is-active{display:block;animation:braweTabIn .18s ease-out}
+@keyframes braweTabIn{from{opacity:.35;transform:translateY(5px)}to{opacity:1;transform:none}}
+#homePlaySection{background:linear-gradient(155deg,rgba(14,47,88,.76),rgba(6,18,38,.92));border:1px solid rgba(100,210,255,.22);border-radius:20px;padding:13px!important;box-shadow:inset 0 1px rgba(255,255,255,.05)}
+#homeBrawlerCard{min-height:225px!important;border-radius:16px!important}
+.home-personal-panel{position:relative;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto 1fr auto;gap:12px;padding:22px;border-radius:20px;border:1px solid rgba(164,121,255,.26);background:radial-gradient(circle at 90% 0,rgba(140,84,255,.28),transparent 43%),linear-gradient(145deg,rgba(13,34,67,.96),rgba(8,20,43,.97));box-shadow:inset 0 1px rgba(255,255,255,.07)}
+.home-personal-panel__eyebrow{grid-column:1/-1;color:#67e8ff;font-size:10px;font-weight:1000;letter-spacing:.16em}
+.home-personal-panel h2{grid-column:1/-1;margin:0;color:#fff;font-size:clamp(25px,3vw,42px);line-height:.95;letter-spacing:-.04em;text-transform:uppercase}
+.home-personal-panel>p{grid-column:1/-1;margin:-4px 0 3px;color:#9ec0de;font-size:13px}
+.home-career-snapshot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-content:start}
+.home-career-stat{padding:11px;border-radius:12px;background:rgba(2,10,24,.58);border:1px solid rgba(114,174,231,.15)}
+.home-career-stat small{display:block;color:#7799ba;font-size:9px;font-weight:900;letter-spacing:.1em}.home-career-stat b{display:block;margin-top:3px;color:#fff;font-size:18px}
+.home-featured-offer{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:122px;padding:15px;border:1px solid rgba(255,206,89,.48);border-radius:14px;background:linear-gradient(135deg,#402807,#8a5208);color:#fff;text-align:left;cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.18)}
+.home-featured-offer span{font-size:9px;letter-spacing:.14em;color:#ffd76a}.home-featured-offer b{font-size:17px;line-height:1.08;margin:7px 0}.home-featured-offer small{font-weight:1000;color:#fff}
+.home-season-pulse{grid-column:1/-1;padding:11px 13px;border-radius:12px;background:rgba(5,14,30,.65);border:1px solid rgba(117,224,255,.14);font-size:11px;color:#a9c7e4}.home-season-pulse b{color:#6cf3d0}
+#homeModesSection{min-height:470px;padding:18px!important;border:1px solid rgba(91,189,255,.2);border-radius:20px;background:linear-gradient(145deg,rgba(9,27,55,.96),rgba(5,14,31,.98))}
+#homeModeCompactRow{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))!important}
+.brawe-shop-overlay{position:fixed!important;inset:0!important;background:rgba(1,6,16,.9)!important;backdrop-filter:blur(7px)!important}
+.brawe-shop-panel{background:linear-gradient(155deg,#091c36,#040d1e)!important;border:1px solid rgba(108,224,255,.24)!important;border-radius:22px!important}
+.brawe-shop-header{background:linear-gradient(90deg,rgba(26,92,143,.35),rgba(76,37,139,.24));border-bottom:1px solid rgba(104,216,255,.18)!important}
+.brawe-shop-title{color:#fff!important;letter-spacing:.08em!important}.brawe-shop-title small{display:block;color:#68e9ff;font-size:9px;letter-spacing:.16em;margin-bottom:3px}
+.brawe-shop-body{gap:14px!important}.brawe-shop-sidebar{padding:7px;border-radius:15px;background:rgba(2,9,22,.62);border:1px solid rgba(111,174,231,.14)}
+.brawe-shop-content{scrollbar-color:#4ccbe8 #061126}.brawe-shop-card{min-height:158px;background:linear-gradient(145deg,rgba(17,42,77,.78),rgba(5,14,30,.9))!important;box-shadow:0 9px 22px rgba(0,0,0,.22)}
+@media(max-width:760px){#homeScreen{padding:7px 7px 82px!important}#homePanel{width:100%!important;padding:9px!important;border-radius:17px!important}#homeHeader{gap:7px!important}.home-top-nav{display:none!important}#homeLobbyView.is-active{display:block}.home-personal-panel{margin-top:10px;grid-template-columns:1fr;padding:15px}.home-personal-panel>*{grid-column:1!important}.home-career-snapshot{grid-template-columns:repeat(2,1fr)!important}.home-featured-offer{min-height:92px}#homeBrawlerCard{min-height:190px!important}#homeModesSection{padding:11px!important}#homeModeCompactRow{grid-template-columns:1fr!important}.brawe-shop-panel{width:100%!important;height:94vh!important}.brawe-shop-body{padding:10px!important;display:block!important;overflow:auto}.brawe-shop-sidebar{width:100%!important;display:flex!important;flex-direction:row!important;overflow-x:auto;margin-bottom:10px}.brawe-shop-sidebar button{min-width:max-content!important}.brawe-shop-content{overflow:visible!important}}
+
+/* Mobile lobby cleanup: cancel legacy absolute overlays and keep every action in flow. */
+@media(max-width:760px){
+  #homePanel{min-height:0!important;gap:8px!important}
+  #homeMain{min-height:0!important;overflow:visible!important}
+  #homeLobbyView.is-active{display:flex!important;flex-direction:column!important;gap:9px!important}
+  #homePlaySection{display:flex!important;position:relative!important;min-height:0!important;height:auto!important;padding:9px!important;overflow:visible!important;gap:8px!important}
+  #homeBrawlerCard{order:2;height:286px!important;min-height:286px!important;flex:none!important}
+  .home-section-kicker{order:1}
+  #homeRankCard{order:3;position:static!important;inset:auto!important;width:auto!important;min-height:0!important;margin:0!important;padding:8px 10px!important}
+  #startMatch{order:4;position:static!important;inset:auto!important;width:100%!important;min-height:51px!important;margin:0!important;font-size:14px!important;clip-path:none!important}
+  #homeActionRow{order:5;position:static!important;inset:auto!important;width:100%!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  #homeActionRow .home-action-btn,#brawlerBtn{position:static!important;width:100%!important;min-height:45px!important;margin:0!important;padding:7px!important}
+  .home-brawler-stage{inset:24px 0 82px!important;height:auto!important}
+  .home-brawler-stage__burst{width:180px!important;height:180px!important}
+  .home-brawler-avatar{width:132px!important}
+  .home-brawler-avatar span{font-size:60px!important}
+  .home-brawler-identity{left:12px!important;right:74px!important;bottom:53px!important}
+  .home-brawler-identity strong{font-size:21px!important}
+  .home-brawler-power{top:10px!important;right:10px!important;width:48px!important;height:48px!important}
+  .home-personal-panel{margin-top:0!important;padding:13px!important;gap:8px!important}
+  .home-personal-panel h2{font-size:24px!important}
+  .home-personal-panel>p{margin:0!important}
+  .home-career-stat{padding:8px!important}.home-career-stat b{font-size:15px!important}
+  .home-season-pulse{display:none}
+}
+
+/* Lobby V2 — fighter-first composition, no dashboard dead space. */
+#homePanel{min-height:100dvh!important}
+#homeProgressDock{min-height:40px!important;padding:4px 8px!important}
+#homeLobbyView.is-active{grid-template-columns:minmax(440px,1.18fr) minmax(340px,.82fr)!important;min-height:calc(100dvh - 178px);align-items:stretch!important}
+#homePlaySection{display:grid!important;grid-template-columns:minmax(0,1fr) 170px!important;grid-template-rows:auto minmax(320px,1fr) auto auto!important;gap:9px!important;min-height:0!important;height:auto!important;padding:12px!important;overflow:hidden!important}
+#homePlaySection .home-section-kicker{grid-column:1/-1;grid-row:1}
+#homeBrawlerCard{grid-column:1/-1;grid-row:2;height:auto!important;min-height:320px!important;flex:none!important}
+#homeRankCard{grid-column:1;grid-row:3;position:static!important;inset:auto!important;width:auto!important;height:auto!important;min-height:58px!important;margin:0!important}
+#startMatch{grid-column:2;grid-row:3;position:static!important;inset:auto!important;width:100%!important;height:auto!important;min-height:58px!important;margin:0!important;font-size:15px!important;clip-path:none!important}
+#homeActionRow{grid-column:1/-1;grid-row:4;position:static!important;inset:auto!important;width:100%!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important}
+#homeActionRow .home-action-btn,#brawlerBtn{position:static!important;inset:auto!important;width:100%!important;min-height:48px!important;margin:0!important;padding:7px!important}
+.home-personal-panel{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:10px!important;padding:18px!important;min-height:0!important}
+.home-personal-panel__eyebrow{flex:none}
+.home-personal-panel h2{flex:none;margin:0!important;font-size:clamp(27px,3.1vw,44px)!important}
+.home-personal-panel>p{flex:none;margin:0 0 2px!important}
+.home-selected-event{position:relative;display:grid;grid-template-columns:68px minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;gap:3px 12px;min-height:112px;padding:14px;border:1px solid rgba(104,232,255,.38);border-radius:15px;background:radial-gradient(circle at 95% 0,rgba(103,232,255,.17),transparent 38%),linear-gradient(135deg,#12355f,#0a203e);color:#fff;text-align:left;cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.08)}
+.home-selected-event>span{grid-row:1/3;display:grid;place-items:center;width:62px;height:62px;border:1px solid rgba(116,245,255,.5);border-radius:14px;background:#07172e;font-size:29px}
+.home-selected-event>b{align-self:end;font-size:20px;line-height:1.05;text-transform:uppercase}.home-selected-event>small{align-self:start;color:#9cbddd;font-size:11px}.home-selected-event>i{grid-column:3;grid-row:1/3;align-self:center;padding:6px 8px;border-radius:7px;background:#65ebd0;color:#05201c;font-size:8px;font-style:normal;font-weight:1000;letter-spacing:.05em}
+.home-career-snapshot{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important}
+.home-career-stat{min-width:0;padding:9px!important}.home-career-stat b{font-size:16px!important}
+.home-featured-offer{min-height:88px!important;display:grid!important;grid-template-columns:1fr auto;align-content:center!important;padding:13px 15px!important}.home-featured-offer span,.home-featured-offer b{grid-column:1}.home-featured-offer small{grid-column:2;grid-row:1/3;align-self:center;padding:8px;border-radius:8px;background:#ffd264;color:#2b1a00}.home-featured-offer b{margin:5px 0 0!important;font-size:15px!important}
+.home-season-pulse{margin-top:auto!important}
+
+@media(max-width:900px){
+  #homeLobbyView.is-active{grid-template-columns:minmax(330px,1fr) minmax(300px,.8fr)!important}
+  #homePlaySection{grid-template-columns:minmax(0,1fr) 140px!important}
+  .home-career-snapshot{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:760px){
+  #homeLobbyView.is-active{min-height:0!important}
+  #homePlaySection{display:flex!important;height:auto!important}
+  #homeBrawlerCard{height:270px!important;min-height:270px!important}
+  .home-personal-panel{display:flex!important;padding:12px!important}
+  .home-selected-event{grid-template-columns:50px minmax(0,1fr);min-height:82px;padding:10px}.home-selected-event>span{width:45px;height:45px;font-size:22px}.home-selected-event>i{display:none}.home-selected-event>b{font-size:16px}
+  .home-career-snapshot{grid-template-columns:repeat(4,minmax(0,1fr))!important}.home-career-stat{padding:7px 4px!important;text-align:center}.home-career-stat small{font-size:7px!important}.home-career-stat b{font-size:13px!important}
+  .home-featured-offer{min-height:74px!important}
+}

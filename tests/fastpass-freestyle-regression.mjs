@@ -3,14 +3,13 @@ import fs from 'node:fs';
 
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 const mythic = fs.readFileSync(new URL('../modules/brawlers/mythic/roster.js', import.meta.url), 'utf8');
-const legendary = fs.readFileSync(new URL('../modules/brawlers/legendary/roster.js', import.meta.url), 'utf8');
 
 for (const id of ['fastpass', 'freestyle']) {
   assert.match(game, new RegExp(`'${id}'\\s*:`), `${id} has brawler metadata`);
   assert.match(game, new RegExp(`brawler === '${id}'`), `${id} has live combat routing`);
 }
 assert.match(mythic, /'fastpass'/, 'Fastpass is registered in the modular Mythic roster');
-assert.match(legendary, /'freestyle'/, 'Freestyle is registered in the modular Legendary roster');
+assert.match(mythic, /'freestyle'/, 'Freestyle is registered in the modular Mythic roster');
 
 // Fastpass deterministic rules.
 let momentum = 0;

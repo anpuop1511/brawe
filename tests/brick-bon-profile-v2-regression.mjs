@@ -14,6 +14,15 @@ assert.match(game, /profile:\s*\{ playerName:/, 'new saves include Profile defau
 assert.match(game, /brickBonV2:\s*\{ claimedRoad:/, 'new saves include Brick Bon 2.0 defaults');
 assert.match(game, /profile: playerData\.profile/, 'Profile is persisted');
 assert.match(game, /brickBonV2: playerData\.brickBonV2/, 'Brick Bon state is persisted');
+assert.match(game, /mergeProfileProgressionSave\(data\.persistent\.profile, data\.persistent\.brickBonV2\)/, 'saved Profile and Brick Bon state uses the nested compatibility merge');
+assert.match(game, /bon\.claimedRoad=normalizeBrickBonClaimIds\(bon\.claimedRoad,'road'\)/, 'road claim IDs are normalized and deduplicated');
+assert.match(game, /bon\.claimedChallenges=normalizeBrickBonClaimIds\(bon\.claimedChallenges,'challenge'\)/, 'challenge claim IDs are normalized and deduplicated');
+assert.match(game, /function claimProfileProgressionReward/, 'Brick Bon claims use a centralized idempotent claim helper');
+assert.match(game, /bon\[key\]\.push\(claimId\);\s*for\(const reward of rewards\|\|\[\]\)applyProfileReward\(reward\);\s*saveProgress\(\)/, 'claims are recorded before rewards and saved immediately');
+assert.match(game, /starrDropsToday: playerData\.starrDropsToday/, 'daily Tapper count is serialized');
+assert.match(game, /playerData\.starrDropsToday = data\.persistent\.starrDropsToday/, 'daily Tapper count is restored');
+assert.match(game, /ownedSkins: playerData\.ownedSkins/, 'owned skins are serialized in the canonical save');
+assert.match(game, /selectedSkins: playerData\.selectedSkins/, 'selected skins are serialized in the canonical save');
 assert.doesNotMatch(game, /TROPHIES|Total Trophies|trophyDelta/, 'BRAWE progression must remain Brick-based without a trophy system');
 assert.match(game, /profile\.favorites=.*slice\(0,3\)/, 'Profile favorites are capped at three');
 assert.match(game, /showcaseBadges=.*slice\(0,3\)/, 'showcase badges are capped at three');

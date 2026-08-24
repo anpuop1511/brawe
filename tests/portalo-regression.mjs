@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
-const mythic = fs.readFileSync(new URL('../modules/brawlers/mythic/roster.js', import.meta.url), 'utf8');
+const exotic = fs.readFileSync(new URL('../modules/brawlers/exotic/roster.js', import.meta.url), 'utf8');
 const styles = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
-assert.match(mythic, /'portalo'/, 'Portalo is registered in the Mythic roster');
+assert.match(exotic, /'portalo'/, 'Portalo is registered in the Exotic roster');
 assert.match(game, /'portalo':\s*\{[\s\S]*?name:'Portalo'[\s\S]*?attack:'Portal Shot'[\s\S]*?super:'Portal Prison'/, 'Portalo has complete UI metadata');
 assert.match(game, /return \{ hp: Math\.round\(6800 \* scale\), dmg: Math\.round\(1500 \* scale\), speed: 260 \}/, 'Portalo uses the requested P11 HP, damage, and normal speed');
 assert.match(game, /brawler === 'portalo'\) base = 1700/, 'Portalo reloads in 1.7 seconds');

@@ -8,7 +8,8 @@ const context={window:{}};
 vm.runInNewContext(cardsSource,context);
 const decks=context.window.SLOP_SUSHI_DECKS;
 assert.ok(decks&&typeof decks==='object','Transformation decks load');
-assert.equal(Object.keys(decks).length,71,'Every registered brawler has a Transformation deck');
+assert.equal(Object.keys(decks).length,73,'Every registered fighter has a Transformation deck');
+assert.equal(decks.awakenator.length,8,'Awakenator has a complete Transformation deck');
 for(const [id,deck] of Object.entries(decks)){
   assert.equal(deck.length,8,`${id} has exactly 8 Transformations`);
   assert.equal(new Set(deck.map(card=>card.id)).size,8,`${id} card ids are unique`);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 const rosterFiles = [
-  'common','rare','super-rare','epic','mythic','legendary','exotic'
+  'common','rare','super-rare','epic','mythic','legendary','exotic','anomaly'
 ].map(rarity => new URL(`../modules/brawlers/${rarity}/roster.js`, import.meta.url));
 const ids = rosterFiles.flatMap(file => {
   const source=fs.readFileSync(file,'utf8');
@@ -12,7 +12,7 @@ const ids = rosterFiles.flatMap(file => {
 });
 
 assert.equal(new Set(ids).size, ids.length, 'roster ids must be unique');
-assert.equal(ids.length, 71, 'expected complete 71-brawler roster');
+assert.equal(ids.length, 73, 'expected complete 73-fighter roster');
 
 for (const id of ids) {
   assert.match(game, new RegExp(`['"]${id}['"]\\s*:\\s*\\{`), `${id}: missing kit metadata`);

@@ -22,7 +22,7 @@ if (legacyCanvas) legacyCanvas.style.display = 'block';
 if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
-const RELEASE_TOKEN = '20260814-tower-duelar1';
+const RELEASE_TOKEN = '20260824-season3-boss7';
 
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {
@@ -46,7 +46,8 @@ async function startLegacyRuntime() {
     './modules/brawlers/epic/roster.js',
     './modules/brawlers/mythic/roster.js',
     './modules/brawlers/legendary/roster.js',
-    './modules/brawlers/exotic/roster.js'
+    './modules/brawlers/exotic/roster.js',
+    './modules/brawlers/anomaly/roster.js'
   ];
 
   for (const file of moduleFiles) {

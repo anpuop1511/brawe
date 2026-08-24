@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
+assert.match(game,/function applyOverlordBurnAt[\s\S]{0,260}const owner = ownerIsPlayer \? player : bots\.find\(bot => bot\.id === ownerId\)/,'Overlord burn resolves its owner before ally checks');
 
 for (const id of ['boomer','daggershard','cluster','witch','adlof','swimmer','blade_vane']) {
   assert.match(game, new RegExp(`const disabledBrawlers = new Set\\(\\[[\\s\\S]{0,300}['"]${id}['"]`), `${id} is temporarily disabled without deleting its saved kit`);
@@ -36,10 +37,10 @@ assert.match(game, /const WEEKLY_FEATURED_MODE_IDS = \['brick_vault', 'power_god
 assert.match(game, /function getHomePermanentModeIds[\s\S]{0,260}WEEKLY_FEATURED_MODE_IDS/, 'Weekly featured modes become always playable');
 assert.match(game, /function getHomeRotatingModeIds[\s\S]{0,300}!WEEKLY_FEATURED_MODE_IDS\.includes\(id\)/, 'Weekly modes are removed from random slots while featured');
 assert.match(game, /FEATURED THIS WEEK/, 'The home event cards explain their weekly feature');
-assert.match(game, /function startDuelsRound[\s\S]{0,2400}getActiveSlopSushiDeck\(selectedBrawler\)[\s\S]{0,1000}slopSushiActiveCards = duelTowerDeck\.slice\(0, 2\)/, 'Each Duels fighter rolls two Tower Power transformations');
+assert.match(game, /function startDuelsRound[\s\S]{0,2600}getActiveSlopSushiDeck\(selectedBrawler\)[\s\S]{0,1200}duelTowerDeck\.slice\(0, 2\)\.map/, 'Each Duels fighter receives two Tower Power transformations, including the weekend preset fallback');
 assert.match(game, /Arena Forge - Duels • Tower Power/, 'Duels announces its Tower Power modifier');
 assert.ok(game.includes('Vault Siege 3v3'), 'The retired Brick Vault presentation is replaced by Vault Siege');
 assert.doesNotMatch(game, /\n\s*if\s*\(b\.isUpiedownCorePie&&b\.upiedownFresh&&owner\)/, 'Projectile-only variables cannot leak into the global renderer');
-assert.match(game, /function checkHit[\s\S]{0,1600}b\.isUpiedownCorePie && b\.upiedownFresh && owner/, 'Fresh Filling resolves from a confirmed projectile hit');
+assert.match(game, /function hasEntityAttachie[\s\S]{0,260}type === 'gadget' \|\| type === 'star'\) return false/, 'Retired Tool/Talent Attachies no longer apply combat effects');
 
 console.log('Support collision + world regression suite passed.');

@@ -25,6 +25,7 @@
       return nativeCreateLinearGradient(repaired[0], repaired[1], repaired[2], repaired[3]);
   };
   const gadgetBtn = document.getElementById('gadget');
+  const signatureBtn = document.getElementById('signature');
   const superBtn = document.getElementById('super');
   const hyperBtn = document.getElementById('hypercharge');
   const brawlerSelect = document.getElementById('brawlerSelect');
@@ -165,6 +166,14 @@
 
     function getScaledStats(brawlerId, levelOverride) {
         const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
+        if (brawlerId === 'awakenator') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6800 * scale), dmg: Math.round(950 * scale), speed: 260 };
+        }
+        if (brawlerId === 'darkener') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(7000 * scale), dmg: Math.round(800 * scale), speed: 255 };
+        }
         if (brawlerId === 'jacktrade') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(7200 * scale), dmg: Math.round(900 * scale), speed: 260 };
@@ -252,7 +261,7 @@
   let isTowerDuelEvent = false;
   let towerTroubleVariant = null;
   function getSelectedBrawlerLevel() {
-    if (isDamageFillerMode || isMirrorMode || isRankedMatch || isTowerTroubleMode || isTowerDuelEvent) return 11;
+    if (isTraining || isDamageFillerMode || isMirrorMode || isRankedMatch || isTowerTroubleMode || isTowerDuelEvent) return 11;
     try {
             const liveLevel = playerData.brawlers?.[selectedBrawler]?.level;
             if (typeof liveLevel === 'number') return liveLevel;
@@ -553,6 +562,8 @@
     }
     function updatePlayerTrinkets(dt, now = performance.now()) {
         updateTrinketMatchHud(now);
+        updatePacketMatchHud(now);
+        updatePacketRuntime(dt,now);
         if (!player || player.hp <= 0) return;
         if (isEntityCcImmune(player, now)) {
             player.slowUntil = 0; player.stunUntil = 0;
@@ -902,6 +913,9 @@
         on_fire:{name:'ON FIRE',requirement:'Reach a 10-win streak'},
         tower_toopled:{name:'TOWER TOOPLED',requirement:'Clear Tower Trouble: Grand Tour with fewer than 3 knockouts'},
         tower_duelar:{name:'TOWER DUELAR',requirement:'Complete all 5 floors of Tower Duels Weekend'},
+        core_corruptor:{name:'CORE CORRUPTOR',requirement:'Defeat the Lava Villain on Impossible II'},
+        corrupted:{name:'CORRUPTED',requirement:'Defeat the Lava Villain on Impossible V'},
+        final_form:{name:'FINAL FORM',requirement:'Defeat the Lava Villain on Impossible XV'},
     };
     const PROFILE_BADGE_DEFS = {
         brick_3k:{name:'3K BRICKS',icon:'3K',requirement:'3,000 lifetime Bricks'},
@@ -921,15 +935,21 @@
         prestige_legion:{name:'PRESTIGE LEGION',icon:'25P',requirement:'Prestige 25 different brawlers'},
         double_stack:{name:'DOUBLE STACK',icon:'P2',requirement:'5 brawlers at Prestige 2+'},
         triple_threat:{name:'TRIPLE THREAT',icon:'P3X',requirement:'3 brawlers at Prestige 3+'},
+        packet_scout_badge:{name:'PACKET SCOUT',icon:'PKT',requirement:'Season 3 premium track'},
+        corrupted_crest:{name:'CORRUPTED CREST',icon:'CR',requirement:'Season 3 premium track'},
     };
     const PROFILE_FRAME_DEFS = {
         none:{name:'No Frame',requirement:'Always available'},
         brick_frame:{name:'Brick Profile Frame',requirement:'20,000 lifetime Bricks'},
         architect_frame:{name:'Architect Brick Frame',requirement:'25,000 lifetime Bricks'},
+        cracked_core_frame:{name:'Cracked Core Frame',requirement:'Season 3 premium track'},
+        biome_walker_frame:{name:'Biome Walker Frame',requirement:'Season 3 premium track'},
     };
     const PROFILE_BACKGROUND_DEFS = {
         none:{name:'Classic Arena',requirement:'Always available'},
         brick_architect:{name:'Architect Workshop',requirement:'25,000 lifetime Bricks'},
+        core_scanline:{name:'Core Scanline',requirement:'Season 3 premium track'},
+        core_breaker_aura:{name:'Core Breaker Aura',requirement:'Complete the Season 3 premium track'},
     };
     const BRICK_CHALLENGES = [
         ['depth_5_250','ROSTER DEPTH I','5 brawlers at 250+ Bricks','depth',250,5,[['coins',250]]],
@@ -954,6 +974,28 @@
         ['prestige_3_three','TRIPLE THREAT','3 brawlers at Prestige 3+','prestiged',3,3,[['hyperTapper',1],['badge','triple_threat']]],
     ].map(([id,name,description,kind,threshold,target,rewards])=>({id,name,description,kind,threshold,target,rewards}));
 
+    function normalizeUniqueStrings(value) {
+        return Array.isArray(value) ? [...new Set(value.filter(item=>typeof item==='string'&&item.length))] : [];
+    }
+    function normalizeBrickBonClaimIds(value, kind) {
+        if (!Array.isArray(value)) return [];
+        if (kind === 'road') return [...new Set(value.map(Number).filter(Number.isFinite).map(Math.floor))];
+        return normalizeUniqueStrings(value);
+    }
+    function mergeProfileProgressionSave(savedProfile, savedBon) {
+        const profileSource=savedProfile&&typeof savedProfile==='object'?savedProfile:{};
+        const existingProfile=playerData.profile&&typeof playerData.profile==='object'?playerData.profile:{};
+        const savedCareer=profileSource.careerStats&&typeof profileSource.careerStats==='object'?profileSource.careerStats:{};
+        playerData.profile={
+            ...existingProfile,
+            ...profileSource,
+            careerStats:{...(existingProfile.careerStats||{}),...savedCareer}
+        };
+        const bonSource=savedBon&&typeof savedBon==='object'?savedBon:{};
+        const existingBon=playerData.brickBonV2&&typeof playerData.brickBonV2==='object'?playerData.brickBonV2:{};
+        playerData.brickBonV2={...existingBon,...bonSource};
+        return ensureProfileProgressionState();
+    }
     function ensureProfileProgressionState() {
         if (!playerData.profile || typeof playerData.profile !== 'object') playerData.profile = {};
         const profile=playerData.profile;
@@ -963,18 +1005,17 @@
         profile.equippedTitle=profile.equippedTitle||null;
         profile.equippedProfileFrame=profile.equippedProfileFrame||null;
         profile.equippedProfileBackground=profile.equippedProfileBackground||null;
-        if(!Array.isArray(profile.showcaseBadges))profile.showcaseBadges=[];
-        profile.showcaseBadges=[...new Set(profile.showcaseBadges)].slice(0,3);
+        profile.showcaseBadges=normalizeUniqueStrings(profile.showcaseBadges).slice(0,3);
         if(!profile.careerStats||typeof profile.careerStats!=='object')profile.careerStats={};
         for(const key of ['matchesPlayed','soloWins','teamWins','rankedWins','eliminations'])profile.careerStats[key]=Math.max(0,Math.floor(profile.careerStats[key]||0));
         if(!playerData.brickBonV2||typeof playerData.brickBonV2!=='object')playerData.brickBonV2={};
         const bon=playerData.brickBonV2;
-        if(!Array.isArray(bon.claimedRoad))bon.claimedRoad=[];
-        if(!Array.isArray(bon.claimedChallenges))bon.claimedChallenges=[];
-        if(!Array.isArray(bon.unlockedTitles))bon.unlockedTitles=[];
-        if(!Array.isArray(bon.unlockedBadges))bon.unlockedBadges=[];
-        if(!Array.isArray(bon.unlockedFrames))bon.unlockedFrames=[];
-        if(!Array.isArray(bon.unlockedBackgrounds))bon.unlockedBackgrounds=[];
+        bon.claimedRoad=normalizeBrickBonClaimIds(bon.claimedRoad,'road');
+        bon.claimedChallenges=normalizeBrickBonClaimIds(bon.claimedChallenges,'challenge');
+        bon.unlockedTitles=normalizeUniqueStrings(bon.unlockedTitles);
+        bon.unlockedBadges=normalizeUniqueStrings(bon.unlockedBadges);
+        bon.unlockedFrames=normalizeUniqueStrings(bon.unlockedFrames);
+        bon.unlockedBackgrounds=normalizeUniqueStrings(bon.unlockedBackgrounds);
         if(!bon.oldRoadMigrated){
             const old=safeJsonParse(localStorage.getItem('brickBonClaimed')||'{}',{});
             for(const threshold of [100,250,2000])if(old[threshold]===true&&!bon.claimedRoad.includes(threshold))bon.claimedRoad.push(threshold);
@@ -1005,6 +1046,17 @@
         for(let threshold=30000;threshold<=max;threshold+=5000){const index=(threshold-30000)/5000,cycle=index%4,rewards=cycle===0?[['coins',1000]]:cycle===1?[['gems',5]]:cycle===2?[['tapper',2]]:[['superTapper',1]];list.push({threshold,label:cycle===0?'1,000 Coins':cycle===1?'5 Gems':cycle===2?'2 Tappers':'1 Super Tapper',rewards,veteran:true});}return list;
     }
     function applyProfileReward(reward){const [type,value]=reward,{bon}=ensureProfileProgressionState();if(type==='coins')playerData.coins+=value;else if(type==='gems')playerData.gems+=value;else if(type==='tapper')playerData.starrDrops+=value;else if(type==='superTapper')playerData.superTapperCount+=value;else if(type==='hyperTapper')playerData.hyperTapperCount+=value;else{const map={title:'unlockedTitles',badge:'unlockedBadges',frame:'unlockedFrames',background:'unlockedBackgrounds'},key=map[type];if(key&&!bon[key].includes(value))bon[key].push(value);}}
+    function claimProfileProgressionReward(kind,id,rewards) {
+        const {bon}=ensureProfileProgressionState();
+        const key=kind==='road'?'claimedRoad':'claimedChallenges';
+        const claimId=kind==='road'?Math.floor(Number(id)):String(id||'');
+        if((kind==='road'&&!Number.isFinite(claimId))||!claimId||bon[key].includes(claimId))return false;
+        // Record the claim before granting rewards so rapid clicks cannot grant twice.
+        bon[key].push(claimId);
+        for(const reward of rewards||[])applyProfileReward(reward);
+        saveProgress();
+        return true;
+    }
     function formatProfileReward([type,value]){const amount=Number(value)||0;if(type==='coins')return `${amount.toLocaleString()} Coin${amount===1?'':'s'}`;if(type==='gems')return `${amount} Gem${amount===1?'':'s'}`;if(type==='tapper')return `${amount} Tapper${amount===1?'':'s'}`;if(type==='superTapper')return `${amount} Super Tapper${amount===1?'':'s'}`;if(type==='hyperTapper')return `${amount} Hyper Tapper${amount===1?'':'s'}`;if(type==='title')return `Title: ${PROFILE_TITLE_DEFS[value]?.name||value}`;if(type==='badge')return `Badge: ${PROFILE_BADGE_DEFS[value]?.name||value}`;if(type==='frame')return `Frame: ${PROFILE_FRAME_DEFS[value]?.name||value}`;if(type==='background')return `Background: ${PROFILE_BACKGROUND_DEFS[value]?.name||value}`;return String(value);}
     function isMajorBrickReward(m){return !!m.prestige||m.rewards.some(([type])=>['title','badge','frame','background'].includes(type));}
     function showBrickBonClaimCelebration(m){if(!isMajorBrickReward(m))return;const toast=document.createElement('div');toast.className=`bon-major-celebration${m.prestige?' architect':''}`;toast.innerHTML=`<small>MILESTONE UNLOCKED</small><b>${m.prestige?'THE ARCHITECT':m.label}</b><span>${m.rewards.map(formatProfileReward).join(' + ')}</span>`;document.body.appendChild(toast);setTimeout(()=>toast.remove(),2200);}
@@ -1039,8 +1091,8 @@
         const total=getTotalBrickBonBricks(),allRoad=[...BRICK_BON_V2_ROAD,...getVeteranBrickMilestones(total)],next=allRoad.find(m=>m.threshold>total)||allRoad[allRoad.length-1];
         panel.innerHTML=`<header><div><small>ACCOUNT PROGRESSION</small><h1>BRICK BON 2.0</h1><p>${total.toLocaleString()} lifetime Bricks · Next ${next.threshold.toLocaleString()}</p></div><button class="brick-bon-close">X</button></header><nav><button data-tab="road">REWARD ROAD</button><button data-tab="challenges">CHALLENGES</button><button data-tab="career">CAREER</button></nav><main></main>`;
         const main=panel.querySelector('main'),{bon}=ensureProfileProgressionState();
-        const renderRoad=()=>{main.innerHTML='';const progress=document.createElement('div');progress.className='bon-overall-progress';const prior=[0,...allRoad.filter(m=>m.threshold<=total).map(m=>m.threshold)].pop(),pct=Math.min(100,(total-prior)/Math.max(1,next.threshold-prior)*100),toGo=Math.max(0,next.threshold-total);progress.innerHTML=`<div><b>CURRENT: ${total.toLocaleString()}</b><span>${toGo.toLocaleString()} BRICKS TO GO</span></div><div class="bon-progress-track"><i style="width:${pct}%"></i></div>`;main.appendChild(progress);const road=document.createElement('div');road.className='bon-road';allRoad.forEach(m=>{const claimed=bon.claimedRoad.includes(m.threshold),earned=total>=m.threshold,major=isMajorBrickReward(m),node=document.createElement('article');node.className=`bon-node ${claimed?'claimed':earned?'claimable':'locked'} ${m.veteran?'veteran':''} ${major?'major':''} ${m.prestige?'architect':''}`;node.innerHTML=`<div class="bon-threshold">${m.threshold.toLocaleString()}</div><div class="bon-node-icon">${claimed?'OK':m.veteran?'V':major?'M':'B'}</div><h3>${m.veteran?'VETERAN MILESTONE':m.label}</h3><p>${m.rewards.map(formatProfileReward).join(' + ')}</p>`;const btn=document.createElement('button');btn.textContent=claimed?'CLAIMED':earned?'CLAIM':'LOCKED';btn.disabled=claimed||!earned;btn.onclick=()=>{if(bon.claimedRoad.includes(m.threshold)||total<m.threshold)return;m.rewards.forEach(applyProfileReward);bon.claimedRoad.push(m.threshold);showBrickBonClaimCelebration(m);saveProgress();renderRoad();};node.appendChild(btn);road.appendChild(node)});main.appendChild(road);};
-        const renderChallenges=()=>{main.innerHTML='<div class="bon-challenge-grid"></div>';const grid=main.firstElementChild;BRICK_CHALLENGES.forEach(ch=>{const value=getBrickChallengeProgress(ch),done=value>=ch.target,claimed=bon.claimedChallenges.includes(ch.id),card=document.createElement('article');card.className=`bon-challenge ${done?'complete':''}`;card.innerHTML=`<small>${ch.kind==='depth'?'ROSTER DEPTH':'PRESTIGE'}</small><h3>${ch.name}</h3><p>${ch.description}</p><div class="bon-progress-track"><i style="width:${Math.min(100,value/ch.target*100)}%"></i></div><strong>${Math.min(value,ch.target)} / ${ch.target}</strong><em>${ch.rewards.map(formatProfileReward).join(' + ')}</em>`;const btn=document.createElement('button');btn.textContent=claimed?'CLAIMED':done?'CLAIM':'IN PROGRESS';btn.disabled=claimed||!done;btn.onclick=()=>{if(!done||bon.claimedChallenges.includes(ch.id))return;ch.rewards.forEach(applyProfileReward);bon.claimedChallenges.push(ch.id);if(ch.rewards.some(([type])=>type==='badge'))showBrickBonClaimCelebration({...ch,label:ch.name});saveProgress();renderChallenges();};card.appendChild(btn);grid.appendChild(card)});};
+        const renderRoad=()=>{main.innerHTML='';const progress=document.createElement('div');progress.className='bon-overall-progress';const prior=[0,...allRoad.filter(m=>m.threshold<=total).map(m=>m.threshold)].pop(),pct=Math.min(100,(total-prior)/Math.max(1,next.threshold-prior)*100),toGo=Math.max(0,next.threshold-total);progress.innerHTML=`<div><b>CURRENT: ${total.toLocaleString()}</b><span>${toGo.toLocaleString()} BRICKS TO GO</span></div><div class="bon-progress-track"><i style="width:${pct}%"></i></div>`;main.appendChild(progress);const road=document.createElement('div');road.className='bon-road';allRoad.forEach(m=>{const claimed=bon.claimedRoad.includes(m.threshold),earned=total>=m.threshold,major=isMajorBrickReward(m),node=document.createElement('article');node.className=`bon-node ${claimed?'claimed':earned?'claimable':'locked'} ${m.veteran?'veteran':''} ${major?'major':''} ${m.prestige?'architect':''}`;node.innerHTML=`<div class="bon-threshold">${m.threshold.toLocaleString()}</div><div class="bon-node-icon">${claimed?'OK':m.veteran?'V':major?'M':'B'}</div><h3>${m.veteran?'VETERAN MILESTONE':m.label}</h3><p>${m.rewards.map(formatProfileReward).join(' + ')}</p>`;const btn=document.createElement('button');btn.textContent=claimed?'CLAIMED':earned?'CLAIM':'LOCKED';btn.disabled=claimed||!earned;btn.onclick=()=>{if(total<m.threshold||!claimProfileProgressionReward('road',m.threshold,m.rewards))return;showBrickBonClaimCelebration(m);renderRoad();};node.appendChild(btn);road.appendChild(node)});main.appendChild(road);};
+        const renderChallenges=()=>{main.innerHTML='<div class="bon-challenge-grid"></div>';const grid=main.firstElementChild;BRICK_CHALLENGES.forEach(ch=>{const value=getBrickChallengeProgress(ch),done=value>=ch.target,claimed=bon.claimedChallenges.includes(ch.id),card=document.createElement('article');card.className=`bon-challenge ${done?'complete':''}`;card.innerHTML=`<small>${ch.kind==='depth'?'ROSTER DEPTH':'PRESTIGE'}</small><h3>${ch.name}</h3><p>${ch.description}</p><div class="bon-progress-track"><i style="width:${Math.min(100,value/ch.target*100)}%"></i></div><strong>${Math.min(value,ch.target)} / ${ch.target}</strong><em>${ch.rewards.map(formatProfileReward).join(' + ')}</em>`;const btn=document.createElement('button');btn.textContent=claimed?'CLAIMED':done?'CLAIM':'IN PROGRESS';btn.disabled=claimed||!done;btn.onclick=()=>{if(!done||!claimProfileProgressionReward('challenge',ch.id,ch.rewards))return;if(ch.rewards.some(([type])=>type==='badge'))showBrickBonClaimCelebration({...ch,label:ch.name});renderChallenges();};card.appendChild(btn);grid.appendChild(card)});};
         const selectTab=tab=>{panel.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='road')renderRoad();else if(tab==='challenges')renderChallenges();else renderProfileCareer(main)};panel.querySelectorAll('nav button').forEach(btn=>btn.onclick=()=>selectTab(btn.dataset.tab));panel.querySelector('.brick-bon-close').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};overlay.appendChild(panel);document.body.appendChild(overlay);selectTab(initialTab);
     }
 
@@ -1634,7 +1686,7 @@
     function getSelectedProgress() {
                 normalizeSelectedBrawler();
             const base = playerData.brawlers[selectedBrawler] || { level: 1, bricks: 0, prestige: 0, gadgetUnlocked: false, starPowerUnlocked: false, hyperchargeUnlocked: false, selectedStar: 'slow', selectedGadget: 'g1', };
-            if (!isDamageFillerMode && !isMirrorMode && !isRankedMatch && !isTowerTroubleMode && !isTowerDuelEvent) return base;
+            if (!isTraining && !isDamageFillerMode && !isMirrorMode && !isRankedMatch && !isTowerTroubleMode && !isTowerDuelEvent) return base;
             return {
                 ...base,
                 level: 11,
@@ -1644,6 +1696,21 @@
             };
     }
   
+  function getNativeAmmoCapacity(brawlerId){
+      if(brawlerId==='minigunnin'||brawlerId==='steamer'||brawlerId==='beam')return 100;
+      if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack')return 1;
+      if(brawlerId==='demon'||brawlerId==='fastpass')return 2;
+      if(brawlerId==='rocketeer')return 4;
+      if(brawlerId==='duck')return 4;
+      return 3;
+  }
+
+  function resetPlayerAmmoForBrawler(brawlerId,includeTowerBonus=false){
+      maxAmmo=getNativeAmmoCapacity(brawlerId);
+      if(includeTowerBonus&&isSlopSushiMode)maxAmmo+=Math.round(getSlopEffectTotal('ammoBonus'));
+      ammo=maxAmmo;
+  }
+
   function initPlayerHP(){
         normalizeSelectedBrawler();
     const tier = getHPTier(selectedBrawler);
@@ -1659,22 +1726,10 @@
         player.beastTransformed = false;
         player.beastMoveMult = 1.0;
         player.beastBaseMaxHp = player.maxHp;
-        if (selectedBrawler === 'minigunnin' || selectedBrawler === 'steamer' || selectedBrawler === 'beam') {
-      maxAmmo = 100;
-      ammo = 100;
-    } else if (selectedBrawler === 'bowlin_rida' || selectedBrawler === 'boom_arang' || selectedBrawler === 'jetpack') {
-      maxAmmo = 1;
-      ammo = 1;
-    } else if (selectedBrawler === 'demon' || selectedBrawler === 'fastpass') {
-      maxAmmo = 2;
-      ammo = 2;
-    } else if (selectedBrawler === 'rocketeer') {
-      maxAmmo = 4;
-      ammo = 4;
-    } else {
-      maxAmmo = 3;
-      ammo = 3;
-    }
+        player.beastyBeastUntil = 0;
+        player.beastyBeastNextClawAt = 0;
+        player.beastyBeastClawFlip = -1;
+        resetPlayerAmmoForBrawler(selectedBrawler,false);
     player.fastpassMomentum = 0;
     player.fastpassLastHitAt = 0;
     player.fastpassHyperTravelCharged = 0;
@@ -1726,6 +1781,26 @@
         player.bouncyBallsCrystalActive = false;
         player.bouncyBallsCrystalHyper = false;
         player.bouncyBallsCrystalAutoChargeUntil = 0;
+        player.outlitMutationShotCounter = 0;
+        player.outlitMutationCharges = 0;
+        player.outlitMutationReadyAt = 0;
+        player.echoInstinctStartedAt = performance.now();
+        player.echoInstinctReady = false;
+        player.echoInstinctReadyAt = 0;
+        player.echoInstinctDuplicateAt = 0;
+        player.bouncySignatureCollectorArmed = false;
+        player.bouncySignatureCollectorActive = false;
+        player.bouncySignatureCollectorHits = 0;
+        player.bouncySignatureCollectorHitBalls = {};
+        player.bouncySignatureCollectorEndsAt = 0;
+        player.bouncySignatureFollowupBalls = 0;
+        player.bouncySignatureCooldownUntil = 0;
+        player.minigunninMutationBulletCount = 0;
+        player.minigunninMutationExplosiveRemaining = 0;
+        player.moneyTaxMutationAttackCount = 0;
+        player.moneyTaxMutationEmpoweredRemaining = 0;
+        player.classySignatureUntil = 0;
+        player.splitterInstinctReadyAt = 0;
         player.trinketAttackCount = 0;
         player.trinketBushArmorShield = 0;
         player.trinketLastHp = player.hp;
@@ -1753,8 +1828,13 @@
       aimHeld: false,
       releaseShotTimer: 0
   };
+  let signatureTouchBtn = null;
   let mobileControlsRoot = null;
   let mobileControlsLastVisible = null;
+  // Super aiming is referenced by desktop/mobile listeners during startup.
+  // Declare it before those listeners are registered to avoid the lexical
+  // temporal-dead-zone crash caused by the later combat-state declaration.
+  let aimingSuper = false;
   function isTouchInputEnvironment() {
       return (navigator.maxTouchPoints || 0) > 0
           || window.matchMedia?.('(pointer: coarse)').matches
@@ -1842,19 +1922,28 @@
       const gadgetTouchBtn = document.createElement('button');
       gadgetTouchBtn.className = 'mobile-action-btn';
       gadgetTouchBtn.textContent = '⚙';
-      gadgetTouchBtn.title = 'Gadget';
-      gadgetTouchBtn.setAttribute('aria-label', 'Use Gadget');
+      gadgetTouchBtn.title = 'Tool';
+      gadgetTouchBtn.setAttribute('aria-label', 'Use Tool');
       const superTouchBtn = document.createElement('button');
       superTouchBtn.className = 'mobile-action-btn';
       superTouchBtn.textContent = '★';
-      superTouchBtn.title = 'Super';
-      superTouchBtn.setAttribute('aria-label', 'Aim Super');
+      superTouchBtn.title = 'Power Move';
+      superTouchBtn.setAttribute('aria-label', 'Aim Power Move');
       const hyperTouchBtn = document.createElement('button');
       hyperTouchBtn.className = 'mobile-action-btn';
       hyperTouchBtn.textContent = '⚡';
-      hyperTouchBtn.title = 'Hypercharge';
-      hyperTouchBtn.setAttribute('aria-label', 'Activate Hypercharge');
+      hyperTouchBtn.title = 'Core Surge';
+      hyperTouchBtn.setAttribute('aria-label', 'Activate Core Surge');
+      signatureTouchBtn = document.createElement('button');
+      signatureTouchBtn.className = 'mobile-action-btn';
+      signatureTouchBtn.textContent = 'SIG';
+      signatureTouchBtn.title = 'Signature';
+      signatureTouchBtn.style.display = 'none';
+      signatureTouchBtn.style.background = 'linear-gradient(135deg,#ffd34f,#fff2a6)';
+      signatureTouchBtn.style.color = '#06151d';
+      signatureTouchBtn.setAttribute('aria-label', 'Use Signature');
       actionButtons.appendChild(gadgetTouchBtn);
+      actionButtons.appendChild(signatureTouchBtn);
       actionButtons.appendChild(superTouchBtn);
       actionButtons.appendChild(hyperTouchBtn);
       root.appendChild(moveStick);
@@ -1900,6 +1989,10 @@
       gadgetTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
           gadgetBtn.click();
+      });
+      signatureTouchBtn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          activateSignatureAbility(player);
       });
       superTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
@@ -1964,13 +2057,19 @@
   const portaloPrisons = [];
   const portaloShockTimers = [];
   const ghoulHaunts = [];
+  const darkenerClouds = [];
+  const darkagons = [];
   const jackTradeVolleys = [];
   const jackTradeThrownEffects = [];
   const jackTradeZones = [];
   const jackTradeEndpointShots = [];
+  const packetTimeFields = [];
+  const packetTelegraphs = [];
   const snapperWaves = [];
   const chickpigEggZones = [];
   const rocketeerFireZones = [];
+  // Lightweight, capped zones for Minigunnin's rapid-fire Mutation.
+  const minigunninMutationFireZones = [];
   const rocketeerAirstrikes = [];
   let upiedownPieUntil = 0;
   let upiedownPieOwnerId = 0;
@@ -1990,6 +2089,33 @@
     const waterZones = [];
   const pendingClones = [];
   const explosions = [];
+  const nativeExplosionPush = Array.prototype.push;
+  let explosionSpawnFrame = -1;
+  let lightweightExplosionSpawnsThisFrame = 0;
+  explosions.push = function(...entries) {
+      const frame = Math.floor(performance.now() / 16.667);
+      if (frame !== explosionSpawnFrame) {
+          explosionSpawnFrame = frame;
+          lightweightExplosionSpawnsThisFrame = 0;
+      }
+      const admitted = [];
+      const lightweightLimit = LOW_POWER_DEVICE ? 12 : 28;
+      for (const entry of entries) {
+          if (!entry) continue;
+          // These entries are visual-only. Drop excess tiny burst art before it
+          // reaches update/render; damage, hit detection and warning telegraphs
+          // live in their own systems and are never removed here.
+          const isWarning = /warning|telegraph/i.test(String(entry.fxKind || ''));
+          const isLightweight = !isWarning && (entry.isParticle || entry.isSteamPuff
+              || (!entry.legendary && !entry.fxKind && Number(entry.maxLife) <= 0.3));
+          if (isLightweight) {
+              lightweightExplosionSpawnsThisFrame++;
+              if (lightweightExplosionSpawnsThisFrame > lightweightLimit) continue;
+          }
+          admitted.push(entry);
+      }
+      return nativeExplosionPush.apply(this, admitted);
+  };
   const bots = []; // Added Chaird specific properties to bot initialization later
   // Stamp true main-attack projectiles at creation. Each separate projectile
   // may grant one full charge step; its later pierces/re-hits may not.
@@ -2008,11 +2134,14 @@
   const ARENA_WALL_TILE = 48;
   let nextDestructibleWallHitId = 1;
   const floatingTexts = [];
-  const MAX_ACTIVE_EXPLOSIONS = LOW_POWER_DEVICE ? 140 : 260;
-  const MAX_ACTIVE_FLOATING_TEXTS = LOW_POWER_DEVICE ? 60 : 110;
+  const MAX_ACTIVE_EXPLOSIONS = LOW_POWER_DEVICE ? 80 : 180;
+  const MAX_ACTIVE_FLOATING_TEXTS = LOW_POWER_DEVICE ? 48 : 90;
   const MAX_ACTIVE_BULLETS = LOW_POWER_DEVICE ? 950 : 1800;
-  const MAX_ACTIVE_RINGS = LOW_POWER_DEVICE ? 180 : 320;
+  const MAX_ACTIVE_RINGS = LOW_POWER_DEVICE ? 140 : 280;
   const MAX_PENDING_CLONES = 260;
+  const STORM_BASE_MAX_HP_DAMAGE_PCT = 0.08;
+  const STORM_RAMP_MAX_HP_DAMAGE_PCT = 0.0125;
+  const STORM_MAX_HP_DAMAGE_PCT_CAP = 0.20;
   const stickyNotes = [];
         const amplifierToolboxes = [];
         const amplifierScrewZones = [];
@@ -2057,6 +2186,8 @@
         const SPLITTER_MAX_HITS_PER_TARGET = 4;
         const SPLITTER_MAIN_CHILD_CAP = 18;
         const SPLITTER_SUPER_CHILD_CAP = 24;
+        const SPLITTER_SUPER_INITIAL_LIFE = 0.105;
+        const SPLITTER_SUPER_POST_SPLIT_LIFE = 0.95;
         const SPLITTER_POWERED_MAIN_CHILD_CAP = 260;
         const SPLITTER_POWERED_MAIN_SPLIT_PLAN = [3, 3, 3, 3, 3];
         const SPLITTER_POWERED_MAIN_GEN_CAPS = [3, 9, 27, 81, 120];
@@ -2329,13 +2460,13 @@
             classy: 430,
             hyperorigin: 520,
             heater_miser: 220,
-            steamer: 95,
+            steamer: 70,
             bowlin_rida: 400,
             money_and_tax: 300,
             hunter: 250,
             chaird: 300,
             forest: 400,
-            bouncin_balls: 300,
+            bouncin_balls: 250,
             goonbob: 400,
             tempo_maker: 320,
             copyphase: 280,
@@ -2392,9 +2523,10 @@
     function getEntitySlowMultiplier(entity, now) {
         if (!entity) return 1.0;
         if (isEntityCcImmune(entity, now)) return 1.0;
-        const baseSlow = now < (entity.slowUntil || 0)
-            ? (now < (entity.seraSlowUntil || 0) ? 0.80 : BALANCE_PROFILE.status.slowMultiplier)
+        let baseSlow = now < (entity.slowUntil || 0)
+            ? Math.min(now < (entity.seraSlowUntil || 0) ? 0.80 : BALANCE_PROFILE.status.slowMultiplier, Number(entity.darkenerSlowMult) || 1)
             : 1.0;
+        if ((entity.awakenatorSleepUntil || 0) > now) baseSlow = Math.min(baseSlow, 0.60);
         if (now < (entity.ridaSuperArmorUntil || 0)) {
             return 1 - (1 - baseSlow) * 0.65;
         }
@@ -2482,7 +2614,7 @@
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade'
+        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -2506,6 +2638,7 @@
             Mythic: 250,
             Legendary: 360,
             Exotic: 520,
+            Anomaly: 750,
         };
         const brawlerRarities = {
             outlit: 'Common',
@@ -2528,45 +2661,47 @@
             bouncin_balls: 'Epic',
             goonbob: 'Common',
             tempo_maker: 'Mythic',
-            overlord: 'Exotic',
-            copyphase: 'Mythic',
-            fightnfire: 'Mythic',
+            overlord: 'Legendary',
+            copyphase: 'Exotic',
+            fightnfire: 'Epic',
             beast: 'Legendary',
             amplifier: 'Mythic',
-            skeleflying: 'Legendary',
-            crystila: 'Mythic',
+            skeleflying: 'Mythic',
+            crystila: 'Anomaly',
             hope: 'Legendary',
             evil_doctor: 'Mythic',
-            splitter: 'Mythic',
+            splitter: 'Epic',
             scuba_diver: 'Epic',
             hoop: 'Epic',
-            screener: 'Mythic',
+            screener: 'Legendary',
             malakor: 'Legendary',
-            beam: 'Mythic',
+            beam: 'Epic',
             paradox: 'Legendary',
             sera_eclipse: 'Legendary',
-            boom_arang: 'Legendary',
+            boom_arang: 'Mythic',
             teether: 'Epic',
-            fuel: 'Mythic',
+            fuel: 'Epic',
             xray: 'Legendary',
             angel: 'Legendary',
             demon: 'Legendary',
-            warrior: 'Mythic',
+            warrior: 'Epic',
             relay: 'Legendary',
             upiedown: 'Mythic',
-            chickpig: 'Legendary',
+            chickpig: 'Mythic',
             jetpack: 'Mythic',
-            snapper: 'Mythic',
+            snapper: 'Exotic',
             robber: 'Legendary',
             fuser: 'Common',
             rocketeer: 'Common',
-            peter_pickle: 'Mythic',
+            peter_pickle: 'Epic',
             unstable: 'Legendary',
             fastpass: 'Mythic',
-            freestyle: 'Legendary',
-            portalo: 'Mythic',
+            freestyle: 'Mythic',
+            portalo: 'Exotic',
             ghoul: 'Exotic',
             jacktrade: 'Exotic',
+            darkener: 'Anomaly',
+            awakenator: 'Anomaly',
             homer: 'Mythic',
             orbo: 'Legendary',
             predator: 'Mythic',
@@ -2604,6 +2739,10 @@
 
         function getBrawlerRarity(brawlerId) {
             return brawlerRarities[brawlerId] || 'Common';
+        }
+
+        function getDisplayRarityName(rarity) {
+            return rarity === 'Super Rare' ? 'Elite' : rarity;
         }
 
         function getSoulUnlockCostForRarity(rarity) {
@@ -2733,7 +2872,7 @@
             // Auto-assign target if none
             if (!ss.targetBrawler) {
                 if (calledFromUI) return; // let the picker handle it
-                const rarityOrder = ['Common','Rare','Super Rare','Epic','Mythic','Legendary','Exotic'];
+                const rarityOrder = ['Common','Rare','Super Rare','Epic','Mythic','Legendary','Exotic','Anomaly'];
                 for (const r of rarityOrder) {
                     const inR = locked.filter(b => getBrawlerRarity(b) === r);
                     if (inR.length > 0) { ss.targetBrawler = inR[0]; break; }
@@ -2861,7 +3000,7 @@
         }
 
         function getBrawlerSortOrder(mode, brawlerId) {
-            const rarityOrder = { Common: 0, Rare: 1, 'Super Rare': 2, Epic: 3, Mythic: 4, Legendary: 5, Exotic: 6 };
+            const rarityOrder = { Common: 0, Rare: 1, 'Super Rare': 2, Epic: 3, Mythic: 4, Legendary: 5, Exotic: 6, Anomaly: 7 };
             const rarity = brawlerRarities[brawlerId] || 'Common';
             const label = (brawlerData[brawlerId]?.name || brawlerId).toLowerCase();
             const role = (brawlerData[brawlerId]?.role || '').toLowerCase();
@@ -3215,7 +3354,7 @@
           { kind: 'win_match', title: 'Win Matches', desc: 'Win matches in showdown', targets: [2, 3, 5, 7, 10, 15, 20] },
           { kind: 'deal_damage', title: 'Deal Damage', desc: 'Deal total damage', targets: [10000, 25000, 75000, 125000, 300000, 500000, 1000000] },
           { kind: 'splitter_ltm_damage', title: 'Splitter LTM Damage', desc: 'Deal damage in Splitter Powered LTM', targets: [200000, 500000, 1000000, 2500000, 5000000, 10000000] },
-          { kind: 'perform_supers', title: 'Use Supers', desc: 'Charge and use Supers', targets: [2, 3, 4, 5, 8, 10, 15] },
+          { kind: 'perform_supers', title: 'Use Power Moves', desc: 'Charge and use Power Moves', targets: [2, 3, 4, 5, 8, 10, 15] },
           { kind: 'collect_cubes', title: 'Collect Power Cubes', desc: 'Collect power cubes', targets: [5, 15, 20, 35, 50, 75, 100] }
       ];
 
@@ -3241,11 +3380,11 @@
       }
       const EVENT_QUEST_TOTAL = buildEventQuests().length;
 
-      const SEASON_PASS_SCHEMA_VERSION = 4;
-      const SEASON_PASS_ID = 'battle-of-the-towers-2026-s2';
+      const SEASON_PASS_SCHEMA_VERSION = 5;
+      const SEASON_PASS_ID = 'core-breaker-arena-forge-2026-s3';
       const SEASON_PASS_MAX_LEVEL = 25;
       const SEASON_PASS_XP_PER_LEVEL = 100;
-      const SEASON_PASS_TIERS = [
+      const SEASON_2_ARCHIVE_TIERS = [
           { tier: 1, title: 'Tower Gates', free: { type: 'coins', amount: 200 }, premium: { type: 'towerDrop', amount: 1 } },
           { tier: 2, title: 'First Transformation', free: { type: 'towerDrop', amount: 1 }, premium: { type: 'coins', amount: 350 } },
           { tier: 3, title: 'Stone Staircase', free: { type: 'souls', amount: 30 }, premium: { type: 'towerDrop', amount: 1 } },
@@ -3272,34 +3411,83 @@
           { tier: 24, title: 'Tower Drop Storm', free: { type: 'towerDrop', amount: 3 }, premium: { type: 'gems', amount: 15 } },
           { tier: 25, title: 'Tower Conqueror', free: { type: 'coins', amount: 2000 }, premium: { type: 'towerDrop', amount: 5 } }
       ];
+      const SEASON_PASS_TIERS = [
+          {tier:1,title:'Breach Signal',free:{type:'coins',amount:250},premium:{type:'profileCosmetic',id:'core_scanline'}},
+          {tier:2,title:'Bird Sighting',free:{type:'packetSignal',packet:'bird',amount:35},premium:{type:'gems',amount:4}},
+          {tier:3,title:'Wild Frequency',free:{type:'souls',amount:25},premium:{type:'coins',amount:450}},
+          {tier:4,title:'Packet Cache',free:{type:'packetSignal',group:'out_in_the_wild',amount:20},premium:{type:'superTapper',amount:1}},
+          {tier:5,title:'Cracked Core',free:{type:'gems',amount:3},premium:{type:'profileCosmetic',id:'cracked_core_frame'}},
+          {tier:6,title:'Forge Credits',free:{type:'coins',amount:400},premium:{type:'souls',amount:45}},
+          {tier:7,title:'Encrypted Wings',free:{type:'packetSignal',packet:'eagle',amount:30},premium:{type:'coins',amount:600}},
+          {tier:8,title:'Signal Booster',free:{type:'tapper',amount:1},premium:{type:'packetSignal',group:'mythic_core',amount:25}},
+          {tier:9,title:'Lava Warning',free:{type:'souls',amount:45},premium:{type:'gems',amount:7}},
+          {tier:10,title:'Biome Key I',free:{type:'packetSignal',group:'out_in_the_wild',amount:30},premium:{type:'profileCosmetic',id:'packet_scout_badge'}},
+          {tier:11,title:'Core Credits',free:{type:'coins',amount:550},premium:{type:'superTapper',amount:1}},
+          {tier:12,title:'Metal Frequency',free:{type:'packetSignal',packet:'heavy_metal',amount:50},premium:{type:'souls',amount:65}},
+          {tier:13,title:'Corruption Sample',free:{type:'gems',amount:5},premium:{type:'coins',amount:850}},
+          {tier:14,title:'Signal Storm',free:{type:'packetSignal',group:'core_forge',amount:30},premium:{type:'hyperTapper',amount:1}},
+          {tier:15,title:'Biome Key II',free:{type:'coins',amount:700},premium:{type:'profileCosmetic',id:'biome_walker_frame'}},
+          {tier:16,title:'Dual Frequency',free:{type:'packetSignal',packet:'dual_element',amount:60},premium:{type:'gems',amount:9}},
+          {tier:17,title:'Forge Reserve',free:{type:'souls',amount:70},premium:{type:'coins',amount:1000}},
+          {tier:18,title:'Core Breaker Cache',free:{type:'superTapper',amount:1},premium:{type:'packetSignal',group:'shadow_signal',amount:35}},
+          {tier:19,title:'Dark Signal',free:{type:'packetSignal',packet:'demon',amount:50},premium:{type:'souls',amount:100}},
+          {tier:20,title:'Corrupted Crest',free:{type:'gems',amount:7},premium:{type:'profileCosmetic',id:'corrupted_crest'}},
+          {tier:21,title:'Packet Arsenal',free:{type:'coins',amount:900},premium:{type:'hyperTapper',amount:1}},
+          {tier:22,title:'Time Fracture',free:{type:'packetSignal',packet:'time',amount:60},premium:{type:'gems',amount:12}},
+          {tier:23,title:'Biome Convergence',free:{type:'souls',amount:100},premium:{type:'coins',amount:1400}},
+          {tier:24,title:'Final Signal',free:{type:'packetSignal',group:'all',amount:20},premium:{type:'hyperTapper',amount:1}},
+          {tier:25,title:'CORE BREAKER',free:{type:'coins',amount:1600},premium:{type:'profileCosmetic',id:'core_breaker_aura'}}
+      ];
       const SEASON_PREMIUM_UNLOCK_GEMS = 79;
       const SEASON_PREMIUM_UNLOCK_COINS = 6500;
-      const SEASON_QUEST_DEFS = [
+      const SEASON_2_ARCHIVE_QUEST_DEFS = [
           { id: 'season_01', stage: 1, kind: 'play_match', title: 'Warmup Run', desc: 'Play 3 matches.', target: 3, rewards: { coins: 180, souls: 10 }, xpReward: 100 },
           { id: 'season_02', stage: 2, kind: 'deal_damage', title: 'Frontline Fire', desc: 'Deal 20,000 damage.', target: 20000, rewards: { coins: 220, souls: 12 }, xpReward: 100 },
           { id: 'season_03', stage: 3, kind: 'win_match', title: 'Winner Path', desc: 'Win 2 matches.', target: 2, rewards: { souls: 18 }, xpReward: 100 },
           { id: 'season_04', stage: 4, kind: 'defeat_enemies', title: 'Elim Sprint', desc: 'Defeat 14 enemies.', target: 14, rewards: { coins: 280, tappers: 1 }, xpReward: 100 },
           { id: 'season_05', stage: 5, kind: 'collect_cubes', title: 'Power Hoarder', desc: 'Collect 20 cubes.', target: 20, rewards: { souls: 20, coins: 220 }, xpReward: 100 },
-          { id: 'season_06', stage: 6, kind: 'perform_supers', title: 'Super Rhythm', desc: 'Use 10 supers.', target: 10, rewards: { coins: 320, souls: 20 }, xpReward: 100 },
-          { id: 'season_07', stage: 7, kind: 'use_gadget', title: 'Utility Expert', desc: 'Use 8 gadgets.', target: 8, rewards: { coins: 340, souls: 22 }, xpReward: 100 },
+          { id: 'season_06', stage: 6, kind: 'perform_supers', title: 'Power Rhythm', desc: 'Use 10 Power Moves.', target: 10, rewards: { coins: 320, souls: 20 }, xpReward: 100 },
+          { id: 'season_07', stage: 7, kind: 'use_gadget', title: 'Utility Expert', desc: 'Use 8 Tools.', target: 8, rewards: { coins: 340, souls: 22 }, xpReward: 100 },
           { id: 'season_08', stage: 8, kind: 'deal_damage', title: 'Heavy Pressure', desc: 'Deal 70,000 damage.', target: 70000, rewards: { souls: 28, superTappers: 1 }, xpReward: 100 },
           { id: 'season_09', stage: 9, kind: 'win_match', title: 'Clutch Series', desc: 'Win 5 matches.', target: 5, rewards: { coins: 500, souls: 30 }, xpReward: 100 },
           { id: 'season_10', stage: 10, kind: 'defeat_enemies', title: 'Final Sweep', desc: 'Defeat 40 enemies.', target: 40, rewards: { coins: 700, souls: 40, hyperTappers: 1 }, xpReward: 100 },
-          { id: 'season_11', stage: 11, kind: 'deal_damage', title: 'Mega Quest I', desc: 'Deal 500,000 damage.', target: 500000, rewards: { souls: 100 }, xpReward: 100 },
-          { id: 'season_12', stage: 12, kind: 'deal_damage', title: 'Mega Quest II', desc: 'Deal 1,500,000 damage.', target: 1500000, rewards: { souls: 150 }, xpReward: 100 },
+          { id: 'season_11', stage: 11, kind: 'deal_damage', title: 'Damage Trial I', desc: 'Deal 500,000 damage.', target: 500000, rewards: { souls: 100 }, xpReward: 100 },
+          { id: 'season_12', stage: 12, kind: 'deal_damage', title: 'Damage Trial II', desc: 'Deal 1,500,000 damage.', target: 1500000, rewards: { souls: 150 }, xpReward: 100 },
           { id: 'season_13', stage: 13, kind: 'play_match', title: 'Match Marathon', desc: 'Play 10 matches.', target: 10, rewards: { coins: 600, souls: 35 }, xpReward: 100 },
           { id: 'season_14', stage: 14, kind: 'win_match', title: 'Victory Streak', desc: 'Win 8 matches.', target: 8, rewards: { coins: 800, gems: 5 }, xpReward: 100 },
           { id: 'season_15', stage: 15, kind: 'defeat_enemies', title: 'Bounty Hunter', desc: 'Defeat 50 enemies.', target: 50, rewards: { souls: 80, hyperTappers: 1 }, xpReward: 100 },
           { id: 'season_16', stage: 16, kind: 'collect_cubes', title: 'Cube Harvester', desc: 'Collect 50 power cubes.', target: 50, rewards: { coins: 700, souls: 45 }, xpReward: 100 },
-          { id: 'season_17', stage: 17, kind: 'use_gadget', title: 'Gadget Guru', desc: 'Use 20 gadgets.', target: 20, rewards: { coins: 750, souls: 50 }, xpReward: 100 },
-          { id: 'season_18', stage: 18, kind: 'perform_supers', title: 'Super Charger', desc: 'Use 35 supers.', target: 35, rewards: { souls: 90, superTappers: 1 }, xpReward: 100 },
+          { id: 'season_17', stage: 17, kind: 'use_gadget', title: 'Tool Guru', desc: 'Use 20 Tools.', target: 20, rewards: { coins: 750, souls: 50 }, xpReward: 100 },
+          { id: 'season_18', stage: 18, kind: 'perform_supers', title: 'Power Charger', desc: 'Use 35 Power Moves.', target: 35, rewards: { souls: 90, superTappers: 1 }, xpReward: 100 },
           { id: 'season_19', stage: 19, kind: 'deal_damage', title: 'Colossus', desc: 'Deal 3,000,000 damage.', target: 3000000, rewards: { coins: 1000 }, xpReward: 100 },
           { id: 'season_20', stage: 20, kind: 'win_match', title: 'Champion Ascent', desc: 'Win 15 matches.', target: 15, rewards: { gems: 10 }, xpReward: 100 },
           { id: 'season_21', stage: 21, kind: 'play_match', title: 'Endgame Prep', desc: 'Play 20 matches.', target: 20, rewards: { coins: 1200, souls: 80 }, xpReward: 100 },
           { id: 'season_22', stage: 22, kind: 'defeat_enemies', title: 'Tower Wrecker', desc: 'Defeat 80 enemies across the tower battlefields.', target: 80, rewards: { souls: 120, towerDrops: 2 }, xpReward: 100 },
           { id: 'season_23', stage: 23, kind: 'collect_cubes', title: 'Energy Eater', desc: 'Collect 100 power cubes.', target: 100, rewards: { coins: 1500, souls: 100 }, xpReward: 100 },
-          { id: 'season_24', stage: 24, kind: 'perform_supers', title: 'Super Hurricane', desc: 'Use 60 supers.', target: 60, rewards: { gems: 15 }, xpReward: 100 },
+          { id: 'season_24', stage: 24, kind: 'perform_supers', title: 'Power Hurricane', desc: 'Use 60 Power Moves.', target: 60, rewards: { gems: 15 }, xpReward: 100 },
           { id: 'season_25', stage: 25, kind: 'deal_damage', title: 'Godlike Force', desc: 'Deal 8,000,000 damage.', target: 8000000, rewards: { coins: 3000, souls: 300, hyperTappers: 2 }, xpReward: 100 }
+      ];
+      const SEASON_QUEST_DEFS = [
+          {id:'season3_01',stage:1,kind:'packet_damage',title:'Packet Online',desc:'Deal 20,000 damage while a Packet is equipped.',target:20000,rewards:{coins:250,packetSignals:[{group:'mythic_core',amount:30}]},xpReward:100},
+          {id:'season3_02',stage:2,kind:'packet_wins',title:'Signal Victory',desc:'Win 3 battles with a Packet equipped.',target:3,rewards:{souls:25,packetSignals:[{group:'mythic_core',amount:30}]},xpReward:100},
+          {id:'season3_03',stage:3,kind:'packet_triggers',title:'Passive Pressure',desc:'Trigger Packet effects 25 times.',target:25,rewards:{coins:350,packetSignals:[{group:'mythic_core',amount:20}]},xpReward:100},
+          {id:'season3_04',stage:4,kind:'packet_variety',title:'Frequency Hopper',desc:'Use 5 different Packets.',target:5,rewards:{gems:4},xpReward:100},
+          {id:'season3_05',stage:5,kind:'packet_discoveries',title:'Signal Hunter',desc:'Discover 3 Packets.',target:3,rewards:{coins:450},xpReward:100},
+          {id:'season3_06',stage:6,kind:'packet_wild_group',title:'Out In the Wild',desc:'Discover all 5 Out In the Wild Packets.',target:1,rewards:{superTappers:1},xpReward:100},
+          {id:'season3_07',stage:7,kind:'core_ball',title:'Break the Core',desc:'Defeat the Core Ball in the opening breach.',target:1,rewards:{souls:50,packetSignals:[{group:'frost_signal',amount:40}]},xpReward:100},
+          {id:'season3_08',stage:8,kind:'boss_hard',title:'Heat Check',desc:'Clear Hard in Lava Villain Boss Fight.',target:1,rewards:{coins:650,packetSignals:[{group:'frost_signal',amount:40}]},xpReward:100},
+          {id:'season3_09',stage:9,kind:'corrupted_matches',title:'Enter Corruption',desc:'Play Corrupted Showdown 5 times.',target:5,rewards:{gems:6,packetSignals:[{group:'shadow_signal',amount:45}]},xpReward:100},
+          {id:'season3_10',stage:10,kind:'win_match',title:'Forge Momentum',desc:'Win 8 battles.',target:8,rewards:{coins:700},xpReward:100},
+          {id:'season3_11',stage:11,kind:'different_fighters',title:'Roster Routing',desc:'Finish battles with 8 different Fighters.',target:8,rewards:{souls:65},xpReward:100},
+          {id:'season3_12',stage:12,kind:'perform_supers',title:'Power Surge',desc:'Activate 30 Power Moves.',target:30,rewards:{superTappers:1},xpReward:100},
+          {id:'season3_13',stage:13,kind:'deal_damage',title:'Core Pressure',desc:'Deal 500,000 damage.',target:500000,rewards:{coins:800},xpReward:100},
+          {id:'season3_14',stage:14,kind:'packet_triggers',title:'Packet Cascade',desc:'Trigger Packet effects 100 times.',target:100,rewards:{souls:80},xpReward:100},
+          {id:'season3_15',stage:15,kind:'boss_impossible_2',title:'Core Corruptor',desc:'Clear Impossible II in the Lava Boss Fight.',target:1,rewards:{gems:10},xpReward:100},
+          {id:'season3_16',stage:16,kind:'packet_discoveries',title:'Packet Archive',desc:'Discover 10 Packets.',target:10,rewards:{hyperTappers:1},xpReward:100},
+          {id:'season3_17',stage:17,kind:'corrupted_wins',title:'Corruption Survivor',desc:'Win 3 Corrupted Showdown matches.',target:3,rewards:{coins:1000,packetSignals:[{group:'shadow_signal',amount:35}]},xpReward:100},
+          {id:'season3_18',stage:18,kind:'packet_damage',title:'Universal Link',desc:'Deal 1,000,000 damage while a Packet is equipped.',target:1000000,rewards:{souls:120},xpReward:100},
+          {id:'season3_19',stage:19,kind:'packet_variety',title:'Master Router',desc:'Use 12 different Packets.',target:12,rewards:{gems:12},xpReward:100},
+          {id:'season3_20',stage:20,kind:'win_match',title:'Arena Breaker',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,hyperTappers:1},xpReward:100}
       ];
       const SEASON_QUEST_STAGE_COUNT = SEASON_QUEST_DEFS.length;
 
@@ -3351,6 +3539,10 @@
       function ensureSeasonPassState() {
           if (!ENABLE_SEASON_QUESTS) return;
           if (!playerData.seasonPass || playerData.seasonPass.seasonId !== SEASON_PASS_ID) {
+              if(playerData.seasonPass?.seasonId){
+                  if(!playerData.seasonPassHistory||typeof playerData.seasonPassHistory!=='object')playerData.seasonPassHistory={};
+                  playerData.seasonPassHistory[playerData.seasonPass.seasonId]=JSON.parse(JSON.stringify(playerData.seasonPass));
+              }
               resetSeasonPassForAll();
           }
 
@@ -3388,21 +3580,24 @@
           }
       }
 
+      function isSeason3PassActive(now=Date.now()){return now<SEASON_3_END_UTC;}
+
       function resetSeasonPass() {
           resetSeasonPassForAll();
-          saveProgress();
+          if(!season3AtomicReward)saveProgress();
           updateEventBadge();
           updateQuestBadge();
       }
 
       function awardSeasonPassXp(amount = 0) {
           if (!ENABLE_SEASON_QUESTS) return false;
+          if (!isSeason3PassActive()) return false;
           ensureSeasonPassState();
           if (!amount || amount <= 0) return false;
           playerData.seasonPass.xp = (playerData.seasonPass.xp || 0) + amount;
           const level = Math.min(SEASON_PASS_MAX_LEVEL, Math.max(1, Math.floor((playerData.seasonPass.xp - 1) / SEASON_PASS_XP_PER_LEVEL) + 1));
           playerData.seasonPass.level = level;
-          saveProgress();
+          if(!season3AtomicReward)saveProgress();
           updateEventBadge();
           return true;
       }
@@ -3411,6 +3606,7 @@
           if (!ENABLE_SEASON_QUESTS) {
               return addDailyWeeklyQuestProgress(questKey, amount);
           }
+          if (!isSeason3PassActive()) return false;
           ensureSeasonPassState();
           const normalizedQuestKey = normalizeQuestKey(questKey);
           const pass = playerData.seasonPass;
@@ -3445,7 +3641,7 @@
           if (!reward || !reward.type) return false;
           if (reward.type === 'coins') playerData.coins = (playerData.coins || 0) + (reward.amount || 0);
           else if (reward.type === 'gems') playerData.gems = (playerData.gems || 0) + (reward.amount || 0);
-          else if (reward.type === 'souls') addSouls(reward.amount || 0);
+          else if (reward.type === 'souls') playerData.souls=(playerData.souls||0)+(reward.amount||0);
           else if (reward.type === 'tapper') playerData.starrDrops = (playerData.starrDrops || 0) + (reward.amount || 0);
           else if (reward.type === 'eventTapper') {
               playerData.eventTappers = playerData.eventTappers || { common: 0, rare: 0, epic: 0, mythic: 0 };
@@ -3454,6 +3650,12 @@
               ensureSlopSushiState();
               playerData.slopSushi.tappers=(playerData.slopSushi.tappers||0)+(reward.amount||0);
               playerData.slopSushi.towerDrops=playerData.slopSushi.tappers;
+          } else if(reward.type==='packetSignal'){
+              const ids=reward.packet?[reward.packet]:reward.group==='all'?Object.keys(PACKET_DEFS):Object.values(PACKET_DEFS).filter(def=>def.group===reward.group).map(def=>def.id);
+              season3AtomicReward=true;try{for(const id of ids)addPacketSignal(id,reward.amount||0,'SEASON PASS',false);}finally{season3AtomicReward=false;}
+          } else if(reward.type==='profileCosmetic'){
+              const {season}=ensureSeason3State(),bon=ensureProfileProgressionState().bon;if(!Array.isArray(season.cosmetics))season.cosmetics=[];if(!season.cosmetics.includes(reward.id))season.cosmetics.push(reward.id);
+              const badgeIds=new Set(['packet_scout_badge','corrupted_crest']),frameIds=new Set(['cracked_core_frame','biome_walker_frame']),field=badgeIds.has(reward.id)?'unlockedBadges':frameIds.has(reward.id)?'unlockedFrames':'unlockedBackgrounds';if(!bon[field].includes(reward.id))bon[field].push(reward.id);
           } else if (reward.type === 'superTapper') playerData.superTapperCount = (playerData.superTapperCount || 0) + (reward.amount || 0);
           else if (reward.type === 'hyperTapper') playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + (reward.amount || 0);
           else if (reward.type === 'skin') {
@@ -3468,6 +3670,7 @@
 
       function claimSeasonPassTrackReward(tier, track = 'free') {
           if (!ENABLE_SEASON_QUESTS) return false;
+          if (!isSeason3PassActive()) return false;
           ensureSeasonPassState();
           const pass = playerData.seasonPass;
           const rewardRow = SEASON_PASS_TIERS.find(entry => entry.tier === tier);
@@ -3488,13 +3691,14 @@
 
       function claimSeasonQuestReward(questId) {
           if (!ENABLE_SEASON_QUESTS) return false;
+          if (!isSeason3PassActive()) return false;
           ensureSeasonPassState();
           const quest = playerData.seasonPass.quests?.[questId];
           if (!quest || !quest.completed || quest.rewardClaimed) return false;
           const rewards = quest.rewards || {};
           if (rewards.coins) playerData.coins = (playerData.coins || 0) + rewards.coins;
           if (rewards.gems) playerData.gems = (playerData.gems || 0) + rewards.gems;
-          if (rewards.souls) addSouls(rewards.souls);
+          if (rewards.souls) playerData.souls=(playerData.souls||0)+rewards.souls;
           if (rewards.tappers) playerData.starrDrops = (playerData.starrDrops || 0) + rewards.tappers;
           if (rewards.superTappers) playerData.superTapperCount = (playerData.superTapperCount || 0) + rewards.superTappers;
           if (rewards.hyperTappers) playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + rewards.hyperTappers;
@@ -3502,6 +3706,19 @@
               ensureSlopSushiState();
               playerData.slopSushi.tappers = (playerData.slopSushi.tappers || 0) + rewards.towerDrops;
               playerData.slopSushi.towerDrops = playerData.slopSushi.tappers;
+          }
+          if (Array.isArray(rewards.packetSignals)) {
+              season3AtomicReward = true;
+              try {
+                  for (const reward of rewards.packetSignals) {
+                      const ids = reward.packet ? [reward.packet]
+                          : reward.group === 'all' ? Object.keys(PACKET_DEFS)
+                          : Object.values(PACKET_DEFS).filter(def => def.group === reward.group).map(def => def.id);
+                      for (const id of ids) addPacketSignal(id, reward.amount || 0, 'SEASON QUEST', false);
+                  }
+              } finally {
+                  season3AtomicReward = false;
+              }
           }
           quest.rewardClaimed = true;
           saveProgress();
@@ -3546,20 +3763,20 @@
           return questAliases[questKey] || questKey;
       }
 
-      const DAILY_WEEKLY_QUEST_SCHEMA_VERSION = 2;
+      const DAILY_WEEKLY_QUEST_SCHEMA_VERSION = 3;
       const WEEKLY_STAGE_COUNT = 10;
       const DAILY_QUESTS = [
           { id: 'daily_play_1', kind: 'play_match', title: 'Play 2 Matches', desc: 'Finish 2 matches in any mode.', target: 2, rewards: { coins: 140 } },
           { id: 'daily_damage_1', kind: 'deal_damage', title: 'Deal 15000 Damage', desc: 'Deal a total of 15k damage.', target: 15000, rewards: { coins: 180 } },
-          { id: 'daily_super_1', kind: 'perform_supers', title: 'Use 6 Supers', desc: 'Charge and fire your super 6 times.', target: 6, rewards: { coins: 120, gems: 1 } },
-          { id: 'daily_gadget_1', kind: 'use_gadget', title: 'Use 4 Gadgets', desc: 'Activate your gadget 4 times.', target: 4, rewards: { coins: 110 } }
+          { id: 'daily_super_1', kind: 'perform_supers', title: 'Use 6 Power Moves', desc: 'Charge and fire your Power Move 6 times.', target: 6, rewards: { coins: 120, gems: 1 } },
+          { id: 'daily_gadget_1', kind: 'use_gadget', title: 'Use 4 Tools', desc: 'Activate your Tool 4 times.', target: 4, rewards: { coins: 110 } }
       ];
       const DAILY_CONTRACT_POOL = [
           { kind:'play_match', title:'Clock In', desc:'Finish matches.', targets:[2,3,4] },
           { kind:'deal_damage', title:'Damage Shift', desc:'Deal damage.', targets:[18000,25000,35000] },
           { kind:'defeat_enemies', title:'Cleanup Crew', desc:'Defeat enemies.', targets:[8,12,16] },
-          { kind:'perform_supers', title:'Supercharged Shift', desc:'Use Supers.', targets:[5,7,9] },
-          { kind:'use_gadget', title:'Tool Check', desc:'Use Gadgets.', targets:[3,5,7] },
+          { kind:'perform_supers', title:'Power Shift', desc:'Use Power Moves.', targets:[5,7,9] },
+          { kind:'use_gadget', title:'Tool Check', desc:'Use Tools.', targets:[3,5,7] },
           { kind:'collect_cubes', title:'Cube Delivery', desc:'Collect power cubes.', targets:[8,12,16] }
       ];
       const WEEKLY_CONTRACT_POOL = [
@@ -3567,8 +3784,8 @@
           { kind:'play_match', title:'Arena Regular', desc:'Finish matches.', targets:[18,22,28] },
           { kind:'deal_damage', title:'Heavy Industry', desc:'Deal damage.', targets:[120000,175000,240000] },
           { kind:'defeat_enemies', title:'Enemy Removal', desc:'Defeat enemies.', targets:[40,55,70] },
-          { kind:'perform_supers', title:'Super Factory', desc:'Use Supers.', targets:[25,35,45] },
-          { kind:'use_gadget', title:'Gadget Engineer', desc:'Use Gadgets.', targets:[18,24,30] }
+          { kind:'perform_supers', title:'Power Factory', desc:'Use Power Moves.', targets:[25,35,45] },
+          { kind:'use_gadget', title:'Tool Engineer', desc:'Use Tools.', targets:[18,24,30] }
       ];
 
       function seededQuestNumber(key) {
@@ -3593,8 +3810,8 @@
           { id: 'weekly_stage_3', stage: 3, kind: 'deal_damage', title: 'Forge Heat', desc: 'Deal 50,000 damage.', target: 50000, rewards: { coins: 350, souls: 20 } },
           { id: 'weekly_stage_4', stage: 4, kind: 'defeat_enemies', title: 'Takedown Artist', desc: 'Defeat 25 enemies.', target: 25, rewards: { coins: 400, souls: 25 } },
           { id: 'weekly_stage_5', stage: 5, kind: 'collect_cubes', title: 'Cube Collector', desc: 'Collect 35 power cubes.', target: 35, rewards: { coins: 450, souls: 30 } },
-          { id: 'weekly_stage_6', stage: 6, kind: 'perform_supers', title: 'Super Dynamo', desc: 'Use 15 supers.', target: 15, rewards: { coins: 500, souls: 35 } },
-          { id: 'weekly_stage_7', stage: 7, kind: 'use_gadget', title: 'Gadget Specialist', desc: 'Use 12 gadgets.', target: 12, rewards: { coins: 550, souls: 40 } },
+          { id: 'weekly_stage_6', stage: 6, kind: 'perform_supers', title: 'Power Dynamo', desc: 'Use 15 Power Moves.', target: 15, rewards: { coins: 500, souls: 35 } },
+          { id: 'weekly_stage_7', stage: 7, kind: 'use_gadget', title: 'Tool Specialist', desc: 'Use 12 Tools.', target: 12, rewards: { coins: 550, souls: 40 } },
           { id: 'weekly_stage_8', stage: 8, kind: 'survive_seconds', title: 'Survival Expert', desc: 'Survive for 180 seconds total in matches.', target: 180, rewards: { coins: 600, souls: 50 } },
           { id: 'weekly_stage_9', stage: 9, kind: 'win_match', title: 'Champion Spirit', desc: 'Win 6 matches.', target: 6, rewards: { coins: 750, souls: 70 } },
           { id: 'weekly_stage_10', stage: 10, kind: 'win_match', title: 'Weekly Apex', desc: 'Win 8 matches in any mode.', target: 8, rewards: { coins: 1000, gems: 5, souls: 100 } }
@@ -3603,47 +3820,85 @@
           { id: 'starter_play_1', kind: 'play_match', title: 'Soul Warmup', desc: 'Play 3 matches in any mode.', target: 3, rewards: { souls: 40 } },
           { id: 'starter_win_1', kind: 'win_match', title: 'Soul Victor', desc: 'Win 2 matches.', target: 2, rewards: { souls: 50 } },
           { id: 'starter_damage_1', kind: 'deal_damage', title: 'Soul Grinder', desc: 'Deal 30,000 total damage.', target: 30000, rewards: { souls: 60 } },
-          { id: 'starter_super_1', kind: 'perform_supers', title: 'Soul Burst', desc: 'Use 8 supers.', target: 8, rewards: { souls: 50 } }
+          { id: 'starter_super_1', kind: 'perform_supers', title: 'Soul Burst', desc: 'Use 8 Power Moves.', target: 8, rewards: { souls: 50 } }
       ];
       const LIMITED_QUEST_EVENT_ID = 'charged-up-2026-08';
       const LIMITED_QUEST_DURATION_MS = 14 * 24 * 60 * 60 * 1000;
       const LIMITED_QUESTS = [
-          { id:'super_charge_05', pack:'super', kind:'perform_supers', title:'SUPER CHARGED I', desc:'Activate 5 Supers.', target:5, rewards:{coins:250} },
-          { id:'super_charge_10', pack:'super', kind:'perform_supers', title:'SUPER CHARGED II', desc:'Activate 10 Supers.', target:10, rewards:{coins:500} },
-          { id:'super_charge_20', pack:'super', kind:'perform_supers', title:'SUPER CHARGED III', desc:'Activate 20 Supers.', target:20, rewards:{coins:1000} },
-          { id:'super_charge_35', pack:'super', kind:'perform_supers', title:'SUPER CHARGED IV', desc:'Activate 35 Supers.', target:35, rewards:{coins:1900} },
-          { id:'super_charge_50', pack:'super', kind:'perform_supers', title:'SUPER CHARGED V', desc:'Activate 50 Supers.', target:50, rewards:{coins:3000} },
-          { id:'super_charge_75', pack:'super', kind:'perform_supers', title:'SUPER CHARGED VI', desc:'Activate 75 Supers.', target:75, rewards:{coins:5000} },
-          { id:'super_charge_100', pack:'super', kind:'perform_supers', title:'SUPER CHARGED MAX', desc:'Activate 100 Supers. Enough total event Coins to max two brawlers.', target:100, rewards:{coins:7000} },
-          { id:'hyper_charge_05', pack:'hyper', kind:'activate_hypers', title:'HYPER CHARGED I', desc:'Activate 5 Hypercharges.', target:5, rewards:{souls:15} },
-          { id:'hyper_charge_10', pack:'hyper', kind:'activate_hypers', title:'HYPER CHARGED II', desc:'Activate 10 Hypercharges.', target:10, rewards:{souls:25} },
-          { id:'hyper_charge_20', pack:'hyper', kind:'activate_hypers', title:'HYPER CHARGED III', desc:'Activate 20 Hypercharges.', target:20, rewards:{souls:40} },
-          { id:'hyper_charge_35', pack:'hyper', kind:'activate_hypers', title:'HYPER CHARGED IV', desc:'Activate 35 Hypercharges.', target:35, rewards:{souls:60} },
-          { id:'hyper_charge_50', pack:'hyper', kind:'activate_hypers', title:'HYPER CHARGED V', desc:'Activate 50 Hypercharges.', target:50, rewards:{souls:80} },
-          { id:'hyper_charge_75', pack:'hyper', kind:'activate_hypers', title:'HYPER CHARGED VI', desc:'Activate 75 Hypercharges.', target:75, rewards:{souls:120} },
-          { id:'hyper_charge_100', pack:'hyper', kind:'activate_hypers', title:'HYPER CHARGED MAX', desc:'Activate 100 Hypercharges.', target:100, rewards:{souls:160} },
+          { id:'super_charge_05', pack:'super', kind:'perform_supers', title:'POWER CHARGED I', desc:'Activate 5 Power Moves.', target:5, rewards:{coins:250} },
+          { id:'super_charge_10', pack:'super', kind:'perform_supers', title:'POWER CHARGED II', desc:'Activate 10 Power Moves.', target:10, rewards:{coins:500} },
+          { id:'super_charge_20', pack:'super', kind:'perform_supers', title:'POWER CHARGED III', desc:'Activate 20 Power Moves.', target:20, rewards:{coins:1000} },
+          { id:'super_charge_35', pack:'super', kind:'perform_supers', title:'POWER CHARGED IV', desc:'Activate 35 Power Moves.', target:35, rewards:{coins:1900} },
+          { id:'super_charge_50', pack:'super', kind:'perform_supers', title:'POWER CHARGED V', desc:'Activate 50 Power Moves.', target:50, rewards:{coins:3000} },
+          { id:'super_charge_75', pack:'super', kind:'perform_supers', title:'POWER CHARGED VI', desc:'Activate 75 Power Moves.', target:75, rewards:{coins:5000} },
+          { id:'super_charge_100', pack:'super', kind:'perform_supers', title:'POWER CHARGED MAX', desc:'Activate 100 Power Moves. Enough total event Coins to max two Fighters.', target:100, rewards:{coins:7000} },
+          { id:'hyper_charge_05', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED I', desc:'Activate 5 Core Surges.', target:5, rewards:{souls:15} },
+          { id:'hyper_charge_10', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED II', desc:'Activate 10 Core Surges.', target:10, rewards:{souls:25} },
+          { id:'hyper_charge_20', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED III', desc:'Activate 20 Core Surges.', target:20, rewards:{souls:40} },
+          { id:'hyper_charge_35', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED IV', desc:'Activate 35 Core Surges.', target:35, rewards:{souls:60} },
+          { id:'hyper_charge_50', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED V', desc:'Activate 50 Core Surges.', target:50, rewards:{souls:80} },
+          { id:'hyper_charge_75', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED VI', desc:'Activate 75 Core Surges.', target:75, rewards:{souls:120} },
+          { id:'hyper_charge_100', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED MAX', desc:'Activate 100 Core Surges.', target:100, rewards:{souls:160} },
           { id:'charged_damage', pack:'challenge', kind:'deal_damage', title:'Voltage Overflow', desc:'Deal 2,000,000 damage.', target:2000000, rewards:{coins:900,gems:12} },
           { id:'charged_kos', pack:'challenge', kind:'defeat_enemies', title:'Circuit Breaker', desc:'Defeat 150 enemies.', target:150, rewards:{coins:750,superTappers:1} },
           { id:'charged_wins', pack:'challenge', kind:'win_match', title:'Unstoppable Current', desc:'Win 25 matches.', target:25, rewards:{coins:1000,gems:15} },
-          { id:'charged_gadgets', pack:'challenge', kind:'use_gadget', title:'Button Masher', desc:'Activate 75 Gadgets.', target:75, rewards:{gems:10,tappers:2} },
+          { id:'charged_gadgets', pack:'challenge', kind:'use_gadget', title:'Button Masher', desc:'Activate 75 Tools.', target:75, rewards:{gems:10,tappers:2} },
           { id:'charged_ranked', pack:'challenge', kind:'win_ranked', title:'Live Wire', desc:'Win 12 Ranked matches.', target:12, rewards:{coins:1000,hyperTappers:1} }
       ];
-      const MEGA_QUESTS = [
-          { id:'mega_damage', kind:'deal_damage', title:'MEGA Damage', desc:'Deal 250,000 damage this week.', target:250000, rewards:{ coins:1800, souls:120, superTappers:1, questXP:75 } },
-          { id:'mega_kos', kind:'defeat_enemies', title:'MEGA Takedowns', desc:'Defeat 75 enemies this week.', target:75, rewards:{ coins:1500, gems:8, souls:100, questXP:75 } },
-          { id:'mega_wins', kind:'win_match', title:'MEGA Champion', desc:'Win 15 matches this week.', target:15, rewards:{ coins:2500, souls:180, hyperTappers:1, questXP:100 } }
+      // Retired in Quest Board 3.0. Old save data is preserved but this bucket
+      // no longer rotates, progresses, contributes badges, or appears in UI.
+      const MEGA_QUESTS = [];
+      const AWAKENATOR_JOURNEY_QUESTS = [
+          { id:'awake_01', stage:1, kind:'play_match', title:'A Strange Dream', desc:'Finish 3 matches.', target:3, rewards:{coins:250} },
+          { id:'awake_02', stage:2, kind:'deal_damage', title:'Dream Pressure', desc:'Deal 35,000 damage.', target:35000, rewards:{coins:350} },
+          { id:'awake_03', stage:3, kind:'perform_supers', title:'Do Not Wake Them', desc:'Use 10 Power Moves.', target:10, rewards:{coins:400} },
+          { id:'awake_04', stage:4, kind:'use_gadget', title:'Sleep Tools', desc:'Use 8 Tools.', target:8, rewards:{coins:450} },
+          { id:'awake_05', stage:5, kind:'defeat_enemies', title:'Night Terror', desc:'Defeat 25 enemies.', target:25, rewards:{coins:550} },
+          { id:'awake_06', stage:6, kind:'win_match', title:'Lucid Victory', desc:'Win 6 matches.', target:6, rewards:{coins:700,gems:5} },
+          { id:'awake_07', stage:7, kind:'deal_damage', title:'Awake Awakenator', desc:'Deal 200,000 damage to awaken him for free.', target:200000, rewards:{coins:800,gems:10,brawlerUnlock:'awakenator'} }
       ];
-      const SNAPPER_JOURNEY_QUESTS = [
-          { id:'snapper_01', stage:1, kind:'play_match', title:'First Exposure', desc:'Play 5 matches.', target:5, rewards:{coins:750,gems:5} },
-          { id:'snapper_02', stage:2, kind:'deal_damage', title:'Focus the Lens', desc:'Deal 50,000 damage.', target:50000, rewards:{coins:750,gems:5} },
-          { id:'snapper_03', stage:3, kind:'defeat_enemies', title:'Target Practice', desc:'Defeat 15 enemies.', target:15, rewards:{coins:750,gems:5} },
-          { id:'snapper_04', stage:4, kind:'perform_supers', title:'Power Flash', desc:'Use 10 Supers.', target:10, rewards:{coins:750,gems:5} },
-          { id:'snapper_05', stage:5, kind:'win_match', title:'Perfect Picture', desc:'Win 3 matches.', target:3, rewards:{coins:750,gems:5} },
-          { id:'snapper_06', stage:6, kind:'use_gadget', title:'Equipment Check', desc:'Use 8 Gadgets.', target:8, rewards:{coins:750,gems:10} },
-          { id:'snapper_07', stage:7, kind:'play_match', title:'Long Session', desc:'Play 15 matches.', target:15, rewards:{coins:750,gems:10} },
-          { id:'snapper_08', stage:8, kind:'deal_damage', title:'High Exposure', desc:'Deal 200,000 damage.', target:200000, rewards:{coins:750,gems:10} },
-          { id:'snapper_09', stage:9, kind:'defeat_enemies', title:'Marked Targets', desc:'Defeat 50 enemies.', target:50, rewards:{coins:750,gems:10} },
-          { id:'snapper_10', stage:10, kind:'win_match', title:'Meet Snapper', desc:'Win 10 matches to recruit Snapper.', target:10, rewards:{coins:750,gems:10,brawlerUnlock:'snapper'} }
+      const COIN_ASCENT_QUESTS = [
+          {id:'coin_ascent_01',stage:1,kind:'play_match',title:'Coin Ascent 1',desc:'Play 2 matches.',target:2,rewards:{coins:500}},
+          {id:'coin_ascent_02',stage:2,kind:'deal_damage',title:'Coin Ascent 2',desc:'Deal 20,000 damage.',target:20000,rewards:{coins:500}},
+          {id:'coin_ascent_03',stage:3,kind:'defeat_enemies',title:'Coin Ascent 3',desc:'Defeat 8 enemies.',target:8,rewards:{coins:500}},
+          {id:'coin_ascent_04',stage:4,kind:'perform_supers',title:'Coin Ascent 4',desc:'Use 8 Power Moves.',target:8,rewards:{coins:500}},
+          {id:'coin_ascent_05',stage:5,kind:'win_match',title:'Coin Ascent 5',desc:'Win 2 matches.',target:2,rewards:{coins:500}},
+          {id:'coin_ascent_06',stage:6,kind:'use_gadget',title:'Coin Ascent 6',desc:'Use 8 Tools.',target:8,rewards:{coins:500}},
+          {id:'coin_ascent_07',stage:7,kind:'collect_cubes',title:'Coin Ascent 7',desc:'Collect 20 Power Cubes.',target:20,rewards:{coins:500}},
+          {id:'coin_ascent_08',stage:8,kind:'play_match',title:'Coin Ascent 8',desc:'Play 8 matches.',target:8,rewards:{coins:500}},
+          {id:'coin_ascent_09',stage:9,kind:'deal_damage',title:'Coin Ascent 9',desc:'Deal 100,000 damage.',target:100000,rewards:{coins:500}},
+          {id:'coin_ascent_10',stage:10,kind:'defeat_enemies',title:'Coin Ascent 10',desc:'Defeat 30 enemies.',target:30,rewards:{coins:500}},
+          {id:'coin_ascent_11',stage:11,kind:'perform_supers',title:'Coin Ascent 11',desc:'Use 25 Power Moves.',target:25,rewards:{coins:500}},
+          {id:'coin_ascent_12',stage:12,kind:'win_match',title:'Coin Ascent 12',desc:'Win 6 matches.',target:6,rewards:{coins:500}},
+          {id:'coin_ascent_13',stage:13,kind:'use_gadget',title:'Coin Ascent 13',desc:'Use 25 Tools.',target:25,rewards:{coins:500}},
+          {id:'coin_ascent_14',stage:14,kind:'collect_cubes',title:'Coin Ascent 14',desc:'Collect 60 Power Cubes.',target:60,rewards:{coins:500}},
+          {id:'coin_ascent_15',stage:15,kind:'play_match',title:'Coin Ascent 15',desc:'Play 18 matches.',target:18,rewards:{coins:500}},
+          {id:'coin_ascent_16',stage:16,kind:'deal_damage',title:'Coin Ascent 16',desc:'Deal 350,000 damage.',target:350000,rewards:{coins:500}},
+          {id:'coin_ascent_17',stage:17,kind:'defeat_enemies',title:'Coin Ascent 17',desc:'Defeat 75 enemies.',target:75,rewards:{coins:500}},
+          {id:'coin_ascent_18',stage:18,kind:'perform_supers',title:'Coin Ascent 18',desc:'Use 60 Power Moves.',target:60,rewards:{coins:500}},
+          {id:'coin_ascent_19',stage:19,kind:'win_match',title:'Coin Ascent 19',desc:'Win 15 matches.',target:15,rewards:{coins:500}},
+          {id:'coin_ascent_20',stage:20,kind:'deal_damage',title:'Coin Ascent Finale',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{coins:500}}
+      ];
+      const FULL_ON_DAMAGE_EVENT_ID='full-on-damage-2026-08';
+      const FULL_ON_DAMAGE_DURATION_MS=7*24*60*60*1000;
+      const FULL_ON_DAMAGE_MILESTONES=[
+          {target:25000,rewards:{coins:250}},{target:75000,rewards:{coins:350}},{target:150000,rewards:{coins:500}},
+          {target:300000,rewards:{coins:650}},{target:500000,rewards:{coins:800}},{target:750000,rewards:{coins:1000}},
+          {target:1000000,rewards:{gems:5}},{target:1500000,rewards:{coins:1250}},{target:2000000,rewards:{superTappers:1}},
+          {target:3000000,rewards:{coins:1500}},{target:4000000,rewards:{gems:10}},{target:5500000,rewards:{coins:2000}},
+          {target:7000000,rewards:{hyperTappers:1}},{target:9000000,rewards:{coins:2500}},{target:12000000,rewards:{gems:20}},
+          {target:16000000,rewards:{coins:3500}},{target:21000000,rewards:{superTappers:2}},{target:27000000,rewards:{coins:5000}},
+          {target:35000000,rewards:{gems:35,hyperTappers:1}},
+          {target:50000000,rewards:{coins:10000,gems:100,hyperTappers:3}}
+      ];
+      const FULL_ON_DAMAGE_DAILY_TASKS=[
+          {title:'Opening Barrage',target:150000,rewards:{coins:500}},
+          {title:'Bot Brigade',target:225000,rewards:{gems:4}},
+          {title:'Damage Storm',target:300000,rewards:{coins:750}},
+          {title:'Heavy Hitters',target:400000,rewards:{superTappers:1}},
+          {title:'Arena Meltdown',target:550000,rewards:{coins:1000}},
+          {title:'Weekend Wreckage',target:700000,rewards:{gems:8}},
+          {title:'Final Detonation',target:1000000,rewards:{hyperTappers:1}}
       ];
 
       function chooseBrawlerQuestTarget() {
@@ -3667,6 +3922,63 @@
 
       function getLocalDayKey(ts = Date.now()) {
           return new Date(ts).toDateString();
+      }
+
+      function ensureFullOnDamageEventState() {
+          ensureDailyWeeklyQuestData();
+          const board=playerData.questBoard;
+          if (!board.fullOnDamage || board.fullOnDamage.eventId!==FULL_ON_DAMAGE_EVENT_ID) {
+              board.fullOnDamage={eventId:FULL_ON_DAMAGE_EVENT_ID,startAt:Date.now(),endAt:Date.now()+FULL_ON_DAMAGE_DURATION_MS,totalDamage:0,claimedMilestones:[],daily:null,matchesCounted:0};
+          }
+          const event=board.fullOnDamage;
+          event.totalDamage=Math.max(0,Number(event.totalDamage)||0);
+          event.matchesCounted=Math.max(0,Math.floor(event.matchesCounted||0));
+          if(!Array.isArray(event.claimedMilestones))event.claimedMilestones=[];
+          const dayIndex=Math.max(0,Math.min(FULL_ON_DAMAGE_DAILY_TASKS.length-1,Math.floor((Date.now()-(event.startAt||Date.now()))/86400000)));
+          const dayKey=getLocalDayKey();
+          if(!event.daily||event.daily.dayKey!==dayKey){
+              const task=FULL_ON_DAMAGE_DAILY_TASKS[dayIndex];
+              event.daily={dayKey,index:dayIndex,title:task.title,target:task.target,progress:0,claimed:false,rewards:{...task.rewards}};
+          }
+          return event;
+      }
+      function isFullOnDamageActive(){const event=ensureFullOnDamageEventState();return Date.now()<(event.endAt||0);}
+      function formatFullOnDamageTimeLeft(){
+          const event=ensureFullOnDamageEventState(),left=Math.max(0,(event.endAt||0)-Date.now());
+          if(!left)return 'EVENT ENDED';
+          const hours=Math.ceil(left/3600000),days=Math.floor(hours/24);
+          return days?`${days}d ${hours%24}h left`:`${hours}h left`;
+      }
+      function grantQuestRewardBundle(rewards={}){
+          if(rewards.coins)playerData.coins=(playerData.coins||0)+rewards.coins;
+          if(rewards.gems)playerData.gems=(playerData.gems||0)+rewards.gems;
+          if(rewards.souls)addSouls(rewards.souls);
+          if(rewards.tappers)playerData.starrDrops=(playerData.starrDrops||0)+rewards.tappers;
+          if(rewards.superTappers)playerData.superTapperCount=(playerData.superTapperCount||0)+rewards.superTappers;
+          if(rewards.hyperTappers)playerData.hyperTapperCount=(playerData.hyperTapperCount||0)+rewards.hyperTappers;
+      }
+      function addFullOnDamageMatchDamage(amount){
+          const event=ensureFullOnDamageEventState();
+          if(Date.now()>=(event.endAt||0))return false;
+          const gained=Math.max(0,Math.round(Number(amount)||0));
+          event.totalDamage+=gained;event.matchesCounted++;
+          if(event.daily&&!event.daily.claimed)event.daily.progress=Math.min(event.daily.target,(event.daily.progress||0)+gained);
+          saveProgress();updateQuestBadge();return gained>0;
+      }
+      function claimFullOnDamageMilestone(index){
+          const event=ensureFullOnDamageEventState(),milestone=FULL_ON_DAMAGE_MILESTONES[index];
+          if(!milestone||event.claimedMilestones.includes(index)||event.totalDamage<milestone.target)return false;
+          grantQuestRewardBundle(milestone.rewards);event.claimedMilestones.push(index);saveProgress();updateQuestBadge();return true;
+      }
+      function claimFullOnDamageDaily(){
+          const event=ensureFullOnDamageEventState(),daily=event.daily;
+          if(!daily||daily.claimed||(daily.progress||0)<daily.target)return false;
+          grantQuestRewardBundle(daily.rewards);daily.claimed=true;saveProgress();updateQuestBadge();return true;
+      }
+      function getFullOnDamageClaimableCount(){
+          const event=ensureFullOnDamageEventState();let count=FULL_ON_DAMAGE_MILESTONES.filter((m,i)=>event.totalDamage>=m.target&&!event.claimedMilestones.includes(i)).length;
+          if(event.daily&&!event.daily.claimed&&(event.daily.progress||0)>=event.daily.target)count++;
+          return count;
       }
 
       function getLocalWeekKey(ts = Date.now()) {
@@ -3707,6 +4019,21 @@
           return bucket;
       }
 
+      function mergeQuestBucket(existing, defs) {
+          const bucket = existing && typeof existing === 'object' ? existing : {};
+          for (const def of defs) {
+              const prior=bucket[def.id] || {};
+              const progress=Math.max(0,Number(prior.progress)||0);
+              bucket[def.id]={
+                  ...createQuestState(def),
+                  progress:Math.min(def.target,progress),
+                  completed:!!prior.completed||progress>=def.target,
+                  claimed:!!prior.claimed
+              };
+          }
+          return bucket;
+      }
+
       function createLimitedQuestMeta(startAt = Date.now()) {
           return {
               eventId: LIMITED_QUEST_EVENT_ID,
@@ -3741,7 +4068,7 @@
 
       function ensureDailyWeeklyQuestData() {
           if (!ENABLE_DAILY_WEEKLY_QUESTS) return;
-          if (!playerData.questBoard || playerData.questBoard.schemaVersion !== DAILY_WEEKLY_QUEST_SCHEMA_VERSION) {
+          if (!playerData.questBoard || typeof playerData.questBoard !== 'object') {
               playerData.questBoard = {
                   schemaVersion: DAILY_WEEKLY_QUEST_SCHEMA_VERSION,
                   dailyKey: getLocalDayKey(),
@@ -3750,9 +4077,10 @@
                   weekly: buildRandomContractBucket(WEEKLY_CONTRACT_POOL, 4, getLocalWeekKey(), 'weekly', true),
                   starter: buildQuestBucket(SOUL_STARTER_QUESTS),
                   limited: buildQuestBucket(LIMITED_QUESTS),
-                  mega: buildQuestBucket(MEGA_QUESTS),
+                  mega: {},
                   brawler: buildBrawlerQuest(),
-                  snapperJourney: buildQuestBucket(SNAPPER_JOURNEY_QUESTS),
+                  awakenatorJourney: buildQuestBucket(AWAKENATOR_JOURNEY_QUESTS),
+                  coinAscent: buildQuestBucket(COIN_ASCENT_QUESTS),
                   megaKey: getLocalWeekKey(),
                   questXP: 0,
                   questLevel: 0,
@@ -3760,13 +4088,15 @@
               };
               return;
           }
+          playerData.questBoard.schemaVersion = DAILY_WEEKLY_QUEST_SCHEMA_VERSION;
           if (!playerData.questBoard.daily) playerData.questBoard.daily = buildQuestBucket(DAILY_QUESTS);
           if (!playerData.questBoard.weekly) playerData.questBoard.weekly = buildQuestBucket(WEEKLY_QUESTS);
           if (!playerData.questBoard.starter) playerData.questBoard.starter = buildQuestBucket(SOUL_STARTER_QUESTS);
           if (!playerData.questBoard.limited) playerData.questBoard.limited = buildQuestBucket(LIMITED_QUESTS);
-          if (!playerData.questBoard.mega) playerData.questBoard.mega = buildQuestBucket(MEGA_QUESTS);
+          if (!playerData.questBoard.mega) playerData.questBoard.mega = {};
           if (!playerData.questBoard.brawler) playerData.questBoard.brawler = buildBrawlerQuest();
-          if (!playerData.questBoard.snapperJourney) playerData.questBoard.snapperJourney = buildQuestBucket(SNAPPER_JOURNEY_QUESTS);
+          playerData.questBoard.awakenatorJourney = mergeQuestBucket(playerData.questBoard.awakenatorJourney, AWAKENATOR_JOURNEY_QUESTS);
+          playerData.questBoard.coinAscent = mergeQuestBucket(playerData.questBoard.coinAscent, COIN_ASCENT_QUESTS);
           if (!playerData.questBoard.megaKey) playerData.questBoard.megaKey = getLocalWeekKey();
           if (!Number.isFinite(playerData.questBoard.questXP)) playerData.questBoard.questXP = 0;
           if (!Number.isFinite(playerData.questBoard.questLevel)) playerData.questBoard.questLevel = 0;
@@ -3791,7 +4121,6 @@
           }
           if (playerData.questBoard.megaKey !== nowWeek) {
               playerData.questBoard.megaKey = nowWeek;
-              playerData.questBoard.mega = buildQuestBucket(MEGA_QUESTS);
               const target = Object.values(playerData.questBoard.brawler || {}).find(q => q.finalContract)?.rewards?.brawlerUnlock;
               if (!target || playerData.unlockedBrawlers?.[target]) playerData.questBoard.brawler = buildBrawlerQuest();
           }
@@ -3863,11 +4192,13 @@
                   const weeklyReady = getQuestProgressCount(playerData.questBoard.weekly);
                   const starterReady = getQuestProgressCount(playerData.questBoard.starter);
                   const limitedReady = isLimitedQuestActive() ? getQuestProgressCount(playerData.questBoard.limited) : 0;
-                  const megaReady = getQuestProgressCount(playerData.questBoard.mega);
                   const brawlerReady = getQuestProgressCount(playerData.questBoard.brawler);
-                  const snapperReady = getQuestProgressCount(playerData.questBoard.snapperJourney);
+                  const awakenatorReady = getQuestProgressCount(playerData.questBoard.awakenatorJourney);
+                  const coinAscentReady = getQuestProgressCount(playerData.questBoard.coinAscent);
+                  const fullDamageReady = getFullOnDamageClaimableCount();
                   const seasonReady = getClaimableSeasonRewardCount();
-                  el.textContent = String(dailyReady + weeklyReady + starterReady + limitedReady + megaReady + brawlerReady + snapperReady + seasonReady);
+                  const specialReady = getSpecialClaimableCount();
+                  el.textContent = String(dailyReady + weeklyReady + starterReady + limitedReady + brawlerReady + awakenatorReady + coinAscentReady + fullDamageReady + seasonReady + specialReady);
               }
           } catch (e) {}
       }
@@ -3947,13 +4278,6 @@
           refreshDailyWeeklyQuests();
           const kind = normalizeQuestKey(questKey);
           let changed = false;
-          for (const quest of Object.values(playerData.questBoard.mega || {})) {
-              if (!quest.completed && quest.kind === kind) {
-                  quest.progress = Math.min(quest.target, (quest.progress || 0) + amount);
-                  quest.completed = quest.progress >= quest.target;
-                  changed = true;
-              }
-          }
           const brawlerQuests = Object.values(playerData.questBoard.brawler || {});
           for (const quest of brawlerQuests) {
               const target = quest.targetBrawler;
@@ -3970,12 +4294,14 @@
               finalQuest.completed = true;
               changed = true;
           }
-          const snapperBucket = playerData.questBoard.snapperJourney || {};
-          for (const quest of Object.values(snapperBucket)) {
-              if (!quest.completed && quest.kind === kind && isQuestStageUnlocked('snapperJourney', snapperBucket, quest)) {
-                  quest.progress = Math.min(quest.target, (quest.progress || 0) + amount);
-                  quest.completed = quest.progress >= quest.target;
-                  changed = true;
+          for (const bucketName of ['awakenatorJourney','coinAscent']) {
+              const journeyBucket=playerData.questBoard[bucketName] || {};
+              for (const quest of Object.values(journeyBucket)) {
+                  if (!quest.completed && quest.kind === kind && isQuestStageUnlocked(bucketName, journeyBucket, quest)) {
+                      quest.progress = Math.min(quest.target, (quest.progress || 0) + amount);
+                      quest.completed = quest.progress >= quest.target;
+                      changed = true;
+                  }
               }
           }
           if (changed) { saveProgress(); updateQuestBadge(); }
@@ -4006,7 +4332,7 @@
           return true;
       }
 
-      function openQuestBoard() {
+      function openQuestBoard(initialTab = 'core') {
           if (!ENABLE_DAILY_WEEKLY_QUESTS) return;
           refreshDailyWeeklyQuests();
           ensureSeasonPassState();
@@ -4120,7 +4446,7 @@
                   claimButton.onclick = () => {
                       if (!claimable) return;
                       if (claimQuestReward(bucketName, quest.id)) {
-                          const tab = bucketName === 'limited' ? 'limited' : ((bucketName === 'mega' || bucketName === 'brawler') ? 'mega' : (bucketName === 'snapperJourney' ? 'snapper' : 'core'));
+                          const tab = bucketName === 'limited' ? 'limited' : ((bucketName === 'brawler' || bucketName === 'awakenatorJourney' || bucketName === 'coinAscent') ? 'journeys' : 'core');
                           setActiveTab(tab);
                           refreshHomeUI();
                       }
@@ -4161,28 +4487,36 @@
               return body;
           }
 
-          function createMegaView() {
+          function createJourneysView() {
               const body = document.createElement('div');
               body.style.display = 'grid';
-              body.style.gridTemplateColumns = '1.5fr 1fr';
+              body.style.gridTemplateColumns = 'repeat(3,minmax(250px,1fr))';
               body.style.gap = '14px';
               body.style.height = '100%';
               body.style.overflowY = 'auto';
-              body.appendChild(createColumn('MEGA QUESTS', 'Huge weekly goals with huge rewards', 'mega'));
-              body.appendChild(createColumn('BRAWLER QUEST', 'Complete it to unlock the featured brawler', 'brawler'));
+              body.appendChild(createColumn('AWAKE AWAKENATOR', 'Seven stages unlock Awakenator free', 'awakenatorJourney'));
+              body.appendChild(createColumn('COIN ASCENT', '20 stages · up to 10,000 Coins', 'coinAscent'));
+              body.appendChild(createColumn('BRAWLER JOURNEY', 'Complete the contract to recruit its fighter', 'brawler'));
               return body;
           }
 
-          function createSnapperView() {
-              const body = document.createElement('div');
-              body.style.height = '100%';
-              body.style.overflowY = 'auto';
-              const banner = document.createElement('div');
-              banner.style.cssText = 'margin-bottom:12px;padding:14px;border:2px solid #55e6ff;border-radius:12px;background:linear-gradient(90deg,#102a3c,#251536);color:#e9fbff;';
-              banner.innerHTML = '<div style="font-size:20px;font-weight:1000;color:#75efff">SNAPPER JOURNEY</div><div style="font-size:12px;margin-top:4px">10 stages - 7,500 Coins - 75 Gems - Snapper unlocked free at Stage 10.</div>';
-              body.appendChild(banner);
-              body.appendChild(createColumn('Snapper Journey', 'Complete each stage to reveal the next', 'snapperJourney'));
-              return body;
+          function createFullOnDamageView() {
+              const event=ensureFullOnDamageEventState(),body=document.createElement('div');
+              body.style.cssText='height:100%;overflow-y:auto;padding:2px 3px 18px';
+              const rewardText=(r)=>[r.coins&&`${r.coins.toLocaleString()} Coins`,r.gems&&`${r.gems} Gems`,r.superTappers&&`${r.superTappers} Super Tapper${r.superTappers===1?'':'s'}`,r.hyperTappers&&`${r.hyperTappers} Hyper Tapper${r.hyperTappers===1?'':'s'}`].filter(Boolean).join(' + ');
+              const next=FULL_ON_DAMAGE_MILESTONES.find((m,i)=>!event.claimedMilestones.includes(i))||FULL_ON_DAMAGE_MILESTONES.at(-1);
+              const hero=document.createElement('div');
+              hero.style.cssText='padding:18px;border:2px solid #ff664f;border-radius:16px;background:linear-gradient(115deg,#41151a,#201149 62%,#102c43);color:#fff;margin-bottom:13px';
+              hero.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b style="font-size:27px">FULL ON DAMAGE</b><strong style="color:#ffe073">${formatFullOnDamageTimeLeft()}</strong></div><div style="font-size:13px;color:#ffd5ca;margin-top:4px">Every point of damage from every fighter, bot, summon, hazard, shield hit, and team counts after the match.</div><div style="display:flex;justify-content:space-between;margin-top:13px;font-weight:1000"><span>${Math.round(event.totalDamage).toLocaleString()} TOTAL DAMAGE</span><span>${Math.max(0,next.target-event.totalDamage).toLocaleString()} TO NEXT</span></div><div style="height:12px;margin-top:6px;border-radius:99px;background:#160c18;overflow:hidden"><div style="height:100%;width:${Math.min(100,event.totalDamage/next.target*100)}%;background:linear-gradient(90deg,#ff5948,#ffbf4b,#8a5dff)"></div></div><div style="font-size:11px;color:#ffcfba;margin-top:6px">${event.matchesCounted} matches counted · Final milestone: 50,000,000 damage</div>`;
+              body.appendChild(hero);
+              const daily=event.daily,dailyCard=document.createElement('section');
+              const dailyDone=(daily.progress||0)>=daily.target;
+              dailyCard.style.cssText=`padding:14px;border:2px solid ${dailyDone?'#68f2ba':'#59bfff'};border-radius:14px;background:#09182a;margin-bottom:13px`;
+              dailyCard.innerHTML=`<div style="display:flex;justify-content:space-between;gap:8px"><div><b style="font-size:18px;color:#8fdcff">DAILY TEAM BAR · ${daily.title}</b><div style="font-size:12px;color:#a9c6dc;margin-top:3px">Everyone in your matches contributes—including every bot.</div></div><b style="color:#ffda75">${rewardText(daily.rewards)}</b></div><div style="height:9px;margin-top:10px;border-radius:99px;background:#06101d;overflow:hidden"><div style="height:100%;width:${Math.min(100,(daily.progress||0)/daily.target*100)}%;background:#62e8bd"></div></div><div style="margin-top:5px;font-size:12px;color:#d7eaff">${Math.round(daily.progress||0).toLocaleString()} / ${daily.target.toLocaleString()}</div>`;
+              const dailyBtn=document.createElement('button');dailyBtn.textContent=daily.claimed?'CLAIMED':dailyDone?'CLAIM DAILY BONUS':'IN PROGRESS';dailyBtn.disabled=daily.claimed||!dailyDone;dailyBtn.style.cssText=`margin-top:8px;width:100%;padding:9px;border:0;border-radius:9px;font-weight:1000;background:${dailyDone&&!daily.claimed?'#62e8bd':'#29435c'};color:#07131d`;dailyBtn.onclick=()=>{if(claimFullOnDamageDaily()){setActiveTab('damage');refreshHomeUI();}};dailyCard.appendChild(dailyBtn);body.appendChild(dailyCard);
+              const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px';
+              FULL_ON_DAMAGE_MILESTONES.forEach((milestone,index)=>{const claimed=event.claimedMilestones.includes(index),done=event.totalDamage>=milestone.target,card=document.createElement('article');card.style.cssText=`padding:11px;border:1px solid ${claimed?'#40566d':done?'#ffbd58':'#30445d'};border-radius:11px;background:${done&&!claimed?'#332112':'#091421'}`;card.innerHTML=`<div style="font-size:11px;color:#8faac1">MILESTONE ${index+1}/20</div><b style="display:block;font-size:17px;margin:3px 0;color:#fff">${milestone.target.toLocaleString()} DAMAGE</b><div style="font-size:11px;color:#ffd37b">${rewardText(milestone.rewards)}</div>`;const btn=document.createElement('button');btn.textContent=claimed?'CLAIMED':done?'CLAIM':'LOCKED';btn.disabled=claimed||!done;btn.style.cssText=`width:100%;margin-top:8px;padding:7px;border:0;border-radius:8px;font-weight:1000;background:${done&&!claimed?'#ffbd58':'#26384b'};color:#10151c`;btn.onclick=()=>{if(claimFullOnDamageMilestone(index)){setActiveTab('damage');refreshHomeUI();}};card.appendChild(btn);grid.appendChild(card);});
+              body.appendChild(grid);return body;
           }
 
           function seasonTrackRewardText(reward) {
@@ -4193,6 +4527,8 @@
               if (reward.type === 'tapper') return `${reward.amount} Tapper Upper`;
               if (reward.type === 'eventTapper') return `${reward.amount} Event Tappers`;
               if (reward.type === 'towerDrop') return `${reward.amount} Tower Drop${reward.amount===1?'':'s'}`;
+              if (reward.type === 'packetSignal') return `${reward.amount}% Packet Signal${reward.packet?` • ${PACKET_DEFS[reward.packet]?.name||reward.packet}`:reward.group?` • ${String(reward.group).replaceAll('_',' ')}`:''}`;
+              if (reward.type === 'profileCosmetic') return 'Season 3 Profile Cosmetic';
               if (reward.type === 'superTapper') return `${reward.amount} Super Tappers`;
               if (reward.type === 'hyperTapper') return `${reward.amount} Hyper Tappers`;
               if (reward.type === 'skin') return 'Exclusive Skin';
@@ -4208,6 +4544,14 @@
               if (rewards?.superTappers) parts.push(`${rewards.superTappers} Super Tapper`);
               if (rewards?.hyperTappers) parts.push(`${rewards.hyperTappers} Hyper Tapper`);
               if (rewards?.towerDrops) parts.push(`${rewards.towerDrops} Tower Drop${rewards.towerDrops === 1 ? '' : 's'}`);
+              if (Array.isArray(rewards?.packetSignals)) {
+                  for (const reward of rewards.packetSignals) {
+                      const label = reward.packet ? (PACKET_DEFS[reward.packet]?.name || reward.packet)
+                          : reward.group === 'all' ? 'All Packets'
+                          : `${String(reward.group || 'Packet').replaceAll('_', ' ')} Packets`;
+                      parts.push(`${reward.amount}% Signal • ${label}`);
+                  }
+              }
               return parts.join(' • ') || 'None';
           }
 
@@ -4228,12 +4572,12 @@
               questBox.style.overflowY = 'auto';
 
               const questTitle = document.createElement('div');
-              questTitle.textContent = `New Season Quests • Stage ${getActiveSeasonQuestStage()}/${SEASON_QUEST_STAGE_COUNT}`;
+              questTitle.textContent = `CORE BREAKER × ARENA FORGE • Stage ${getActiveSeasonQuestStage()}/${SEASON_QUEST_STAGE_COUNT}`;
               questTitle.style.fontWeight = '900';
               questTitle.style.color = '#8fd8ff';
               questTitle.style.marginBottom = '6px';
               const questHint = document.createElement('div');
-              questHint.textContent = 'Complete and claim each quest to push the ladder milestones.';
+              questHint.textContent = `${isSeason3PassActive()?'Season ends September 20, 2026.':'Season ended — progression and claims are closed.'} Complete and claim quests to push the ladder.`;
               questHint.style.fontSize = '11px';
               questHint.style.color = '#aac7e5';
               questHint.style.marginBottom = '10px';
@@ -4295,7 +4639,7 @@
               ladderBox.style.overflowY = 'auto';
 
               const ladderTitle = document.createElement('div');
-              ladderTitle.textContent = 'Milestone Ladder';
+              ladderTitle.textContent = 'Season 3 Signal Ladder';
               ladderTitle.style.fontWeight = '900';
               ladderTitle.style.color = '#ffd39a';
               ladderTitle.style.fontSize = '16px';
@@ -4450,11 +4794,50 @@
               return wrapper;
           }
 
+          function createSpecialBreakthroughView() {
+              const state=ensureSpecialAbilityQuestState();
+              const eventActive=isUnleashPotentialActive();
+              const body=document.createElement('div');
+              body.style.cssText='height:100%;overflow-y:auto;padding:2px 4px 18px';
+              const hero=document.createElement('div');
+              hero.style.cssText='padding:18px;border:2px solid #7de9ff;border-radius:16px;background:linear-gradient(120deg,#102744,#20184a);margin-bottom:14px;color:#fff';
+              hero.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="font-size:28px;font-weight:1000;letter-spacing:.04em">✨ UNLEASH POTENTIAL</div><b style="color:${eventActive?'#ffe073':'#ff7b87'}">${formatUnleashPotentialTimeLeft()}</b></div><div style="margin-top:5px;color:#c8e9ff">Seven days to unlock Minigunnin's Mutation, Classy's Signature, and Splitter's Instinct completely free. Earlier Specials now come from other sources.</div>`;
+              body.appendChild(hero);
+              const grid=document.createElement('div');
+              grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px';
+              for(const fighterId of UNLEASH_POTENTIAL_FIGHTERS){
+                  const def=getSpecialAbilityDef(fighterId),ability=getSpecialAbilityState(def.type,fighterId),quests=SPECIAL_BREAKTHROUGH_QUESTS[fighterId],bucket=state[fighterId];
+                  const path=document.createElement('section');
+                  const readyCount=quests.filter(q=>bucket[q.id]?.completed&&!bucket[q.id]?.rewardClaimed).length;
+                  path.style.cssText=`padding:14px;border:2px solid ${def.color};border-radius:16px;background:linear-gradient(155deg,${def.color}1e,#07111d);box-shadow:${readyCount?`0 0 22px ${def.color}55`:'none'}`;
+                  const head=document.createElement('div');
+                  head.style.cssText='display:flex;gap:11px;align-items:center;margin-bottom:10px';
+                  head.innerHTML=`<div style="width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:#07111d;border:2px solid ${def.color};font-size:30px">${getBrawlerPortraitIcon(fighterId)}</div><div style="min-width:0;flex:1"><div style="font-size:18px;font-weight:1000">${brawlerData[fighterId]?.name||fighterId}</div><div style="color:${def.color};font-size:12px;font-weight:1000;letter-spacing:.1em">${def.type.toUpperCase()} — ${def.name.toUpperCase()}</div><div style="margin-top:3px;font-size:12px;color:#d2e3f5">${ability.unlocked?'UNLOCKED':`Pieces: ${ability.pieces} / 3`}</div></div>${readyCount?`<b style="border-radius:999px;background:${def.color};color:#07111d;padding:5px 9px">${readyCount}</b>`:''}`;
+                  path.appendChild(head);
+                  for(const quest of quests){
+                      const entry=bucket[quest.id],done=!!entry.completed,claimed=!!entry.rewardClaimed,pct=Math.round(Math.min(1,(entry.progress||0)/quest.target)*100);
+                      const converted=ability.unlocked&&!claimed;
+                      const row=document.createElement('div');
+                      row.style.cssText=`margin-top:9px;padding:10px;border:1px solid ${claimed?'#40566d':done?def.color:'#263d56'};border-radius:11px;background:${done&&!claimed?`${def.color}16`:'rgba(4,12,23,.72)'}`;
+                      row.innerHTML=`<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>${quest.title}</b><div style="font-size:12px;color:#a9bed3;margin-top:2px">${quest.desc}</div><div style="font-size:11px;color:${converted?'#ffd76b':def.color};margin-top:5px">Reward: ${converted?'120 Coins (duplicate piece conversion)':`+1 ${def.pieceName}`}</div>${ability.unlocked&&!done?'<div style="font-size:10px;color:#8fe9ce;margin-top:3px">ABILITY ALREADY UNLOCKED — quest history remains available</div>':''}</div></div><div style="height:7px;margin-top:8px;border-radius:99px;background:#07111d;overflow:hidden"><div style="height:100%;width:${pct}%;background:${done?def.color:'#6683a4'}"></div></div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px"><span style="font-size:12px;color:#d5e4f2">${Math.floor(entry.progress||0).toLocaleString()} / ${quest.target.toLocaleString()}</span></div>`;
+                      const action=document.createElement('button');
+                      action.textContent=claimed?'CLAIMED':(!eventActive?'EVENT ENDED':done?'CLAIM':'IN PROGRESS');
+                      action.disabled=!eventActive||!done||claimed;
+                      action.style.cssText=`margin-top:7px;width:100%;padding:8px;border:0;border-radius:8px;font-weight:1000;cursor:${done&&!claimed?'pointer':'default'};background:${claimed?'#40566d':done?def.color:'#1d3045'};color:${done&&!claimed?'#07111d':'#9ab0c5'}`;
+                      action.onclick=()=>{if(claimSpecialQuestReward(fighterId,quest.id))setActiveTab('special');};
+                      row.appendChild(action);path.appendChild(row);
+                  }
+                  grid.appendChild(path);
+              }
+              body.appendChild(grid);return body;
+          }
+
           const views = {
               core: createCoreView,
               limited: createLimitedView,
-              mega: createMegaView,
-              snapper: createSnapperView,
+              journeys: createJourneysView,
+              damage: createFullOnDamageView,
+              special: createSpecialBreakthroughView,
               season: createSeasonView
           };
 
@@ -4484,10 +4867,11 @@
 
           makeTab('core', 'Random Contracts');
           makeTab('limited', '\u26A1 Charged Packs');
-          makeTab('mega', 'MEGA + Brawler Quest');
-          makeTab('snapper', 'Snapper Journey');
+          makeTab('journeys', 'New Journeys');
+          makeTab('damage', `💥 Full On Damage${getFullOnDamageClaimableCount()?` (${getFullOnDamageClaimableCount()})`:''}`);
+          makeTab('special', `✨ Unleash Potential${getSpecialClaimableCount()?` (${getSpecialClaimableCount()})`:''}`);
           if (ENABLE_SEASON_QUESTS) makeTab('season', 'Season Quests');
-          setActiveTab('core');
+          setActiveTab(views[initialTab] ? initialTab : 'core');
 
           panel.appendChild(top);
           const questXP = playerData.questBoard.questXP || 0;
@@ -4543,10 +4927,10 @@
       'classy': { name: 'Classy', role: 'Marksman', desc: 'Fires a fast burst of notes. Hits fill a Symphony bar. Full Symphony turns attacks gold and homing.', color: '#d4af37', attack: 'Note Burst', attackDesc: 'Fires 7 notes. Hits fill a Symphony bar. When full, next attack is gold and homes.', super: 'Bass Drop', superDesc: 'Drops an 8500 HP speaker. Near it, Classy fires 8 larger notes.', hyper: 'Attacks pierce. Speaker shoots at nearby enemies.', g1: 'Tuning Up (Instantly fills half Symphony)', g2: 'Fanfare (Fires notes in a wide fan)', sp1: 'Crescendo (Damage up per consecutive hit)', sp2: 'The Show Must Go On (Refills Symphony if speaker destroyed)' },
       'hyperorigin': { name: 'Hyperorigin', role: 'Tank', desc: 'A seismic tank that stores Origin Energy with each hit and detonates it in a purple shockwave super.', color: '#a66bff', attack: 'Origin Slam', attackDesc: 'After a short delay, slams 4 tiles in a straight line. Each enemy hit grants +1 Origin Energy.', super: 'Purple Unleashed', superDesc: 'Consumes all Origin Energy in a 360 smash. Enemies are suspended for 1s, then slammed down.', hyper: 'Become My Weakling: Main attacks weaken enemy damage by 40% for 1.2s. Super launches 3 mining fissures that each explode twice. Suspend has a brief warning telegraph before lift.', g1: 'Core Clamp (+3 Origin Energy)', g2: 'Fault Step (short dash + shield)', sp1: 'Gravity Core (wider, longer suspend super)', sp2: 'Deep Mantle (damage reduction at 5+ Energy)' },
       'heater_miser': { name: 'Heater Miser', role: 'Support', desc: 'Latches a thermal beam to one target to ramp damage or healing over time.', color: '#ff8a5b', attack: 'Thermal Tether', attackDesc: 'Latch a beam to one ally or enemy. Ticks every 0.30s and ramps through 7 stages while connected.', super: 'Intergalactic Heat', superDesc: 'Launch a furnace that creates a 3.5-tile slow zone for 4s and deals 1200 damage over 3s to enemies inside.', hyper: 'Beam starts at the 300 ramp value. Furnace super also pulls enemies to center.', g1: 'Heat Valve (next tether hit gains burst + fast ramp start)', g2: 'Flux Splitter (tether chains to nearby target)', sp1: 'Thermal Reserve (stronger tether healing)', sp2: 'Combustion Core (larger, stronger furnace zone)' },
-      'minigunnin': { name: 'Minigunnin', role: 'Tank', desc: 'Hold to fire a massive cone of bullets. Gains Max HP on hit.', color: '#aaaaaa', attack: 'Minigun', attackDesc: 'Fires 20 bullets over 5 seconds. Gets faster while firing.', super: 'Healing Fort', superDesc: 'Deploys a healing device surrounded by breakable walls.', hyper: 'Fort becomes a turret. Attack shoots 30% faster, 20% less spread, +1 bullet per shot.', g1: 'Overclock (Instant reload & burst)', g2: 'Fortify (Sacrifice 1000 Max HP for 3000 HP)', sp1: 'Desperate Measures (+175% HP gain below 30% ammo)', sp2: 'Ramp Up (Move faster while firing)' },
+      'minigunnin': { name: 'Minigunnin', role: 'Tank', desc: 'Hold to fire a massive cone of bullets. Gains Max HP on hit.', color: '#aaaaaa', attack: 'Minigun', attackDesc: 'Fires 20 larger bullets over 5 seconds in a tighter cone with slightly reduced range. Gets faster while firing.', super: 'Healing Fort', superDesc: 'Deploys a healing device surrounded by breakable walls.', hyper: 'Fort becomes a turret. Attack shoots 30% faster, 20% less spread, +1 bullet per shot.', g1: 'Overclock (Instant reload & burst)', g2: 'Fortify (Sacrifice 1000 Max HP for 3000 HP)', sp1: 'Desperate Measures (+175% HP gain below 30% ammo)', sp2: 'Ramp Up (Move faster while firing)' },
       'steamer': { name: 'Steamer', role: 'Controller', desc: 'Pressure engineer with a continuous steam bar and precision sweet-spot damage.', color: '#7fd3ff', attack: 'Steam Lance', attackDesc: 'Sprays a short narrow cone. Damage is low up close, highest in the middle sweet spot, and medium at max range where it slows by 10%.', super: 'Railroad', superDesc: 'Places 3 poles in a triangle and rapidly runs one lap, venting steam sideways and leaving a burning trail.', hyper: 'Roadkill: Railroad runs for 2 laps. Main attack deals max sweet-spot damage across the full cone.', g1: 'Pressure Valve (Knockback burst + refill 50% ammo)', g2: 'Express Track (+25% speed and mobile pole placement)', sp1: 'Boiler Room Heat (Ignite enemies kept in sweet spot for 1.5s)', sp2: 'Perfect Conductor (30% shield during super, fire trail lasts +1.5s)' },
       'bowlin_rida': { name: 'The Rida', role: 'Assassin', desc: 'Roll around the map like a bowling ball, gaining speed and knocking down pins!', color: '#ff3300', attack: 'Bowling Roll', attackDesc: 'Using ammo gives you an instant speed boost. Dealing damage by rolling into enemies.', super: 'Pin Strike', superDesc: 'Launch a massive bowling ball attack, becoming untargetable while dropping pins.', hyper: 'Super lasts 8s and drops more pins. Attack gains speed 20% faster.', g1: 'Drift Boost (Instant max speed & reload)', g2: 'Flame Shield (Heal 50% from next hit)', sp1: 'Scorching Trails (Leave fire trail at max speed)', sp2: 'Heavy Landing (Stun and damage when flight ends)' },
-      'money_and_tax': { name: 'Money & Tax', role: 'Controller', desc: 'A dual-stance financier who blasts enemies with coins in Money Mode, and drains their resources with banknotes in Tax Mode.', color: '#27ae60', attack: 'Liquid Assets / Audit', attackDesc: 'Money Mode: Fires 4 tighter waves of 3 coins. At full ammo, the center coin is larger and stronger. Tax Mode: Fires 2 banknotes that steal enemy ammo on hit.', super: 'Market Crash / Sticky Bill', superDesc: 'Money: 7 shorter-range boomerang coins, then switch to Tax. Tax: Attach a DoT sticky note that drains ammo, then switch to Money.', hyper: 'Money Super pierces walls. Tax Super chains to a 2nd target. Main attacks pierce.', g1: 'Mode Swap (Instantly switch modes)', g2: 'Bailout (Consume 1 ammo, heal 1500 HP & speed boost)', sp1: 'Compound Interest (Consecutive coin hits deal 15% more dmg)', sp2: 'Embezzlement (Stealing ammo heals you)' },
+      'money_and_tax': { name: 'Money & Tax', role: 'Controller', desc: 'A dual-stance financier who blasts enemies with coins in Money Mode and buries them in DEBT with Tax Notes.', color: '#27ae60', attack: 'Liquid Assets / Audit', attackDesc: 'Money Mode: Fires tighter waves of 3 coins. At full ammo, the center coin is larger and stronger. Tax Mode: Fires 2 double-sized, tighter banknotes with 30% more damage that apply DEBT, slowing reload for 3 seconds.', super: 'Market Crash / Sticky Bill', superDesc: 'Money: 7 shorter-range boomerang coins, then switch to Tax. Tax: Attach a sticky damage-over-time note that refreshes the 3-second DEBT reload debuff, then switch to Money.', hyper: 'Money Power Move pierces walls. Tax Power Move chains to a second target. Main attacks pierce.', g1: 'Mode Swap (Instantly switch modes)', g2: 'Bailout (Consume 1 ammo, heal 1500 HP & speed boost)', sp1: 'Compound Interest (Consecutive coin hits deal 15% more damage)', sp2: 'Embezzlement (Applying DEBT heals you)' },
       'hunter': { name: 'The Hunter', role: 'Assassin', desc: 'A tracker who isolates targets and hunts them down.', color: '#556b2f', attack: 'Delay Sweep', attackDesc: 'A sweeping sword slash. Knocks back enemies if used at full ammo!', super: 'I Found You', superDesc: 'Marks an enemy for 8s, gaining 25% speed, +25% dmg, and footsteps to them.', hyper: 'Attack delays -50% & double slash. Super gives 40% speed & first hit does 15% Max HP.', g1: 'Grappling Hook (Next attack pulls enemies)', g2: 'Camouflage (Invisibility for 3s)', sp1: 'Thrill of the Hunt (Kill marked target = +35% Super)', sp2: 'Relentless (Take 20% less damage while Super is active)' },
       'chaird': { name: 'Chaird', role: 'Tank', desc: 'A sturdy brawler who throws chairs and spins them around for area control.', color: '#8B4513', attack: 'Chair Toss', attackDesc: 'Throws a chair that explodes on impact and again 0.8s later.', super: 'Chair Spin', superDesc: 'Spins chairs around, gaining speed and dealing continuous damage.', hyper: 'Main attack explodes a 3rd time. Super moves faster and launches chairs at start/end.', g1: 'Chair Toss (Throws 3 chairs)', g2: 'Reinforced Seating (Shield & pull/knockback immunity)', sp1: 'Explosive Seating (Next chair explosion radius +30% on hit)', sp2: 'Gravitational Pull (Super pulls enemies)' },
       'forest': { name: 'Forest', role: 'Controller', desc: 'Commands nature to fire delayed plant projectiles and summons a fierce parrot.', color: '#228b22', attack: "Nature's Wrath", attackDesc: 'Shoots 3 large plants left to right with a short delay.', super: 'Avian Ally', superDesc: 'Spawns a 7000 HP parrot that pecks the closest enemy.', hyper: 'Super spawns a Hyper Parrot that drops an egg at 50% HP. Main attacks burn.', g1: 'Rooted (Heal 2000 HP & 30% Shield, cannot move 3s)', g2: 'Grasping Vines (Next attack pulls enemies slightly)', sp1: 'Flaming Core (Middle plant sets enemies on fire)', sp2: 'Angry Bird (Parrot speed & attack rate +20%)' },
@@ -4568,9 +4952,9 @@
       'upiedown': { name:'Upiedown', role:'Thrower / Controller', desc:'A pie-flinging baker who turns the entire arena upside down.', color:'#e69a63', attack:'Pie in the Sky', attackDesc:'Lob a larger 1700-damage pie. Its impact launches 4 mini pies outward; each explodes on contact or at maximum range.', super:'Upside-Down Pie', superDesc:'Flip the battlefield for 3 seconds. Enemies move 28% slower while Upiedown reloads 15% faster.', hyper:'Blueberry Breakdown: Main pies release 7 mini pies. The flipped arena becomes blueberry pie and poisons enemies for 5 seconds.', g1:'Fresh Filling (Next large pie heals Upiedown for 1200)', g2:'Pie Face (Burst nearby enemies back with a pie explosion)', sp1:'Second Slice (Mini-pie explosions are 20% larger)', sp2:'No Crust Left (Hitting all 4 mini pies restores 1 ammo)' },
       'relay': { name:'Relay', role:'Support', desc:'A fragile shield engineer who reroutes incoming damage into a powerful linked device.', color:'#35d7e8', attack:'Shield Signal', attackDesc:'Fire a short-range orb for 1150 damage. Enemy hits grant Relay a 2000 shield; ally hits grant both Relay and that ally 2000 shield. Relay shields can reach 8500.', super:'Move My Damage', superDesc:'Deploy a 12000 HP Relay Device. While connected, 75% of damage aimed at Relay is moved into the device.', hyper:'Total Transfer: Shield Signal grants 2500 shield. The device has 16000 HP and takes 90% of Relay damage.', g1:'Emergency Transfer (Move up to 2000 of your shield into device HP)', g2:'Shared Connection (Nearest ally gains 50% damage transfer for 3s)', sp1:'Reinforced Signal (+25% device connection radius)', sp2:'Return to Sender (Destroyed device gives nearby allies 1500 shield)' },
       'warrior': { name:'Warrior', role:'Damage Dealer', desc:'A disciplined spear thrower who becomes a rapid-fire artillery fighter during Final Stand.', color:'#d9a441', attack:'Twin Spears', attackDesc:'Lobs 2 parallel spears over walls to an aimed landing area. Each spear deals 900 damage at Power 11.', super:'Final Stand', superDesc:'For 3 seconds, move 70% slower, reload 125% faster, and throw 3 spears per attack.', hyper:'Army of One: Final Stand throws 6 spears at 15% lower direct damage and only slows Warrior by 25%. Main attack landings explode for 280 area damage.', g1:'Spear Rain (Airborne spears land immediately with 20% less damage)', g2:'Battle Rush (Ignore Final Stand slow for 1.5s and reload 1 ammo)', sp1:'Perfect Formation (Two spears landing on one enemy deals 300 bonus damage)', sp2:'Hold the Line (20% damage reduction during Final Stand)' },
-      'angel': { name:'Angel', role:'Support', desc:'A guardian support who lifts allies out of danger and denies lethal damage.', color:'#fff0a8', attack:'Guiding Light', attackDesc:'A light shot that damages and slows enemies, or heals and briefly lifts teammates.', super:'Second Life', superDesc:'Gain a 6-second blessing. Lethal damage leaves Angel at 1 HP, then fully heals her.', hyper:'Team Takeback: Second Life protects the whole team for 5 seconds. Guiding Light fires a rapid triple burst.', g1:'Guardian Swap (Give Second Life to the nearest teammate)', g2:'Emergency Landing (Land lifted allies, heal 1600 and grant speed)', sp1:'Blessed Flight (Lifted allies gain a 900 shield on landing)', sp2:'Final Judgment (Second Life activation damages and knocks back nearby enemies)' },
+      'angel': { name:'Angel', role:'Support', desc:'A guardian support who lifts allies out of danger and denies lethal damage.', color:'#fff0a8', attack:'Guiding Light', attackDesc:'A light shot that damages and slows enemies, or heals and briefly lifts teammates.', super:'Second Life', superDesc:'Gain a 6-second blessing. Lethal damage restores about 75% max HP and grants 800ms of invulnerability.', hyper:'Team Takeback: Second Life protects the whole team for 5 seconds. Guiding Light fires a rapid triple burst.', g1:'Guardian Swap (Give Second Life to the nearest teammate)', g2:'Emergency Landing (Land lifted allies, heal 1600 and grant speed)', sp1:'Blessed Flight (Lifted allies gain a 900 shield on landing)', sp2:'Final Judgment (Second Life activation damages and knocks back nearby enemies)' },
       'demon': { name:'Demon', role:'Assassin', desc:'A demonic blade assassin who recalls his weapon or glides to its landing point.', color:'#d44763', attack:'Hellblade', attackDesc:'Throw a blade. For 1 second after it lands, move toward it to glide and retrieve it; otherwise it recalls and damages again.', super:'Demonic Doom', superDesc:'Create three blade clones that hook up to three enemies and pull them toward Demon.', hyper:'Doom’s Embrace: Fire a second spectral blade. During Demonic Doom’s pull, Demon gains 60% damage reduction.', g1:'Blade Swap (Instantly teleport to the grounded blade)', g2:'Barbed Recall (Next recall slows and heals on hit)', sp1:'Cut Both Ways (Outgoing plus returning hit deals 700 bonus)', sp2:'Hellbound Landing (Gliding grants a 1400 shield)' },
-      'paradox': { name: 'Paradox', role: 'Controller', desc: 'A legendary Time Weaver who tunnels space-time, slows enemy fire, and rewinds position.', color: '#a8a2ff', attack: 'Temporal Skip', attackDesc: 'Fires a skip shot. Disappears instantly and teleports to max range, detonating in a splash explosion.', super: 'Relativity Zone', superDesc: 'Spawns a dome. Friendly shots fly +50% faster. Enemy shots fly 40% slower but track players inside.', hyper: 'Double Paradox: Spawns stationary dome and attaches a mobile dome to Paradox. Attack skips twice as fast and stuns for 0.5s.', g1: 'Chronoshift (Rewind position 2 seconds ago and heal 1500 HP)', g2: 'Paradox Charge (Next attack sweeps full path for double damage)', sp1: 'Quantum Tangle (Skipped middle path pulls enemies towards explosion)', sp2: 'Temporal Fracture (Super activates 8s of side shots & middle sweeps)' },
+      'paradox': { name: 'Paradox', role: 'Controller', desc: 'A legendary Time Weaver who tunnels space-time, slows enemy fire, and rewinds position.', color: '#a8a2ff', attack: 'Temporal Skip', attackDesc: 'Fires a skip shot. Disappears instantly and teleports to max range, detonating in a splash explosion.', super: 'Relativity Zone', superDesc: 'Aim and place a large dome. Allied shots fly 10% faster; enemy shots fly 30% slower and track 30% less accurately.', hyper: 'Double Paradox: Places a stationary dome at the aim point and attaches a second mobile dome to Paradox. Attack skips twice as fast and stuns for 0.5s.', g1: 'Chronoshift (Rewind position 2 seconds ago and heal 1500 HP)', g2: 'Paradox Charge (Next attack sweeps full path for double damage)', sp1: 'Quantum Tangle (Skipped middle path pulls enemies towards explosion)', sp2: 'Temporal Fracture (Using Super grants 8s of side shots and a piercing middle sweep)' },
       'beam': { name: 'Beam', role: 'Damage Dealer', desc: 'A continuous laser weapon that ramps up damage the longer it hits.', color: '#ffd700', attack: 'Focus Beam', attackDesc: 'Fires a continuous laser. Damage ramps up through 6 stages while firing.', super: 'The Golden Beam', superDesc: 'Turns the beam golden! Enemies hit are stunned for 0.75s.', hyper: 'Purple Ray of Roar: +23% range, faster ramp, last 25% ammo does +50% dmg.', g1: 'Prism Split (Wide 3-laser cone)', g2: 'Emergency Cooling (Consume 30% ammo to heal 2000 HP)', sp1: 'Thermal Resonance (25% shield at max ramp)', sp2: 'Overload Residue (Super leaves a burning trail)' },
       'outlit': { name: 'Outlit', role: 'Close-range', desc: 'Shotgun blast with strong point-blank damage.', color: '#ff9b42', attack: 'Scatter Pump', attackDesc: 'A compact shotgun blast with a tight spread and strong point-blank damage.', super: 'Boom Break', superDesc: 'Fires 2 heavy shells that destroy walls and crack open escape routes.', hyper: 'Super pierces, tighter & faster main attacks.', g1: 'Next Shot Pierce', g2: 'Healing Pod', sp1: 'Shell Chill (Slows)', sp2: 'Long Boom (+35% Super Range)' },
       'echo': { name: 'Echo', role: 'Controller', desc: 'Fires expanding sound rings that control the battlefield.', color: '#ccaaff', attack: 'Sound Wave', attackDesc: 'Shoots a ring that grows in size as it travels.', super: 'Resonance', superDesc: 'Unleashes massive sound waves that pierce through enemies.', hyper: 'Super sound rings expand twice for double hits.', g1: 'Amplify (Bigger ring, less dmg)', g2: 'Shielding (Take reduced damage)', sp1: 'Reverb Heal (Heal 334 HP on hit)', sp2: 'Double Wave (Super shoots backwards too)' },
@@ -4598,7 +4982,7 @@
             'crystila': { name: 'Crystila', role: 'Marksman', desc: 'Anime crystal duelist with shrinking arm shots and a reflective glass super.', color: '#86d7ff', attack: 'Crystal Arms: Detach!', attackDesc: 'Launches a crystal arm that shrinks while traveling. On hit, after 0.22s, a follow-up shard lunges forward for 50% distance.', super: 'Crystal Glass: Explode!', superDesc: 'Summons a moving glass reflector for 4s. Front-facing by default, reflects incoming projectiles and absorbs up to 6800 damage.', hyper: 'Overreflective: Main attack gains an extra returning crystal layer. Super becomes 360° and absorbs 13000 damage.', g1: 'Prism Edge (Next attack pierces and follow-up travels farther)', g2: 'Polish Guard (Repair glass HP or gain instant shield)', sp1: 'Shatter Chill (Reflected/follow-up shots slow)', sp2: 'Tempered Glass (+20% glass HP and +1s duration)' },
             'hope': { name: 'Hope', role: 'Marksman', desc: 'An emotional brawler whose attacks scale with her own HP — the more hope she has, the harder she hits.', color: '#ffd6ec', attack: 'Hopeful Shot', attackDesc: "Fires a glowing orb that deals damage equal to a % of the enemy's max HP based on your current HP. At full HP it deals 16% of enemy max HP; less HP means less damage.", super: 'You Broke My Hope', superDesc: 'Unleashes a piercing cry in a cone, stunning all enemies caught in it for 1.5s.', hyper: 'Hope Never Dies! Main attack always deals the Hyper maximum of 18% regardless of current HP. Super cone expands to 180° and stuns for 2s.', g1: 'Rally Cry (Next attack deals damage as if at full HP)', g2: 'Desperate Shield (Gain a shield equal to 25% of your missing HP)', sp1: 'Minimum Hope (Attack always deals at least 7% of enemy max HP)', sp2: 'Hopeful Voice (Super stun lasts +0.5s longer)' },
             'evil_doctor': { name: 'Evil Doctor', role: 'Specialist', desc: 'To infect or not to infect? Hit enemies to poison them or miss to heal yourself.', color: '#00cc66', attack: 'Infectious Shot', attackDesc: 'Fires a syringe. Hit: 600 poison damage ×3 ticks, with 30% less time between ticks. Miss: heal 220 ×4 ticks.', super: 'Spread My Virus!', superDesc: 'Release 6 DNA strands that home onto enemies. Each deals 500 on hit plus fast poison, then disappears.', hyper: 'Main attack applies both effects: poison on hit and heal. Hyper DNA kills release 6 more hyper DNA.', g1: 'Antidote (Cleanse debuffs + heal 1200)', g2: 'Overdose (Next shot adds +1 poison tick)', sp1: 'Chain Reaction (Every kill releases DNA. If it kills, spawn full DNA burst)', sp2: 'Adrenaline Miss (Missed shots give a short speed boost)' },
-            'splitter': { name: 'The Splitter', role: 'Thrower', desc: 'Lobs unstable grenades that repeatedly split into larger explosive waves.', color: '#ffd166', attack: 'Split Grenade', attackDesc: 'One core splits into waves of 3, then 5, then 7, and finally 9 fragments.', super: 'Splitin Off!', superDesc: 'Throw a long-range core grenade that splits while traveling and explodes only at the end.', hyper: 'Main attack gains 2 extra split generations. Super gains 1 extra travel split and launches 3 grenades around you.', g1: 'Short Fuse (Next grenade splits faster and blasts wider)', g2: 'Ring Burst (Throw 3 mini split grenades around you)', sp1: 'Heavy Fragments (Split grenades deal +12% damage)', sp2: 'Chain Lob (Main attack range +20%)' },
+            'splitter': { name: 'The Splitter', role: 'Thrower', desc: 'A fractal artillery brawler whose shots multiply into precise projectile trees.', color: '#ffd166', attack: 'Fivecracker', attackDesc: 'Fire one non-piercing core that bursts into 5 side fragments on impact or at maximum range.', super: 'Infinite Division', superDesc: 'The core travels only 10% of its old distance before dividing into the immense-range 1 > 2 > 4 > 8 > 16 tree.', hyper: 'Tri-Split: Infinite Division fires in 3 directions around Splitter. Fivecracker opens into a huge five-way side fan.', g1: 'Short Fuse (Next grenade splits faster and blasts wider)', g2: 'Ring Burst (Throw 3 mini split grenades around you)', sp1: 'Heavy Fragments (Split grenades deal +12% damage)', sp2: 'Chain Lob (Main attack range +20%)' },
             'scuba_diver': { name: 'Scuba Diver', role: 'Epic Specialist', desc: 'Dual-mode diver: starts in submarine mode, can switch to scuba mode mid-match.', color: '#4fc3f7', attack: 'Bubble Barrage / Push Current', attackDesc: 'Submarine mode: fires 4 delayed bubbles in a left-to-right cone (520 close -> 320 far each; Hyper keeps at least 75% close damage). Scuba mode: pushes a rectangular bubble wave for 420 each.', super: 'Dash Underwater! / Transform', superDesc: 'Submarine mode: dash 5 tiles underwater, untargetable, and light post damages enemies hit. Scuba mode: transform back into submarine mode.', hyper: 'Under the Sea!: Main attacks keep at least 75% close-range damage and travel +30% farther. Super light post marks and slows. Scuba→Submarine transform grants a persistent 3000 shield.', g1: 'Depth Charge (Next main attack slows enemies)', g2: 'Emergency Oxygen (Heal and force scuba mode with speed burst)', sp1: 'Pressure Hull (Submarine death-swap grants extra shield)', sp2: 'Rip Current (Scuba mode attack is wider and lightly slows)' },
             'hoop': { name: 'Hoop', role: 'Controller', desc: 'Streetball playmaker with a SWISH/Bank-shot rhythm: direct hits power your next shot, wall bounces charge Heat Check.', color: '#ff9f43', attack: 'Bounce Breaker', attackDesc: 'Shoots a bouncing basketball that explodes in a small area on each impact. Direct hit before first bounce grants SWISH buff. Wall bounces build Bank Stacks; at 3 stacks your next shot becomes Heat Check.', super: 'Full-Court Crash', superDesc: 'Launches a giant slam ball that bounces multiple times, each bounce creating a heavy area blast.', hyper: 'Main attack throws an extra angle ball and first impact spawns mini-balls. Super gains extra bounce count, bigger blast radius, and stuns enemies in the blast.', g1: 'Backboard Bank (Next ball gets larger splash and extra bounce)', g2: 'Crossover Drive (Dash forward, gain shield, and speed burst)', sp1: 'Ankle Breaker (Main splash slows enemies briefly)', sp2: 'Deep Range (Main and super travel farther with faster arc)' },
             'screener': { name: 'Screener', role: 'Controller', desc: 'Battery-based projector brawler. Starts at 100% battery that drains over time; recharge by landing screen hits.', color: '#7ec8ff', attack: 'Projected Sweep', attackDesc: 'Fires a 360-degree radial burst of screen projectors around you. Each hit recharges battery.', super: 'Projected Charge', superDesc: 'Activates a static projector field for 4s. Incoming shots that touch the field are converted into projector blasts fired out at that angle.', hyper: 'Main attack spins with multiple rotating sweeps. Super gains an extra projector layer and stronger conversions.', g1: 'Power Cell (Instant battery refill + heal)', g2: 'Overclock Grid (Temporarily boost projector output and battery gain)', sp1: 'Efficient Panel (Battery decays slower)', sp2: 'Capacitor Bank (Larger battery capacity and stronger low-battery safety)' },
@@ -4721,26 +5105,66 @@
                 sp1:'Hot Streak (Every third successful four-card attack gains 15% speed and 10% damage)',
                 sp2:'Lucky Break (After a normal random Super, gain 12% movement speed for 2.5s)'
             },
+            'darkener': {
+                name:'Darkener', role:'Controller', color:'#29134f',
+                desc:'Blankets lanes in crawling darkness, then traps enemies inside a hexagonal prison they cannot see beyond.',
+                attack:'Shroud Sweep', attackDesc:'Send a slow, widening cone of shadow forward. Its first damage tick applies Darkness; enemies who remain in the cloud take repeat ticks.',
+                super:'Darkagon', superDesc:'Place a huge 7-second hexagon. Enemies inside cannot see outside, and incoming projectiles only become visible after crossing its edge.',
+                hyper:'Black Boundary: Shroud Sweep is 50% wider and has 50% more range. Darkagon edges damage enemies and smoothly knock them back inside.',
+                g1:'Dense Fog (Next Shroud Sweep is 35% wider and its first tick slows 25% for 1.5s)',
+                g2:'Hex Recall (While Darkagon is active, pull its enemies toward the center and restore 1 ammo)',
+                sp1:'Slow Suffocation (Shroud Sweep travels slower, lingers longer, and each repeat tick on the same target deals +25% more)',
+                sp2:'Pitch Black (The first tick applies 1 second more Darkness and slows 20% for 1.25s)'
+            },
+            'awakenator': {
+                name:'Awakenator', role:'Controller', desc:'An Anomaly dream-weaver who weakens awake enemies, remembers everyone he has put to Sleep, and corrupts their next attack.', color:'#7b6cff',
+                attack:'SLEEP COMMAND', attackDesc:'Fire a 950-damage dream bolt. A hit applies Sleep for 1 second: -40% movement speed and -20% outgoing damage, without preventing actions.',
+                super:'AWAKEN MY PAST, PRESENT AND FUTURE', superDesc:'Corrupt up to 2 previously slept enemies in 3v3 (1 in smaller modes). Their next attack is forced at a teammate for 30% damage, and the first hit Sleeps that teammate.',
+                hyper:'NIGHT SHIFT: main hits immediately corrupt one attack. Power Move corruption lasts 2 attacks and removes 30% of each target’s current HP without defeating them.',
+                g1:'Lucid Echo (Next Sleep lasts 1.5 seconds)', g2:'Memory Leak (Reapply Sleep to the nearest previously slept enemy)',
+                sp1:'Deep Sleep (Sleep reduces outgoing damage by 30%)', sp2:'Recurring Dream (A corrupted friendly hit Sleeps for 1.5 seconds)'
+            },
             'tower_core': { name: 'The Core', color: '#ffea00', role: 'Objective' },
             'turret': { name: 'Defensive Turret', color: '#00ffff', role: 'Defense' },
             'wall_structure': { name: 'Reinforced Wall', color: '#a8b8c8', role: 'Barrier' },
             'decoy_healer': { name: 'Decoy Healer', color: '#39ff14', role: 'Support' }
   };
 
+    // Player-facing BRAWE vocabulary. Legacy save keys and combat identifiers
+    // intentionally remain unchanged; only copy shown to players is rewritten.
+    function toBraweTerms(value) {
+        return String(value ?? '')
+            .replace(/Hypercharged/gi, match => match[0] === 'H' ? 'Core-Surged' : 'core-surged')
+            .replace(/Hypercharge/gi, match => match[0] === 'H' ? 'Core Surge' : 'core surge')
+            .replace(/Star Powers/gi, 'Talents').replace(/Star Power/gi, 'Talent')
+            .replace(/Gadgets/gi, 'Tools').replace(/Gadget/gi, 'Tool')
+            .replace(/Brawlers/gi, 'Fighters').replace(/Brawler/gi, 'Fighter')
+            .replace(/Passive Ability/gi, 'Instinct').replace(/Hero Ability/gi, 'Signature')
+            .replace(/Evolution/gi, 'Mutation')
+            .replace(/\bSupers\b/g, 'Power Moves').replace(/\bSuper\b/g, 'Power Move');
+    }
+    for (const data of Object.values(brawlerData)) {
+        if (!data || typeof data !== 'object') continue;
+        for (const key of ['desc','attackDesc','superDesc','hyper','g1','g2','sp1','sp2']) {
+            if (typeof data[key] === 'string') data[key] = toBraweTerms(data[key]);
+        }
+    }
+
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', forest:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank',
         blade_vane:'Assassin', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
         boomer:'Artillery', cluster:'Artillery', evil_doctor:'Artillery', fightnfire:'Artillery', rocketeer:'Artillery', skeleflying:'Artillery', splitter:'Artillery', trapper:'Artillery', upiedown:'Artillery',
         amplifier:'Support', angel:'Support', echo:'Support', fastpass:'Support', freestyle:'Support', hope:'Support', relay:'Support', sera_eclipse:'Support',
-        adlof:'Controller', daggershard:'Controller', decayer:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller',
+        adlof:'Controller', awakenator:'Controller', daggershard:'Controller', darkener:'Controller', decayer:'Controller', forest:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller',
         beam:'Damage Dealer', duck:'Damage Dealer', fuser:'Damage Dealer', heater_miser:'Damage Dealer', jacktrade:'Damage Dealer', minigunnin:'Damage Dealer', money_and_tax:'Damage Dealer', outlit:'Damage Dealer', steamer:'Damage Dealer',
         bouncin_balls:'Skirmisher', chickpig:'Skirmisher', classy:'Skirmisher', copyphase:'Skirmisher', goonbob:'Skirmisher', hoop:'Skirmisher', hyperorigin:'Skirmisher', robber:'Skirmisher'
     };
     for (const [id, role] of Object.entries(PRIMARY_ROLE_BY_BRAWLER)) if (brawlerData[id]) brawlerData[id].role = role;
-
     const brawlerPortraitIcons = {
+        awakenator: '\u{1F9E0}',
+        darkener: '\u{1F311}',
         jacktrade: '\u{1F0CF}',
         ghoul: '\u{1F47B}',
         portalo: '\u{1F300}',
@@ -4844,14 +5268,18 @@
         bucket[brawlerId][slot] = true;
     }
     function hasEntityAttachie(entity, type, slot) {
+        // Major Update migration: Tool/Talent Attachies are retired player-facing
+        // and mechanically disabled. Core Surge Attachies stay live.
+        if (type === 'gadget' || type === 'star') return false;
         const id = entity && entity.id === player.id ? selectedBrawler : (entity ? entity.brawler : selectedBrawler);
         if (!id) return false;
         return hasAttachie(type, id, slot);
     }
     function hasSelectedAttachie(type, slot, brawlerId = selectedBrawler) {
+        if (type === 'gadget' || type === 'star') return false;
         return hasAttachie(type, brawlerId, slot);
     }
-    function getPlayerHyperMainActive(brawlerId) { return !!isHypercharged && hasHyperAttachie(brawlerId); }
+    function getPlayerHyperMainActive(brawlerId) { return !!isHypercharged && (isTraining || hasHyperAttachie(brawlerId)); }
     function openAttachiesHubLegacyDisabled() {
         return;
     }
@@ -4865,9 +5293,7 @@
         overlay.appendChild(panel);
         let activeType = 'hyper';
         const infoByType = {
-            hyper: { title:'Hyper Attachie', tab:'HYPER', color:'#d970ff', slots:['hyper'] },
-            gadget: { title:'Gadget Attachie', tab:'GADGET', color:'#55d68a', slots:['g1','g2'] },
-            star: { title:'Star Attachie', tab:'STAR', color:'#ffd166', slots:['slow','long'] }
+            hyper: { title:'Core Surge Attachie', tab:'CORE SURGE', color:'#d970ff', slots:['hyper'] }
         };
         const slotLabel = { hyper:'Hyper Main', g1:'Gadget 1', g2:'Gadget 2', slow:'Star Power 1', long:'Star Power 2' };
         const slotDesc = {
@@ -4882,12 +5308,14 @@
             hyperorigin: { g1:'Core Overflow grants 4 Energy; excess Energy becomes a 500 shield each.', g2:'Fault Line dashes 260 units and grants an 1800 shield.', slow:'Heavy Singularity pulls enemies 70 units before suspending them.', long:'Stable Origin raises the 5+ Energy damage reduction from 18% to 24%.' },
             heater_miser: { g1:'Pressure Spike burns for 100 damage every 0.5 seconds for 2 seconds.', g2:'Three-Way Flux chains to 2 extra targets at 70% power.', slow:'Stored Heat loses only one ramp stage when the tether disconnects.', long:'Closed Circuit lets the Super zone retether through walls at 75% power.' },
             minigunnin: { g1:'Full Overclock fires 8 radial bullets and grants a 600 shield for 2 seconds.', g2:'Efficient Fortify costs 750 max HP and heals 3500.', slow:'Every 10th bullet pierces once and deals 130% damage.', long:'Walls and forts gain 25% HP and resist their first wall-breaking hit.' },
-            steamer: { g1:'Boiler Burst grows 30%; enemies in the inner ring are stunned for 0.45 seconds.', g2:'Express Service lasts 6.5 seconds and grants 15% reload speed.', slow:'Pressure trails burn enemies for 240 damage over 2 seconds.', long:'Last Stop ends with a knockback ring and heals Steamer for 900.' }
+            steamer: { g1:'Boiler Burst grows 30%; enemies in the inner ring are stunned for 0.45 seconds.', g2:'Express Service lasts 6.5 seconds and grants 15% reload speed.', slow:'Pressure trails burn enemies for 240 damage over 2 seconds.', long:'Last Stop ends with a knockback ring and heals Steamer for 900.' },
+            darkener: { g1:'Shroud Sweep fires twice with offset angles.', g2:'Enemies in the center 40% of the cloud take 3x damage.', slow:'Cloud gains 20% more range and 30% longer linger duration.', long:'Darkness effect heals Darkener for 50% of damage on first tick.' }
         };
         const fixedClaws = [
             ['outlit','echo','cheseypuff','decayer'],
             ['unopcoloco','dashaholic','trapper','classy'],
-            ['hyperorigin','heater_miser','minigunnin','steamer']
+            ['hyperorigin','heater_miser','minigunnin','steamer'],
+            ['darkener','bowlin_rida','money_and_tax','hunter']
         ];
         const fixedIds = new Set(fixedClaws.flat());
         const remainingIds = allBrawlers.filter(id => !fixedIds.has(id));
@@ -4931,10 +5359,10 @@
                 ? allBrawlers.filter(id => state.hyper[id]).length
                 : allBrawlers.reduce((sum, id) => sum + info.slots.filter(slot => owns(activeType, id, slot)).length, 0);
             const total = activeType === 'hyper' ? allBrawlers.length : allBrawlers.length * info.slots.length;
-            panel.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div style="color:#d8a7ff;font-weight:1000;letter-spacing:.15em">COLLECTION LAB</div><h1 style="margin:4px 0">ATTACHIES</h1><div style="color:#b9cce2">${info.title}s ${owned}/${total} - ${playerData.coins || 0} Coins</div></div><button data-close style="padding:12px 18px;border:0;border-radius:12px;background:#e7efff;font-weight:1000;cursor:pointer">CLOSE</button></div><div data-tabs style="display:flex;gap:8px;margin:18px 0"></div><p style="color:#d8e5f5">Attachies add an extra effect to an owned ability; they never replace or lock its base effect. Gadget and Star Claws 1-3 are live.</p><div data-machines style="display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:13px"></div>`;
+            panel.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div style="color:#d8a7ff;font-weight:1000;letter-spacing:.15em">COLLECTION LAB</div><h1 style="margin:4px 0">CORE SURGE ATTACHIES</h1><div style="color:#b9cce2">${info.title}s ${owned}/${total} - ${playerData.coins || 0} Coins</div></div><button data-close style="padding:12px 18px;border:0;border-radius:12px;background:#e7efff;font-weight:1000;cursor:pointer">CLOSE</button></div><div data-tabs style="display:flex;gap:8px;margin:18px 0"></div><p style="color:#d8e5f5">Core Surge Attachies add an extra effect to an owned Core Surge; they never replace its base effect. Retired Tool and Talent Attachies are no longer available.</p><div data-machines style="display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:13px"></div>`;
             panel.querySelector('[data-close]').onclick = () => overlay.remove();
             const tabs = panel.querySelector('[data-tabs]');
-            for (const type of ['hyper','gadget','star']) {
+            for (const type of ['hyper']) {
                 const tabInfo = infoByType[type];
                 const tab = document.createElement('button');
                 tab.textContent = tabInfo.tab;
@@ -5009,6 +5437,96 @@
         if (typeof entity.beastMoveMult !== 'number') entity.beastMoveMult = 1.0;
         if (typeof entity.beastAttackFlip !== 'number') entity.beastAttackFlip = 0;
         if (typeof entity.beastTransformed !== 'boolean') entity.beastTransformed = false;
+        if (typeof entity.beastyBeastUntil !== 'number') entity.beastyBeastUntil = 0;
+        if (typeof entity.beastyBeastNextClawAt !== 'number') entity.beastyBeastNextClawAt = 0;
+        if (typeof entity.beastyBeastClawFlip !== 'number') entity.beastyBeastClawFlip = -1;
+    }
+
+    function isBeastyBeastActive(entity, now = performance.now()) {
+        if (!entity) return false;
+        ensureBeastState(entity);
+        return entity.hp > 0 && entity.beastyBeastUntil > now;
+    }
+
+    function getBeastRawPrimaryClawDamage(entity, isBot = false) {
+        const level = entity?.id === player.id
+            ? getSelectedBrawlerLevel()
+            : clamp(Math.floor(entity?.level || 11), 1, 11);
+        const normalScale = getLevelDamageScale(level);
+        // Beast used to inherit the harsh global P1 scale twice: once in his
+        // tiny raw claws and again on hit. Give only Beast a healthier curve.
+        const beastScale = 0.72 + (level - 1) * 0.028;
+        const p11RawDamage = isBot ? 250 : 475;
+        return Math.round(p11RawDamage * beastScale / Math.max(0.01, normalScale));
+    }
+
+    function getBeastSignatureState(entity = player, now = performance.now()) {
+        ensureBeastState(entity);
+        const active = isBeastyBeastActive(entity, now);
+        const regularForm = !entity.beastModeActive && !(entity.beastTransformUntil && now < entity.beastTransformUntil);
+        const currentAmmo = entity.id === player.id ? ammo : Math.max(0, entity.ammo || 0);
+        const ammoCap = entity.id === player.id ? maxAmmo : Math.max(1, entity.maxAmmo || 3);
+        const fullAmmo = currentAmmo >= ammoCap;
+        const ready = entity.hp > 0 && !active && regularForm && fullAmmo;
+        const remaining = active ? Math.max(0, entity.beastyBeastUntil - now) : 0;
+        const label = active ? `BEASTYBEAST ${(remaining / 1000).toFixed(1)}s`
+            : !regularForm ? 'REGULAR FORM REQUIRED'
+            : !fullAmmo ? 'FULL AMMO REQUIRED'
+            : 'BEASTYBEAST READY';
+        return { active, ready, regularForm, fullAmmo, remaining, label };
+    }
+
+    function findBeastyBeastTarget(owner) {
+        return [player, ...bots]
+            .filter(target => target && target.hp > 0 && target.id !== owner.id && !target.isFlying && !areAlliedEntities(owner, target))
+            .sort((a, b) => Math.hypot(a.x - owner.x, a.y - owner.y) - Math.hypot(b.x - owner.x, b.y - owner.y))[0] || null;
+    }
+
+    function spawnBeastyBeastClaw(owner) {
+        if (!owner || owner.hp <= 0) return;
+        ensureBeastState(owner);
+        const target = findBeastyBeastTarget(owner);
+        const angle = target ? Math.atan2(target.y - owner.y, target.x - owner.x) : (owner.beastyBeastLastAngle || 0);
+        owner.beastyBeastLastAngle = angle;
+        const side = owner.beastyBeastClawFlip >= 0 ? 1 : -1;
+        owner.beastyBeastClawFlip = -side;
+        const clawAngle = angle + side * 0.10;
+        const isBot = owner.id !== player.id;
+        bullets.push({
+            ownerBrawler: 'beast', isBeastClaw: true, beastyBeastClaw: true,
+            beastClawIndex: 0, beastMode: false, beastPoison: false,
+            x: owner.x + Math.cos(clawAngle) * ((owner.radius || 16) + 7),
+            y: owner.y + Math.sin(clawAngle) * ((owner.radius || 16) + 7),
+            vx: Math.cos(clawAngle) * 620, vy: Math.sin(clawAngle) * 620,
+            life: 0, maxLife: 0.22,
+            damage: getBeastRawPrimaryClawDamage(owner, isBot),
+            pierce: true, ownerId: owner.id, hitIds: {}, hitboxMod: 2.35,
+            beastSlashDir: side, beastRangeMult: 1.08,
+            signatureAttack: true, superChargeGranted: true
+        });
+    }
+
+    const BEASTY_BEAST_CLAW_INTERVAL_MS = 10;
+
+    function updateBeastyBeast(entity, now) {
+        if (!entity) return;
+        ensureBeastState(entity);
+        if (!isBeastyBeastActive(entity, now)) {
+            if (entity.beastyBeastUntil && now >= entity.beastyBeastUntil) {
+                entity.beastyBeastUntil = 0;
+                entity.beastyBeastNextClawAt = 0;
+                if (entity.id === player.id) spawnFloatingText(entity.x, entity.y - 42, 'BEASTYBEAST ENDED', '#ffd34f');
+            }
+            return;
+        }
+        entity.hp = Math.max(1, entity.hp);
+        if (!entity.beastyBeastNextClawAt) entity.beastyBeastNextClawAt = now;
+        let catchup = 0;
+        while (now >= entity.beastyBeastNextClawAt && catchup < 3) {
+            spawnBeastyBeastClaw(entity);
+            entity.beastyBeastNextClawAt += BEASTY_BEAST_CLAW_INTERVAL_MS;
+            catchup++;
+        }
     }
 
     function startBeastTransform(entity, now, isHyper) {
@@ -5330,6 +5848,8 @@
   let nextId = 1;
   let aliveCount = MAX_BOTS + 1;
   let gameOver = false;
+  let fullOnDamageMatchTotal = 0;
+  let fullOnDamageMatchCommitted = true;
   let lastShot = 0;
   const fireRate = 180; // ms per shot
   let superCharge = 0; // 0-100
@@ -5341,7 +5861,6 @@
   let gadgetArmed = false;
   let gadgetCooldownUntil = 0;
   let gadgetCooldownBySlot = { g1: 0, g2: 0 };
-  let aimingSuper = false;
   const GADGET_COOLDOWN_MS = 12000; // Balanced cooldown
   const GADGET_COOLDOWN_BY_BRAWLER = {
       outlit: { g1: 12000, g2: 15000 },
@@ -5490,6 +6009,8 @@
   // Duels Mode State
   let isDuels = false;
   let towerDuelOriginalBrawler = null;
+  let towerDuelPowerLoadouts = {};
+  let towerDuelBotPowerLoadouts = {};
   let isTraining = false;
     let isTutorialMode = false;
     let tutorialStartedAt = 0;
@@ -5515,6 +6036,7 @@
     let isPowerGodsMode = false;
     let isKnockDonateMode = false;
     let isBrickVaultMode = false;
+    let isTowerPowerVaultWeekendMatch = false;
     let isSoloTdMode = false;
     let soloTdWave = 0;
     let soloTdCurrency = 150;
@@ -5524,6 +6046,153 @@
     let isMarkedMayhemMode = false;
     let isTugZoneMode = false;
     let isImpossibleMode = false;
+    let isCorruptedShowdownMode = false;
+    let isCoreBreachIntroMode = false;
+    const CORE_BREACH_DAMAGE_TARGET = 60000;
+    const CORE_BALL_MAX_HP = 135000;
+    let coreBreachState = null;
+    let corruptedShowdownState = null;
+    function shouldStartCoreBreachIntro(){const {season}=ensureSeason3State();return !isCorruptedShowdownMode&&['solo','duo','trio'].includes(showdownMode)&&(!season.coreBreachCompleted||season.coreBreachReplayDebug);}
+    function initCoreBreachIntro(){
+        isCoreBreachIntroMode=shouldStartCoreBreachIntro();coreBreachState=isCoreBreachIntroMode?{phase:'pvp',damage:0,progress:0,startedAt:performance.now(),boss:null,nextAttackAt:0,telegraphs:[],pools:[],finished:false}:null;
+    }
+
+    const PARADOX_SUPER_AIM_RANGE = 560;
+    const PARADOX_NORMAL_ZONE_RADIUS = 192;
+    const PARADOX_HYPER_ZONE_RADIUS = 240;
+    function getParadoxSuperTarget(owner, targetX, targetY) {
+        const dx = (Number.isFinite(targetX) ? targetX : owner.x) - owner.x;
+        const dy = (Number.isFinite(targetY) ? targetY : owner.y) - owner.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance <= PARADOX_SUPER_AIM_RANGE) {
+            return { x: clamp(owner.x + dx, 24, WORLD_W - 24), y: clamp(owner.y + dy, 24, WORLD_H - 24) };
+        }
+        const angle = Math.atan2(dy, dx);
+        return {
+            x: clamp(owner.x + Math.cos(angle) * PARADOX_SUPER_AIM_RANGE, 24, WORLD_W - 24),
+            y: clamp(owner.y + Math.sin(angle) * PARADOX_SUPER_AIM_RANGE, 24, WORLD_H - 24)
+        };
+    }
+
+    function addParadoxZone(owner, x, y, radius, durationMs, hyper, attachedToEntity = null) {
+        const zone = { x, y, radius, ownerId: owner.id, ownerTeam: owner.team,
+            expiresAt: performance.now() + durationMs, attachedToEntity, hyper: !!hyper };
+        relativityZones.push(zone);
+        explosions.push({ x, y, radius, life: 0, maxLife: 0.42,
+            color: hyper ? 'rgba(159, 48, 255, 0.48)' : 'rgba(32, 231, 255, 0.42)',
+            legendary: true, fxKind: 'paradoxZoneOpen' });
+        return zone;
+    }
+
+    function castParadoxSuper(owner, targetX, targetY, hyper) {
+        const now = performance.now();
+        const target = getParadoxSuperTarget(owner, targetX, targetY);
+        for (let i = relativityZones.length - 1; i >= 0; i--) {
+            if (relativityZones[i].ownerId === owner.id) relativityZones.splice(i, 1);
+        }
+        addParadoxZone(owner, target.x, target.y,
+            hyper ? PARADOX_HYPER_ZONE_RADIUS : PARADOX_NORMAL_ZONE_RADIUS,
+            hyper ? 6000 : 4000, hyper, null);
+        if (hyper) addParadoxZone(owner, owner.x, owner.y, PARADOX_HYPER_ZONE_RADIUS, 6000, true, owner);
+        if (getOwnerStarChoice(owner) === 'long') {
+            owner.paradoxFractureUntil = now + 8000;
+            spawnFloatingText(owner.x, owner.y - 42, 'TEMPORAL FRACTURE', '#ffd36f');
+        }
+    }
+    function recordCoreBreachCombatDamage(owner,target,amount){
+        if(!isCoreBreachIntroMode||coreBreachState?.phase!=='pvp'||!owner||!target||owner===target||areAlliedEntities(owner,target)||target.isDummy||target.isStructure)return;
+        const value=Math.max(0,Math.min(Number(amount)||0,Math.max(0,target.hp||0)+Math.max(0,target.shield||0)+Number(amount||0)));if(!value)return;
+        coreBreachState.damage+=value;coreBreachState.progress=clamp(coreBreachState.damage/CORE_BREACH_DAMAGE_TARGET,0,1);
+        if(coreBreachState.progress>=1)beginCoreBreachRaid();
+    }
+    function beginCoreBreachRaid(){
+        const state=coreBreachState;if(!state||state.phase!=='pvp')return;state.phase='raid';state.transitionAt=performance.now();state.nextAttackAt=state.transitionAt+1800;
+        for(const entity of [player,...bots])if(entity&&!entity.isPet&&!entity.isStructure){entity.team='core_allies';entity.lastTargetId=null;entity.targetLockUntil=0;}
+        for(let i=destructibleWalls.length-1;i>=0;i--){const wall=destructibleWalls[i],cx=wall.x+(wall.w||0)*.5,cy=wall.y+(wall.h||0)*.5;if(Math.hypot(cx-WORLD_W*.5,cy-WORLD_H*.5)<420)destructibleWalls.splice(i,1);}
+        const raidFighters=[player,...bots].filter(entity=>entity&&entity.team==='core_allies'&&!entity.isPet&&!entity.isStructure).length,scaledCoreHp=Math.round(CORE_BALL_MAX_HP*clamp(1+Math.max(0,raidFighters-4)*.16,1,8));
+        const boss={id:'season3_core_ball',brawler:'overlord',isBoss:true,isCoreBallBoss:true,noRespawn:true,noPowerupDrop:true,x:WORLD_W*.5,y:WORLD_H*.5,z:55,vx:0,vy:0,radius:72,speed:135,hp:scaledCoreHp,maxHp:scaledCoreHp,shield:0,shieldMax:0,team:'core_enemy',lastShot:0,superCharge:0,hyperChargeCharge:0,isHypercharged:false,gadgetArmed:false,selectedStar:'none',selectedGadget:'g1'};
+        state.moveAngle=Math.random()*Math.PI*2;state.nextMoveAt=state.transitionAt+700;
+        bots.push(boss);state.boss=boss;spawnFloatingText(player.x,player.y-60,'CORE BREACH DETECTED','#ff794f');
+    }
+    function queueCoreBallAttack(state,now){
+        const boss=state.boss;if(!boss||boss.hp<=0)return;const stage=boss.hp>boss.maxHp*.66?1:boss.hp>boss.maxHp*.33?2:3;
+        const targets=[player,...bots].filter(e=>e&&e.hp>0&&e.team==='core_allies'&&!e.isPet),target=targets[Math.floor(Math.random()*Math.max(1,targets.length))]||player;
+        if(stage===1){
+            for(let i=0;i<Math.min(5,Math.max(2,targets.length));i++){const victim=targets[i%targets.length]||target,a=i*2.399;state.telegraphs.push({kind:'orb',x:clamp(victim.x+Math.cos(a)*65,35,WORLD_W-35),y:clamp(victim.y+Math.sin(a)*65,35,WORLD_H-35),radius:56,explodeAt:now+900+i*90,stage,damage:580});}
+        }else if(stage===2){
+            for(let fork=0;fork<Math.min(3,Math.max(1,targets.length));fork++){const victim=targets[fork%targets.length]||target,angle=Math.atan2(victim.y-boss.y,victim.x-boss.x);for(let i=1;i<=6;i++)state.telegraphs.push({kind:'crack',x:boss.x+Math.cos(angle)*i*105,y:boss.y+Math.sin(angle)*i*105,radius:38,explodeAt:now+620+i*100+fork*120,stage,damage:650,leavePool:i===6});}
+        }else{
+            const safeAngle=Math.atan2(target.y-boss.y,target.x-boss.x)+Math.PI;
+            for(const radius of [155,285,415])state.telegraphs.push({kind:'shockwave',x:boss.x,y:boss.y,radius,band:42,safeAngle,explodeAt:now+650+radius*1.35,stage,damage:760});
+        }
+        state.nextAttackAt=now+(stage===1?2800:stage===2?2300:2050);
+    }
+    function finishCoreBreach(){
+        const state=coreBreachState;if(!state||state.finished)return;state.finished=true;state.phase='ending';const {season}=ensureSeason3State();if(!season.coreBreachReplayDebug)season.coreBreachCompleted=true;season.coreBreachSignalsRevealed=true;
+        addPacketSignal('bird',100,'CORE BREACH',false);for(const id of Object.keys(PACKET_DEFS))if(id!=='bird')addPacketSignal(id,20,'BIOME SIGNAL',false);saveProgress();
+        progressSeason3Quest('core_ball',1,true);
+        const overlay=document.createElement('div');overlay.className='core-breach-ending';overlay.innerHTML='<small>CORE BALL DESTROYED</small><h1>6 UNKNOWN PACKET SIGNALS DETECTED</h1><div><span>SKYWILD</span><span>MOLTEN CROWN</span><span>IRON CHORUS</span><span>GLACIER SIGNAL</span><span>UMBRAL GARDEN</span><span>CHRONO DIVIDE</span></div>';document.body.appendChild(overlay);setTimeout(()=>{overlay.remove();gameOver=true;},4200);
+    }
+    function updateCoreBreachIntro(dt,now=performance.now()){
+        const state=coreBreachState;if(!isCoreBreachIntroMode||!state)return;
+        for(const entity of [player,...bots]){
+            if(!entity||entity.isCoreBallBoss||entity.hp>0)continue;entity.coreBreachRespawn=(entity.coreBreachRespawn||0)+dt;if(entity.coreBreachRespawn<3)continue;
+            const spawn=findNearestDrySpot(WORLD_W*.5+(Math.random()-.5)*700,WORLD_H*.5+(Math.random()-.5)*700,entity.radius||14);entity.x=spawn.x;entity.y=spawn.y;entity.hp=entity.maxHp;entity.isDead=false;entity.z=0;entity.stunUntil=0;entity.slowUntil=0;entity.shield=0;entity.coreBreachRespawn=0;entity.defenseUntil=now+1100;entity.invulnerableUntil=now+1100;if(entity===player){ammo=maxAmmo;triggerPlayerRespawnTrinkets();}
+        }
+        if(state.phase==='raid'){
+            const boss=state.boss;if(!boss||boss.hp<=0){finishCoreBreach();return;}
+            const stage=boss.hp>boss.maxHp*.66?1:boss.hp>boss.maxHp*.33?2:3;
+            if(now>=state.nextMoveAt){const target=[player,...bots].filter(e=>e&&e.hp>0&&e.team==='core_allies'&&!e.isPet).sort((a,b)=>Math.hypot(a.x-boss.x,a.y-boss.y)-Math.hypot(b.x-boss.x,b.y-boss.y))[0]||player;state.moveAngle=Math.atan2(target.y-boss.y,target.x-boss.x)+(Math.random()-.5)*(stage===3?1.8:2.8);state.nextMoveAt=now+(stage===3?850:1300);}
+            const moveSpeed=(stage===1?80:stage===2?112:145),nx=boss.x+Math.cos(state.moveAngle)*moveSpeed*dt,ny=boss.y+Math.sin(state.moveAngle)*moveSpeed*dt,dry=findNearestDrySpot(clamp(nx,110,WORLD_W-110),clamp(ny,110,WORLD_H-110),boss.radius);
+            boss.x+=(dry.x-boss.x)*Math.min(1,dt*5);boss.y+=(dry.y-boss.y)*Math.min(1,dt*5);boss.z=45+Math.sin(now/180)*12;
+            if(now>=state.nextAttackAt)queueCoreBallAttack(state,now);
+            for(let i=state.telegraphs.length-1;i>=0;i--){
+                const mark=state.telegraphs[i];if(now<mark.explodeAt)continue;state.telegraphs.splice(i,1);
+                explosions.push({x:mark.x,y:mark.y,radius:mark.kind==='shockwave'?mark.band:mark.radius,life:0,maxLife:.36,color:mark.kind==='shockwave'?'rgba(255,202,54,.82)':'rgba(255,82,34,.72)',fxKind:'coreBreach'});
+                if(mark.kind==='shockwave'){
+                    for(const entity of [player,...bots])if(entity&&entity.hp>0&&entity.team==='core_allies'){
+                        const dx=entity.x-mark.x,dy=entity.y-mark.y,dist=Math.hypot(dx,dy),angle=Math.atan2(dy,dx),gap=Math.abs(Math.atan2(Math.sin(angle-mark.safeAngle),Math.cos(angle-mark.safeAngle)));
+                        if(Math.abs(dist-mark.radius)<=mark.band+(entity.radius||14)&&gap>.48)checkHit(entity,{ownerId:boss.id,ownerBrawler:'overlord',damage:mark.damage,pierce:true,super:true,hitIds:{}},-1);
+                    }
+                }else{AOEDamage(mark.x,mark.y,mark.radius,mark.damage||420+mark.stage*180,boss.id,true);if(mark.leavePool)state.pools.push({x:mark.x,y:mark.y,radius:78,until:now+3600,nextTickAt:now});}
+            }
+            for(let i=state.pools.length-1;i>=0;i--){const pool=state.pools[i];if(now>=pool.until){state.pools.splice(i,1);continue;}if(now>=pool.nextTickAt){pool.nextTickAt=now+650;AOEDamage(pool.x,pool.y,pool.radius,220,boss.id,true);}}
+        }
+    }
+    function renderCoreBreachIntro(){
+        const state=coreBreachState;if(!isCoreBreachIntroMode||!state)return;ctx.save();
+        const intensity=state.phase==='pvp'?state.progress:1,lines=Math.floor(4+intensity*22);ctx.strokeStyle=`rgba(255,${Math.round(105-55*intensity)},28,${.2+intensity*.55})`;ctx.lineWidth=2+intensity*3;
+        for(let i=0;i<lines;i++){const a=i*2.399963,r=(70+i*47)%(Math.min(WORLD_W,WORLD_H)*.48),cx=WORLD_W*.5+Math.cos(a)*r,cy=WORLD_H*.5+Math.sin(a)*r;ctx.beginPath();ctx.moveTo(cx-20-intensity*35,cy-12);ctx.lineTo(cx,cy);ctx.lineTo(cx+18+intensity*48,cy+25);ctx.stroke();}
+        if(state.phase==='raid'){
+            for(const pool of state.pools){ctx.fillStyle='rgba(255,67,26,.2)';ctx.strokeStyle='#ff7138';ctx.lineWidth=3;ctx.beginPath();ctx.arc(pool.x,pool.y,pool.radius,0,Math.PI*2);ctx.fill();ctx.stroke();}
+            for(const mark of state.telegraphs){const pulse=.72+.28*Math.sin(performance.now()/70);ctx.fillStyle=`rgba(255,74,30,${.16*pulse})`;ctx.strokeStyle=mark.kind==='shockwave'?'#ffe45d':mark.kind==='crack'?'#ff4f3d':'#ff9b62';ctx.lineWidth=4;ctx.beginPath();if(mark.kind==='shockwave'){ctx.arc(mark.x,mark.y,mark.radius,mark.safeAngle+.48,mark.safeAngle+Math.PI*2-.48);}else ctx.arc(mark.x,mark.y,mark.radius*pulse,0,Math.PI*2);ctx.stroke();if(mark.kind!=='shockwave'){ctx.beginPath();ctx.arc(mark.x,mark.y,mark.radius*pulse,0,Math.PI*2);ctx.fill();}}
+            if(state.boss){const stage=state.boss.hp>state.boss.maxHp*.66?1:state.boss.hp>state.boss.maxHp*.33?2:3;ctx.fillStyle=stage===3?'#ffe05b':'#ff7a38';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.fillText(`CORE BALL • STAGE ${stage}`,state.boss.x,state.boss.y-105);ctx.font='900 11px sans-serif';ctx.fillText(stage===1?'CORE ORBS':stage===2?'LAVA CRACKS':'BREACH SHOCKWAVES',state.boss.x,state.boss.y-88);ctx.textAlign='left';}
+        }
+        if(state.phase==='ending'){
+            const colors=['#4bc9ff','#ff623d','#b0a5ff','#8ff2e1','#9a4cff','#ffd464'],names=['SKYWILD','MOLTEN CROWN','IRON CHORUS','GLACIER SIGNAL','UMBRAL GARDEN','CHRONO DIVIDE'];
+            for(let i=0;i<6;i++){const a0=-Math.PI/2+i*Math.PI/3,a1=a0+Math.PI/3;ctx.fillStyle=`${colors[i]}33`;ctx.strokeStyle=colors[i];ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(WORLD_W*.5,WORLD_H*.5);ctx.arc(WORLD_W*.5,WORLD_H*.5,Math.max(WORLD_W,WORLD_H),a0,a1);ctx.closePath();ctx.fill();ctx.stroke();const a=(a0+a1)/2,r=Math.min(WORLD_W,WORLD_H)*.3;ctx.fillStyle=colors[i];ctx.font='900 24px sans-serif';ctx.textAlign='center';ctx.fillText(names[i],WORLD_W*.5+Math.cos(a)*r,WORLD_H*.5+Math.sin(a)*r);}
+            ctx.textAlign='left';
+        }
+        if(state.phase==='pvp'){ctx.setTransform(1,0,0,1,0,0);const w=Math.min(520,innerWidth-40),x=(innerWidth-w)/2,y=26;ctx.fillStyle='rgba(21,8,8,.88)';ctx.strokeStyle='#ff7a38';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(x,y,w,48,12);ctx.fill();ctx.stroke();ctx.fillStyle='#ff6a2e';ctx.fillRect(x+10,y+29,(w-20)*state.progress,8);ctx.fillStyle='#ffe2c2';ctx.font='900 12px sans-serif';ctx.textAlign='center';ctx.fillText(`CORE INSTABILITY • ${Math.floor(state.damage).toLocaleString()} / ${CORE_BREACH_DAMAGE_TARGET.toLocaleString()}`,innerWidth/2,y+20);ctx.textAlign='left';}
+        ctx.restore();
+    }
+    function initCorruptedShowdown(){
+        if(!isCorruptedShowdownMode){corruptedShowdownState=null;return;}
+        corruptedShowdownState={nextSurgeAt:performance.now()+7000,surgeUntil:0,label:'CORE STATIC',telegraphs:[]};
+    }
+    function updateCorruptedShowdown(now=performance.now()){
+        const state=corruptedShowdownState;if(!isCorruptedShowdownMode||!state||gameOver)return;
+        if(now>=state.nextSurgeAt){
+            const variants=['GRAVITY GLITCH','PACKET OVERCLOCK','CORE STATIC','BIOME COLLISION'],choice=variants[Math.floor(Math.random()*variants.length)];state.label=choice;state.surgeUntil=now+4000;state.nextSurgeAt=now+11000;
+            const living=[player,...bots].filter(e=>e&&e.hp>0);for(const e of living){if(choice==='PACKET OVERCLOCK'){e.reloadBuffUntil=Math.max(e.reloadBuffUntil||0,now+4000);e.packetCorruptSpeedUntil=now+4000;}else if(choice==='GRAVITY GLITCH')e.slowUntil=Math.max(e.slowUntil||0,now+650);else if(choice==='CORE STATIC')e.superCharge=Math.min(100,(e.superCharge||0)+12);}
+            if(choice==='BIOME COLLISION')for(let i=0;i<5;i++){const target=living[Math.floor(Math.random()*living.length)]||player;state.telegraphs.push({x:target.x+(Math.random()-.5)*180,y:target.y+(Math.random()-.5)*180,explodeAt:now+850,radius:62});}
+            spawnFloatingText(player.x,player.y-65,choice,'#e976ff');
+        }
+        for(let i=state.telegraphs.length-1;i>=0;i--){const t=state.telegraphs[i];if(now<t.explodeAt)continue;state.telegraphs.splice(i,1);AOEDamage(t.x,t.y,t.radius,520,'corrupted_core',true);explosions.push({x:t.x,y:t.y,radius:t.radius,life:0,maxLife:.28,color:'rgba(210,80,255,.68)',fxKind:'corruptedShowdown'});}
+    }
+    function renderCorruptedShowdown(){
+        const state=corruptedShowdownState;if(!isCorruptedShowdownMode||!state)return;ctx.save();for(const t of state.telegraphs){ctx.fillStyle='rgba(218,68,255,.15)';ctx.strokeStyle='#ec8cff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(t.x,t.y,t.radius,0,Math.PI*2);ctx.fill();ctx.stroke();}if(performance.now()<state.surgeUntil){ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#f09aff';ctx.font='900 15px sans-serif';ctx.textAlign='center';ctx.fillText(`CORRUPTED SIGNAL • ${state.label}`,innerWidth/2,82);ctx.textAlign='left';}ctx.restore();
+    }
     isSplitterPoweredMode = false;
     let isMirrorMode = false;
     let isRankedMatch = false;
@@ -5537,6 +6206,7 @@
             slop_sushi: ['none'],
             slop_sushi_plus: ['none'],
             solo: ['heavy_storm', 'power_surge', 'no_free_cubes'],
+            corrupted_showdown: ['core_instability'],
             duo: ['power_surge', 'no_free_cubes', 'none'],
             objective: ['none'],
             tug_zone: ['none'],
@@ -5554,7 +6224,8 @@
             none: { label: 'No Modifier' },
             heavy_storm: { label: 'Heavy Storm' },
             power_surge: { label: 'Power Surge' },
-            no_free_cubes: { label: 'No Free Cubes' }
+            no_free_cubes: { label: 'No Free Cubes' },
+            core_instability: { label: 'Corrupted Packet Storm' }
     };
     let activeShowdownModifier = 'none';
     let activeShowdownModifierLabel = 'No Modifier';
@@ -5689,6 +6360,7 @@
     const BRICK_VAULT_RESPAWN_SECONDS = 5;
     const BRICK_VAULT_MATCH_SECONDS = 180;
     const BRICK_VAULT_TIERS = [45000, 80000];
+    const TOWER_POWER_VAULT_HP_MULTIPLIER = 4.5;
     const BRICK_VAULT_MAX_HIT_PCT = 0.12;
     const BRICK_VAULT_MAX_HIT_FLAT = 5000;
     const MIRROR_TEAM_SIZE = 5;
@@ -5778,12 +6450,202 @@
         let currentMapOverride = null; // null or mapType index
     let isBossFight = false;
         let isBeastBossEvent = false;
+        let isLavaBossEvent = false;
+        let activeLavaBossDifficulty = 'hard';
+        let lavaBossRuntime = null;
                 let isOverlordTrialEvent = false;
                 let isWarperEvent = false;
                 let teleportPads = [];
                 let warperIndicators = [];
         let beastCrystalNextSpawn = 0;
   const BEAST_BOSS_DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Insane', 'Impossible'];
+
+  const LAVA_BOSS_DIFFICULTIES = Object.freeze((() => {
+      const defs = [
+          ['hard','Hard',300000,1.00,1.00,['burp','slam']],
+          ['master','Master',390000,1.08,.93,['burp','slam','beam','serpent']],
+          ['supreme','Supreme',500000,1.16,.87,['burp','slam','beam','serpent','pups','pinwheel']],
+          ['impossible_1','Impossible I',650000,1.24,.82,['burp','slam','beam','serpent','pups','pinwheel','crack']],
+          ['impossible_2','Impossible II',820000,1.32,.77,['burp','slam','beam','serpent','pups','pinwheel','crack','sweep']]
+      ];
+      for(let i=3;i<=15;i++){
+          const key=`impossible_${i}`,roman=['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV'][i];
+          const attacks=['burp','slam','beam','serpent','pups','pinwheel','crack','pillars','sweep'];if(i===15)attacks.push('eruption');
+          defs.push([key,`Impossible ${roman}`,Math.round(820000*Math.pow(1.18,i-2)),1.32+(i-2)*.075,Math.max(.34,.77-(i-2)*.032),attacks]);
+      }
+      return Object.fromEntries(defs.map((entry,index)=>[entry[0],Object.freeze({id:entry[0],name:entry[1],order:index,maxHp:entry[2],damageMult:entry[3],attackDelayMult:entry[4],availableAttacks:Object.freeze(entry[5]),coreSurgeEnabled:index>=8,coreSurgeFrequency:Math.max(7800,15000-index*360),rewardCoins:index<5?350+index*150:650+index*75,rewardSouls:index<5?30+index*15:80+index*8})]));
+  })());
+  const LAVA_BOSS_DIFFICULTY_ORDER = Object.freeze(Object.keys(LAVA_BOSS_DIFFICULTIES));
+  const LAVA_BOSS_3V1_HP_MULTIPLIER = 0.72;
+
+  function getLavaBossDifficulty(id=activeLavaBossDifficulty){return LAVA_BOSS_DIFFICULTIES[id]||LAVA_BOSS_DIFFICULTIES.hard;}
+  function getLavaBossFightHp(cfg=getLavaBossDifficulty()){return Math.round(cfg.maxHp*LAVA_BOSS_3V1_HP_MULTIPLIER);}
+  function isLavaBossDifficultyUnlocked(id){
+      const cfg=getLavaBossDifficulty(id),completed=new Set(ensureSeason3State().season.boss.completed||[]);
+      return cfg.order===0||completed.has(LAVA_BOSS_DIFFICULTY_ORDER[cfg.order-1]);
+  }
+
+  function createLavaBossAlly(slot){
+      const choices=getBotBrawlerPool({exclude:[selectedBrawler]}),brawler=choices[(slot*7+Math.floor(Math.random()*Math.max(1,choices.length)))%Math.max(1,choices.length)]||'outlit';
+      const tier=getHPTier(brawler,11),unlocks=getUnlocksForLevel(11);
+      return {id:nextId++,x:WORLD_W*.5+(slot-.5)*120,y:WORLD_H-250,z:0,vx:0,vy:0,hp:tier.hp,maxHp:tier.hp,powerCubes:0,isDead:false,shield:0,shieldMax:0,shieldDecayTimer:0,reloadBuffUntil:0,radius:14,speed:(tier.speed*.43)+18,slowUntil:0,brawler,level:11,gadgetUnlocked:unlocks.gadgetUnlocked,starPowerUnlocked:unlocks.starPowerUnlocked,hyperchargeUnlocked:unlocks.hyperchargeUnlocked,lastTargetId:null,targetLockUntil:0,lastShot:Math.random()*1000,superCharge:0,hyperChargeCharge:0,isHypercharged:false,hyperchargeUntil:0,gadgetArmed:false,gadgetCooldownUntil:0,selectedStar:'slow',selectedGadget:'g1',unopcolocoCycle:0,minigunAmmo:100,minigunPierceShots:0,ridaSpeedMult:1,ridaHitCooldowns:{},isFlying:false,moneyAndTaxMode:'money',team:'player',isTeammate:true,isLavaRaidAlly:true,respawnTimer:0};
+  }
+
+  function initLavaBossMatch(){
+      const cfg=getLavaBossDifficulty();
+      bots.length=0;destructibleWalls.length=0;waterZones.length=0;bushZones.length=0;powerups.length=0;cubes.length=0;
+      player.team='player';player.x=WORLD_W*.5;player.y=WORLD_H-260;player.bossLives=999;player.respawnTimer=0;player.defenseUntil=performance.now()+1500;
+      for(let i=0;i<2;i++)bots.push(createLavaBossAlly(i));
+      const fightHp=getLavaBossFightHp(cfg),boss={id:nextId++,x:WORLD_W*.5,y:360,z:20,vx:0,vy:0,hp:fightHp,maxHp:fightHp,shield:0,shieldMax:0,radius:66,speed:118,brawler:'overlord',level:11,team:'lava_enemy',isBoss:true,isLavaVillainBoss:true,noRespawn:true,noPowerupDrop:true,lastShot:0,superCharge:0,hyperChargeCharge:0,isHypercharged:false,gadgetArmed:false,selectedStar:'none',selectedGadget:'g1'};
+      bots.push(boss);
+      const now=performance.now();lavaBossRuntime={difficulty:cfg.id,bossId:boss.id,startedAt:now,timeLimitMs:180000,nextAttackAt:now+1800,nextSuperAt:now+9000,nextCoreSurgeAt:now+cfg.coreSurgeFrequency,coreSurgeUntil:0,telegraphs:[],pools:[],projectiles:[],beams:[],lastAttackIndex:-1,moveAngle:Math.PI*.5,nextMoveAt:now+900,dash:null,superName:'',pedestalPairCursor:0,presentation:{kind:'intro',startedAt:now,until:now+1800}};
+      spawnFloatingText(player.x,player.y-70,`${cfg.name.toUpperCase()} • LAVA VILLAIN`,'#ff9a3d');
+  }
+
+  function getLavaRaidTargets(){return [player,...bots].filter(e=>e&&e.hp>0&&(e===player||e.isLavaRaidAlly));}
+  function queueLavaTelegraph(kind,x,y,radius,delay,damage,extra={}){
+      if(!lavaBossRuntime)return;lavaBossRuntime.telegraphs.push({kind,x:clamp(x,45,WORLD_W-45),y:clamp(y,45,WORLD_H-45),radius,explodeAt:performance.now()+delay,damage,...extra});
+  }
+  function launchLavaBurp(boss,targetX,targetY,damage,delay=0,small=false){
+      if(!lavaBossRuntime)return;const now=performance.now()+delay,dx=targetX-boss.x,dy=targetY-boss.y,dist=Math.max(1,Math.hypot(dx,dy)),travel=small?620:850;
+      lavaBossRuntime.projectiles.push({kind:'burp',ownerId:boss.id,startX:boss.x,startY:boss.y,x:boss.x,y:boss.y,targetX:clamp(targetX,45,WORLD_W-45),targetY:clamp(targetY,45,WORLD_H-45),createdAt:now,impactAt:now+travel,damage,radius:small?42:68,poolRadius:small?46:72,poolLife:small?1900:3400,small});
+  }
+  const LAVA_PEDESTAL_MAX = 2;
+  const LAVA_PUP_MAX = 4;
+  function getLavaPedestalSpawnPads(){
+      return [
+          {x:WORLD_W*.24,y:WORLD_H*.28},{x:WORLD_W*.76,y:WORLD_H*.28},
+          {x:WORLD_W*.16,y:WORLD_H*.56},{x:WORLD_W*.84,y:WORLD_H*.56},
+          {x:WORLD_W*.28,y:WORLD_H*.80},{x:WORLD_W*.72,y:WORLD_H*.80}
+      ];
+  }
+  function spawnLavaPedestal(boss,x,y,cfg,now){
+      const existing=bots.filter(entity=>entity?.isLavaPedestal&&entity.hp>0);if(existing.length>=LAVA_PEDESTAL_MAX)return false;
+      const pads=getLavaPedestalSpawnPads(),occupied=new Set(existing.map(entity=>entity.lavaSpawnPadIndex)),available=pads.map((pad,index)=>({...pad,index})).filter(pad=>!occupied.has(pad.index)).sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y)),pad=available[0];if(!pad)return false;
+      const dry=findNearestDrySpot(pad.x,pad.y,30),hp=Math.round((6200+cfg.order*720)*Math.max(1,cfg.damageMult*.68));bots.push({id:nextId++,brawler:'overlord',x:dry.x,y:dry.y,z:0,vx:0,vy:0,radius:27,hp,maxHp:hp,speed:0,team:'lava_enemy',ownerId:boss.id,isLavaPedestal:true,isStructure:true,noPowerupDrop:true,noRespawn:true,lastShot:0,selectedStar:'none',selectedGadget:'g1',lavaNextSmashAt:now+1100,lavaNextPupAt:now+2100,lavaCfgOrder:cfg.order,lavaSpawnPadIndex:pad.index});return true;
+  }
+  function spawnLavaPedestalWave(boss,cfg,now,pairCount=1){
+      const pads=getLavaPedestalSpawnPads(),pairs=[[0,1],[2,3],[4,5]],start=(lavaBossRuntime?.pedestalPairCursor||0)%pairs.length;let spawned=0;
+      for(let offset=0;offset<Math.min(pairCount,pairs.length);offset++){const pair=pairs[(start+offset)%pairs.length];for(const index of pair)if(spawnLavaPedestal(boss,pads[index].x,pads[index].y,cfg,now))spawned++;}
+      if(lavaBossRuntime)lavaBossRuntime.pedestalPairCursor=(start+Math.max(1,pairCount))%pairs.length;
+      return spawned;
+  }
+  function spawnLavaPup(pedestal,cfg,now){
+      const living=bots.filter(entity=>entity?.isLavaPup&&entity.hp>0);if(living.length>=LAVA_PUP_MAX)return;
+      const hp=Math.round(2100+cfg.order*190);bots.push({id:nextId++,brawler:'overlord',x:pedestal.x+(Math.random()-.5)*34,y:pedestal.y+(Math.random()-.5)*34,z:0,vx:0,vy:0,radius:13,hp,maxHp:hp,speed:138+cfg.order*1.5,team:'lava_enemy',ownerId:pedestal.ownerId,isLavaPup:true,isSummon:true,noPowerupDrop:true,noRespawn:true,lastShot:0,selectedStar:'none',selectedGadget:'g1',lavaBurpAt:now+800,lavaExpiresAt:now+7200});
+  }
+  function chooseLavaBossAttack(cfg,boss,now){
+      const attacks=cfg.availableAttacks,index=(lavaBossRuntime.lastAttackIndex+1+Math.floor(Math.random()*Math.max(1,attacks.length-1)))%attacks.length,kind=attacks[index];lavaBossRuntime.lastAttackIndex=index;
+      const targets=getLavaRaidTargets(),target=targets[Math.floor(Math.random()*Math.max(1,targets.length))]||player,surged=now<lavaBossRuntime.coreSurgeUntil,mult=cfg.damageMult*(surged?1.12:1);
+      const attackName={burp:'LAVA BURP',slam:'LAVA SLAM',beam:'LAVA BEAM',pups:'LAVA PUPS',serpent:'MAGMA SERPENT',pinwheel:'MOLTEN PINWHEEL',crack:'CRACK RUN',pillars:'LAVA PILLARS',sweep:'DANGER LANES',eruption:'CORE ERUPTION'}[kind]||'LAVA ATTACK';lavaBossRuntime.presentation={kind,startedAt:now,until:now+1900};spawnFloatingText(boss.x,boss.y-92,attackName,'#ffcb68');
+      if(kind==='burp'){const count=surged?3:2;for(let i=0;i<count;i++){const a=(i-(count-1)/2)*.20,base=Math.atan2(target.y-boss.y,target.x-boss.x),range=Math.hypot(target.x-boss.x,target.y-boss.y);launchLavaBurp(boss,boss.x+Math.cos(base+a)*range,boss.y+Math.sin(base+a)*range,Math.round(620*mult),i*120,false);}}
+      else if(kind==='beam'){const angle=Math.atan2(target.y-boss.y,target.x-boss.x);lavaBossRuntime.beams.push({ownerId:boss.id,angle,angularSpeed:(Math.random()<.5?-1:1)*(surged?.72:.48),createdAt:now,warmupUntil:now+700,expiresAt:now+(surged?3900:3200),length:surged?850:720,width:surged?48:38,damage:Math.round(180*mult),nextTickAt:now+700,nextTrailAt:now+780});lavaBossRuntime.superName='LAVA BEAM';lavaBossRuntime.superFlashUntil=now+1500;}
+      else if(kind==='pups'){spawnLavaPedestalWave(boss,cfg,now,surged?2:1);lavaBossRuntime.superName='LAVA PUPS';lavaBossRuntime.superFlashUntil=now+1500;}
+      else if(kind==='serpent'){lavaBossRuntime.superName='MAGMA SERPENT';lavaBossRuntime.superFlashUntil=now+1500;const base=Math.atan2(target.y-boss.y,target.x-boss.x),side=-Math.sin(base),forwardX=Math.cos(base),forwardY=Math.sin(base),segments=surged?9:7;for(let i=1;i<=segments;i++){const sway=Math.sin(i*.95)*105,x=boss.x+forwardX*i*82+side*sway,y=boss.y+forwardY*i*82+Math.cos(base)*sway;queueLavaTelegraph('serpent',x,y,42,460+i*135,Math.round(460*mult),{leavePool:i%4===0,poolLife:1900});}}
+      else if(kind==='pinwheel'){lavaBossRuntime.superName='MOLTEN PINWHEEL';lavaBossRuntime.superFlashUntil=now+1500;const start=Math.atan2(target.y-boss.y,target.x-boss.x),arms=surged?4:3;for(let step=1;step<=4;step++)for(let arm=0;arm<arms;arm++){const angle=start+arm*Math.PI*2/arms+step*.27,radius=100+step*82;queueLavaTelegraph('pinwheel',boss.x+Math.cos(angle)*radius,boss.y+Math.sin(angle)*radius,40,520+step*175,Math.round(430*mult),{leavePool:step===4,poolLife:1800});}}
+      else if(kind==='shot'){const count=surged?3:1;for(let i=0;i<count;i++){const a=i*Math.PI*2/count;queueLavaTelegraph(kind,target.x+Math.cos(a)*75,target.y+Math.sin(a)*75,58,650+i*80,Math.round(650*mult),{leavePool:cfg.order>=1});}}
+      else if(kind==='crack'){const base=Math.atan2(target.y-boss.y,target.x-boss.x);for(const fork of surged?[-.28,0,.28]:[0])for(let i=1;i<=5;i++){const a=base+fork;queueLavaTelegraph(kind,boss.x+Math.cos(a)*i*115,boss.y+Math.sin(a)*i*115,42,520+i*90,Math.round(480*mult));}}
+      else if(kind==='pool'){for(let i=0;i<(surged?3:1);i++){const a=i*Math.PI*2/3;queueLavaTelegraph(kind,target.x+Math.cos(a)*105,target.y+Math.sin(a)*105,105,760+i*90,Math.round(420*mult),{leavePool:true,poolLife:4200});}}
+      else if(kind==='pillars'){for(let i=0;i<Math.min(10,(surged?5:3)+Math.floor(cfg.order/3));i++){const t=targets[i%targets.length]||player;queueLavaTelegraph(kind,t.x+(Math.random()-.5)*240,t.y+(Math.random()-.5)*240,48,850+i*70,Math.round(610*mult));}}
+      else if(kind==='slam'){lavaBossRuntime.superName='LAVA SLAM';lavaBossRuntime.superFlashUntil=now+1400;for(const ring of surged?[185,315]:[250]){const n=Math.min(14,7+Math.floor(cfg.order/3));for(let i=0;i<n;i++){const a=i*Math.PI*2/n;queueLavaTelegraph(kind,boss.x+Math.cos(a)*ring,boss.y+Math.sin(a)*ring,46,850+(ring-140)*1.5,Math.round(560*mult),{leavePool:i%4===0,poolLife:2200});}}}
+      else if(kind==='sweep'){const safe=Math.floor(Math.random()*5);for(let lane=0;lane<5;lane++)if(lane!==safe)for(let row=0;row<5;row++)queueLavaTelegraph(kind,(lane+.5)*WORLD_W/5,(row+.5)*WORLD_H/5,Math.min(WORLD_W/11,WORLD_H/11),1050+row*90,Math.round(520*mult));}
+      else {const safeX=(Math.floor(Math.random()*4)+.5)*WORLD_W/4;for(let col=0;col<8;col++)for(let row=0;row<6;row++){const x=(col+.5)*WORLD_W/8;if(Math.abs(x-safeX)<WORLD_W/7)continue;queueLavaTelegraph('eruption',x,(row+.5)*WORLD_H/6,Math.min(WORLD_W/18,WORLD_H/14),1200+row*70,Math.round(620*mult));}}
+  }
+  function triggerLavaBossSuper(cfg,boss,now){
+      const targets=getLavaRaidTargets(),target=targets[Math.floor(Math.random()*Math.max(1,targets.length))]||player,roll=Math.floor((now/1000+cfg.order)%5),mult=cfg.damageMult;
+      if(roll===0){
+          lavaBossRuntime.superName='MAGMA RUSH';lavaBossRuntime.dash={startX:boss.x,startY:boss.y,targetX:target.x,targetY:target.y,startedAt:now,endsAt:now+1050,nextTrailAt:now};
+      }else if(roll===1){
+          lavaBossRuntime.superName='VOLCANO CALL';for(let i=0;i<5+Math.min(3,Math.floor(cfg.order/4));i++){const t=targets[i%targets.length]||player;queueLavaTelegraph('meteor',t.x+(Math.random()-.5)*310,t.y+(Math.random()-.5)*310,54,1050+i*130,Math.round(720*mult),{leavePool:i%3===0,poolLife:2500});}
+      }else if(roll===2){
+          lavaBossRuntime.superName='CORE NOVA';const safe=Math.random()*Math.PI*2;for(const radius of [220,410])queueLavaTelegraph('nova',boss.x,boss.y,radius,850+radius*1.65,Math.round(680*mult),{ringBand:44,safeAngle:safe});
+      }else if(roll===3){
+          lavaBossRuntime.superName='LAVA BEAM';const angle=Math.atan2(target.y-boss.y,target.x-boss.x);lavaBossRuntime.beams.push({ownerId:boss.id,angle,angularSpeed:(Math.random()<.5?-1:1)*.68,createdAt:now,warmupUntil:now+1050,expiresAt:now+4100,length:900,width:48,damage:Math.round(210*mult),nextTickAt:now+1050,nextTrailAt:now+1120});
+      }else{
+          lavaBossRuntime.superName='LAVA PUP UPRISING';spawnLavaPedestalWave(boss,cfg,now,1);
+      }
+      lavaBossRuntime.presentation={kind:`super_${lavaBossRuntime.superName.toLowerCase().replaceAll(' ','_')}`,startedAt:now,until:now+2200};lavaBossRuntime.superFlashUntil=now+1800;lavaBossRuntime.nextAttackAt=Math.max(lavaBossRuntime.nextAttackAt,now+1900);lavaBossRuntime.nextSuperAt=now+Math.max(14000,19000-cfg.order*140);spawnFloatingText(boss.x,boss.y-105,`SUPER • ${lavaBossRuntime.superName}`,'#fff07b');
+  }
+  function updateLavaBossEvent(now,dt){
+      if(!isLavaBossEvent||!lavaBossRuntime||gameOver)return;const cfg=getLavaBossDifficulty(lavaBossRuntime.difficulty),boss=bots.find(b=>b.id===lavaBossRuntime.bossId);
+      if(!boss||boss.hp<=0){gameOver=true;return;}if(now-lavaBossRuntime.startedAt>=lavaBossRuntime.timeLimitMs){gameOver=true;return;}
+      const targets=getLavaRaidTargets(),nearest=targets.sort((a,b)=>Math.hypot(a.x-boss.x,a.y-boss.y)-Math.hypot(b.x-boss.x,b.y-boss.y))[0]||player;
+      if(lavaBossRuntime.dash){
+          const dash=lavaBossRuntime.dash,p=clamp((now-dash.startedAt)/Math.max(1,dash.endsAt-dash.startedAt),0,1),ease=1-Math.pow(1-p,3);boss.x=clamp(dash.startX+(dash.targetX-dash.startX)*ease,90,WORLD_W-90);boss.y=clamp(dash.startY+(dash.targetY-dash.startY)*ease,90,WORLD_H-90);boss.z=35+Math.sin(p*Math.PI)*65;
+          if(now>=dash.nextTrailAt){dash.nextTrailAt=now+140;lavaBossRuntime.pools.push({x:boss.x,y:boss.y,radius:52,until:now+2600,nextTickAt:now});}
+          if(now>=dash.endsAt){lavaBossRuntime.dash=null;AOEDamage(boss.x,boss.y,125,Math.round(900*cfg.damageMult),boss.id,true);explosions.push({x:boss.x,y:boss.y,radius:140,life:0,maxLife:.46,color:'rgba(255,122,20,.85)',fxKind:'lavaBossSuper',legendary:true});}
+      }else{
+          if(now>=lavaBossRuntime.nextMoveAt){const toward=Math.atan2(nearest.y-boss.y,nearest.x-boss.x),distance=Math.hypot(nearest.x-boss.x,nearest.y-boss.y);lavaBossRuntime.moveAngle=toward+(distance<250?(Math.random()<.5?-1:1)*1.25:(Math.random()-.5)*1.1);lavaBossRuntime.nextMoveAt=now+700+Math.random()*600;}
+          const moveSpeed=(96+cfg.order*3)*(now<lavaBossRuntime.coreSurgeUntil?1.35:1),nx=clamp(boss.x+Math.cos(lavaBossRuntime.moveAngle)*moveSpeed*dt,90,WORLD_W-90),ny=clamp(boss.y+Math.sin(lavaBossRuntime.moveAngle)*moveSpeed*dt,90,WORLD_H-90),dry=findNearestDrySpot(nx,ny,boss.radius);boss.x+=(dry.x-boss.x)*Math.min(1,dt*6);boss.y+=(dry.y-boss.y)*Math.min(1,dt*6);boss.z=20+Math.sin(now/170)*10;
+      }
+      for(let i=lavaBossRuntime.projectiles.length-1;i>=0;i--){
+          const shot=lavaBossRuntime.projectiles[i];if(now<shot.createdAt)continue;const p=clamp((now-shot.createdAt)/Math.max(1,shot.impactAt-shot.createdAt),0,1),ease=1-Math.pow(1-p,2);shot.x=shot.startX+(shot.targetX-shot.startX)*ease;shot.y=shot.startY+(shot.targetY-shot.startY)*ease;shot.z=Math.sin(p*Math.PI)*(shot.small?45:95);
+          if(now<shot.impactAt)continue;lavaBossRuntime.projectiles.splice(i,1);AOEDamage(shot.targetX,shot.targetY,shot.radius,shot.damage,boss.id,true);lavaBossRuntime.pools.push({x:shot.targetX,y:shot.targetY,radius:shot.poolRadius,until:now+shot.poolLife,nextTickAt:now});explosions.push({x:shot.targetX,y:shot.targetY,radius:shot.radius+18,life:0,maxLife:.42,color:'rgba(255,121,22,.86)',fxKind:'lavaBurp',legendary:!shot.small});
+      }
+      for(let i=lavaBossRuntime.beams.length-1;i>=0;i--){
+          const beam=lavaBossRuntime.beams[i];if(now>=beam.expiresAt){lavaBossRuntime.beams.splice(i,1);continue;}const owner=bots.find(e=>e.id===beam.ownerId);if(!owner||owner.hp<=0){lavaBossRuntime.beams.splice(i,1);continue;}if(now>=beam.warmupUntil)beam.angle+=beam.angularSpeed*dt;
+          if(now>=beam.nextTickAt&&now>=beam.warmupUntil){beam.nextTickAt=now+220;for(const entity of getLavaRaidTargets()){const dx=entity.x-owner.x,dy=entity.y-owner.y,along=dx*Math.cos(beam.angle)+dy*Math.sin(beam.angle),side=Math.abs(dx*-Math.sin(beam.angle)+dy*Math.cos(beam.angle));if(along>=0&&along<=beam.length&&side<=beam.width+(entity.radius||14)){checkHit(entity,{ownerId:boss.id,ownerBrawler:'overlord',damage:beam.damage,pierce:true,super:true,hitIds:{}},-1);entity.fireUntil=Math.max(entity.fireUntil||0,now+1200);entity.fuelBurnDamage=Math.max(entity.fuelBurnDamage||0,90*cfg.damageMult);entity.fuelBurnUntil=Math.max(entity.fuelBurnUntil||0,now+1200);}}}
+          if(now>=beam.nextTrailAt&&now>=beam.warmupUntil){beam.nextTrailAt=now+470;for(const fraction of [.48,.88]){const distance=beam.length*fraction;lavaBossRuntime.pools.push({x:owner.x+Math.cos(beam.angle)*distance,y:owner.y+Math.sin(beam.angle)*distance,radius:36,until:now+1650,nextTickAt:now});}}
+      }
+      for(const pedestal of bots.filter(entity=>entity?.isLavaPedestal&&entity.hp>0)){
+          const close=getLavaRaidTargets().find(entity=>Math.hypot(entity.x-pedestal.x,entity.y-pedestal.y)<145+(entity.radius||14));if(close&&now>=(pedestal.lavaNextSmashAt||0)){pedestal.lavaNextSmashAt=now+2600;queueLavaTelegraph('pupSmash',pedestal.x,pedestal.y,128,560,Math.round(500*cfg.damageMult));}
+          if(now>=(pedestal.lavaNextPupAt||0)){pedestal.lavaNextPupAt=now+4200;spawnLavaPup(pedestal,cfg,now);}
+      }
+      for(const pup of bots.filter(entity=>entity?.isLavaPup&&entity.hp>0)){
+          if(now>=(pup.lavaExpiresAt||0)){pup.hp=0;continue;}const victim=getLavaRaidTargets().sort((a,b)=>Math.hypot(a.x-pup.x,a.y-pup.y)-Math.hypot(b.x-pup.x,b.y-pup.y))[0];if(!victim)continue;const a=Math.atan2(victim.y-pup.y,victim.x-pup.x),dry=findNearestDrySpot(pup.x+Math.cos(a)*pup.speed*dt,pup.y+Math.sin(a)*pup.speed*dt,pup.radius);pup.x=dry.x;pup.y=dry.y;if(now>=(pup.lavaBurpAt||0)){pup.lavaBurpAt=now+1300;launchLavaBurp(pup,victim.x,victim.y,Math.round(270*cfg.damageMult),0,true);}
+      }
+      if(cfg.coreSurgeEnabled&&now>=lavaBossRuntime.nextCoreSurgeAt){lavaBossRuntime.coreSurgeUntil=now+5200;lavaBossRuntime.nextCoreSurgeAt=now+cfg.coreSurgeFrequency;spawnFloatingText(boss.x,boss.y-95,'CORE SURGE','#ffcf55');explosions.push({x:boss.x,y:boss.y,radius:180,life:0,maxLife:.55,color:'rgba(255,80,20,.78)',legendary:true});}
+      if(now>=lavaBossRuntime.nextSuperAt&&!lavaBossRuntime.dash)triggerLavaBossSuper(cfg,boss,now);
+      if(now>=lavaBossRuntime.nextAttackAt&&!lavaBossRuntime.dash){chooseLavaBossAttack(cfg,boss,now);lavaBossRuntime.nextAttackAt=now+Math.max(1250,2600*Math.max(.58,cfg.attackDelayMult)*(now<lavaBossRuntime.coreSurgeUntil?.82:1));}
+      for(let i=lavaBossRuntime.telegraphs.length-1;i>=0;i--){
+          const t=lavaBossRuntime.telegraphs[i];if(now<t.explodeAt)continue;lavaBossRuntime.telegraphs.splice(i,1);
+          if(t.kind==='nova'){
+              for(const entity of getLavaRaidTargets()){const dx=entity.x-t.x,dy=entity.y-t.y,dist=Math.hypot(dx,dy),angle=Math.atan2(dy,dx),gap=Math.abs(Math.atan2(Math.sin(angle-t.safeAngle),Math.cos(angle-t.safeAngle)));if(Math.abs(dist-t.radius)<=t.ringBand+(entity.radius||14)&&gap>.5)checkHit(entity,{ownerId:boss.id,ownerBrawler:'overlord',damage:t.damage,pierce:true,super:true,hitIds:{}},-1);}
+          }else AOEDamage(t.x,t.y,t.radius,t.damage,boss.id,true);
+          explosions.push({x:t.x,y:t.y,radius:t.kind==='nova'?t.ringBand:t.radius,life:0,maxLife:.34,color:t.kind==='meteor'?'rgba(255,215,58,.84)':'rgba(255,84,20,.78)',fxKind:t.kind==='meteor'?'lavaBossMeteor':'lavaBoss'});if(t.leavePool)lavaBossRuntime.pools.push({x:t.x,y:t.y,radius:t.radius*.82,until:now+(t.poolLife||2800),nextTickAt:now});
+      }
+      for(let i=lavaBossRuntime.pools.length-1;i>=0;i--){const p=lavaBossRuntime.pools[i];if(now>=p.until){lavaBossRuntime.pools.splice(i,1);continue;}if(now>=p.nextTickAt){p.nextTickAt=now+500;AOEDamage(p.x,p.y,p.radius,Math.round(150*cfg.damageMult),boss.id,true);}}
+      if(lavaBossRuntime.pools.length>32)lavaBossRuntime.pools.splice(0,lavaBossRuntime.pools.length-32);
+      if(lavaBossRuntime.telegraphs.length>54)lavaBossRuntime.telegraphs.splice(0,lavaBossRuntime.telegraphs.length-54);
+  }
+  function renderLavaBossEvent(){
+      if(!isLavaBossEvent||!lavaBossRuntime)return;const now=performance.now(),boss=bots.find(b=>b.id===lavaBossRuntime.bossId),cfg=getLavaBossDifficulty(lavaBossRuntime.difficulty),TAU=Math.PI*2;ctx.save();
+
+      // Lava is drawn as animated cracked ground, not a flat orange danger circle.
+      for(const p of lavaBossRuntime.pools){const lifePulse=.82+.12*Math.sin(now/115+p.x*.01);ctx.save();ctx.fillStyle='rgba(93,17,8,.62)';ctx.strokeStyle='#ff5b1c';ctx.lineWidth=4;ctx.beginPath();ctx.arc(p.x,p.y,p.radius*lifePulse,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='rgba(255,113,24,.34)';ctx.beginPath();ctx.arc(p.x,p.y,p.radius*.68*lifePulse,0,TAU);ctx.fill();ctx.strokeStyle='#ffd15a';ctx.lineWidth=2;for(let vein=0;vein<5;vein++){const a=vein*TAU/5+Math.sin(now/420)*.08;ctx.beginPath();ctx.moveTo(p.x+Math.cos(a)*8,p.y+Math.sin(a)*8);ctx.lineTo(p.x+Math.cos(a+.17)*p.radius*.72,p.y+Math.sin(a+.17)*p.radius*.72);ctx.stroke();}ctx.restore();}
+
+      // Connected silhouettes make the two multi-point attacks readable as one pattern.
+      const serpents=lavaBossRuntime.telegraphs.filter(t=>t.kind==='serpent').sort((a,b)=>a.explodeAt-b.explodeAt);if(serpents.length>1){ctx.save();ctx.strokeStyle='rgba(255,82,22,.48)';ctx.lineWidth=22;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(serpents[0].x,serpents[0].y);for(const t of serpents.slice(1))ctx.lineTo(t.x,t.y);ctx.stroke();ctx.strokeStyle='#ffc04d';ctx.lineWidth=4;ctx.setLineDash([13,15]);ctx.lineDashOffset=-now/22;ctx.stroke();ctx.setLineDash([]);ctx.restore();}
+      const pinwheel=lavaBossRuntime.telegraphs.filter(t=>t.kind==='pinwheel');if(boss&&pinwheel.length){ctx.save();ctx.strokeStyle='rgba(255,126,27,.22)';ctx.lineWidth=5;for(const t of pinwheel){ctx.beginPath();ctx.moveTo(boss.x,boss.y);ctx.lineTo(t.x,t.y);ctx.stroke();}ctx.restore();}
+
+      // Lava Burp is a lobbed volcanic boulder with a hot core and trailing fragments.
+      for(const shot of lavaBossRuntime.projectiles){if(now<shot.createdAt)continue;const lift=(shot.z||0)*.36,sx=shot.x,sy=shot.y-lift,dx=shot.targetX-shot.startX,dy=shot.targetY-shot.startY,angle=Math.atan2(dy,dx),size=shot.small?11:21;ctx.save();ctx.strokeStyle=shot.small?'rgba(255,167,48,.58)':'rgba(255,67,11,.72)';ctx.shadowColor='#ff3d00';ctx.shadowBlur=shot.small?9:20;ctx.lineWidth=shot.small?7:16;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(sx-Math.cos(angle)*size*2.8,sy-Math.sin(angle)*size*2.8);ctx.lineTo(sx,sy);ctx.stroke();ctx.fillStyle='#4a160d';ctx.strokeStyle='#ff7a22';ctx.lineWidth=4;ctx.beginPath();ctx.arc(sx,sy,size,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='#ffe06a';ctx.beginPath();ctx.arc(sx-size*.25,sy-size*.3,size*.38,0,TAU);ctx.fill();for(let spark=0;spark<3;spark++){const a=angle+Math.PI+(spark-1)*.38,dist=size*(1.7+spark*.35);ctx.fillStyle=spark===1?'#fff1a0':'#ff8a27';ctx.beginPath();ctx.arc(sx+Math.cos(a)*dist,sy+Math.sin(a)*dist,shot.small?2:4,0,TAU);ctx.fill();}ctx.restore();}
+
+      // The beam has two burning edges, a white-hot core, moving energy knots and a charge cone.
+      for(const beam of lavaBossRuntime.beams){const owner=bots.find(e=>e.id===beam.ownerId);if(!owner)continue;const warm=clamp((now-(beam.createdAt||now))/Math.max(1,beam.warmupUntil-(beam.createdAt||now)),0,1),active=now>=beam.warmupUntil,endX=owner.x+Math.cos(beam.angle)*beam.length,endY=owner.y+Math.sin(beam.angle)*beam.length,nx=-Math.sin(beam.angle),ny=Math.cos(beam.angle);ctx.save();ctx.lineCap='round';if(!active){ctx.fillStyle='rgba(255,94,17,.13)';ctx.strokeStyle='#ffcf55';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(owner.x,owner.y);ctx.lineTo(owner.x+Math.cos(beam.angle-.10)*beam.length,owner.y+Math.sin(beam.angle-.10)*beam.length);ctx.lineTo(owner.x+Math.cos(beam.angle+.10)*beam.length,owner.y+Math.sin(beam.angle+.10)*beam.length);ctx.closePath();ctx.fill();ctx.stroke();}else{ctx.shadowColor='#ff3500';ctx.shadowBlur=25;ctx.strokeStyle='rgba(91,10,4,.9)';ctx.lineWidth=beam.width+18;ctx.beginPath();ctx.moveTo(owner.x,owner.y);ctx.lineTo(endX,endY);ctx.stroke();ctx.strokeStyle='#ff4b12';ctx.lineWidth=beam.width;ctx.stroke();ctx.strokeStyle='#ffd447';ctx.lineWidth=Math.max(12,beam.width*.46);ctx.stroke();ctx.strokeStyle='#fff8c9';ctx.lineWidth=Math.max(4,beam.width*.13);ctx.stroke();for(let knot=1;knot<=6;knot++){const f=(knot/7+now/1200)%1,kx=owner.x+(endX-owner.x)*f,ky=owner.y+(endY-owner.y)*f,side=Math.sin(now/90+knot)*beam.width*.36;ctx.fillStyle='#fff2a3';ctx.beginPath();ctx.arc(kx+nx*side,ky+ny*side,4+(knot%2)*2,0,TAU);ctx.fill();}}ctx.restore();}
+
+      // Authored pedestal sockets remain subtle until occupied.
+      for(const [padIndex,pad] of getLavaPedestalSpawnPads().entries()){const occupied=bots.some(entity=>entity?.isLavaPedestal&&entity.hp>0&&entity.lavaSpawnPadIndex===padIndex);ctx.save();ctx.globalAlpha=occupied?.34:.09;ctx.strokeStyle=occupied?'#ff9a3c':'#814126';ctx.lineWidth=3;ctx.beginPath();for(let side=0;side<6;side++){const a=-Math.PI/2+side*TAU/6,x=pad.x+Math.cos(a)*42,y=pad.y+Math.sin(a)*42;if(side===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.closePath();ctx.stroke();ctx.restore();}
+
+      // Pedestals are volcanic hatcheries with claws and a visibly beating egg.
+      for(const pedestal of bots.filter(entity=>entity?.isLavaPedestal&&entity.hp>0)){const beat=1+Math.sin(now/105+pedestal.id)*.08;ctx.save();ctx.translate(pedestal.x,pedestal.y);ctx.shadowColor='#ff4e18';ctx.shadowBlur=14;ctx.fillStyle='#32100c';ctx.strokeStyle='#ff7626';ctx.lineWidth=4;for(let claw=0;claw<4;claw++){ctx.save();ctx.rotate(claw*Math.PI/2);ctx.beginPath();ctx.moveTo(-12,18);ctx.lineTo(-27,36);ctx.lineTo(0,29);ctx.lineTo(27,36);ctx.lineTo(12,18);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}ctx.fillStyle='#6b1c0d';ctx.beginPath();ctx.arc(0,0,29,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='#ff7b24';ctx.beginPath();ctx.ellipse(0,-4,14*beat,20*beat,0,0,TAU);ctx.fill();ctx.strokeStyle='#ffe36b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-5,-15);ctx.lineTo(3,-5);ctx.lineTo(-3,4);ctx.lineTo(6,14);ctx.stroke();ctx.shadowBlur=0;ctx.strokeStyle='rgba(255,122,44,.28)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,128,0,TAU);ctx.stroke();ctx.restore();}
+
+      // Pups now read as small charging creatures instead of orange dots.
+      for(const pup of bots.filter(entity=>entity?.isLavaPup&&entity.hp>0)){const victim=getLavaRaidTargets().reduce((best,e)=>!best||Math.hypot(e.x-pup.x,e.y-pup.y)<Math.hypot(best.x-pup.x,best.y-pup.y)?e:best,null),angle=victim?Math.atan2(victim.y-pup.y,victim.x-pup.x):0,step=Math.sin(now/75+pup.id)*3;ctx.save();ctx.translate(pup.x,pup.y);ctx.rotate(angle);ctx.shadowColor='#ff4914';ctx.shadowBlur=9;ctx.fillStyle='#5b190f';ctx.strokeStyle='#ff7b28';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(-3,0,17,11,0,0,TAU);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(13,-2,10,0,TAU);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-18,-3);ctx.quadraticCurveTo(-28,-17,-31,-5);ctx.stroke();ctx.strokeStyle='#ffb13b';ctx.beginPath();ctx.moveTo(-9,7);ctx.lineTo(-10+step,15);ctx.moveTo(6,7);ctx.lineTo(8-step,15);ctx.stroke();ctx.fillStyle='#fff0a0';ctx.beginPath();ctx.arc(16,-5,2.5,0,TAU);ctx.fill();ctx.fillStyle='#ff3510';ctx.beginPath();ctx.moveTo(21,0);ctx.lineTo(31,5);ctx.lineTo(21,7);ctx.closePath();ctx.fill();ctx.restore();}
+
+      // Every attack family receives a different warning language.
+      for(const t of lavaBossRuntime.telegraphs){const remaining=Math.max(0,t.explodeAt-now),urgency=1-clamp(remaining/1400,0,1),pulse=.76+.20*Math.sin(now/(80-urgency*28));ctx.save();ctx.translate(t.x,t.y);if(t.kind==='nova'){ctx.strokeStyle='#ff61e7';ctx.shadowColor='#ff30da';ctx.shadowBlur=15;ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,t.radius,t.safeAngle+.5,t.safeAngle+TAU-.5);ctx.stroke();for(let arrow=0;arrow<8;arrow++){const a=t.safeAngle+.65+arrow*(TAU-1.3)/7;ctx.fillStyle='rgba(255,130,238,.65)';ctx.beginPath();ctx.moveTo(Math.cos(a)*t.radius,Math.sin(a)*t.radius);ctx.lineTo(Math.cos(a-.08)*(t.radius-18),Math.sin(a-.08)*(t.radius-18));ctx.lineTo(Math.cos(a+.08)*(t.radius-18),Math.sin(a+.08)*(t.radius-18));ctx.closePath();ctx.fill();}}
+          else if(t.kind==='slam'||t.kind==='pupSmash'){ctx.fillStyle=`rgba(255,54,10,${.08+urgency*.13})`;ctx.strokeStyle=t.kind==='pupSmash'?'#ffcf55':'#ff7327';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,t.radius*pulse,0,TAU);ctx.fill();ctx.stroke();for(let crack=0;crack<8;crack++){const a=crack*TAU/8+(t.kind==='pupSmash'?.2:0),inner=t.radius*.24,outer=t.radius*(.72+.15*(crack%2));ctx.beginPath();ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);ctx.lineTo(Math.cos(a+.08)*outer*.62,Math.sin(a+.08)*outer*.62);ctx.lineTo(Math.cos(a-.04)*outer,Math.sin(a-.04)*outer);ctx.stroke();}}
+          else if(t.kind==='serpent'){ctx.rotate(Math.PI/4);ctx.fillStyle=`rgba(255,91,17,${.2+urgency*.25})`;ctx.strokeStyle='#ffd05a';ctx.lineWidth=3;ctx.fillRect(-t.radius*.55,-t.radius*.55,t.radius*1.1,t.radius*1.1);ctx.strokeRect(-t.radius*.55,-t.radius*.55,t.radius*1.1,t.radius*1.1);}
+          else if(t.kind==='pinwheel'){ctx.rotate(now/280);ctx.fillStyle=`rgba(255,90,12,${.14+urgency*.2})`;ctx.strokeStyle='#ffba3d';ctx.lineWidth=4;for(let blade=0;blade<4;blade++){ctx.rotate(Math.PI/2);ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(t.radius*.8,-t.radius*.42,t.radius,0);ctx.quadraticCurveTo(t.radius*.55,t.radius*.2,0,0);ctx.fill();ctx.stroke();}}
+          else if(t.kind==='meteor'){ctx.fillStyle=`rgba(255,205,52,${.08+urgency*.16})`;ctx.strokeStyle='#fff06a';ctx.lineWidth=4;for(const scale of [1,.68,.36]){ctx.beginPath();ctx.arc(0,0,t.radius*scale*pulse,0,TAU);ctx.stroke();}ctx.fillStyle='#fff1a4';ctx.font='900 12px sans-serif';ctx.textAlign='center';ctx.fillText('VOLCANO',0,-t.radius-9);}
+          else {ctx.fillStyle=`rgba(255,65,8,${.10+urgency*.16})`;ctx.strokeStyle=t.kind==='eruption'?'#fff06a':'#ff9b43';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,t.radius*pulse,0,TAU);ctx.fill();ctx.stroke();ctx.strokeStyle='rgba(255,225,105,.7)';ctx.beginPath();ctx.moveTo(-t.radius*.65,0);ctx.lineTo(t.radius*.65,0);ctx.moveTo(0,-t.radius*.65);ctx.lineTo(0,t.radius*.65);ctx.stroke();}ctx.restore();}
+
+      if(lavaBossRuntime.dash){const d=lavaBossRuntime.dash;ctx.save();ctx.strokeStyle='#ffdf55';ctx.lineWidth=16;ctx.globalAlpha=.4;ctx.setLineDash([30,17]);ctx.lineDashOffset=-now/16;ctx.beginPath();ctx.moveTo(d.startX,d.startY);ctx.lineTo(d.targetX,d.targetY);ctx.stroke();ctx.setLineDash([]);ctx.restore();}
+
+      // A custom animated volcanic body is layered over the combat entity.
+      if(boss){const surged=now<lavaBossRuntime.coreSurgeUntil,presentation=lavaBossRuntime.presentation||{},pose=clamp((now-(presentation.startedAt||now))/Math.max(1,(presentation.until||now+1)-(presentation.startedAt||now)),0,1),slamming=presentation.kind==='slam'&&now<(presentation.until||0),burping=presentation.kind==='burp'&&now<(presentation.until||0),squash=slamming?1+Math.sin(pose*Math.PI)*.30:1,stretch=slamming?1-Math.sin(pose*Math.PI)*.18:1,breath=1+Math.sin(now/150)*.035;ctx.save();ctx.translate(boss.x,boss.y-(boss.z||0)*.2);ctx.scale(squash*breath,stretch/breath);ctx.shadowColor=surged?'#fff06a':'#ff4010';ctx.shadowBlur=surged?28:15;ctx.fillStyle='#35100d';ctx.strokeStyle=surged?'#fff06a':'#ff6d2e';ctx.lineWidth=6;ctx.beginPath();ctx.arc(0,0,boss.radius+10,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='#6f1d0e';ctx.beginPath();ctx.moveTo(-48,-45);ctx.lineTo(-72,-82);ctx.lineTo(-25,-63);ctx.moveTo(48,-45);ctx.lineTo(72,-82);ctx.lineTo(25,-63);ctx.fill();ctx.stroke();ctx.fillStyle=surged?'#fff06a':'#ff7a22';ctx.beginPath();ctx.arc(0,10,28+Math.sin(now/100)*3,0,TAU);ctx.fill();ctx.strokeStyle='#fff1a0';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-9,-7);ctx.lineTo(5,6);ctx.lineTo(-5,17);ctx.lineTo(12,29);ctx.stroke();ctx.fillStyle='#fff3a1';ctx.beginPath();ctx.ellipse(-25,-22,8,5,-.2,0,TAU);ctx.ellipse(25,-22,8,5,.2,0,TAU);ctx.fill();ctx.fillStyle='#2b0503';ctx.beginPath();ctx.arc(-24,-21,3,0,TAU);ctx.arc(24,-21,3,0,TAU);ctx.fill();if(burping){const mouth=12+Math.sin(pose*Math.PI)*17;ctx.fillStyle='#1c0202';ctx.beginPath();ctx.ellipse(0,42,mouth,9+mouth*.25,0,0,TAU);ctx.fill();ctx.strokeStyle='#ffb32f';ctx.lineWidth=4;ctx.stroke();}ctx.restore();const auraPulse=1+Math.sin(now/90)*.07;ctx.fillStyle=surged?'rgba(255,202,36,.12)':'rgba(255,79,20,.07)';ctx.strokeStyle=surged?'#fff06a':'#ff6d2e';ctx.lineWidth=surged?7:3;ctx.beginPath();ctx.arc(boss.x,boss.y,(boss.radius+31)*auraPulse,0,TAU);ctx.fill();ctx.stroke();ctx.textAlign='center';ctx.fillStyle=surged?'#fff06a':'#ffb56b';ctx.font='900 20px sans-serif';ctx.fillText(`LAVA VILLAIN • ${cfg.name}${surged?' • CORE SURGE':''}`,boss.x,boss.y-122);if(now<(lavaBossRuntime.superFlashUntil||0)){ctx.fillStyle='#fff3a3';ctx.font='900 15px sans-serif';ctx.fillText(`SUPER: ${lavaBossRuntime.superName}`,boss.x,boss.y-97);}ctx.textAlign='left';}ctx.restore();
+  }
 
   function getBeastBossDifficultyIndex() {
       const idx = Number(playerData?.beastBossDifficulty || 0);
@@ -5901,6 +6763,39 @@
   }
 
   // Progression System
+  const SEASON_3_SCHEMA_VERSION = 1;
+  const SEASON_3_ID = 'core-breaker-arena-forge-2026-s3';
+  const SEASON_3_END_UTC = Date.UTC(2026, 8, 21, 0, 0, 0);
+  // Tower content is vaulted, never deleted. These flags only control public
+  // matchmaking and runtime effects; old definitions and save data stay intact.
+  const TOWER_EVENT_MODES_ENABLED = false;
+  const TOWER_POWER_SYSTEM_ENABLED = false;
+  const RETIRED_TOWER_MODE_IDS = new Set(['slop_sushi','slop_sushi_gauntlet','slop_sushi_plus','tower_duels_weekend','power_gods','arena_forge','solo_td']);
+  const PACKET_DEFS = Object.freeze({
+      bird:{id:'bird',name:'Bird Packet',icon:'BIRD',group:'out_in_the_wild',biome:'Skywild',description:'Every 4th main attack adds two 35% damage side shots.',attackCycle:4,sideDamage:0.35},
+      bear:{id:'bear',name:'Bear Packet',icon:'BEAR',group:'out_in_the_wild',biome:'Skywild',description:'Dealing damage charges a short bear rush that hits nearby enemies.',damageNeeded:7200,damage:850},
+      eagle:{id:'eagle',name:'Eagle Packet',icon:'EAGLE',group:'out_in_the_wild',biome:'Skywild',description:'Every 5th damaging hit marks its target for a telegraphed Eagle dive.',hitCycle:5,damage:700},
+      beetle:{id:'beetle',name:'Beetle Packet',icon:'BEETLE',group:'out_in_the_wild',biome:'Skywild',description:'Every 6th hit releases two weak capped beetles.',hitCycle:6,maxSummons:4},
+      ant:{id:'ant',name:'Ant Packet',icon:'ANT',group:'out_in_the_wild',biome:'Skywild',description:'Holding an area for 3 seconds grants 10% damage for 3 seconds.',holdMs:3000,damageBoost:0.10},
+      dragon:{id:'dragon',name:'Dragon Packet',icon:'DRAGON',group:'mythic_core',biome:'Molten Crown',description:'Damage fills Dragon Fury; full charge grants 12% speed and damage for 4 seconds.',damageNeeded:9000,durationMs:4000},
+      fairy:{id:'fairy',name:'Fairy Packet',icon:'FAIRY',group:'mythic_core',biome:'Molten Crown',description:'Every 12 seconds, the next incoming hit triggers a 0.3-second fairy dodge.',cooldownMs:12000,dodgeMs:300},
+      butterfly:{id:'butterfly',name:'Butterfly Packet',icon:'BUTTERFLY',group:'mythic_core',biome:'Molten Crown',description:'Every 5th damaging hit restores 3% max HP over a brief flutter.',hitCycle:5,healPct:0.03},
+      heavy_metal:{id:'heavy_metal',name:'Heavy Metal Packet',icon:'METAL',group:'core_forge',biome:'Iron Chorus',description:'Every 5th damaging hit adds a firm but controlled knockback.',hitCycle:5,push:44},
+      core:{id:'core',name:'Core Packet',icon:'CORE',group:'core_forge',biome:'Iron Chorus',description:'Every 4th main attack creates a small Core burst at its first hit.',attackCycle:4,damage:520,radius:62},
+      angel:{id:'angel',name:'Angel Packet',icon:'ANGEL',group:'core_forge',biome:'Iron Chorus',description:'Once every 70 seconds, lethal damage leaves you at 1 HP.',cooldownMs:70000},
+      demon:{id:'demon',name:'Demon Packet',icon:'DEMON',group:'core_forge',biome:'Iron Chorus',description:'Every 5th damaging hit drains health equal to 8% of damage dealt.',hitCycle:5,drainPct:0.08},
+      milky:{id:'milky',name:'Milky Packet',icon:'MILKY',group:'frost_signal',biome:'Glacier Signal',description:'Eligible hits add Chill; 4 stacks briefly freeze, then grant Chill immunity.',stacks:4,freezeMs:500,immunityMs:5000},
+      poison:{id:'poison',name:'Poison Packet',icon:'POISON',group:'frost_signal',biome:'Glacier Signal',description:'Every 4th damaging hit applies two light poison ticks.',hitCycle:4,tickDamage:180,ticks:2},
+      spicy:{id:'spicy',name:'Spicy Packet',icon:'SPICY',group:'frost_signal',biome:'Glacier Signal',description:'Every 5th hit burns briefly and grants 8% movement speed for 2 seconds.',hitCycle:5,burnDamage:160,durationMs:2000},
+      invisible:{id:'invisible',name:'Invisible Packet',icon:'MIST',group:'shadow_signal',biome:'Umbral Garden',description:'After 8 seconds of combat without triggering it, briefly fade invisible; attacking reveals you.',cooldownMs:8000,durationMs:1200},
+      ramen:{id:'ramen',name:'Ramen Packet',icon:'RAMEN',group:'shadow_signal',biome:'Umbral Garden',description:'Every 4th main attack gains gentle homing that also supports melee approaches.',attackCycle:4,homing:0.12},
+      decoy:{id:'decoy',name:'Decoy Packet',icon:'DECOY',group:'shadow_signal',biome:'Umbral Garden',description:'Every 10 seconds of combat creates one short-lived decoy; only one may exist.',cooldownMs:10000,durationMs:2500},
+      time:{id:'time',name:'Time Packet',icon:'TIME',group:'dual_nexus',biome:'Chrono Divide',description:'Every 6th hit creates a small local time-distortion field for 2 seconds.',hitCycle:6,durationMs:2000,radius:85},
+      dual_element:{id:'dual_element',name:'Dual Element Packet',icon:'DUAL',group:'dual_nexus',biome:'Chrono Divide',description:'Main attacks alternate between a light burn and a light Chill enhancement.',burnDamage:110,chillMs:450}
+  });
+  let season3QuestAutosaveAt=0;
+  let season3AtomicReward=false;
+
   let playerData = {
       coins: 0,
       gems: 0,
@@ -5932,7 +6827,7 @@
       selectedSkins: {}, // { brawler: 'skinId' } for currently equipped skin per brawler
       skinFeaturedRotationStart: 0, // Timestamp when skins went into Featured
       seasonPass: {
-          seasonId: 'battle-of-the-towers-2026-s2',
+          seasonId: SEASON_PASS_ID,
           xp: 0,
           level: 1,
           premiumUnlocked: false,
@@ -5940,8 +6835,9 @@
           claimedFreeRewards: [],
           claimedPremiumRewards: [],
           quests: {},
-          questSchemaVersion: 2
+          questSchemaVersion: SEASON_PASS_SCHEMA_VERSION
       },
+      seasonPassHistory: {},
       // Event progress (quests, drops and tapper rewards)
       event: {
           questsCompleted: 0,
@@ -5969,8 +6865,14 @@
       soulSummoner: { pullCount: 0, deferredQueue: [], road: [], soulBank: 0, soulWater: 0, targetBrawler: null, pendingWaterReward: null, pendingTargetPick: null },
       ranked: { points: 0, rewardsClaimed: [] },
       attachies: { hyper: {}, gadget: {}, star: {}, pulls: 0 },
+      specialAbilities: null,
+      specialAbilityQuests: null,
+      specialAbilityQuestEvent: null,
+      majorUpdateVNext: { version: 1, retiredAttachiesRefunded: false },
       profile: { playerName:'BRAWE PLAYER', favorites:[], equippedTitle:null, equippedProfileFrame:null, equippedProfileBackground:null, showcaseBadges:[], careerStats:{ matchesPlayed:0, soloWins:0, teamWins:0, rankedWins:0, eliminations:0 } },
       brickBonV2: { claimedRoad:[], claimedChallenges:[], unlockedTitles:[], unlockedBadges:[], unlockedFrames:[], unlockedBackgrounds:[], oldRoadMigrated:false },
+      packets: { schemaVersion:1, unlocked:{}, progress:{}, equipped:null, discoveredGroups:[], stats:{damage:0,wins:0,triggers:0,used:[],discoveries:0} },
+      season3: { schemaVersion:SEASON_3_SCHEMA_VERSION, seasonId:SEASON_3_ID, coreBreachCompleted:false, coreBreachReplayDebug:false, coreBreachSignalsRevealed:false, boss:{completed:[],claimedRewards:[],extremeRevealSeen:false}, questClaims:[], questProgress:{} },
       brawlers: {}
   };
     let refreshBrawlerList = null;
@@ -6060,6 +6962,266 @@
   let isSlopSushiMode = false;
   let slopSushiActiveCards = [];
   let sushiMatchArmed = false;
+  function ensureSeason3State(savedPackets = null, savedSeason3 = null) {
+      if(savedPackets&&typeof savedPackets==='object'){
+          const current=playerData.packets&&typeof playerData.packets==='object'?playerData.packets:{};
+          playerData.packets={...current,...savedPackets,stats:{...(current.stats||{}),...(savedPackets.stats||{})}};
+      }
+      if(!playerData.packets||typeof playerData.packets!=='object')playerData.packets={};
+      const packets=playerData.packets;
+      packets.schemaVersion=1;
+      if(!packets.unlocked||typeof packets.unlocked!=='object')packets.unlocked={};
+      if(!packets.progress||typeof packets.progress!=='object')packets.progress={};
+      packets.discoveredGroups=normalizeUniqueStrings(packets.discoveredGroups);
+      if(!packets.stats||typeof packets.stats!=='object')packets.stats={};
+      packets.stats.damage=Math.max(0,Number(packets.stats.damage)||0);
+      packets.stats.wins=Math.max(0,Math.floor(packets.stats.wins||0));
+      packets.stats.triggers=Math.max(0,Math.floor(packets.stats.triggers||0));
+      packets.stats.discoveries=Math.max(0,Math.floor(packets.stats.discoveries||0));
+      packets.stats.used=normalizeUniqueStrings(packets.stats.used).filter(id=>PACKET_DEFS[id]);
+      packets.equipped=typeof packets.equipped==='string'&&PACKET_DEFS[packets.equipped]&&packets.unlocked[packets.equipped]?packets.equipped:null;
+      if(savedSeason3&&typeof savedSeason3==='object'){
+          const current=playerData.season3&&typeof playerData.season3==='object'?playerData.season3:{};
+          playerData.season3={...current,...savedSeason3,boss:{...(current.boss||{}),...(savedSeason3.boss||{})},questProgress:{...(current.questProgress||{}),...(savedSeason3.questProgress||{})}};
+      }
+      if(!playerData.season3||typeof playerData.season3!=='object')playerData.season3={};
+      const season=playerData.season3;
+      season.schemaVersion=SEASON_3_SCHEMA_VERSION;
+      season.seasonId=SEASON_3_ID;
+      season.coreBreachCompleted=!!season.coreBreachCompleted;
+      season.coreBreachReplayDebug=!!season.coreBreachReplayDebug;
+      season.coreBreachSignalsRevealed=!!season.coreBreachSignalsRevealed;
+      if(!season.boss||typeof season.boss!=='object')season.boss={};
+      season.boss.completed=normalizeUniqueStrings(season.boss.completed);
+      season.boss.claimedRewards=normalizeUniqueStrings(season.boss.claimedRewards);
+      season.boss.extremeRevealSeen=!!season.boss.extremeRevealSeen;
+      season.questClaims=normalizeUniqueStrings(season.questClaims);
+      if(!season.questProgress||typeof season.questProgress!=='object')season.questProgress={};
+      season.cosmetics=normalizeUniqueStrings(season.cosmetics);
+      return {packets,season};
+  }
+  function isRetiredTowerMode(mode){return !TOWER_EVENT_MODES_ENABLED&&RETIRED_TOWER_MODE_IDS.has(mode);}
+  function getEquippedPacketDef(entity=player){
+      if(entity!==player)return null;
+      const {packets}=ensureSeason3State();
+      return packets.equipped?PACKET_DEFS[packets.equipped]||null:null;
+  }
+  function resetPacketRuntime(entity=player){
+      if(!entity)return;
+      entity.packetAttackCount=0;entity.packetHitCount=0;entity.packetDamageCharge=0;
+      entity.packetCoreArmed=false;entity.packetDualElement=null;entity.packetEffectCooldownUntil=0;
+      entity.packetDragonUntil=0;entity.packetAntUntil=0;entity.packetAngelCooldownUntil=0;
+  }
+  function recordPacketTrigger(packetId){
+      if(!packetId||isTraining||isTutorialMode)return;
+      const {packets}=ensureSeason3State();
+      packets.stats.triggers++;
+      if(!packets.stats.used.includes(packetId))packets.stats.used.push(packetId);
+      progressSeason3Quest('packet_triggers',1);
+      progressSeason3Quest('packet_variety',packets.stats.used.length,true);
+  }
+  function recordPacketEquippedDamage(owner,amount){if(owner!==player||!getEquippedPacketDef(player)||isTraining||isTutorialMode)return;progressSeason3Quest('packet_damage',Math.max(0,Number(amount)||0));}
+  function progressSeason3Quest(kind,amount=1,absolute=false){
+      if(isTraining||isTutorialMode||!isSeason3PassActive())return false;ensureSeasonPassState();let changed=false;
+      for(const q of Object.values(playerData.seasonPass.quests||{})){
+          if(q.kind!==kind||q.completed)continue;const next=absolute?Math.max(q.progress||0,amount):(q.progress||0)+amount;q.progress=Math.min(q.target,next);changed=true;
+          if(q.progress>=q.target){q.completed=true;awardSeasonPassXp(q.xpReward||100);}
+      }
+      if(changed&&!season3AtomicReward&&performance.now()-season3QuestAutosaveAt>5000){season3QuestAutosaveAt=performance.now();saveProgress();}return changed;
+  }
+  function showPacketDiscoveryNotice(title,detail,color='#ff8a4c'){
+      const toast=document.createElement('div');toast.className='packet-discovery-toast';toast.style.setProperty('--packet-accent',color);toast.innerHTML=`<small>PACKET SIGNAL</small><b>${title}</b><span>${detail}</span>`;document.body.appendChild(toast);setTimeout(()=>toast.remove(),2600);
+  }
+  function checkPacketGroupDiscovery(group,persist=true){
+      const {packets}=ensureSeason3State();if(!group||packets.discoveredGroups.includes(group))return false;
+      const groupIds=Object.values(PACKET_DEFS).filter(def=>def.group===group).map(def=>def.id);
+      if(!groupIds.length||!groupIds.every(id=>packets.unlocked[id]))return false;
+      packets.discoveredGroups.push(group);if(persist)saveProgress();
+      if(group==='out_in_the_wild')progressSeason3Quest('packet_wild_group',1,true);
+      showPacketDiscoveryNotice(group==='out_in_the_wild'?'OUT IN THE WILD DISCOVERED!':'PACKET BIOME DISCOVERED!',`${groupIds.length} Packet signals completed.`,'#72e7ff');return true;
+  }
+  function addPacketSignal(packetId,amount,source='SEASON 3',persist=true){
+      const def=PACKET_DEFS[packetId];if(!def)return false;const {packets}=ensureSeason3State();if(packets.unlocked[packetId])return false;
+      packets.progress[packetId]=clamp((Number(packets.progress[packetId])||0)+Math.max(0,Number(amount)||0),0,100);
+      if(packets.progress[packetId]>=100){packets.unlocked[packetId]=true;packets.stats.discoveries++;progressSeason3Quest('packet_discoveries',packets.stats.discoveries,true);showPacketDiscoveryNotice(`${def.name.toUpperCase()} UNLOCKED`,`${source} • ${def.biome}`);checkPacketGroupDiscovery(def.group,persist);}
+      if(persist)saveProgress();return true;
+  }
+  function openPacketCollection(){
+      const {packets}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay';
+      const panel=document.createElement('section');panel.className='season3-panel packet-collection';panel.innerHTML=`<header><div><small>CORE BREAKER × ARENA FORGE</small><h1>PACKET COLLECTION</h1><p>${Object.keys(packets.unlocked).filter(id=>packets.unlocked[id]).length}/${Object.keys(PACKET_DEFS).length} discovered • one universal passive equipped</p></div><button aria-label="Close">X</button></header>`;
+      const grid=document.createElement('div');grid.className='packet-catalog';
+      const none=document.createElement('button');none.className=`packet-card${packets.equipped?'':' is-equipped'}`;none.innerHTML='<i>NONE</i><strong>No Packet</strong><span>Use your Fighter without a Packet modifier.</span><em>AVAILABLE</em>';none.onclick=()=>{packets.equipped=null;saveProgress();overlay.remove();openPacketCollection();};grid.appendChild(none);
+      for(const packet of Object.values(PACKET_DEFS)){const unlocked=!!packets.unlocked[packet.id],equipped=packets.equipped===packet.id,card=document.createElement('button');card.className=`packet-card${equipped?' is-equipped':unlocked?' is-unlocked':' is-locked'}`;card.disabled=!unlocked;card.innerHTML=`<i>${packet.icon}</i><strong>${packet.name}</strong><small>${packet.biome}</small><span>${packet.description}</span><em>${equipped?'EQUIPPED':unlocked?'EQUIP':`${Math.floor(Number(packets.progress[packet.id])||0)}% SIGNAL`}</em>`;card.onclick=()=>{packets.equipped=packet.id;saveProgress();overlay.remove();openPacketCollection();};grid.appendChild(card);}panel.appendChild(grid);panel.querySelector('header button').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+  }
+  function openPacketDiscovery(){
+      const {packets}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay';
+      const panel=document.createElement('section');panel.className='season3-panel packet-collection';
+      panel.innerHTML='<header><div><small>SEASON 3 SIGNAL MAP</small><h1>PACKET DISCOVERY</h1><p>Complete signals to reveal every passive in all six Packet biomes.</p></div><button aria-label="Close">X</button></header>';
+      const grid=document.createElement('div');grid.className='packet-catalog';
+      const groups=[...new Set(Object.values(PACKET_DEFS).map(def=>def.group))];
+      for(const group of groups){
+          const defs=Object.values(PACKET_DEFS).filter(def=>def.group===group),complete=defs.every(def=>packets.unlocked[def.id]);
+          const card=document.createElement('article');card.className=`packet-card${complete?' is-unlocked':' is-locked'}`;
+          card.innerHTML=`<i>${complete?'SYNC':'SCAN'}</i><strong>${defs[0]?.biome||group}</strong><small>${String(group).replaceAll('_',' ').toUpperCase()}</small><span>${defs.map(def=>`${def.name}: ${packets.unlocked[def.id]?'DISCOVERED':`${Math.floor(Number(packets.progress[def.id])||0)}%`}`).join('<br>')}</span><em>${complete?'BIOME COMPLETE':`${defs.filter(def=>packets.unlocked[def.id]).length}/${defs.length} FOUND`}</em>`;
+          grid.appendChild(card);
+      }
+      panel.appendChild(grid);panel.querySelector('header button').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+  }
+  function openSeason3Hub(){
+      const {packets,season}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay',panel=document.createElement('section');panel.className='season3-panel';
+      const unlocked=Object.keys(packets.unlocked).filter(id=>packets.unlocked[id]).length;
+      panel.innerHTML=`<header><div><small>SEASON 3</small><h1>CORE BREAKER × ARENA FORGE</h1><p>Ends September 20, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach ${season.coreBreachCompleted?'is-complete':''}"><small>${season.coreBreachCompleted?'BREACH STABILIZED':'CORE BREACH INCOMING'}</small><b>${season.coreBreachCompleted?'6 PACKET BIOMES DETECTED':'YOUR FIRST ELIGIBLE SHOWDOWN WILL CHANGE THE ARENA'}</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S3</i><b>Season Pass</b><span>Signal rewards • ends Sep 20</span></button><button data-action="packets"><i>PKT</i><b>Packet Collection</b><span>${unlocked}/20 discovered • ${packets.equipped?PACKET_DEFS[packets.equipped]?.name:'No Packet equipped'}</span></button><button data-action="discovery"><i>MAP</i><b>Packet Discovery</b><span>Track all six biomes and signal progress</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 3 chaos with corrupted signals</span></button><button data-action="boss"><i>LAVA</i><b>Lava Villain Boss Fight</b><span>Hard through Impossible XV</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Discover and trigger Packets</span></button></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
+      panel.querySelector('header button').onclick=()=>overlay.remove();panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};panel.querySelector('[data-action="packets"]').onclick=()=>{overlay.remove();openPacketCollection();};panel.querySelector('[data-action="discovery"]').onclick=()=>{overlay.remove();openPacketDiscovery();};panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openLavaBossEvent();};overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+  }
+
+  function openLavaBossEvent(){
+      const {season}=ensureSeason3State(),completed=new Set(season.boss.completed||[]),overlay=document.createElement('div');overlay.className='season3-overlay';
+      const panel=document.createElement('section');panel.className='season3-panel lava-boss-panel';
+      const impossible2Done=completed.has('impossible_2');
+      panel.innerHTML=`<header><div><small>SEASON 3 CO-OP EVENT</small><h1>LAVA VILLAIN — BOSS FIGHT</h1><p>Hard → Impossible XV • first-clear rewards cannot be farmed</p></div><button aria-label="Close">X</button></header>${impossible2Done?'<div class="extreme-unlocked">EXTREME DIFFICULTIES UNLOCKED</div>':''}`;
+      const ladder=document.createElement('div');ladder.className='lava-boss-ladder';
+      for(const cfg of Object.values(LAVA_BOSS_DIFFICULTIES)){
+          if(cfg.order>4&&!impossible2Done)continue;
+          const done=completed.has(cfg.id),unlocked=isLavaBossDifficultyUnlocked(cfg.id),row=document.createElement('button');
+          row.className=`lava-boss-tier${done?' is-complete':''}${cfg.id==='impossible_15'?' is-final':''}`;row.disabled=!unlocked;
+          const title=cfg.id==='impossible_2'?' • CORE CORRUPTOR':cfg.id==='impossible_5'?' • CORRUPTED':cfg.id==='impossible_15'?' • FINAL FORM':'';
+          row.innerHTML=`<span><b>${cfg.name}${title}</b><small>${done?'COMPLETED':unlocked?'READY • 3V1':'LOCKED — CLEAR PREVIOUS'}</small></span><em>${getLavaBossFightHp(cfg).toLocaleString()} HP<br>${done?'CLAIMED':`+${cfg.rewardCoins} Coins • +${cfg.rewardSouls} Souls`}</em>`;
+          row.onclick=()=>{activeLavaBossDifficulty=cfg.id;overlay.remove();showdownMode='lava_boss_s3';launchShowdownMatch();};ladder.appendChild(row);
+      }
+      panel.appendChild(ladder);panel.querySelector('header button').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+  }
+
+  function completeLavaBossDifficulty(id){
+      const cfg=getLavaBossDifficulty(id),{season}=ensureSeason3State(),bossState=season.boss;
+      if(!bossState.completed.includes(id))bossState.completed.push(id);
+      let rewardText='';
+      if(!bossState.claimedRewards.includes(id)){
+          bossState.claimedRewards.push(id);playerData.coins=(playerData.coins||0)+cfg.rewardCoins;playerData.souls=(playerData.souls||0)+cfg.rewardSouls;rewardText=`+${cfg.rewardCoins} Coins • +${cfg.rewardSouls} Souls`;
+          const titleId=id==='impossible_2'?'core_corruptor':id==='impossible_5'?'corrupted':id==='impossible_15'?'final_form':null;
+          if(titleId){const bon=ensureProfileProgressionState().bon;if(!bon.unlockedTitles.includes(titleId))bon.unlockedTitles.push(titleId);rewardText+=` • ${PROFILE_TITLE_DEFS[titleId]?.name||titleId} TITLE`;}
+          if(id==='hard')progressSeason3Quest('boss_hard',1);if(id==='impossible_2')progressSeason3Quest('boss_impossible_2',1);
+      }
+      if(id==='impossible_2'&&!bossState.extremeRevealSeen){bossState.extremeRevealSeen=true;showLavaExtremeUnlockReveal();}
+      saveProgress();return rewardText||'First-clear reward already claimed';
+  }
+  function showLavaExtremeUnlockReveal(){
+      const overlay=document.createElement('div');overlay.className='lava-extreme-reveal';overlay.innerHTML='<small>THE CORE CRACKS OPEN</small><h1>EXTREME DIFFICULTIES UNLOCKED</h1><p>Impossible III → Impossible XV</p><div><i></i><b>CORE SURGE BEGINS AT IMPOSSIBLE VI</b><i></i></div>';
+      Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'1500',display:'grid',placeContent:'center',textAlign:'center',color:'#fff4ad',background:'radial-gradient(circle,rgba(105,12,20,.72),rgba(3,5,12,.96))',pointerEvents:'none'});overlay.querySelector('h1').style.cssText='font:900 clamp(28px,6vw,72px) sans-serif;margin:8px;text-shadow:0 0 28px #ff5a24';overlay.querySelector('small').style.cssText='font:900 14px sans-serif;letter-spacing:.3em;color:#ff9b55';overlay.querySelector('p').style.cssText='font:800 20px sans-serif;color:#ffcf70';overlay.querySelector('div').style.cssText='display:flex;gap:18px;align-items:center;justify-content:center;margin-top:18px';document.body.appendChild(overlay);setTimeout(()=>overlay.remove(),3800);
+  }
+  function handlePacketMainAttack(owner,targetX,targetY){
+      const def=getEquippedPacketDef(owner);
+      if(!def)return {targetX,targetY};
+      owner.packetInvisibleUntil=0;
+      owner.packetAttackCount=(owner.packetAttackCount||0)+1;
+      const cycle=def.attackCycle||0;
+      if(def.id==='bird'&&cycle&&owner.packetAttackCount%cycle===0){
+          const ang=Math.atan2(targetY-owner.y,targetX-owner.x),speed=690,damage=Math.round(360*getPlayerDamageScale());
+          for(const offset of [-.16,.16])bullets.push({x:owner.x+Math.cos(ang+offset)*(owner.radius+7),y:owner.y+Math.sin(ang+offset)*(owner.radius+7),vx:Math.cos(ang+offset)*speed,vy:Math.sin(ang+offset)*speed,life:0,maxLife:1,damage,pierce:false,ownerId:owner.id,ownerBrawler:selectedBrawler,hitIds:{},hitboxMod:.8,packetGenerated:true,packetVisual:'bird'});
+          recordPacketTrigger(def.id);spawnFloatingText(owner.x,owner.y-38,'BIRD WING','#8eeeff');
+      }else if(def.id==='core'&&cycle&&owner.packetAttackCount%cycle===0){
+          owner.packetCoreArmed=true;owner.packetCoreArmedUntil=performance.now()+2500;recordPacketTrigger(def.id);
+      }else if(def.id==='ramen'&&cycle&&owner.packetAttackCount%cycle===0){
+          const enemies=bots.filter(target=>target&&target.hp>0&&!areAlliedEntities(owner,target));
+          const nearest=enemies.sort((a,b)=>Math.hypot(a.x-targetX,a.y-targetY)-Math.hypot(b.x-targetX,b.y-targetY))[0];
+          if(nearest){targetX+=(nearest.x-targetX)*def.homing;targetY+=(nearest.y-targetY)*def.homing;recordPacketTrigger(def.id);}
+      }else if(def.id==='dual_element'){
+          owner.packetDualElement=owner.packetDualElement==='fire'?'chill':'fire';
+          recordPacketTrigger(def.id);
+      }
+      return {targetX,targetY};
+  }
+  function getPacketOutgoingDamageMultiplier(owner){
+      if(owner!==player)return 1;
+      const now=performance.now();
+      return (now<(owner.packetDragonUntil||0)?1.12:1)*(now<(owner.packetAntUntil||0)?1.10:1);
+  }
+  function updatePacketRuntime(dt,now=performance.now()){
+      for(const beetle of bots)if(beetle?.isPacketBeetle&&now>=(beetle.packetBeetleExpiresAt||0))beetle.hp=0;
+      for(let i=packetTimeFields.length-1;i>=0;i--){
+          const field=packetTimeFields[i];if(now>=field.expiresAt){packetTimeFields.splice(i,1);continue;}
+          const owner=getEntityById(field.ownerId);if(!owner)continue;
+          for(const entity of [player,...bots])if(entity&&entity.hp>0&&!areAlliedEntities(owner,entity)&&Math.hypot(entity.x-field.x,entity.y-field.y)<=field.radius+(entity.radius||14))entity.slowUntil=Math.max(entity.slowUntil||0,now+180);
+      }
+      for(let i=packetTelegraphs.length-1;i>=0;i--){
+          const event=packetTelegraphs[i];if(now<event.impactAt)continue;packetTelegraphs.splice(i,1);
+          const owner=getEntityById(event.ownerId);if(!owner||owner.hp<=0)continue;
+          if(event.kind==='eagle'){
+              explosions.push({x:event.x,y:event.y,radius:58,life:0,maxLife:.24,color:'rgba(255,230,116,.78)',fxKind:'packetEagle'});
+              for(const enemy of [player,...bots])if(enemy&&enemy.hp>0&&!areAlliedEntities(owner,enemy)&&Math.hypot(enemy.x-event.x,enemy.y-event.y)<=58+(enemy.radius||14))checkHit(enemy,{ownerId:owner.id,ownerBrawler:selectedBrawler,damage:event.damage,pierce:true,hitIds:{},packetGenerated:true,packetVisual:'eagle'},-1);
+          }else if(event.kind==='bear'){
+              const angle=Math.atan2(event.y-owner.y,event.x-owner.x),length=Math.min(180,Math.hypot(event.x-owner.x,event.y-owner.y));
+              for(const enemy of [player,...bots])if(enemy&&enemy.hp>0&&!areAlliedEntities(owner,enemy)){
+                  const along=(enemy.x-owner.x)*Math.cos(angle)+(enemy.y-owner.y)*Math.sin(angle),side=Math.abs((enemy.x-owner.x)*-Math.sin(angle)+(enemy.y-owner.y)*Math.cos(angle));
+                  if(along>=0&&along<=length+35&&side<=52+(enemy.radius||14))checkHit(enemy,{ownerId:owner.id,ownerBrawler:selectedBrawler,damage:event.damage,pierce:true,hitIds:{},packetGenerated:true,packetVisual:'bear'},-1);
+              }
+              explosions.push({x:owner.x+Math.cos(angle)*length*.55,y:owner.y+Math.sin(angle)*length*.55,radius:74,life:0,maxLife:.3,color:'rgba(191,128,65,.72)',fxKind:'packetBear'});
+          }
+      }
+      const def=getEquippedPacketDef(player);if(!def||!playing||gameOver||player.hp<=0)return;
+      if(def.id==='ant'){
+          if(!Number.isFinite(player.packetAntAnchorX)){player.packetAntAnchorX=player.x;player.packetAntAnchorY=player.y;player.packetAntHoldStartedAt=now;}
+          if(Math.hypot(player.x-player.packetAntAnchorX,player.y-player.packetAntAnchorY)>72){player.packetAntAnchorX=player.x;player.packetAntAnchorY=player.y;player.packetAntHoldStartedAt=now;}
+          else if(now-(player.packetAntHoldStartedAt||now)>=def.holdMs&&now>=(player.packetEffectCooldownUntil||0)){player.packetAntUntil=now+3000;player.packetEffectCooldownUntil=now+6000;recordPacketTrigger(def.id);spawnFloatingText(player.x,player.y-38,'ANT TERRITORY','#b8f16e');}
+      }else if(def.id==='invisible'&&now>=(player.packetEffectCooldownUntil||0)&&now-Math.max(player.lastAttackAt||0,player.lastDamagedAt||0)<3500){
+          player.packetInvisibleUntil=now+def.durationMs;player.packetEffectCooldownUntil=now+def.cooldownMs;recordPacketTrigger(def.id);spawnFloatingText(player.x,player.y-38,'MIST PHASE','#c9b8ff');
+      }else if(def.id==='decoy'&&now>=(player.packetEffectCooldownUntil||0)&&now-Math.max(player.lastAttackAt||0,player.lastDamagedAt||0)<2500){
+          const before=new Set(bots.map(bot=>bot.id));spawnGhoulClone(player);const clone=bots.find(bot=>bot.isGhoulClone&&!before.has(bot.id));if(clone){clone.packetDecoy=true;clone.ghoulCloneExpiresAt=now+def.durationMs;}
+          player.packetEffectCooldownUntil=now+def.cooldownMs;recordPacketTrigger(def.id);
+      }
+  }
+  function getPacketHudState(def,owner=player,now=performance.now()){
+      if(!def)return {label:'NO PACKET',meter:0,active:false};
+      if(def.attackCycle){const value=(owner.packetAttackCount||0)%def.attackCycle;return {label:`${value}/${def.attackCycle} ATTACKS`,meter:value/def.attackCycle,active:false};}
+      if(def.hitCycle){const value=(owner.packetHitCount||0)%def.hitCycle;return {label:`${value}/${def.hitCycle} HITS`,meter:value/def.hitCycle,active:false};}
+      if(def.damageNeeded){const value=Math.min(def.damageNeeded,owner.packetDamageCharge||0);return {label:`${Math.round(value)}/${def.damageNeeded}`,meter:value/def.damageNeeded,active:now<(owner.packetDragonUntil||0)};}
+      if(def.id==='angel'){const left=Math.max(0,(owner.packetAngelCooldownUntil||0)-now);return {label:left?`${Math.ceil(left/1000)}s`:'READY',meter:left?1-left/def.cooldownMs:1,active:!left};}
+      if(def.id==='fairy'){const left=Math.max(0,(owner.packetEffectCooldownUntil||0)-now);return {label:left?`${Math.ceil(left/1000)}s`:'READY',meter:left?1-left/def.cooldownMs:1,active:!left};}
+      return {label:'ACTIVE',meter:1,active:true};
+  }
+  function updatePacketMatchHud(now=performance.now()){
+      let hud=document.getElementById('packetMatchHud');const def=player&&playing&&!gameOver?getEquippedPacketDef(player):null;
+      if(!def){if(hud)hud.remove();return;}
+      if(!hud){hud=document.createElement('aside');hud.id='packetMatchHud';hud.innerHTML='<i></i><span><b></b><small></small></span><em></em>';document.body.appendChild(hud);}
+      const state=getPacketHudState(def,player,now);hud.classList.toggle('is-active',state.active);hud.querySelector('i').textContent=def.icon;hud.querySelector('b').textContent=def.name;hud.querySelector('small').textContent=state.label;hud.querySelector('em').style.setProperty('--packet-fill',`${Math.round(clamp(state.meter,0,1)*100)}%`);
+  }
+  function applyPacketHit(owner,target,dealtDamage,attack){
+      const def=getEquippedPacketDef(owner);
+      if(!def||!target||dealtDamage<=0||attack?.packetGenerated||attack?.super)return;
+      const now=performance.now();
+      owner.packetHitCount=(owner.packetHitCount||0)+1;
+      const hitCycle=def.hitCycle||0;
+      if(def.id==='bear'||def.id==='dragon'){
+          owner.packetDamageCharge=(owner.packetDamageCharge||0)+dealtDamage;
+          if(owner.packetDamageCharge>=def.damageNeeded){
+              owner.packetDamageCharge=0;recordPacketTrigger(def.id);
+              if(def.id==='dragon'){owner.packetDragonUntil=now+def.durationMs;spawnFloatingText(owner.x,owner.y-40,'DRAGON FURY','#ff8a4c');}
+              else {packetTelegraphs.push({kind:'bear',ownerId:owner.id,x:target.x,y:target.y,damage:def.damage,createdAt:now,impactAt:now+520});spawnFloatingText(owner.x,owner.y-42,'BEAR CHARGE','#d9a25d');}
+          }
+      }
+      if(def.id==='core'&&owner.packetCoreArmed&&now<(owner.packetCoreArmedUntil||0)){
+          owner.packetCoreArmed=false;AOEDamage(target.x,target.y,def.radius,def.damage,owner.id,false);explosions.push({x:target.x,y:target.y,radius:def.radius,life:0,maxLife:.22,color:'rgba(255,126,52,.68)',fxKind:'packetCore'});
+      }
+      if(hitCycle&&owner.packetHitCount%hitCycle===0){
+          recordPacketTrigger(def.id);
+          if(def.id==='butterfly')doHeal(owner,owner.maxHp*def.healPct);
+          else if(def.id==='heavy_metal'){const a=Math.atan2(target.y-owner.y,target.x-owner.x);target.x+=Math.cos(a)*def.push;target.y+=Math.sin(a)*def.push;}
+          else if(def.id==='demon')doHeal(owner,dealtDamage*def.drainPct);
+          else if(def.id==='poison'){target.poisonDamage=Math.max(target.poisonDamage||0,def.tickDamage);target.poisonTicksLeft=Math.max(target.poisonTicksLeft||0,def.ticks);target.poisonTickAt=Math.min(target.poisonTickAt||now+700,now+700);target.poisonUntil=Math.max(target.poisonUntil||0,now+def.ticks*700+100);target.poisonOwnerId=owner.id;}
+          else if(def.id==='spicy'){target.fuelBurnDamage=Math.max(target.fuelBurnDamage||0,def.burnDamage);target.fuelBurnUntil=Math.max(target.fuelBurnUntil||0,now+def.durationMs);target.fireUntil=Math.max(target.fireUntil||0,now+def.durationMs);target.fireTickAt=Math.min(target.fireTickAt||now+1000,now+1000);owner.packetSpicySpeedUntil=now+def.durationMs;}
+          else if(def.id==='milky'&&now>=(target.packetChillImmuneUntil||0)){target.packetChillStacks=(target.packetChillStacks||0)+1;if(target.packetChillStacks>=def.stacks){target.packetChillStacks=0;target.stunUntil=Math.max(target.stunUntil||0,now+def.freezeMs);target.packetChillImmuneUntil=now+def.immunityMs;}}
+          else if(def.id==='eagle'){packetTelegraphs.push({kind:'eagle',ownerId:owner.id,x:target.x,y:target.y,damage:def.damage,createdAt:now,impactAt:now+520});}
+          else if(def.id==='beetle'){
+              const living=bots.filter(bot=>bot.isPacketBeetle&&bot.ownerId===owner.id&&bot.hp>0);const spawnCount=Math.min(2,Math.max(0,def.maxSummons-living.length));
+              for(let i=0;i<spawnCount;i++){const a=(i?1:-1)*.8+Math.atan2(target.y-owner.y,target.x-owner.x),hp=520;bots.push({id:`packet_beetle_${owner.id}_${Math.floor(now)}_${i}`,brawler:'skeletrooper',x:clamp(owner.x+Math.cos(a)*32,14,WORLD_W-14),y:clamp(owner.y+Math.sin(a)*32,14,WORLD_H-14),z:0,radius:10,hp,maxHp:hp,speed:185,team:getEntityTeam(owner),ownerId:owner.id,isPet:true,isSummon:true,isPacketBeetle:true,noPowerupDrop:true,selectedStar:'none',selectedGadget:'g1',lastShot:0,packetBeetleExpiresAt:now+4500});}
+          }
+          else if(def.id==='time'){packetTimeFields.push({ownerId:owner.id,x:target.x,y:target.y,radius:def.radius,createdAt:now,expiresAt:now+def.durationMs});if(packetTimeFields.length>8)packetTimeFields.splice(0,packetTimeFields.length-8);spawnFloatingText(target.x,target.y-34,'TIME WARP','#a9a2ff');}
+      }
+      if(def.id==='dual_element'){
+          if(owner.packetDualElement==='fire'){target.fuelBurnDamage=Math.max(target.fuelBurnDamage||0,def.burnDamage);target.fuelBurnUntil=Math.max(target.fuelBurnUntil||0,now+1200);target.fireUntil=Math.max(target.fireUntil||0,now+1200);target.fireTickAt=Math.min(target.fireTickAt||now+600,now+600);}
+          else target.slowUntil=Math.max(target.slowUntil||0,now+def.chillMs);
+      }
+      const {packets}=ensureSeason3State();packets.stats.damage+=Math.max(0,dealtDamage);
+  }
   let towerFusionStrength = 1;
   const TOWER_ARTILLERY_BRAWLERS = new Set(['trapper','chaird','skeleflying','evil_doctor','upiedown','jetpack','peter_pickle','unstable','rocketeer']);
   const TOWER_SPREAD_BRAWLERS = new Set(['outlit','fuser','bowlin_rida','money_and_tax','bouncin_balls','fightnfire','beast','splitter','fuel','warrior','chickpig']);
@@ -6081,7 +7243,7 @@
       return [0, 3, 6].map(offset => HOURLY_SUSHI_MODE_POOL[(start + offset) % HOURLY_SUSHI_MODE_POOL.length]);
   }
   function hasHourlySushiModifier(mode, now = Date.now()) {
-      return isSlopSushiEventLive() && mode !== 'slop_sushi' && mode !== 'slop_sushi_plus' && getHourlySushiModes(now).includes(mode);
+      return TOWER_POWER_SYSTEM_ENABLED && isSlopSushiEventLive() && mode !== 'slop_sushi' && mode !== 'slop_sushi_plus' && getHourlySushiModes(now).includes(mode);
   }
 
   function getActiveSlopSushiDeck(brawler) {
@@ -6156,7 +7318,7 @@
       return playerData.slopSushi.maxSeenUtc;
   }
   function isSlopSushiEventLive() { const now=getSlopSushiNow(); return now>=SLOP_SUSHI_START_UTC && now<SLOP_SUSHI_END_UTC; }
-  function isSlopSushiLive() { return isSlopSushiEventLive(); }
+  function isSlopSushiLive() { return TOWER_POWER_SYSTEM_ENABLED && isSlopSushiEventLive(); }
   function getSlopSushiTimeText() {
       const left=Math.max(0,SLOP_SUSHI_END_UTC-getSlopSushiNow());
       const days=Math.floor(left/86400000), hours=Math.floor((left%86400000)/3600000);
@@ -6380,7 +7542,9 @@
       for (const bot of bots) {
           if (!bot || bot.isDummy || bot.isPet || bot.copyphaseClone) continue;
           const deck = [...getActiveSlopSushiDeck(bot.brawler)].sort(() => Math.random() - .5);
-          bot.slopSushiCards = deck.slice(0, cardCount);
+          bot.slopSushiCards = isTowerPowerVaultWeekendMatch
+              ? getActiveSlopSushiDeck(bot.brawler)
+              : deck.slice(0, cardCount);
           if(isTowerTroubleMode){
               const gauntlet=towerTroubleVariant==='gauntlet',run=gauntlet?playerData.slopSushi?.gauntletRun:playerData.slopSushi?.run;
               const floor=Math.max(1,Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:TOWER_TROUBLE_FLOORS,run?.floor||1));
@@ -6831,6 +7995,7 @@
                   playerData.bestWinStreak = data.persistent.bestWinStreak ?? playerData.bestWinStreak;
                   if (data.persistent.tapperPity) playerData.tapperPity = data.persistent.tapperPity;
                   playerData.starrDrops = data.persistent.starrDrops ?? playerData.starrDrops;
+                  playerData.starrDropsToday = data.persistent.starrDropsToday ?? playerData.starrDropsToday;
                   playerData.lastDropDate = data.persistent.lastDate;
                   playerData.superTapperCount = data.persistent.superTapperCount ?? playerData.superTapperCount;
                   playerData.hyperTapperCount = data.persistent.hyperTapperCount ?? playerData.hyperTapperCount;
@@ -6842,8 +8007,11 @@
                   playerData.shopDailyDate = data.persistent.shopDailyDate || playerData.shopDailyDate;
                   playerData.shopDailyOffer = data.persistent.shopDailyOffer || playerData.shopDailyOffer;
                   playerData.shopClaims = data.persistent.shopClaims || playerData.shopClaims;
+                  if (data.persistent.ownedSkins) playerData.ownedSkins = data.persistent.ownedSkins;
+                  if (data.persistent.selectedSkins) playerData.selectedSkins = data.persistent.selectedSkins;
                   if (data.persistent.skinFeaturedRotationStart != null) playerData.skinFeaturedRotationStart = data.persistent.skinFeaturedRotationStart;
                   if (data.persistent.event) playerData.event = data.persistent.event;
+                  if (data.persistent.seasonPassHistory) playerData.seasonPassHistory = data.persistent.seasonPassHistory;
                   if (data.persistent.seasonPass) playerData.seasonPass = data.persistent.seasonPass;
                   if (data.persistent.eventTappers) playerData.eventTappers = data.persistent.eventTappers;
                   if (data.persistent.questBoard) playerData.questBoard = data.persistent.questBoard;
@@ -6854,6 +8022,12 @@
                   if (data.persistent.ranked) playerData.ranked = data.persistent.ranked;
                   if (data.persistent.attachies) playerData.attachies = data.persistent.attachies;
                   if (data.persistent.slopSushi) playerData.slopSushi = data.persistent.slopSushi;
+                  mergeProfileProgressionSave(data.persistent.profile, data.persistent.brickBonV2);
+                  if (data.persistent.specialAbilities) playerData.specialAbilities = data.persistent.specialAbilities;
+                  if (data.persistent.specialAbilityQuests) playerData.specialAbilityQuests = data.persistent.specialAbilityQuests;
+                  if (data.persistent.specialAbilityQuestEvent) playerData.specialAbilityQuestEvent = data.persistent.specialAbilityQuestEvent;
+                  if (data.persistent.majorUpdateVNext) playerData.majorUpdateVNext = data.persistent.majorUpdateVNext;
+                  ensureSeason3State(data.persistent.packets, data.persistent.season3);
                   if (typeof data.persistent.selectedBrawler === 'string') savedSelectedBrawler = data.persistent.selectedBrawler;
                   if (data.persistent.event && data.persistent.event.questSchemaVersion !== EVENT_QUEST_SCHEMA_VERSION) {
                       playerData.event = data.persistent.event;
@@ -6940,6 +8114,8 @@
           if (ENABLE_EVENT_HUB && (!playerData.event || playerData.event.questSchemaVersion !== EVENT_QUEST_SCHEMA_VERSION)) resetEventQuests();
           ensureSoulSummonerData();
           ensureSlopSushiState();
+          ensureProfileProgressionState();
+          ensureSeason3State();
           if (savedSelectedBrawler && allBrawlers.includes(savedSelectedBrawler)) selectedBrawler = savedSelectedBrawler;
           normalizeSelectedBrawler();
           ensureDailyWeeklyQuestData();
@@ -6951,6 +8127,8 @@
   
   function saveProgress() {
       try {
+          ensureProfileProgressionState();
+          ensureSeason3State();
           // Save to new format that TypeScript uses
           const save = {
               persistent: {
@@ -6968,10 +8146,13 @@
                   beastBossTokens: playerData.beastBossTokens,
                   beastBossDifficulty: playerData.beastBossDifficulty,
                   firstWinSuperAwarded: playerData.firstWinSuperAwarded,
+                  shopChainStage: playerData.shopChainStage,
                   shopDailyDate: playerData.shopDailyDate,
                   shopDailyOffer: playerData.shopDailyOffer,
                   shopClaims: playerData.shopClaims,
                   shopChains: playerData.shopChains || {},
+                  ownedSkins: playerData.ownedSkins || {},
+                  selectedSkins: playerData.selectedSkins || {},
                   questBoard: playerData.questBoard,
                    tutorialCompleted: !!playerData.tutorialCompleted,
                    evilDoctorUnlockEndAt: playerData.evilDoctorUnlockEndAt || 0,
@@ -6982,6 +8163,13 @@
                     slopSushi: playerData.slopSushi,
                     profile: playerData.profile,
                     brickBonV2: playerData.brickBonV2,
+                    specialAbilities: playerData.specialAbilities,
+                    specialAbilityQuests: playerData.specialAbilityQuests,
+                    specialAbilityQuestEvent: playerData.specialAbilityQuestEvent,
+                    majorUpdateVNext: playerData.majorUpdateVNext,
+                    packets: playerData.packets,
+                    season3: playerData.season3,
+                    seasonPassHistory: playerData.seasonPassHistory || {},
                     selectedBrawler,
                     brawlerProgress: {}
                 }
@@ -7020,7 +8208,9 @@
            localStorage.setItem('brawl_arena_save', JSON.stringify(save));
            // Also save old format for backwards compat
            localStorage.setItem('brawlGameProgress', JSON.stringify({ ...playerData, selectedBrawler }));
-       } catch(e) {}
+       } catch(e) {
+           console.error('Failed to save progress safely:', e);
+       }
    }
   
   loadProgress();
@@ -7113,11 +8303,11 @@
             }
 
             // Event Hub Button and Badge
-            if (isSlopSushiLive() && !document.getElementById('eventHubBtn')) {
+            if (!document.getElementById('eventHubBtn')) {
                 const quickActions = document.getElementById('homeQuickActions') || document.getElementById('homeHeader') || homeScreen.firstElementChild;
                 const evBtn = document.createElement('button');
                 evBtn.id = 'eventHubBtn';
-                evBtn.textContent = '🏰 SEASON 2 TOWER COMMAND';
+                evBtn.textContent = 'CORE BREAKER • SEASON 3';
                 evBtn.style.position = 'relative';
                 evBtn.style.padding = '8px 12px';
                 evBtn.style.borderRadius = '10px';
@@ -7127,12 +8317,12 @@
                 evBtn.style.fontWeight = '900';
                 evBtn.style.cursor = 'pointer';
                 evBtn.style.zIndex = '40';
-                evBtn.onclick = () => openEventHub();
+                evBtn.onclick = () => openSeason3Hub();
 
                 const evCount = document.createElement('div');
                 evCount.id = 'eventQuestCount';
-                evCount.textContent = `${playerData.slopSushi?.tappers || 0}`;
-                evCount.title = 'Tower Drops';
+                evCount.textContent = `${Object.keys(ensureSeason3State().packets.unlocked).filter(id=>playerData.packets.unlocked[id]).length}`;
+                evCount.title = 'Packets discovered';
                 evCount.style.position = 'absolute';
                 evCount.style.right = '-8px';
                 evCount.style.top = '-8px';
@@ -8255,33 +9445,247 @@
       return new Date().toDateString();
   }
 
-  function hashShopKey(value) {
-      let hash = 2166136261;
-      for (let i = 0; i < value.length; i++) {
-          hash ^= value.charCodeAt(i);
-          hash = Math.imul(hash, 16777619);
+
+  const SPECIAL_ABILITY_DEFS = Object.freeze({
+      outlit: {
+          type: 'mutation',
+          name: 'Overpressure',
+          icon: 'OP',
+          color: '#ff4b55',
+          pieceName: 'Outlit Mutation Piece',
+          shortDesc: 'Every 9 main attacks, the next 4 Scatter Pumps get +100% range and 50% faster unload.'
+      },
+      bouncin_balls: {
+          type: 'signature',
+          name: 'Pinball Command',
+          icon: 'PC',
+          color: '#ffd34f',
+          pieceName: "Bouncin' Balls Signature Piece",
+          shortDesc: 'Spend up to 1000 HP: Elasticity keeps its +50% range, and every collector-ball wall bounce adds another +20% base range. Or spend 750 turret HP to command 2 radial waves (10s cooldown).'
+      },
+      echo: {
+          type: 'instinct',
+          name: 'Aftershock Reflex',
+          icon: 'AR',
+          color: '#62ef88',
+          pieceName: 'Echo Instinct Piece',
+          shortDesc: 'Every 8s, the next Sound Wave is larger, travels farther, and repeats once after 800ms.'
+      },
+      minigunnin: {
+          type: 'mutation',
+          name: 'Incendiary Belt',
+          icon: 'IB',
+          color: '#ff4b55',
+          pieceName: 'Minigunnin Mutation Piece',
+          shortDesc: 'After firing 50 bullets, the next 20 explode at maximum range and place 1.2-second fire near launch, midway, or at impact.'
+      },
+      classy: {
+          type: 'signature',
+          name: 'Marching Encore',
+          icon: 'ME',
+          color: '#ffd34f',
+          pieceName: 'Classy Signature Piece',
+          shortDesc: 'Spend up to 1000 HP while Bass Drop is active to command its speaker to walk for 6 seconds and mirror every Classy attack in the same direction.'
+      },
+      beast: {
+          type: 'signature',
+          name: 'BeastyBeast',
+          icon: 'BB',
+          color: '#ffd34f',
+          pieceName: 'Beast Signature Piece',
+          shortDesc: 'Consume a full ammo bar in regular form: for 5 seconds, stay above 1 HP, gain 40% speed, and auto-claw left/right every 0.01s for 40% less damage.'
+      },
+      splitter: {
+          type: 'instinct',
+          name: 'Fractal Reflex',
+          icon: 'FR',
+          color: '#62ef88',
+          pieceName: 'Splitter Instinct Piece',
+          shortDesc: 'Every 4 seconds, each of Fivecracker’s 5 fragments divides into a clean two-shot forward cone.'
+      },
+      money_and_tax: {
+          type: 'mutation',
+          name: 'Hostile Takeover',
+          icon: 'HT',
+          color: '#ff4b55',
+          pieceName: 'Money & Tax Mutation Piece',
+          shortDesc: 'After 12 Money attacks, the next 4 gain two extra coins and an enlarged center coin. Tax adds a returning pair that steals 0.25 ammo per note.'
       }
-      return hash >>> 0;
+  });
+  const SPECIAL_ABILITY_TYPES = Object.freeze(['mutation', 'signature', 'instinct']);
+  const UNLEASH_POTENTIAL_EVENT_ID = 'unleash-potential-2026-08-v2';
+  const UNLEASH_POTENTIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+  const UNLEASH_POTENTIAL_FIGHTERS = Object.freeze(['minigunnin','classy','splitter']);
+  const SPECIAL_BREAKTHROUGH_QUESTS = Object.freeze({
+      outlit: [
+          {id:'pressure_building',title:'Pressure Building',desc:'Play 3 matches with Outlit.',kind:'play_match',target:3},
+          {id:'nine_round_rhythm',title:'Nine Round Rhythm',desc:'Fire 45 main attacks with Outlit.',kind:'main_attack',target:45},
+          {id:'break_the_limit',title:'Break the Limit',desc:'Deal 20,000 damage with Outlit.',kind:'deal_damage',target:20000}
+      ],
+      bouncin_balls: [
+          {id:'elastic_test',title:'Elastic Test',desc:'Use G1 Elasticity 5 times.',kind:'use_g1',target:5},
+          {id:'ricochet_research',title:'Ricochet Research',desc:"Land 40 Bouncin' Balls main-attack ball hits.",kind:'main_hit',target:40},
+          {id:'build_the_house',title:'Build the House',desc:'Use G2 Bouncy Turret 3 times.',kind:'use_g2',target:3}
+      ],
+      echo: [
+          {id:'sound_check',title:'Sound Check',desc:'Play 3 matches with Echo.',kind:'play_match',target:3},
+          {id:'frequency_test',title:'Frequency Test',desc:'Land 30 Echo main-ring hits.',kind:'main_hit',target:30},
+          {id:'resonance',title:'Resonance',desc:'Deal 15,000 damage with Echo.',kind:'deal_damage',target:15000}
+      ],
+      minigunnin: [
+          {id:'feed_the_belt',title:'Feed the Belt',desc:'Fire 300 Minigunnin bullets.',kind:'main_bullet',target:300},
+          {id:'suppressing_fire',title:'Suppressing Fire',desc:'Deal 20,000 damage with Minigunnin.',kind:'deal_damage',target:20000},
+          {id:'fortress_foreman',title:'Fortress Foreman',desc:'Deploy Minigunnin\'s Fortress 3 times.',kind:'use_super',target:3}
+      ],
+      classy: [
+          {id:'opening_act',title:'Opening Act',desc:'Fire 18 complete Classy Note Bursts.',kind:'main_attack',target:18},
+          {id:'perfect_notes',title:'Perfect Notes',desc:'Land 45 Classy note hits.',kind:'main_hit',target:45},
+          {id:'drop_the_bass',title:'Drop the Bass',desc:'Use Bass Drop 3 times.',kind:'use_super',target:3}
+      ],
+      splitter: [
+          {id:'fracture_practice',title:'Fracture Practice',desc:'Land 40 Splitter grenade or fragment hits.',kind:'main_hit',target:40},
+          {id:'five_way_fire',title:'Five-Way Fire',desc:'Fire 35 Split Grenades.',kind:'main_attack',target:35},
+          {id:'infinite_division',title:'Infinite Division',desc:'Use Splitin Off 5 times.',kind:'use_super',target:5}
+      ]
+  });
+  let specialQuestLastSaveAt = 0;
+  function ensureSpecialAbilityQuestState() {
+      if (!playerData.specialAbilityQuests || typeof playerData.specialAbilityQuests !== 'object') playerData.specialAbilityQuests = {};
+      if (!playerData.specialAbilityQuestEvent || playerData.specialAbilityQuestEvent.eventId !== UNLEASH_POTENTIAL_EVENT_ID) {
+          playerData.specialAbilityQuestEvent={eventId:UNLEASH_POTENTIAL_EVENT_ID,startAt:Date.now(),endAt:Date.now()+UNLEASH_POTENTIAL_DURATION_MS};
+      }
+      for (const [fighterId, quests] of Object.entries(SPECIAL_BREAKTHROUGH_QUESTS)) {
+          if (!playerData.specialAbilityQuests[fighterId]) playerData.specialAbilityQuests[fighterId] = {};
+          for (const quest of quests) {
+              const old = playerData.specialAbilityQuests[fighterId][quest.id];
+              if (!old || typeof old !== 'object') playerData.specialAbilityQuests[fighterId][quest.id] = {progress:0,completed:false,rewardClaimed:false};
+              else {
+                  old.progress = Math.max(0, Number(old.progress) || 0);
+                  old.completed = !!old.completed || old.progress >= quest.target;
+                  old.rewardClaimed = !!old.rewardClaimed;
+              }
+          }
+      }
+      return playerData.specialAbilityQuests;
   }
 
-  function getOrCreateProgress(brawlerId) {
-      if (!playerData.brawlers[brawlerId]) {
-          playerData.brawlers[brawlerId] = {
-              level: 1,
-              bricks: 0,
-              prestige: 0,
-              gadgetUnlocked: false,
-              starPowerUnlocked: false,
-              hyperchargeUnlocked: false,
-              selectedStar: 'slow',
-              selectedGadget: 'g1',
-              ownedTrinkets: [],
-              equippedTrinkets: []
-          };
+  function isUnleashPotentialActive() {
+      ensureSpecialAbilityQuestState();
+      return Date.now() < (playerData.specialAbilityQuestEvent?.endAt || 0);
+  }
+  function formatUnleashPotentialTimeLeft() {
+      ensureSpecialAbilityQuestState();
+      const left=Math.max(0,(playerData.specialAbilityQuestEvent?.endAt||0)-Date.now());
+      if (!left) return 'EVENT ENDED';
+      const hours=Math.ceil(left/3600000),days=Math.floor(hours/24);
+      return days>0?`${days}d ${hours%24}h left`:`${hours}h left`;
+  }
+  function getSpecialClaimableCount() {
+      const state=ensureSpecialAbilityQuestState();
+      if (!isUnleashPotentialActive()) return 0;
+      let count=0;
+      for (const fighterId of UNLEASH_POTENTIAL_FIGHTERS) {
+          for (const quest of SPECIAL_BREAKTHROUGH_QUESTS[fighterId] || []) {
+              const entry=state[fighterId]?.[quest.id];
+              if (entry?.completed&&!entry.rewardClaimed) count++;
+          }
       }
+      return count;
+  }
+
+  function getSpecialAbilityDef(fighterId) { return SPECIAL_ABILITY_DEFS[fighterId] || null; }
+  function ensureSpecialAbilityState() {
+      if (!playerData.specialAbilities || typeof playerData.specialAbilities !== 'object') playerData.specialAbilities = {};
+      for (const def of Object.values(SPECIAL_ABILITY_DEFS)) if (!playerData.specialAbilities[def.type]) playerData.specialAbilities[def.type] = {};
+      return playerData.specialAbilities;
+  }
+  function getSpecialAbilityState(type, fighterId) {
+      const root = ensureSpecialAbilityState();
+      if (!root[type]) root[type] = {};
+      if (!root[type][fighterId]) root[type][fighterId] = { pieces:0, unlocked:false };
+      const state = root[type][fighterId];
+      state.pieces = Math.min(3, Math.max(0, Number(state.pieces) || 0));
+      state.unlocked = !!state.unlocked || state.pieces >= 3;
+      return state;
+  }
+  function getSpecialPieceCount(type, fighterId) {
+      if (!SPECIAL_ABILITY_TYPES.includes(type) || !fighterId) return 0;
+      return getSpecialAbilityState(type, fighterId).pieces;
+  }
+  function isSpecialAbilityUnlocked(fighterId) {
+      const def = getSpecialAbilityDef(fighterId);
+      return !!def && getSpecialAbilityState(def.type, fighterId).unlocked;
+  }
+  function isSpecialAbilityAvailableForEntity(entity, fighterId) {
+      if (!entity || !fighterId) return false;
+      if (isTraining) return true;
+      if (entity.id !== player.id) return false;
+      return isSpecialAbilityUnlocked(fighterId);
+  }
+  function addSpecialAbilityPiece(fighterId) {
+      const def = getSpecialAbilityDef(fighterId);
+      if (!def) return false;
+      const ability = getSpecialAbilityState(def.type, fighterId);
+      if (ability.unlocked) { playerData.coins = (playerData.coins || 0) + 120; return 'converted'; }
+      ability.pieces = Math.min(3, ability.pieces + 1);
+      if (ability.pieces >= 3) ability.unlocked = true;
+      return true;
+  }
+  function addSpecialQuestProgress(fighterId, kind, amount=1) {
+      const quests = SPECIAL_BREAKTHROUGH_QUESTS[fighterId];
+      if (!quests || !UNLEASH_POTENTIAL_FIGHTERS.includes(fighterId) || !isUnleashPotentialActive() || isTraining || isTutorialMode) return false;
+      const state = ensureSpecialAbilityQuestState()[fighterId];
+      let changed = false;
+      for (const quest of quests) if (quest.kind === kind) {
+          const entry = state[quest.id];
+          if (entry.rewardClaimed) continue;
+          entry.progress = Math.min(quest.target, (entry.progress || 0) + Math.max(0, Number(amount) || 0));
+          entry.completed = entry.progress >= quest.target;
+          changed = true;
+      }
+      const now = Date.now();
+      // Match completion is a low-frequency, high-value quest event. Persist it
+      // immediately so returning home/reloading cannot lose Play Match credit.
+      if (changed && kind === 'play_match') {
+          specialQuestLastSaveAt = now;
+          saveProgress();
+          updateQuestBadge();
+      } else if (changed && now - specialQuestLastSaveAt > 900) {
+          specialQuestLastSaveAt = now;
+          saveProgress();
+      }
+      return changed;
+  }
+  function claimSpecialQuestReward(fighterId, questId) {
+      const def = getSpecialAbilityDef(fighterId);
+      const quest = SPECIAL_BREAKTHROUGH_QUESTS[fighterId]?.find(q=>q.id===questId);
+      const entry = ensureSpecialAbilityQuestState()[fighterId]?.[questId];
+      if(!def||!quest||!UNLEASH_POTENTIAL_FIGHTERS.includes(fighterId)||!isUnleashPotentialActive()||!entry?.completed||entry.rewardClaimed)return false;
+      addSpecialAbilityPiece(fighterId);
+      entry.rewardClaimed = true;
+      saveProgress();
+      return true;
+  }
+  function countOwnedSlots(bucket) { return Object.values(bucket || {}).filter(Boolean).length; }
+  function migrateRetiredAttachies() {
+      // Core Surge Attachies remain active; only the retired Tool/Talent buckets are refunded.
+      playerData.majorUpdateVNext = playerData.majorUpdateVNext || { version:1, retiredAttachiesRefunded:false };
+      if (playerData.majorUpdateVNext.retiredAttachiesRefunded) return;
+      playerData.attachies = playerData.attachies || { hyper:{}, gadget:{}, star:{}, pulls:0 };
+      const retired = countOwnedSlots(playerData.attachies.gadget) + countOwnedSlots(playerData.attachies.star);
+      const refund = retired * 350;
+      playerData.coins = (playerData.coins || 0) + refund;
+      playerData.attachies.gadget = {};
+      playerData.attachies.star = {};
+      playerData.majorUpdateVNext.retiredAttachiesRefunded = true;
+  }
+  migrateRetiredAttachies();
+
+  function hashShopKey(value) { let hash=2166136261; for(let i=0;i<String(value).length;i++){hash^=String(value).charCodeAt(i);hash=Math.imul(hash,16777619);} return hash>>>0; }
+  function getOrCreateProgress(brawlerId) {
+      if (!playerData.brawlers[brawlerId]) playerData.brawlers[brawlerId] = { level:1, bricks:0, prestige:0, gadgetUnlocked:false, starPowerUnlocked:false, hyperchargeUnlocked:false, selectedStar:'slow', selectedGadget:'g1', ownedTrinkets:[], equippedTrinkets:[] };
       return ensureProgressTrinkets(playerData.brawlers[brawlerId]);
   }
-
   function applyLevelUnlocks(progress, targetLevel) {
       progress.level = Math.min(11, Math.max(progress.level || 1, targetLevel));
       const unlocks = getUnlocksForLevel(progress.level);
@@ -8292,324 +9696,48 @@
       if (progress.starPowerUnlocked && !progress.selectedStar) progress.selectedStar = 'slow';
       return progress;
   }
-
-  function applyLevelOnly(progress, targetLevel) {
-      progress.level = Math.min(11, Math.max(progress.level || 1, targetLevel));
-      return progress;
-  }
-
-  function getNextShopRefreshAt() {
-      const next = new Date();
-      next.setHours(24, 0, 0, 0);
-      return next.getTime();
-  }
-
-  function formatCountdown(ms) {
-      const safeMs = Math.max(0, ms);
-      const totalSeconds = Math.ceil(safeMs / 1000);
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-      if (minutes > 0) return `${minutes}m ${seconds}s`;
-      return `${seconds}s`;
-  }
-
-  function buildDailyShopOffer(todayKey) {
-      const eligibleBrawlers = allBrawlers.filter((bid) => {
-          const prog = getOrCreateProgress(bid);
-          const isDisabled = (brawlerData && brawlerData[bid] && brawlerData[bid].disabled) || disabledBrawlers.has(bid);
-          return !isDisabled && ((prog.level || 1) < 9);
-      });
-      
-      const seed = hashShopKey(todayKey);
-      // Feature 4 random offers from the possible pools
-      const possibleOffers = [];
-      
-      // 1. Power 9 Offer (Level skip)
-      if (eligibleBrawlers.length > 0) {
-          const bid = eligibleBrawlers[seed % eligibleBrawlers.length];
-          const prog = getOrCreateProgress(bid);
-          let coinCost = 0;
-          for (let l = prog.level || 1; l < 9; l++) coinCost += getUpgradeCost(l);
-          const gemCost = Math.max(1, Math.ceil((coinCost / 100) * 0.7));
-          possibleOffers.push({ type: 'power9', brawlerId: bid, gemCost, coinCost });
-      }
-      
-      // 2. Random Skin from Database (that user doesn't own)
-      const skinIds = Object.keys(skinsDatabase);
-      const unownedSkins = skinIds.filter(sid => {
-          const s = skinsDatabase[sid];
-          return !playerData.ownedSkins[s.brawler]?.includes(sid);
-      });
-      if (unownedSkins.length > 0) {
-          const sid = unownedSkins[(seed >> 2) % unownedSkins.length];
-          const skin = skinsDatabase[sid];
-          possibleOffers.push({ type: 'featured_skin', skinId: sid, gemCost: getFeaturedGemPrice(skin) });
-      }
-      
-      // 3. Resource Bundle (Coins for Gems)
-      const coinBundles = [
-          { coins: 1200, gems: 8 },
-          { coins: 2500, gems: 15 },
-          { coins: 5000, gems: 25 }
-      ];
-      const bundleIdx = Math.abs((seed >> 4)) % coinBundles.length;
-      const bundle = coinBundles[bundleIdx] || coinBundles[0];
-      possibleOffers.push({ type: 'currency_bundle', coins: (bundle && bundle.coins) || 1200, gemCost: (bundle && bundle.gems) || 8 });
-      
-      // 4. Gadget/Star Power Deal
-      const brawlersWithLockedAbilities = allBrawlers.filter(bid => {
-          const prog = getOrCreateProgress(bid);
-          return !prog.gadgetUnlocked || !prog.starPowerUnlocked;
-      });
-      if (brawlersWithLockedAbilities.length > 0) {
-          const bid = brawlersWithLockedAbilities[(seed >> 6) % brawlersWithLockedAbilities.length];
-          const prog = getOrCreateProgress(bid);
-          if (!prog.gadgetUnlocked) {
-              possibleOffers.push({ type: 'gadget_deal', brawlerId: bid, gemCost: 10 });
-          } else {
-              possibleOffers.push({ type: 'starpower_deal', brawlerId: bid, coinCost: 800 });
-          }
-      }
-
-      // Select top 4 based on seed shuffling or just return the array
-      return {
-          offers: possibleOffers.slice(0, 4),
-          refreshAtMs: getNextShopRefreshAt()
-      };
-  }
-
-  function getShopCycleBounds(days, referenceMs = Date.now()) {
-      const cycleMs = days * 24 * 60 * 60 * 1000;
-      const localStart = new Date(referenceMs);
-      localStart.setHours(0, 0, 0, 0);
-      const cycleStartMs = Math.floor(localStart.getTime() / cycleMs) * cycleMs;
-      return {
-          startMs: cycleStartMs,
-          endMs: cycleStartMs + cycleMs,
-          cycleKey: String(cycleStartMs),
-      };
-  }
-
-  function getShopClaimKey(prefix, cycleKey) {
-      return `${prefix}::${cycleKey}`;
-  }
-
-  function pickTimedEntry(entries, seed) {
-      return entries[hashShopKey(seed) % entries.length];
-  }
-
-  function syncShopState() {
-      if (playerData.gems == null) playerData.gems = 0;
-      if (!playerData.shopClaims) {
-          playerData.shopClaims = {
-              outlitPower11: false,
-              outlitHypercharge: false,
-              outlitGadget: false,
-              coinsPack: false,
-              starPowerSale: false,
-                  echoHyperchargeSale: false,
-          };
-      }
-
-      const todayKey = getShopTodayKey();
-      if (playerData.shop !== todayKey) {
-          playerData.shopDailyDate = todayKey;
-          playerData.shopDailyOffer = buildDailyShopOffer(todayKey);
-          saveProgress();
-      }
-  }
-
-  function trySkinInTraining(skinId) {
-      const skin = skinsDatabase[skinId];
-      if (!skin) return;
-      selectedBrawler = skin.brawler;
-      playerData.selectedSkins[skin.brawler] = skin.id;
-      if (brawlerSelect) brawlerSelect.value = skin.brawler;
-      
-      isTraining = true;
-      isDamageFillerMode = false;
-      isKnockDonateMode = false;
-      isBrickVaultMode = false;
-      isSoloTdMode = false;
-      isTrioShowdownMode = false;
-      isSplitterPoweredMode = false;
-      isMirrorMode = false;
-      isSoloTrial = false;
-      soloTrialWave = 0;
-      soloTrialPending = false;
-      playing = true;
-      if (homeScreen) homeScreen.style.display = 'none';
-      if (brawlerSelect) brawlerSelect.disabled = true;
-      WORLD_W = 2400; WORLD_H = 2600;
-      cubes.length = 0;
-      powerups.length = 0;
-      amplifierToolboxes.length = 0;
-      amplifierScrewZones.length = 0;
-      skeleParachutes.length = 0;
-      skelePortals.length = 0;
-      waterZones.length = 0;
-      generatePowerBoxes();
-      initPlayerHP();
-      player.x = 1200;
-      player.y = 1100;
-      bots.length = 0;
-      
-      bots.push({ 
-          id: nextId++, x: 1200, y: 400, z:0, vx:0, vy:0, hp: 1000000, maxHp: 1000000, shield:0, shieldMax:0, 
-          shieldDecayTimer:0, reloadBuffUntil:0, radius: 35, speed: 0, slowUntil: 0, brawler: 'outlit', 
-          lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, 
-          isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, 
-          selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false, isDummy: true 
-      });
-      
-      allBrawlers.filter((b) => !disabledBrawlers.has(b)).forEach((b, i) => {
-          const col = i % 3;
-          const row = Math.floor(i / 3);
-          const bx = 400 + col * 800;
-          const by = 800 + row * 600;
-          const tier = getHPTier(b);
-          bots.push({
-              id: nextId++, x: bx, y: by, baseX: bx, baseY: by, z:0, vx:0, vy:0,
-              hp: tier.hp, maxHp: tier.hp, powerCubes: 0, isDead: false, shield:0, shieldMax:0, 
-              shieldDecayTimer:0, reloadBuffUntil:0, radius: 16, speed: 0, slowUntil: 0, brawler: b, 
-              lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, 
-              isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, 
-              selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, 
-              isFlying: false, isDummy: true, isTrainingBot: true, moneyAndTaxMode: 'money'
-          });
-      });
-  }
-
-  function getSoulBalance() {
-      return (playerData.souls || 0) + ((playerData.soulSummoner && playerData.soulSummoner.soulBank) || 0);
-  }
-
-  function deductSouls(amount) {
-      let toDeduct = amount;
-      if ((playerData.souls || 0) >= toDeduct) {
-          playerData.souls -= toDeduct;
-      } else {
-          toDeduct -= (playerData.souls || 0);
-          playerData.souls = 0;
-          if (playerData.soulSummoner) {
-              playerData.soulSummoner.soulBank = Math.max(0, (playerData.soulSummoner.soulBank || 0) - toDeduct);
-          }
-      }
-  }
+  function applyLevelOnly(progress,targetLevel){progress.level=Math.min(11,Math.max(progress.level||1,targetLevel));return progress;}
+  function getShopCycleBounds(days,referenceMs=Date.now()){const cycleMs=days*86400000;const d=new Date(referenceMs);d.setHours(0,0,0,0);const start=Math.floor(d.getTime()/cycleMs)*cycleMs;return{startMs:start,endMs:start+cycleMs,cycleKey:String(start)};}
+  function getShopClaimKey(prefix,cycleKey){return `${prefix}::${cycleKey}`;}
+  function pickTimedEntry(entries,seed){return entries[hashShopKey(seed)%entries.length];}
+  function syncShopState(){if(playerData.gems==null)playerData.gems=0;if(!playerData.shopClaims)playerData.shopClaims={};}
+  function trySkinInTraining(skinId){const skin=skinsDatabase[skinId];if(!skin)return;playerData.selectedSkins[skin.brawler]=skin.id;saveProgress();launchTrainingSandbox(skin.brawler);}
+  function getSoulBalance(){return (playerData.souls||0)+(playerData.soulSummoner?.soulBank||0);}
+  function deductSouls(amount){let left=amount;if((playerData.souls||0)>=left)playerData.souls-=left;else{left-=playerData.souls||0;playerData.souls=0;if(playerData.soulSummoner)playerData.soulSummoner.soulBank=Math.max(0,(playerData.soulSummoner.soulBank||0)-left);}}
 
   function openGemShop() {
       syncShopState();
-
       const dailyCycle = getShopCycleBounds(1);
-      playerData.dailyClaims = playerData.dailyClaims || { soulsToCoins: 0, gemsToCoins: 0, lastResetKey: '' };
+      playerData.dailyClaims = playerData.dailyClaims || { soulsToCoins:0, gemsToCoins:0, lastResetKey:'' };
       if (playerData.dailyClaims.lastResetKey !== dailyCycle.cycleKey) {
           playerData.dailyClaims.soulsToCoins = 0;
           playerData.dailyClaims.gemsToCoins = 0;
           playerData.dailyClaims.lastResetKey = dailyCycle.cycleKey;
           saveProgress();
       }
-
-      const overlay = document.createElement('div');
-      overlay.style.position = 'fixed';
-      overlay.style.inset = '0';
-      overlay.style.background = 'rgba(7, 12, 26, 0.96)';
-      overlay.style.backdropFilter = 'blur(10px)';
-      overlay.style.zIndex = '1300';
-      overlay.style.display = 'flex';
-      overlay.style.alignItems = 'center';
-      overlay.style.justifyContent = 'center';
-      overlay.style.color = '#fff';
-      overlay.style.fontFamily = "'Outfit', sans-serif";
-      overlay.style.userSelect = 'none';
-      overlay.style.padding = '14px';
-
-      const panel = document.createElement('div');
-      panel.style.width = 'min(1280px, 96vw)';
-      panel.style.height = '85vh';
-      panel.style.background = 'linear-gradient(170deg, rgba(8,16,34,0.98), rgba(4,9,20,0.98))';
-      panel.style.border = '1px solid rgba(130,190,255,0.14)';
-      panel.style.borderRadius = '24px';
-      panel.style.boxShadow = '0 24px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.06)';
-      panel.style.display = 'flex';
-      panel.style.flexDirection = 'column';
-      panel.style.overflow = 'hidden';
-      panel.style.position = 'relative';
-
-      const header = document.createElement('div');
-      header.style.padding = '18px 24px';
-      header.style.borderBottom = '1px solid rgba(130,190,255,0.1)';
-      header.style.display = 'flex';
-      header.style.justifyContent = 'space-between';
-      header.style.alignItems = 'center';
-
-      const titleWrap = document.createElement('div');
-      const title = document.createElement('div');
-      title.textContent = 'STAR SHOP';
-      title.style.fontSize = '24px';
-      title.style.fontWeight = '900';
-      title.style.letterSpacing = '1px';
-      title.style.background = 'linear-gradient(135deg, #5df2c2, #7699ff)';
-      title.style.webkitBackgroundClip = 'text';
-      title.style.webkitTextFillColor = 'transparent';
-      titleWrap.appendChild(title);
-
-      const currencyWidget = document.createElement('div');
-      currencyWidget.style.display = 'flex';
-      currencyWidget.style.gap = '14px';
-      currencyWidget.style.background = 'rgba(8,16,32,0.6)';
-      currencyWidget.style.padding = '6px 16px';
-      currencyWidget.style.borderRadius = '14px';
-      currencyWidget.style.border = '1px solid rgba(130,190,255,0.12)';
-
-      const soulsWidget = document.createElement('div');
-      soulsWidget.style.fontWeight = '900';
-      soulsWidget.style.fontSize = '13px';
-      soulsWidget.style.color = '#caa6ff';
-      soulsWidget.innerHTML = `🧪 ${getSoulBalance()}`;
-
-      const gemsWidget = document.createElement('div');
-      gemsWidget.style.fontWeight = '900';
-      gemsWidget.style.fontSize = '13px';
-      gemsWidget.style.color = '#5df2c2';
-      gemsWidget.innerHTML = `💎 ${playerData.gems}`;
-
-      const coinsWidget = document.createElement('div');
-      coinsWidget.style.fontWeight = '900';
-      coinsWidget.style.fontSize = '13px';
-      coinsWidget.style.color = '#ffd166';
-      coinsWidget.innerHTML = `🪙 ${playerData.coins}`;
-
-      currencyWidget.appendChild(soulsWidget);
-      currencyWidget.appendChild(gemsWidget);
-      currencyWidget.appendChild(coinsWidget);
-
-      const close = document.createElement('button');
-      close.textContent = '✕';
-      close.style.width = '32px';
-      close.style.height = '32px';
-      close.style.border = 'none';
-      close.style.borderRadius = '50%';
-      close.style.background = 'rgba(255,107,107,0.15)';
-      close.style.color = '#ff6b6b';
-      close.style.fontWeight = 'bold';
-      close.style.cursor = 'pointer';
-      close.style.fontSize = '14px';
-      close.onclick = () => { overlay.remove(); };
-
-      const topActions = document.createElement('div');
-      topActions.style.display = 'flex';
-      topActions.style.alignItems = 'center';
-      topActions.style.gap = '16px';
-      topActions.appendChild(currencyWidget);
-      topActions.appendChild(close);
-
-      header.appendChild(titleWrap);
-      header.appendChild(topActions);
+      const overlay=document.createElement('div');
+      overlay.className = 'brawe-shop-overlay';
+      overlay.style.cssText="position:fixed;inset:0;background:rgba(7,12,26,.96);backdrop-filter:blur(10px);z-index:1300;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Outfit',sans-serif;user-select:none;padding:14px";
+      const panel=document.createElement('div');
+      panel.className = 'brawe-shop-panel';
+      panel.style.cssText='width:min(1280px,96vw);height:85vh;background:linear-gradient(170deg,rgba(8,16,34,.98),rgba(4,9,20,.98));border:1px solid rgba(130,190,255,.14);border-radius:24px;box-shadow:0 24px 60px rgba(0,0,0,.8);display:flex;flex-direction:column;overflow:hidden;position:relative';
+      const header=document.createElement('div');
+      header.className = 'brawe-shop-header';
+      header.style.cssText='padding:18px 24px;border-bottom:1px solid rgba(130,190,255,.1);display:flex;justify-content:space-between;align-items:center';
+      const titleWrap=document.createElement('div');
+      const title=document.createElement('div'); title.className='brawe-shop-title'; title.innerHTML='<small>ROTATING OFFERS · PERSONALIZED DAILY</small>FORGE MARKET'; title.style.cssText='font-size:24px;font-weight:900;letter-spacing:1px;color:#5df2c2'; titleWrap.appendChild(title);
+      const currencyWidget=document.createElement('div');currencyWidget.style.cssText='display:flex;gap:14px;background:rgba(8,16,32,.6);padding:6px 16px;border-radius:14px';
+      const soulsWidget=document.createElement('div');soulsWidget.style.color='#caa6ff';soulsWidget.innerHTML=`🧪 ${getSoulBalance()}`;
+      const gemsWidget=document.createElement('div');gemsWidget.style.color='#5df2c2';gemsWidget.innerHTML=`💎 ${playerData.gems}`;
+      const coinsWidget=document.createElement('div');coinsWidget.style.color='#ffd166';coinsWidget.innerHTML=`🪙 ${playerData.coins}`;
+      for(const widget of [soulsWidget,gemsWidget,coinsWidget]){widget.style.fontWeight='900';widget.style.fontSize='13px';currencyWidget.appendChild(widget);}
+      const close=document.createElement('button');close.textContent='✕';close.style.cssText='width:32px;height:32px;border:0;border-radius:50%;background:rgba(255,107,107,.15);color:#ff6b6b;font-weight:bold;cursor:pointer';close.onclick=()=>overlay.remove();
+      const topActions=document.createElement('div');topActions.style.cssText='display:flex;align-items:center;gap:16px';topActions.append(currencyWidget,close);
+      header.append(titleWrap,topActions);
       panel.appendChild(header);
 
       const shopBody = document.createElement('div');
+      shopBody.className = 'brawe-shop-body';
       shopBody.style.display = 'flex';
       shopBody.style.flex = '1';
       shopBody.style.gap = '20px';
@@ -8617,6 +9745,7 @@
       shopBody.style.padding = '20px';
 
       const sidebar = document.createElement('div');
+      sidebar.className = 'brawe-shop-sidebar';
       sidebar.style.width = '200px';
       sidebar.style.display = 'flex';
       sidebar.style.flexDirection = 'column';
@@ -8624,6 +9753,7 @@
       sidebar.style.flexShrink = '0';
 
       const shopContent = document.createElement('div');
+      shopContent.className = 'brawe-shop-content';
       shopContent.style.flex = '1';
       shopContent.style.overflowY = 'auto';
       shopContent.style.paddingRight = '6px';
@@ -8633,7 +9763,7 @@
       shopBody.appendChild(shopContent);
       panel.appendChild(shopBody);
 
-      let activeTab = 'featured';
+      let activeTab = 'daily';
 
       const ensureShopButtonRefresh = () => {
           saveProgress();
@@ -8676,13 +9806,16 @@
           return btn;
       };
 
-      sidebar.appendChild(createSidebarButton('🎁 FEATURED', 'featured'));
+      sidebar.appendChild(createSidebarButton('☀ DAILY DEALS', 'daily'));
+      sidebar.appendChild(createSidebarButton('👤 FIGHTER DEAL', 'fighter'));
+      sidebar.appendChild(createSidebarButton('🎁 OFFER ARCHIVE', 'featured'));
       sidebar.appendChild(createSidebarButton('🎭 SKIN CATALOGUE', 'skins'));
       sidebar.appendChild(createSidebarButton('🎡 LUCKY WHEEL', 'wheel'));
       sidebar.appendChild(createSidebarButton('🪙 CONVERSIONS', 'exchange'));
 
       const makeShopCard = ({ titleText, accent, descText, priceText, buttonText, buttonColor, onBuy, isOwned, isLocked, lockedText = 'LOCKED', footerText }) => {
           const card = document.createElement('div');
+          card.className = 'brawe-shop-card';
           card.style.background = 'linear-gradient(145deg, rgba(16, 28, 54, 0.45) 0%, rgba(8, 16, 32, 0.55) 100%)';
           card.style.border = `1px solid ${accent}33`;
           card.style.borderRadius = '16px';
@@ -9321,10 +10454,66 @@
           return grid;
       };
 
+      const renderDailyDealsTab = () => {
+          const grid = cardGrid();
+          addSection(grid, 'Fresh every day');
+          const supplyKey = getShopClaimKey('forge-supply', dailyCycle.cycleKey);
+          grid.appendChild(makeShopCard({
+              titleText: '📦 Daily Forge Supply', accent: '#69f2cd',
+              descText: 'A clean daily boost: 180 Coins and 2 Gems.', priceText: 'FREE', buttonText: 'OPEN SUPPLY', buttonColor: '#69f2cd',
+              isOwned: !!playerData.shopClaims[supplyKey], footerText: 'One supply per local day.',
+              onBuy: () => { if(playerData.shopClaims[supplyKey])return; playerData.coins=(playerData.coins||0)+180; playerData.gems=(playerData.gems||0)+2; playerData.shopClaims[supplyKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
+          }));
+          const towerKey = getShopClaimKey('daily-tower-cache', dailyCycle.cycleKey);
+          grid.appendChild(makeShopCard({
+              titleText: '🗼 Tower Transformation Cache', accent: '#bd79ff',
+              descText: 'One Tower Drop that unlocks a complete transformation deck for its featured fighter.', priceText: '12 GEMS', buttonText: 'OPEN CACHE', buttonColor: '#bd79ff',
+              isOwned: !!playerData.shopClaims[towerKey], isLocked: (playerData.gems||0)<12, lockedText:'12 GEMS REQUIRED', footerText:'Limited to one each day.',
+              onBuy: () => { if(playerData.shopClaims[towerKey]||(playerData.gems||0)<12)return; ensureSlopSushiState(); playerData.gems-=12; playerData.slopSushi.tappers=(playerData.slopSushi.tappers||0)+1; playerData.shopClaims[towerKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
+          }));
+          const coinKey = getShopClaimKey('daily-coin-crate', dailyCycle.cycleKey);
+          grid.appendChild(makeShopCard({
+              titleText: '🪙 Upgrade Coin Crate', accent: '#ffd166',
+              descText: 'A focused bundle for fighter upgrades and loadout purchases.', priceText: '8 GEMS → 600 COINS', buttonText: 'BUY CRATE', buttonColor: '#ffd166',
+              isOwned: !!playerData.shopClaims[coinKey], isLocked:(playerData.gems||0)<8, lockedText:'8 GEMS REQUIRED', footerText:'One crate each day.',
+              onBuy:()=>{if(playerData.shopClaims[coinKey]||(playerData.gems||0)<8)return;playerData.gems-=8;playerData.coins=(playerData.coins||0)+600;playerData.shopClaims[coinKey]=true;ensureShopButtonRefresh();renderTabContent();}
+          }));
+          return grid;
+      };
+
+      const renderFighterDealTab = () => {
+          const grid = cardGrid();
+          const data=brawlerData[selectedBrawler]||{};
+          const progress=getOrCreateProgress(selectedBrawler);
+          const level=Math.max(1,Math.min(11,progress.level||1));
+          const normalCost=level<11?getUpgradeCost(level):0;
+          const dealCost=Math.max(1,Math.floor(normalCost*.8));
+          const upgradeKey=getShopClaimKey(`fighter-upgrade-${selectedBrawler}`,dailyCycle.cycleKey);
+          addSection(grid, `${data.name||selectedBrawler}'s workshop`);
+          grid.appendChild(makeShopCard({
+              titleText: `⚙ Power ${level} → ${Math.min(11,level+1)}`, accent:data.color||'#67e8ff',
+              descText: level>=11 ? `${data.name||selectedBrawler} is already fully powered.` : `Today only: upgrade your selected fighter for 20% fewer Coins.`,
+              priceText: level>=11?'MAX POWER':`${dealCost.toLocaleString()} COINS`, buttonText:'UPGRADE NOW', buttonColor:data.color||'#67e8ff',
+              isOwned:level>=11||!!playerData.shopClaims[upgradeKey], isLocked:level<11&&(playerData.coins||0)<dealCost, lockedText:`${dealCost.toLocaleString()} COINS REQUIRED`, footerText:'The offer follows the fighter selected when the market opens.',
+              onBuy:()=>{if(level>=11||playerData.shopClaims[upgradeKey]||(playerData.coins||0)<dealCost)return;playerData.coins-=dealCost;applyLevelUnlocks(progress,level+1);playerData.shopClaims[upgradeKey]=true;ensureShopButtonRefresh();renderTabContent();}
+          }));
+          const loadoutKey=getShopClaimKey(`fighter-loadout-${selectedBrawler}`,dailyCycle.cycleKey);
+          grid.appendChild(makeShopCard({
+              titleText:'🎛 Loadout Fund',accent:'#ff9c5b',descText:`Add 500 Coins reserved for ${data.name||selectedBrawler}'s Gadget, Star Power, Attachie, or Trinket choices.`,
+              priceText:'7 GEMS → 500 COINS',buttonText:'CLAIM FUND',buttonColor:'#ff9c5b',isOwned:!!playerData.shopClaims[loadoutKey],isLocked:(playerData.gems||0)<7,lockedText:'7 GEMS REQUIRED',footerText:'One personalized fund each day.',
+              onBuy:()=>{if(playerData.shopClaims[loadoutKey]||(playerData.gems||0)<7)return;playerData.gems-=7;playerData.coins=(playerData.coins||0)+500;playerData.shopClaims[loadoutKey]=true;ensureShopButtonRefresh();renderTabContent();}
+          }));
+          return grid;
+      };
+
       const renderTabContent = () => {
           shopContent.innerHTML = '';
           if (activeTab === 'featured') {
               shopContent.appendChild(renderFeaturedTab());
+          } else if (activeTab === 'daily') {
+              shopContent.appendChild(renderDailyDealsTab());
+          } else if (activeTab === 'fighter') {
+              shopContent.appendChild(renderFighterDealTab());
           } else if (activeTab === 'skins') {
               shopContent.appendChild(renderSkinsTab());
           } else if (activeTab === 'wheel') {
@@ -9623,6 +10812,7 @@
 
     function canDetectThroughBush(observer, target, revealRange = 240) {
         if (!observer || !target) return true;
+        if (!canDarkagonObserverSeeTarget(observer, target)) return false;
         if (!isEntityInsideBush(target)) return true;
         if (isEntityInsideBush(observer)) return true;
         return Math.hypot(observer.x - target.x, observer.y - target.y) <= revealRange;
@@ -9954,11 +11144,10 @@
     function getSplitterMainSplitConfig(isHyper, isBotControlled = false) {
         if (!isSplitterPoweredMode) {
             return {
-                // Regular attack has exact fragment waves: 1 > 3 > 5 > 7 > 9.
-                // Global generation caps prevent exponential projectile growth.
-                splitPlan: isHyper ? [3, 3, 2, 2, 11] : [3, 5, 7, 9],
-                generationCaps: isHyper ? [3, 3, 2, 2, 11] : [3, 5, 7, 9],
-                childCap: isHyper ? 29 : 24,
+                // Firecracker pattern: one core bursts into five side fragments.
+                splitPlan: [5],
+                generationCaps: [5],
+                childCap: 5,
                 mainDamageMult: 1,
                 childDamageMult: 0.85,
                 hyperDamageMult: 1,
@@ -10260,7 +11449,7 @@
         entity._mirrorDeathCounted = false;
         entity.malakorHellTickAt = 0;
         entity.ghoulAimSessionActive=false;entity.ghoulAimInvisibleUntil=0;entity.ghoulSuperUntil=0;entity.ghoulDarknessUntil=0;
-        entity.jackTradeStage=1;entity.jackTradeHotStreak=0;entity.jackTradeJackpotArmed=false;entity.jackTradeSafeBetArmed=false;entity.jackTradeRushUntil=0;entity.jackTradeLuckyUntil=0;entity.jackTradeRegenRemaining=0;entity.jackTradeRegenFxUntil=0;entity.jackTradePreparedOutcomes=[];
+        entity.jackTradeStage=1;entity.jackTradeHotStreak=0;entity.jackTradeJackpotArmed=false;entity.jackTradeSafeBetArmed=false;entity.jackTradeRushUntil=0;entity.jackTradeLuckyUntil=0;entity.jackTradeRegenRemaining=0;entity.jackTradeRegenFxUntil=0;entity.jackTradePreparedOutcomes=[];entity.jackTradeLoadedDiceCount=0;entity.jackTradeLoadedDiceReady=false;entity.jackTradeRoyalSuits=0;entity.jackTradeTowerOutcomesSeen=[];
         clearPoisonState(entity);
     }
 
@@ -10273,6 +11462,8 @@
         portaloPrisons.length = 0;
         portaloShockTimers.length = 0;
         ghoulHaunts.length = 0;
+        darkenerClouds.length = 0;
+        darkagons.length = 0;
         jackTradeVolleys.length = 0;
         jackTradeThrownEffects.length = 0;
         jackTradeZones.length = 0;
@@ -10280,6 +11471,7 @@
         snapperWaves.length = 0;
         chickpigEggZones.length = 0;
         rocketeerFireZones.length = 0;
+        minigunninMutationFireZones.length = 0;
         rocketeerAirstrikes.length = 0;
         rings.length = 0;
         powerups.length = 0;
@@ -10417,12 +11609,13 @@
     }
 
     function initBrickVaultModeState() {
+        const vaultHpMultiplier = isTowerPowerVaultWeekendMatch ? TOWER_POWER_VAULT_HP_MULTIPLIER : 1;
         brickVaultTimer = 0;
         brickVaultWinnerTeam = null;
         brickVaultDamage = { player: 0, enemy: 0 };
         brickVaultTotalHp = {
-            player: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + hp, 0),
-            enemy: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + hp, 0),
+            player: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + Math.round(hp * vaultHpMultiplier), 0),
+            enemy: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + Math.round(hp * vaultHpMultiplier), 0),
         };
 
         // Vaults are combat entities now: every brawler damage path can hit
@@ -10435,7 +11628,7 @@
         const spawnVaultSet = (team, sideY) => {
             const xBands = [WORLD_W * 0.36, WORLD_W * 0.64];
             for (let i = 0; i < BRICK_VAULT_TIERS.length; i++) {
-                const hp = BRICK_VAULT_TIERS[i];
+                const hp = Math.round(BRICK_VAULT_TIERS[i] * vaultHpMultiplier);
                 const dry = findNearestDrySpot(xBands[i], sideY, 60);
                 bots.push({
                     id: nextId++, x: dry.x, y: dry.y, z: 0, vx: 0, vy: 0,
@@ -11544,6 +12737,7 @@
             const wallRawDmg = Math.max(0, (projectile.damage || 0) * mult);
             const wallDmg = Math.min(dw.hp, getVaultDamagePerHit(wallRawDmg, dw));
             if (wallDmg <= 0) continue;
+            recordFullOnDamageToTarget(dw, wallDmg);
             dw.hp -= wallDmg;
             registerBrickVaultWallDamage(projectile.ownerId, dw, wallDmg);
         }
@@ -11620,7 +12814,7 @@
 
     function getBotLivingEnemies(bot) {
         const enemies = [];
-        const canSee=(enemy)=>!isGhoulHiddenFromObserver(enemy,bot)&&!((bot.ghoulDarknessUntil||0)>performance.now()&&Math.hypot(enemy.x-bot.x,enemy.y-bot.y)>125);
+        const canSee=(enemy)=>canDarkagonObserverSeeTarget(bot,enemy)&&!isGhoulHiddenFromObserver(enemy,bot)&&!((bot.ghoulDarknessUntil||0)>performance.now()&&Math.hypot(enemy.x-bot.x,enemy.y-bot.y)>125);
         if (player.hp > 0 && player.id !== bot.ownerId && !areAlliedEntities(bot, player) && canSee(player)) enemies.push(player);
         for (const other of bots) {
             if (!other || other.id === bot.id || other.id === bot.ownerId || other.hp <= 0 || other.isDead || other.isDummy) continue;
@@ -12114,6 +13308,7 @@
             const grouped=getBotLivingEnemies(bot).filter(enemy=>Math.hypot(enemy.x-(target?.x||bot.x),enemy.y-(target?.y||bot.y))<170).length;
             return context.hpPct<.5||distance>GHOUL_HAUNT_RANGE*.78||grouped>=2;
         }
+        if (bot.brawler === 'darkener') return distance < 720 || objectiveEmergency;
         if (bot.brawler === 'jacktrade') return (bot.superCharge||0)>=100||getJackTradeStage(bot)===4||distance>700;
         if (context.impossible) return !!(combatTarget && (distance < 720 || context.hpPct < 0.7));
         if (context.hpPct < 0.42 || allyInTrouble || objectiveEmergency) return true;
@@ -12136,6 +13331,7 @@
             const grouped=getBotLivingEnemies(bot).filter(enemy=>Math.hypot(enemy.x-target.x,enemy.y-target.y)<210).length;
             return distance<GHOUL_HAUNT_RANGE&&(grouped>=2||objectiveFight||context.hpPct<.38);
         }
+        if (bot.brawler === 'darkener') return distance<720&&(clustered>=2||objectiveFight||objectiveTarget||context.hpPct<.4);
         if (bot.brawler === 'jacktrade') return distance<760&&(clustered>=2||objectiveFight||objectiveTarget||context.hpPct<.4||targetHpPct<.45);
         if (context.impossible) return distance < 980;
         if (bot.isBoss || clustered >= 2 || objectiveFight || objectiveTarget || targetHpPct < 0.38 || context.hpPct < 0.3) return true;
@@ -13445,6 +14641,7 @@
     function spawnClassyBurst(owner, targetX, targetY, isBotFire, opts = {}) {
         if (!owner || owner.hp <= 0) return;
         const ang = Math.atan2(targetY - owner.y, targetX - owner.x);
+        owner.classyLastFireAngle = ang;
         const nearSpeaker = !!opts.forceLarge || hasClassySpeakerBoost(owner);
         const noteCount = opts.forceCount || (nearSpeaker ? 8 : 7);
         const wideFan = !!opts.wideFan;
@@ -13455,6 +14652,8 @@
         const hitbox = nearSpeaker ? 1.785 : 1.2; // -15% super size gain
         const spreadStep = wideFan ? 0.11 : 0;
         const mid = (noteCount - 1) / 2;
+        const signatureSpeaker = opts.signatureMirror ? null : getClassySpeaker(owner);
+        const signatureActive = !!signatureSpeaker && performance.now() < (signatureSpeaker.classySignatureUntil || 0);
         for (let i = 0; i < noteCount; i++) {
             const delay = wideFan ? 0 : i * 55;
             setTimeout(() => {
@@ -13479,6 +14678,16 @@
                     hitboxMod: hitbox,
                     homingRadius: 420
                 });
+                if (signatureActive && signatureSpeaker.hp > 0 && performance.now() < (signatureSpeaker.classySignatureUntil || 0)) {
+                    bullets.push({
+                        ownerBrawler:'classy',isClassyNote:true,classyGolden:false,classyHoming:false,
+                        classySpeakerShot:true,classySignatureMirror:true,
+                        x:signatureSpeaker.x+Math.cos(a)*((signatureSpeaker.radius||34)+8),
+                        y:signatureSpeaker.y+Math.sin(a)*((signatureSpeaker.radius||34)+8),
+                        vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:0,maxLife:.72,
+                        damage:isBotFire?170:320,pierce,hyperVisual:true,ownerId:owner.id,hitboxMod:hitbox,homingRadius:420
+                    });
+                }
             }, delay);
         }
     }
@@ -13492,11 +14701,17 @@
         else if (brawler === 'portalo') base = 1700;
         else if (brawler === 'ghoul') base = 1700;
         else if (brawler === 'jacktrade') base = 1650;
+        else if (brawler === 'darkener') base = 1800;
+        else if (brawler === 'awakenator') base = 1700;
         else if (brawler === 'angel') base = 1700;
         else if (brawler === 'demon') base = 1800;
         if (brawler === 'warrior' && performance.now() < (player.warriorStandUntil || 0)) base /= 2.50;
         if (brawler === 'upiedown' && performance.now() < (player.upiedownReloadBuffUntil || 0)) base *= 0.85;
         if (brawler === 'jacktrade' && performance.now() < (player.jackTradeRushUntil || 0)) base /= 3;
+        if (brawler === 'jacktrade' && isSlopSushiMode) {
+            const seen=Math.min(6,Array.isArray(player.jackTradeTowerOutcomesSeen)?player.jackTradeTowerOutcomesSeen.length:0);
+            base /= 1 + seen * getEntitySlopEffectTotal(player,'jackTradeHouseReloadPct');
+        }
         if (brawler === 'robber' && selectedStar === 'long' && maxAmmo > 3) base *= 0.75;
         if (brawler === 'fastpass' && selectedStar === 'long' && (player.fastpassMomentum || 0) >= .64) base /= 1.15;
         if (brawler === 'freestyle' && performance.now() < (player.freestyleRemixUntil || 0)) base /= 1.18;
@@ -13518,7 +14733,7 @@
       adlof:6, daggershard:10, decayer:6, fuel:6, ice_cream:6, paradox:6, peter_pickle:6, scuba_diver:5, screener:6, tempo_maker:14, unstable:5, witch:7,
       beam:8, duck:45, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
-      portalo:7, ghoul:6, jacktrade:18
+      portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -13530,7 +14745,161 @@
       entity.currentMainAttackActivationId = id;
       entity.currentMainAttackBrawler = brawler || entity.brawler || 'outlit';
       entity.currentMainAttackStartedAt = now;
+      if (entity.id === player.id && brawler === 'outlit') addSpecialQuestProgress('outlit','main_attack',1);
       return id;
+  }
+  function hasOutlitMutation(entity) { return isSpecialAbilityAvailableForEntity(entity, 'outlit'); }
+  const MINIGUNNIN_MUTATION_TRIGGER_BULLETS = 50;
+  const MINIGUNNIN_MUTATION_INCENDIARY_ROUNDS = 20;
+  const MINIGUNNIN_MAIN_CONE_MULT = 0.8;
+  const MINIGUNNIN_MAIN_PROJECTILE_SIZE_MULT = 1.3;
+  const MINIGUNNIN_MAIN_RANGE_MULT = 0.95;
+  const MONEY_TAX_MUTATION_TRIGGER_ATTACKS = 12;
+  const MONEY_TAX_MUTATION_POWERED_ATTACKS = 4;
+  const MONEY_TAX_BASE_SPREAD = 0.0875;
+  const MONEY_TAX_TAX_SPREAD = 0.07;
+  const MONEY_TAX_TAX_DAMAGE_MULT = 1.3;
+  const MONEY_TAX_TAX_SIZE_MULT = 2;
+  function ensureMinigunninMutationState(entity) {
+      if (!entity) return;
+      if (!Number.isFinite(entity.minigunninMutationBulletCount)) entity.minigunninMutationBulletCount = 0;
+      if (!Number.isFinite(entity.minigunninMutationExplosiveRemaining)) entity.minigunninMutationExplosiveRemaining = 0;
+  }
+  function consumeMinigunninMutationBullet(entity, now = performance.now()) {
+      if (!entity) return false;
+      if (entity.id === player.id) addSpecialQuestProgress('minigunnin', 'main_bullet', 1);
+      if (!isSpecialAbilityAvailableForEntity(entity, 'minigunnin')) return false;
+      ensureMinigunninMutationState(entity);
+      if (entity.minigunninMutationExplosiveRemaining > 0) {
+          entity.minigunninMutationExplosiveRemaining--;
+          if (entity.minigunninMutationExplosiveRemaining === 0 && entity.id === player.id) spawnFloatingText(entity.x, entity.y - 40, 'INCENDIARY BELT SPENT', '#ff8a65');
+          return true;
+      }
+      entity.minigunninMutationBulletCount = Math.min(MINIGUNNIN_MUTATION_TRIGGER_BULLETS, entity.minigunninMutationBulletCount + 1);
+      if (entity.minigunninMutationBulletCount >= MINIGUNNIN_MUTATION_TRIGGER_BULLETS) {
+          entity.minigunninMutationBulletCount = 0;
+          entity.minigunninMutationExplosiveRemaining = MINIGUNNIN_MUTATION_INCENDIARY_ROUNDS;
+          explosions.push({x:entity.x,y:entity.y,radius:44,life:0,maxLife:.22,color:'rgba(255,75,85,.68)',fxKind:'minigunninMutationReady'});
+          if (entity.id === player.id) spawnFloatingText(entity.x, entity.y - 42, '20 INCENDIARY ROUNDS', '#ff4b55');
+      }
+      return false;
+  }
+  function ensureMoneyTaxMutationState(entity) {
+      if (!entity) return;
+      if (!Number.isFinite(entity.moneyTaxMutationAttackCount)) entity.moneyTaxMutationAttackCount = 0;
+      if (!Number.isFinite(entity.moneyTaxMutationEmpoweredRemaining)) entity.moneyTaxMutationEmpoweredRemaining = 0;
+  }
+  function consumeMoneyTaxMutationAttack(entity, now = performance.now()) {
+      if (!entity || !isSpecialAbilityAvailableForEntity(entity, 'money_and_tax')) return false;
+      ensureMoneyTaxMutationState(entity);
+      if (entity.moneyTaxMutationEmpoweredRemaining > 0) {
+          entity.moneyTaxMutationEmpoweredRemaining--;
+          if (entity.moneyTaxMutationEmpoweredRemaining === 0 && entity.id === player.id) spawnFloatingText(entity.x, entity.y - 40, 'TAKEOVER SPENT', '#ff8790');
+          return true;
+      }
+      entity.moneyTaxMutationAttackCount = Math.min(MONEY_TAX_MUTATION_TRIGGER_ATTACKS, entity.moneyTaxMutationAttackCount + 1);
+      if (entity.moneyTaxMutationAttackCount >= MONEY_TAX_MUTATION_TRIGGER_ATTACKS) {
+          entity.moneyTaxMutationAttackCount = 0;
+          entity.moneyTaxMutationEmpoweredRemaining = MONEY_TAX_MUTATION_POWERED_ATTACKS;
+          explosions.push({x:entity.x,y:entity.y,radius:48,life:0,maxLife:.26,color:'rgba(255,75,85,.68)',fxKind:'moneyTaxMutationReady'});
+          if (entity.id === player.id) spawnFloatingText(entity.x, entity.y - 42, '4 TAKEOVER VOLLEYS READY', '#ff4b55');
+      }
+      return false;
+  }
+  function recordOutlitMutationShot(entity, now = performance.now()) {
+      if (!hasOutlitMutation(entity) || (entity.outlitMutationCharges || 0) > 0) return;
+      // Allow the counter to actually reach nine before converting it into
+      // four powered attacks. Capping at eight made 8/9 permanent.
+      entity.outlitMutationShotCounter = Math.max(0, Math.floor(entity.outlitMutationShotCounter || 0) + 1);
+      if (entity.outlitMutationShotCounter >= 9) {
+          entity.outlitMutationShotCounter = 0;
+          entity.outlitMutationCharges = 4;
+          entity.outlitMutationReadyAt = now;
+          explosions.push({ x: entity.x, y: entity.y, radius: 52, life: 0, maxLife: .3, color: 'rgba(255,55,75,.76)', fxKind: 'outlitMutationReady' });
+          if (entity.id === player.id) spawnFloatingText(entity.x, entity.y - 36, 'OVERPRESSURE READY', '#ff6571');
+      }
+  }
+  function consumeOutlitMutationCharge(entity) {
+      if (!hasOutlitMutation(entity) || (entity.outlitMutationCharges || 0) <= 0) return false;
+      entity.outlitMutationCharges = Math.max(0, Math.floor(entity.outlitMutationCharges || 0) - 1);
+      return true;
+  }
+  function ensureEchoInstinctState(entity, now = performance.now()) {
+      if (!entity || !isSpecialAbilityAvailableForEntity(entity, 'echo')) return null;
+      if (!entity.echoInstinctStartedAt) entity.echoInstinctStartedAt = now;
+      if (!entity.echoInstinctReady && now - entity.echoInstinctStartedAt >= 8000) {
+          entity.echoInstinctReady = true;
+          entity.echoInstinctReadyAt = now;
+      }
+      return entity;
+  }
+  function consumeEchoInstinct(entity, angle, isBot, isHyper) {
+      ensureEchoInstinctState(entity);
+      if (!entity?.echoInstinctReady) return false;
+      entity.echoInstinctReady = false;
+      entity.echoInstinctStartedAt = performance.now();
+      entity.echoInstinctReadyAt = 0;
+      entity.echoInstinctAngle = angle;
+      entity.echoInstinctDuplicateAt = performance.now() + 800;
+      entity.echoInstinctDuplicateIsBot = !!isBot;
+      entity.echoInstinctDuplicateHyper = !!isHyper;
+      return true;
+  }
+  const SPLITTER_INSTINCT_COOLDOWN_MS = 4000;
+  function ensureSplitterInstinctState(entity, now = performance.now()) {
+      if (!entity || !isSpecialAbilityAvailableForEntity(entity, 'splitter')) return null;
+      if (!Number.isFinite(entity.splitterInstinctReadyAt)) entity.splitterInstinctReadyAt = 0;
+      return { ready: now >= entity.splitterInstinctReadyAt, remaining: Math.max(0, entity.splitterInstinctReadyAt - now) };
+  }
+  function consumeSplitterInstinct(entity, now = performance.now()) {
+      const state = ensureSplitterInstinctState(entity, now);
+      if (!state?.ready) return false;
+      entity.splitterInstinctReadyAt = now + SPLITTER_INSTINCT_COOLDOWN_MS;
+      if (entity.id === player.id) spawnFloatingText(entity.x, entity.y - 42, 'FRACTAL REFLEX', '#62ef88');
+      return true;
+  }
+  function fireEchoInstinctRing(owner, angle, isBot, isHyper) {
+      if (!owner || owner.hp <= 0) return;
+      bullets.push({
+          ownerBrawler: 'echo',
+          isEchoRingProj: true,
+          ringSizeMod: 1.6,
+          ringDmgMod: 1.0,
+          echoInstinctVisual: true,
+          x: owner.x + Math.cos(angle) * ((owner.radius || 16) + 4),
+          y: owner.y + Math.sin(angle) * ((owner.radius || 16) + 4),
+          vx: Math.cos(angle) * 850 * 0.6,
+          vy: Math.sin(angle) * 850 * 0.6,
+          life: 0,
+          maxLife: 1.7,
+          damage: isBot ? 780 : 1220,
+          pierce: true,
+          hyperVisual: !!isHyper,
+          ownerId: owner.id
+      });
+  }
+  function updateSpecialAbilityRuntime(now) {
+      for (const entity of [player, ...bots]) {
+          if (!entity) continue;
+          const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
+          if (fighterId === 'beast') updateBeastyBeast(entity, now);
+      }
+      ensureEchoInstinctState(player, now);
+      if (player.echoInstinctDuplicateAt && now >= player.echoInstinctDuplicateAt) {
+          const a = player.echoInstinctAngle || 0;
+          player.echoInstinctDuplicateAt = 0;
+          fireEchoInstinctRing(player, a, false, !!player.echoInstinctDuplicateHyper);
+          explosions.push({ x: player.x, y: player.y, radius: 62, life: 0, maxLife: .28, color: 'rgba(98,239,136,.64)', fxKind: 'echoInstinct' });
+      }
+      for (const bot of bots) {
+          if (!bot || bot.hp <= 0 || bot.brawler !== 'echo') continue;
+          ensureEchoInstinctState(bot, now);
+          if (bot.echoInstinctDuplicateAt && now >= bot.echoInstinctDuplicateAt) {
+              const a = bot.echoInstinctAngle || 0;
+              bot.echoInstinctDuplicateAt = 0;
+              fireEchoInstinctRing(bot, a, true, !!bot.echoInstinctDuplicateHyper);
+          }
+      }
   }
   function getAttackChargeMultiplier(owner) {
       let multiplier = getModeSuperGainMultiplier() * getTrinketSuperChargeMultiplier(owner);
@@ -13558,7 +14927,9 @@
       const gain = (100 / getSuperChargeHitsForBrawler(brawler)) * getAttackChargeMultiplier(owner);
       // Four-card volleys connect often, so JackTrade builds Hypercharge 30%
       // slower without changing his normal Super charge rate.
-      const hyperGain = gain * .5 * (brawler === 'jacktrade' ? .7 : 1);
+      // Classy's seven-note volleys each count as real projectile hits. Keep
+      // normal Super charge intact, but stop one full ammo bar from filling HC.
+      const hyperGain = gain * .5 * (brawler === 'jacktrade' ? .7 : (brawler === 'classy' ? .4 : 1));
       if (owner.id === player.id) {
           superCharge = clamp(superCharge + gain, 0, 100);
           if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + hyperGain, 0, 100);
@@ -13574,7 +14945,12 @@
   function getFireDelay(brawler, fromEntity){
     if (brawler === 'jacktrade') {
        const entity=fromEntity||player;
-       return performance.now() < (entity.jackTradeRushUntil||0) ? 217 : 644;
+       let delay=performance.now() < (entity.jackTradeRushUntil||0) ? 217 : 644;
+       if(isSlopSushiMode){
+           const seen=Math.min(6,Array.isArray(entity.jackTradeTowerOutcomesSeen)?entity.jackTradeTowerOutcomesSeen.length:0);
+           delay/=1+seen*getEntitySlopEffectTotal(entity,'jackTradeHouseReloadPct');
+       }
+       return delay;
     }
     if (brawler === 'warrior' && fromEntity && performance.now() < (fromEntity.warriorStandUntil || 0)) return 130;
     if(brawler === 'minigunnin') {
@@ -13600,9 +14976,10 @@
   }
 
   function startDuelsRound() {
-    bullets.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
+    bullets.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
+    minigunninMutationFireZones.length = 0;
     rocketeerAirstrikes.length = 0;
     stormTimer = 0; // Reset storm every round
     
@@ -13619,7 +14996,11 @@
     sushiMatchArmed = true;
     isTowerTroubleMode = false;
     const duelTowerDeck = [...getActiveSlopSushiDeck(selectedBrawler)].sort(() => Math.random() - .5);
-    slopSushiActiveCards = duelTowerDeck.slice(0, 2).map(card => card.id);
+    const towerDuelPreset = isTowerDuelEvent ? towerDuelPowerLoadouts[selectedBrawler] : null;
+    slopSushiActiveCards = Array.isArray(towerDuelPreset) && towerDuelPreset.length
+        ? [...towerDuelPreset]
+        : duelTowerDeck.slice(0, 2).map(card => card.id);
+    resetPlayerAmmoForBrawler(selectedBrawler, true);
     const duelPlayerLevel = isTowerDuelEvent ? 11 : getSelectedBrawlerLevel();
     const ptier = getHPTier(selectedBrawler, duelPlayerLevel);
     if (isTowerDuelEvent) {
@@ -13635,7 +15016,7 @@
     player.ridaSpeedMult = 1.0; player.ridaHitCooldowns = {}; player.isFlying = false;
     player.isJumping = false; player.z = 0;
     player.moneyAndTaxMode = 'money';
-    player.beastModeActive = false; player.beastTransformUntil = 0; player.beastModeUntil = 0; player.beastBaseMaxHp = player.maxHp; player.beastMoveMult = 1.0; player.beastAttackFlip = 0; player.beastTransformed = false;
+    player.beastModeActive = false; player.beastTransformUntil = 0; player.beastModeUntil = 0; player.beastBaseMaxHp = player.maxHp; player.beastMoveMult = 1.0; player.beastAttackFlip = 0; player.beastTransformed = false; player.beastyBeastUntil = 0; player.beastyBeastNextClawAt = 0; player.beastyBeastClawFlip = -1;
     superCharge = savedPlayerSuper || 0; hyperChargeCharge = savedPlayerHyper || 0;
     const spawnSkin = getActiveSkinForBrawler(selectedBrawler);
     triggerSkinPulse(player, spawnSkin, 'spawn');
@@ -13669,7 +15050,14 @@
         ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false,
         moneyAndTaxMode: 'money'
     });
-    assignSlopSushiBotPowers();
+    if (isTowerDuelEvent) {
+        const duelBot = bots[0];
+        const deck = getActiveSlopSushiDeck(duelBot.brawler);
+        const towerDuelPreset = towerDuelBotPowerLoadouts[duelBot.brawler] || [];
+        duelBot.slopSushiCards = towerDuelPreset.map(id => deck.find(card => card.id === id)).filter(Boolean);
+    } else {
+        assignSlopSushiBotPowers();
+    }
     const duelOpeningShield = getSlopEffectTotal('startShield');
     if (duelOpeningShield > 0) grantShield(player, duelOpeningShield, Math.max(duelOpeningShield, getSlopEffectTotal('shieldCap')));
     renderSlopSushiCardHud();
@@ -13690,10 +15078,41 @@
     grantShield(entity, amount, relayCap);
   }
 
+  function recordFullOnDamage(amount) {
+    if(!playing||gameOver||isTraining||isTutorialMode)return;
+    const value=Math.max(0,Number(amount)||0);
+    if(!value)return;
+    if(fullOnDamageMatchCommitted){fullOnDamageMatchTotal=0;fullOnDamageMatchCommitted=false;}
+    fullOnDamageMatchTotal+=value;
+  }
+  function recordFullOnDamageToTarget(target, amount) {
+    const value=Math.max(0,Number(amount)||0);
+    if(!value)return 0;
+    const remaining=Math.max(0,Number(target?.hp)||0)+Math.max(0,Number(target?.shield)||0);
+    const credited=remaining>0?Math.min(value,remaining):value;
+    recordFullOnDamage(credited);
+    return credited;
+  }
+  function resetFullOnDamageMatchLedger() {
+    fullOnDamageMatchTotal=0;
+    fullOnDamageMatchCommitted=false;
+  }
+  function commitFullOnDamageMatch() {
+    if(fullOnDamageMatchCommitted)return 0;
+    const total=Math.max(0,Math.round(fullOnDamageMatchTotal));
+    fullOnDamageMatchCommitted=true;fullOnDamageMatchTotal=0;
+    addFullOnDamageMatchDamage(total);
+    return total;
+  }
+
   function applyShieldDamage(entity, amount){
     if(!entity || amount <= 0) return 0;
     const now = performance.now();
     if (entity.id === player.id) {
+        const packet=getEquippedPacketDef(entity);
+        if(packet?.id==='fairy'&&now>=(entity.packetEffectCooldownUntil||0)){
+            entity.packetEffectCooldownUntil=now+packet.cooldownMs;entity.invulnerableUntil=Math.max(entity.invulnerableUntil||0,now+packet.dodgeMs);recordPacketTrigger(packet.id);spawnFloatingText(entity.x,entity.y-38,'FAIRY DODGE','#ffb8ff');return 0;
+        }
         entity.trinketLastIncomingAt = now;
         if (hasTrinket(entity, 'thick_skin') && entity.trinketThickSkinReady) {
             amount *= 0.80;
@@ -13705,6 +15124,7 @@
             entity.trinketQuickFeetCooldownUntil = now + 8000;
         }
     }
+    recordFullOnDamage(amount);
     entity.lastShieldDamageAbsorbed = 0;
     entity.lastDamageRedirected = 0;
     const link = getRelayDamageLink(entity);
@@ -13728,7 +15148,15 @@
         entity.trinketBushArmorShield = Math.max(0, entity.trinketBushArmorShield - absorbed);
     }
     entity.lastShieldDamageAbsorbed = absorbed;
-    return amount - absorbed;
+    let hpDamage = amount - absorbed;
+    if(entity.id===player.id){
+        const packet=getEquippedPacketDef(entity);
+        if(packet?.id==='angel'&&hpDamage>=entity.hp&&now>=(entity.packetAngelCooldownUntil||0)){
+            hpDamage=Math.max(0,entity.hp-1);entity.packetAngelCooldownUntil=now+packet.cooldownMs;recordPacketTrigger(packet.id);spawnFloatingText(entity.x,entity.y-42,'ANGEL SAVE','#fff2a8');
+        }
+    }
+    if (isBeastyBeastActive(entity, now)) hpDamage = Math.min(hpDamage, Math.max(0, entity.hp - 1));
+    return hpDamage;
   }
 
   const PRESSURE_CHARGE_TANKS = new Set(['beast','chaird','forest','overlord','unopcoloco','warrior']);
@@ -13967,6 +15395,9 @@
 
   function areAlliedEntities(a, b) {
       if (!a || !b) return false;
+      const now = performance.now();
+      if ((a.awakenatorCorruptFriendlyUntil || 0) > now && a.awakenatorCorruptTargetId === b.id) return false;
+      if ((b.awakenatorCorruptFriendlyUntil || 0) > now && b.awakenatorCorruptTargetId === a.id) return false;
       const ta = getEntityTeam(a);
       const tb = getEntityTeam(b);
       return !!(ta && tb && ta === tb);
@@ -14240,6 +15671,7 @@
                                       const ownerTeam = entity.team || (isBot ? 'enemy' : 'player');
                                       if (ownerTeam !== target.vaultTeam) {
                                           const wallDmg = Math.min(target.hp, getVaultDamagePerHit(finalDmg, target));
+                                          recordFullOnDamageToTarget(target, wallDmg);
                                           target.hp -= wallDmg;
                                           registerBrickVaultWallDamage(entity.id, target, wallDmg);
                                           if (target.hp <= 0) {
@@ -14248,6 +15680,7 @@
                                           }
                                       }
                                   } else {
+                                      recordFullOnDamageToTarget(target, finalDmg);
                                       target.hp -= finalDmg;
                                       if (target.hp <= 0) {
                                           if (!isBot) {
@@ -14315,7 +15748,7 @@
       const towerEffect = key => isSlopSushiMode ? getEntitySlopEffectTotal(entity,key) : 0;
       const isSuperSideShot = !!fromRail && sideSign !== 0;
       const rangeScale = fromRail ? 1.0 : 1.3;
-      const maxRange = isSuperSideShot ? 55 : (fromRail ? 220 : Math.round(240 * rangeScale));
+      const maxRange = isSuperSideShot ? 150 : (fromRail ? 220 : Math.round(240 * rangeScale));
       let sweetStart = isSuperSideShot ? 18 : (fromRail ? 78 : Math.round(74 * rangeScale));
       let sweetEnd = isSuperSideShot ? 40 : (fromRail ? 148 : Math.round(152 * rangeScale));
       const sweetZonePct = !fromRail ? towerEffect('steamerSweetZonePct') : 0;
@@ -14403,8 +15836,8 @@
           applyHeaterBoxDamage(entity, bestWall, desiredBase);
       }
 
-      const puffCount = isSuperSideShot ? 4 : 6;
-      const stepDelay = isSuperSideShot ? 24 : 18;
+      const puffCount = isSuperSideShot ? 4 : 8;
+      const stepDelay = isSuperSideShot ? 24 : 12;
       for (let k = 0; k < puffCount; k++) {
           const t = (k + 1) / puffCount;
           setTimeout(() => {
@@ -14523,7 +15956,7 @@
           rail.lastTrailAt = now;
           spawnCheeseField(entity.x, entity.y, 44*(1+towerEffect('steamerTrailRadiusPct')), trailDur, 1.0, entity.id, true, 420);
       }
-      const sprayDelay=rail.towerRunaway?65:130;
+      const sprayDelay=rail.towerRunaway?50:75;
       if (!rail.lastSprayAt || now - rail.lastSprayAt >= sprayDelay) {
           rail.lastSprayAt = now;
           spawnSteamerSteamBurst(entity, travelAng + Math.PI / 2, rail.isHyper, 1, true);
@@ -14591,6 +16024,8 @@
   function getOutgoingDamageMultiplier(entity, now = performance.now()) {
       if (!entity) return 1;
       let mult = 1;
+      if ((entity.awakenatorSleepUntil || 0) > now) mult *= (entity.awakenatorDeepSleep ? 0.70 : 0.80);
+      if ((entity.awakenatorCorruptFriendlyUntil || 0) > now) mult *= 0.30;
       if ((entity.amplifierDamageBuffUntil || 0) > now) mult *= (entity.amplifierDamageBuffMult || AMPLIFIER_DAMAGE_BUFF_MULT);
       if ((entity.amplifierDamageDebuffUntil || 0) > now) mult *= (entity.amplifierDamageDebuffMult || AMPLIFIER_DAMAGE_DEBUFF_MULT);
       if ((entity.amplifierScrewDamageMultUntil || 0) > now) mult *= (entity.amplifierScrewDamageMult || 1);
@@ -15043,6 +16478,7 @@
           if (Math.hypot(wall.x-x,wall.y-y) > Math.max(8,radius)+(wall.radius||54)) continue;
           const dmg = Math.min(Math.max(0, wall.hp), getVaultDamagePerHit(rawDamage, wall));
           if (dmg <= 0) continue;
+          recordFullOnDamageToTarget(wall, dmg);
           wall.hp -= dmg;
           registerBrickVaultWallDamage(ownerId, wall, dmg);
       }
@@ -15227,6 +16663,8 @@
       const rawDmg = 450;
       const dealt = applyShieldDamage(target, rawDmg);
       target.hp -= dealt;
+      recordCoreBreachCombatDamage(dna,target,dealt);
+      recordPacketEquippedDamage(dna.id===player.id?player:bots.find(bot=>bot.id===dna.ownerId),dealt);
       if (dealt > 0) {
           target.lastDamagedAt = now;
           target.lastDamagerId = dna.ownerId;
@@ -15423,6 +16861,8 @@
             const aoeDamage = bot.isBrickVaultEntity ? getVaultDamagePerHit(damage, bot) : damage;
             let dealt = applyShieldDamage(bot, aoeDamage);
             bot.hp -= dealt;
+            recordCoreBreachCombatDamage(owner,bot,dealt);
+            recordPacketEquippedDamage(owner,dealt);
             if (bot.isBrickVaultEntity && dealt > 0) registerBrickVaultWallDamage(ownerId, bot, dealt);
             if (dealt > 0) hitCount++;
             handleTrinketDamageDealt(owner, bot, dealt);
@@ -15454,6 +16894,8 @@
                 }
                 dealt = applyShieldDamage(player, incomingAoeDamage);
                 player.hp -= dealt;
+                recordCoreBreachCombatDamage(owner,player,dealt);
+                recordPacketEquippedDamage(owner,dealt);
                 if (dealt > 0) hitCount++;
                 grantPressureCharge(player, dealt);
                 if (dealt > 0) {
@@ -15480,6 +16922,7 @@
   function applyOverlordBurnAt(x, y, radius, ownerId) {
       const now = performance.now();
       const ownerIsPlayer = ownerId === player.id;
+      const owner = ownerIsPlayer ? player : bots.find(bot => bot.id === ownerId);
       const candidates = ownerIsPlayer ? bots : [player, ...bots];
       for (const target of candidates) {
           if (!target || target.hp <= 0) continue;
@@ -15528,19 +16971,20 @@
   
   function stealAmmo(target, ownerId, amount) {
       const now = performance.now();
+      const ammoText = Math.abs(amount - 0.25) < 0.001 ? '0.25' : amount.toFixed(1);
       if(target === player) {
           ammo = Math.max(0, ammo - amount);
-          spawnFloatingText(target.x, target.y - 20, `-${amount.toFixed(1)} Ammo`, '#ff4d4d');
+          spawnFloatingText(target.x, target.y - 20, `-${ammoText} Ammo`, '#ff4d4d');
       } else if (target && target.hp > 0 && !target.isDummy) {
           target.lastShot = Math.max(target.lastShot || now, now) + amount * 1000; // Delay bot firing
-          spawnFloatingText(target.x, target.y - 20, `-${amount.toFixed(1)} Ammo`, '#ff4d4d');
+          spawnFloatingText(target.x, target.y - 20, `-${ammoText} Ammo`, '#ff4d4d');
       }
       
       let ownerEntity = ownerId === player.id ? player : bots.find(b => b.id === ownerId);
       if (ownerEntity) {
           if (ownerId === player.id) {
               ammo = Math.min(maxAmmo, ammo + amount);
-              spawnFloatingText(player.x, player.y - 40, `+${amount.toFixed(1)} Ammo`, '#5df2c2');
+              spawnFloatingText(player.x, player.y - 40, `+${ammoText} Ammo`, '#5df2c2');
           } else {
               ownerEntity.lastShot = (ownerEntity.lastShot || now) - amount * 1000; // Speed up bot firing
           }
@@ -15651,6 +17095,7 @@
       const appliedDamage = wall.isVault
           ? Math.min(Math.max(0, wall.hp || 0), getVaultDamagePerHit(rawDamage, wall))
           : rawDamage;
+      recordFullOnDamageToTarget(wall, appliedDamage);
       wall.hp -= appliedDamage;
       if (wall.isVault && appliedDamage > 0) {
           registerBrickVaultWallDamage(owner.id, wall, appliedDamage);
@@ -16153,6 +17598,8 @@
       if(!owner||!target||target.hp<=0)return 0;
       const dealt=applyShieldDamage(target,Math.max(0,Math.round(rawDamage)));
       target.hp-=dealt;target.lastDamagedAt=performance.now();target.lastDamagerId=owner.id;
+      recordCoreBreachCombatDamage(owner,target,dealt);
+      recordPacketEquippedDamage(owner,dealt);
       spawnDamageText(target,dealt,color);recordTrainingBotDamage(target,dealt,owner.id);
       if(charge&&dealt>0) grantMainAttackCharge(owner, {ownerBrawler:'predator',mainAttackActivationId:owner.currentMainAttackActivationId});
       return dealt;
@@ -16225,6 +17672,26 @@
     function spawnRocketeerFireZone(ownerId, x, y, durationMs=2200, damage=180, radius=62, hyper=false) {
         rocketeerFireZones.push({ ownerId, x, y, radius, damage, until:performance.now()+durationMs, nextTickAt:0, hyper:!!hyper });
         explosions.push({x,y,radius:radius*.7,life:0,maxLife:.24,color:hyper?'rgba(198,63,255,.68)':'rgba(255,105,28,.65)'});
+    }
+    function spawnMinigunninMutationFireZone(ownerId, x, y, placement='end') {
+        // Twenty rounds may land rapidly. A hard cap and simple geometry keep
+        // the effect deterministic on low-power/mobile devices.
+        if (minigunninMutationFireZones.length >= 18) minigunninMutationFireZones.shift();
+        minigunninMutationFireZones.push({ownerId,x,y,radius:42,damage:45,placement,until:performance.now()+1200,nextTickAt:0});
+    }
+
+    function ensureMinigunninMutationImpactZone(projectile, placement='impact') {
+        if (!projectile?.minigunninMutationExplosive || projectile.minigunninMutationZonePlaced) return;
+        projectile.minigunninMutationZonePlaced = true;
+        spawnMinigunninMutationFireZone(projectile.ownerId,projectile.x,projectile.y,placement);
+    }
+
+    function triggerMinigunninMutationEndpoint(projectile) {
+        if (!projectile || projectile.minigunninMutationResolved) return;
+        projectile.minigunninMutationResolved = true;
+        AOEDamage(projectile.x,projectile.y,58,Math.round((projectile.damage||135)*.8),projectile.ownerId,true);
+        ensureMinigunninMutationImpactZone(projectile,'end');
+        explosions.push({x:projectile.x,y:projectile.y,radius:54,life:0,maxLife:.18,color:'rgba(255,82,48,.72)',fxKind:'minigunninMutationPop'});
     }
 
     function triggerRocketeerMiniImpact(projectile) {
@@ -16316,6 +17783,22 @@
             const owner=getEntityById(zone.ownerId);
             for(const target of [player,...bots]){if(!target||target.hp<=0||target.id===zone.ownerId||(owner&&areAlliedEntities(owner,target)))continue;
                 if(Math.hypot(target.x-zone.x,target.y-zone.y)<=zone.radius+(target.radius||14))checkHit(target,{ownerBrawler:'rocketeer',ownerId:zone.ownerId,damage:zone.damage,pierce:true,hitIds:{},isRocketeerFire:true},-1);}
+        }
+    }
+
+    function updateMinigunninMutationZones(now) {
+        for (let i=minigunninMutationFireZones.length-1;i>=0;i--) {
+            const zone=minigunninMutationFireZones[i];
+            if (now>=zone.until) { minigunninMutationFireZones.splice(i,1); continue; }
+            if (now<(zone.nextTickAt||0)) continue;
+            zone.nextTickAt=now+400;
+            const owner=getEntityById(zone.ownerId);
+            for (const target of [player,...bots]) {
+                if (!target||target.hp<=0||target.id===zone.ownerId||(owner&&areAlliedEntities(owner,target))) continue;
+                if (Math.hypot(target.x-zone.x,target.y-zone.y)<=zone.radius+(target.radius||14)) {
+                    checkHit(target,{ownerBrawler:'minigunnin',ownerId:zone.ownerId,damage:zone.damage,pierce:true,hitIds:{},isMinigunninMutationFire:true},-1);
+                }
+            }
         }
     }
 
@@ -16436,10 +17919,29 @@
     for(let i=iceCreamPuddles.length-1;i>=0;i--){const puddle=iceCreamPuddles[i];if(now>=puddle.until){iceCreamPuddles.splice(i,1);continue;}if(now<(puddle.nextTickAt||0))continue;puddle.nextTickAt=now+250;const owner=getEntityById(puddle.ownerId);if(!owner)continue;for(const target of [player,...bots]){if(!target||target.hp<=0||target.id===owner.id||areAlliedEntities(owner,target)||Math.hypot(target.x-puddle.x,target.y-puddle.y)>puddle.radius+(target.radius||14))continue;target.slowUntil=Math.max(target.slowUntil||0,now+420);applyIceCreamFreeze(owner,target,puddle.freeze);if(puddle.damage>0)checkHit(target,{ownerBrawler:'ice_cream',ownerId:owner.id,damage:puddle.damage,pierce:true,super:true,hitIds:{},isIceCreamPuddle:true},-1);}}
   }
 
+    function lockMainAttackSequence(owner, durationMs, startedAt=performance.now()){
+        if(!owner || !Number.isFinite(durationMs) || durationMs<=0)return;
+        // A burst owns the attack channel until its final scheduled projectile
+        // has actually left the brawler. Simultaneous pellets remain unaffected.
+        owner.mainAttackSequenceUntil=Math.max(owner.mainAttackSequenceUntil||0,startedAt+durationMs);
+    }
+
     function fire(fromEntity, targetX, targetY, isBot=false, isMoving=false){
         normalizeSelectedBrawler();
     const now = performance.now();
         const brawler = getCombatBrawler(fromEntity, isBot);
+        if ((fromEntity.awakenatorCorruptAttacks || 0) > 0) {
+            const teammate = [player, ...bots].filter(candidate => candidate && candidate.hp > 0 && candidate.id !== fromEntity.id && getEntityTeam(candidate) === getEntityTeam(fromEntity))
+                .sort((a,b) => Math.hypot(a.x-fromEntity.x,a.y-fromEntity.y)-Math.hypot(b.x-fromEntity.x,b.y-fromEntity.y))[0];
+            if (teammate) {
+                targetX = teammate.x;
+                targetY = teammate.y;
+                fromEntity.awakenatorCorruptTargetId = teammate.id;
+                fromEntity.awakenatorCorruptFriendlyUntil = now + 1800;
+                fromEntity.awakenatorCorruptAttacks = Math.max(0, fromEntity.awakenatorCorruptAttacks - 1);
+                spawnFloatingText(fromEntity.x, fromEntity.y - 40, 'CORRUPTED ATTACK', '#b08cff');
+            }
+        }
         // Player Hyper Supers/stat boosts still activate normally. Only the
         // main-attack mutation is routed through its collectible Attachie.
         const isHypercharged = isBot ? false : getPlayerHyperMainActive(brawler);
@@ -16472,6 +17974,7 @@
     let fireDelay = isBot ? 920 : getFireDelay(brawler, isBot ? fromEntity : null);
     if(isBot&&brawler==='fastpass'&&fromEntity.selectedStar==='long'&&(fromEntity.fastpassMomentum||0)>=.64)fireDelay/=1.15;
     if(isBot&&brawler==='freestyle'&&now<(fromEntity.freestyleRemixUntil||0))fireDelay/=1.18;
+    if(brawler==='outlit'&&hasOutlitMutation(fromEntity)&&(fromEntity.outlitMutationCharges||0)>0)fireDelay*=.5;
     if (brawler === 'duck') fireDelay = isBot ? 170 : 92;
     if (isBot && fromEntity.isImpossibleAI) fireDelay *= 0.72;
     if (!isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getSlopEffectTotal('fireDelayPct'));
@@ -16485,7 +17988,9 @@
         else if (fromEntity.bossStage === 2) fireDelay *= 0.6;
         else fireDelay *= 0.8;
     }
+    if(now < (fromEntity.mainAttackSequenceUntil||0))return;
     if(now - (isBot ? fromEntity.lastShot : lastShot) < fireDelay) return;
+    if (brawler === 'beast' && isBeastyBeastActive(fromEntity, now)) return;
 
     const crystalModeActive = !isBot && (player.bouncyBallsCrystalActive || player.bouncyBallsCrystalUntil > now);
 
@@ -16550,13 +18055,27 @@
         applySlopSushiOnAttack();
     }
     beginMainAttackActivation(fromEntity, brawler, now);
+    if(!isBot){const packetAim=handlePacketMainAttack(fromEntity,targetX,targetY);targetX=packetAim.targetX;targetY=packetAim.targetY;}
     const dx = targetX - fromEntity.x;
     const dy = targetY - fromEntity.y;
     const ang = Math.atan2(dy,dx);
 
     // Recovery kits: these brawlers were restored to the roster from backup,
     // so route them through their own attacks instead of the generic projectile.
-    if (brawler === 'ghoul') {
+    if (brawler === 'awakenator') {
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const damage = Math.round(950 * getLevelDamageScale(level));
+        const hyper = isEntityHyperchargedNow(fromEntity, now);
+        bullets.push({ ownerBrawler:'awakenator', isAwakenatorMain:true, awakenatorHyper:hyper, x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7), y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7), vx:Math.cos(ang)*760, vy:Math.sin(ang)*760, life:0, maxLife:1.05, damage, pierce:false, ownerId:fromEntity.id, hitIds:{}, hitboxMod:1.65, hyperVisual:hyper });
+        return;
+    }
+    if (brawler === 'darkener') {
+        const dense=!!fromEntity.darkenerDenseFogArmed;
+        fromEntity.darkenerDenseFogArmed=false;
+        if(!isBot&&dense){gadgetArmed=false;gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();}
+        spawnDarkenerCloud(fromEntity,ang,{dense});
+        return;
+    } else if (brawler === 'ghoul') {
         if(isBot){const group=getBotLivingEnemies(fromEntity).filter(enemy=>Math.hypot(enemy.x-targetX,enemy.y-targetY)<180);if(group.length>1){targetX=group.reduce((sum,enemy)=>sum+enemy.x,0)/group.length;targetY=group.reduce((sum,enemy)=>sum+enemy.y,0)/group.length;}}
         const phantom=!!fromEntity.ghoulPhantomReachArmed;
         fromEntity.ghoulPhantomReachArmed=false;
@@ -16592,6 +18111,7 @@
         const count=hyper?3:2;
         const projectileSpeed=900*.6*(1+momentum*.8);
         const range=790;
+        lockMainAttackSequence(fromEntity,count>1?200:0,now);
         for(let shot=0;shot<count;shot++){
             const lane=count===3?(shot-1)*.065:(shot===0?-.024:.024);
             const sideOffset=count===2?(shot===0?-7:7):0;
@@ -16767,6 +18287,7 @@
         const baseDamage = crystalHyper ? 290 : 250;
         const baseLife = crystalHyper ? 1.55 : 1.35;
         const spread = crystalHyper ? 0.11 : 0.09;
+        lockMainAttackSequence(fromEntity,(volley-1)*55,now);
         for (let i = 0; i < volley; i++) {
             setTimeout(() => {
                 if (fromEntity.hp <= 0) return;
@@ -16930,6 +18451,7 @@
     } else if (brawler === 'angel') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const count = (hyper ? 3 : 1)+(isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'angelExtraBurst')):0);
+        lockMainAttackSequence(fromEntity,(count-1)*105,now);
         for (let shot=0; shot<count; shot++) setTimeout(()=>{
             if (!playing || gameOver || fromEntity.hp <= 0) return;
             bullets.push({ownerBrawler:'angel',isAngelLight:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+5),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+5),vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.82,damage:hyper?(isBot?850:1180):(isBot?1120:1600),healAmt:hyper?(isBot?650:900):(isBot?1050:1450),angelCanLift:shot===0,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.0,hyperVisual:hyper});
@@ -16942,6 +18464,7 @@
         // Hyper main mutations are Attachies. Bots do not own Attachies, so
         // their ordinary Hypercharge may not silently gain double/piercing shots.
         const isHyper = isHypercharged;
+        const mutationOvercharged = consumeOutlitMutationCharge(fromEntity);
         const outlitExtraPellets = isSlopSushiMode ? Math.round(getEntitySlopEffectTotal(fromEntity,'outlitExtraPellets')) : 0;
         const pellets = (isBot ? 3 : 5) + outlitExtraPellets;
         const shotCount = isHyper ? 2 : 1; // Hypercharge 2.0: Double shot
@@ -16953,11 +18476,11 @@
       const spread = baseSpread * (isBot ? 0.8 : 0.6) * hcSpread * sushiSpreadMult;
         const outlitDamage = isBot ? 208 : 265;
         const outlitVelocity = (!isBot && isHypercharged) ? 1.8 : 1.0;
-        const hcRangeMult = (!isBot && isHypercharged) ? 1.1 : 1.0;
+        const hcRangeMult = ((!isBot && isHypercharged) ? 1.1 : 1.0) * (mutationOvercharged ? 2.0 : 1.0);
         const outlitProjectileSpeed = 560 * 0.6 * outlitVelocity * (1+sushiSpeed);
         const outlitBaseRange = 285;
         
-        if (!isBot) explosions.push({x: fromEntity.x + Math.cos(ang)*20, y: fromEntity.y + Math.sin(ang)*20, radius: 25, life: 0, maxLife: 0.15, color: isHypercharged ? 'rgba(238, 0, 255, 0.8)' : 'rgba(255, 200, 50, 0.6)'});
+        if (!isBot || mutationOvercharged) explosions.push({x: fromEntity.x + Math.cos(ang)*20, y: fromEntity.y + Math.sin(ang)*20, radius: mutationOvercharged ? 42 : 25, life: 0, maxLife: mutationOvercharged ? .22 : 0.15, color: mutationOvercharged ? 'rgba(255,55,75,.84)' : (isHypercharged ? 'rgba(238, 0, 255, 0.8)' : 'rgba(255, 200, 50, 0.6)'), fxKind: mutationOvercharged ? 'outlitMutation' : undefined});
 
         const outlitPierce = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1'); // Added Chaird specific properties
         const outlitReturn = outlitPierce && hasEntityAttachie(fromEntity, 'gadget', 'g1');
@@ -16985,6 +18508,9 @@
               hitIds: {},
               ownerBrawler: 'outlit',
               hyperVisual: isHyper,
+              mutationVisual: mutationOvercharged,
+              outlitMutationPull: mutationOvercharged,
+              outlitMutationAttackId: fromEntity.currentMainAttackActivationId,
               ownerId: fromEntity.id,
               hitboxMod: 1,
               outlitHyperGlow: isHyper, // New property for enhanced effects
@@ -16992,6 +18518,7 @@
             });
           }
         }
+        if (!mutationOvercharged) recordOutlitMutationShot(fromEntity, now);
         
                 if(outlitPierce){ if(isBot) fromEntity.gadgetArmed = false; else { gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); } }
     } else if (brawler === 'decayer') {
@@ -17073,17 +18600,19 @@
             if(isBot) fromEntity.gadgetArmed = false; else { gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); }
         }
         
+        const instinct = consumeEchoInstinct(fromEntity, ang, isBot, isHyper);
         bullets.push({
             ownerBrawler: 'echo',
             isEchoRingProj: true,
-            ringSizeMod,
+            ringSizeMod: ringSizeMod * (instinct ? 1.6 : 1),
             ringDmgMod,
+            echoInstinctVisual: instinct,
             x: fromEntity.x + Math.cos(ang)*(fromEntity.radius+4), 
             y: fromEntity.y + Math.sin(ang)*(fromEntity.radius+4), 
             vx: Math.cos(ang)*850 * 0.6, 
             vy: Math.sin(ang)*850 * 0.6, 
             life: 0, 
-            maxLife: 1.3, 
+            maxLife: instinct ? 1.7 : 1.3,
             damage: isBot ? 780 : 1220,
             pierce: true, // goes until it hits the first enemy or max life, but we handle collision manually 
             hyperVisual: isHyper,
@@ -17218,6 +18747,7 @@
         const symphony = getClassySymphony(fromEntity);
         const goldenReady = !!fromEntity.classyGoldenNext || symphony >= 100;
         spawnClassyBurst(fromEntity, targetX, targetY, isBot, { wideFan: useFan, golden: goldenReady });
+        if (!isBot) addSpecialQuestProgress('classy','main_attack',1);
         if (goldenReady) {
             fromEntity.classyGoldenNext = false;
             setClassySymphony(fromEntity, 0);
@@ -17376,6 +18906,7 @@
         const radiusMult = overclock ? 1.22 : 1.0;
         const batteryGain = overclock ? 9.2 : 6.9;
         const bonusSpin = fromEntity.screenerSpinOffset || 0;
+        lockMainAttackSequence(fromEntity,(waveCount-1)*pulseStepMs,now);
         for (let wave = 0; wave < waveCount; wave++) {
             setTimeout(() => {
                 if (fromEntity.hp <= 0) return;
@@ -17470,13 +19001,22 @@
         const starSlow = !isBot ? (selectedStar === 'slow') : (fromEntity.selectedStar === 'slow');
         const starLong = !isBot ? (selectedStar === 'long') : (fromEntity.selectedStar === 'long');
         const splitCfg = getSplitterMainSplitConfig(isHyper, !!isBot);
+        const instinctActive = consumeSplitterInstinct(fromEntity, now);
         const exoticCascade = isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'splitterExoticCascade') > 0;
-        const splitPlan = exoticCascade
+        let splitPlan = exoticCascade
             ? (isHyper ? [3, 4, 3, 2, 2] : [3, 4, 3])
             : splitCfg.splitPlan;
+        let generationCaps = splitCfg.generationCaps;
+        let instinctBonusChildren = 0;
+        if (instinctActive) {
+            splitPlan = [...splitPlan, 2];
+            if (!isSplitterPoweredMode && !exoticCascade) generationCaps = [5, 10];
+            else if (Array.isArray(generationCaps)) generationCaps = [...generationCaps, 10];
+            instinctBonusChildren = 10;
+        }
             const damage = Math.round((isBot ? 280 : 420) * (splitCfg.mainDamageMult || 1) * (splitCfg.hyperDamageMult || 1));
         const rangeLife = (shortFuse ? 0.3 : 0.42) * (starLong ? 1.2 : 1.0);
-        const chainCap = exoticCascade ? (isHyper ? 64 : 42) : (splitCfg.childCap || SPLITTER_MAIN_CHILD_CAP);
+        const chainCap = (exoticCascade ? (isHyper ? 64 : 42) : (splitCfg.childCap || SPLITTER_MAIN_CHILD_CAP)) + instinctBonusChildren;
         const chainId = createSplitterChain(fromEntity.id, chainCap);
         spawnSplitterGrenade(fromEntity, ang, {
             splitPlan,
@@ -17487,11 +19027,15 @@
             childDamageMult: (splitCfg.childDamageMult || 0.58) * (splitCfg.hyperChildMult || 1),
             hyperVisual: isHyper,
             starSlow,
-            generationCaps: splitCfg.generationCaps,
+            generationCaps,
+            fanMult: isHyper ? 1.9 : 1,
+            splitterInstinctVisual: instinctActive,
+            splitterHyperMain: isHyper,
             chainId,
             chainChildCap: chainCap,
             exoticCascade
         });
+        if (!isBot) addSpecialQuestProgress('splitter','main_attack',1);
         if (shortFuse) {
             if (isBot) {
                 fromEntity.gadgetArmed = false;
@@ -17511,7 +19055,7 @@
         }
     } else if (brawler === 'minigunnin') {
         const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
-        const wideSpread = baseSpread * 2.0 * (isHyper ? 0.8 : 1.0);
+        const wideSpread = baseSpread * 2.0 * MINIGUNNIN_MAIN_CONE_MULT * (isHyper ? 0.8 : 1.0);
         const bulletCount = isHyper ? 2 : 1;
         if (!isBot) { screenShakeUntil = now + 100; screenShakeAmount = 3; }
         
@@ -17522,15 +19066,21 @@
         
         for (let j = 0; j < bulletCount; j++) {
             const a = ang + (Math.random() * wideSpread - wideSpread/2);
+            const mutationExplosive = consumeMinigunninMutationBullet(fromEntity, now);
             bullets.push({
                 ownerBrawler: 'minigunnin',
                 x: fromEntity.x + Math.cos(a)*(fromEntity.radius+4), 
                 y: fromEntity.y + Math.sin(a)*(fromEntity.radius+4), 
                 vx: Math.cos(a)*900 * 0.6, 
                 vy: Math.sin(a)*900 * 0.6, 
-                life: 0, maxLife: 0.8, 
+                life: 0, maxLife: 0.8 * MINIGUNNIN_MAIN_RANGE_MULT,
                 damage: isBot ? (isHyper ? 61 : 68) : (isHyper ? 122 : 135),
-                pierce: false, hyperVisual: isHyper, ownerId: fromEntity.id,
+                pierce: false, hyperVisual: isHyper || mutationExplosive, ownerId: fromEntity.id,
+                hitboxMod: MINIGUNNIN_MAIN_PROJECTILE_SIZE_MULT,
+                minigunninSizeMult: MINIGUNNIN_MAIN_PROJECTILE_SIZE_MULT,
+                minigunninMutationExplosive: mutationExplosive,
+                minigunninMutationZoneStage: mutationExplosive ? Math.floor(Math.random()*3) : -1,
+                minigunninMutationZonePlaced: false,
                 brickColor: isMiniBrickkin ? brickColors[Math.floor(Math.random() * brickColors.length)] : null
             });
         }
@@ -17560,6 +19110,7 @@
             const closeDamage = isBot ? 310 : 520;
             const farDamage = isBot ? 190 : 320;
             const slowMs = depthCharge ? 1200 : 0;
+            lockMainAttackSequence(fromEntity,(bubbleCount-1)*volleyDelayMs,now);
             for (let lane = 0; lane < bubbleCount; lane++) {
                 const laneT = bubbleCount <= 1 ? 0 : (lane / (bubbleCount - 1)) - 0.5;
                 const shotAng = ang + laneT * coneHalfAngle * 2;
@@ -17669,6 +19220,7 @@
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const reverse = !!fromEntity.fuserReverseArmed;
         const delay = hyper ? 62 : 144;
+        lockMainAttackSequence(fromEntity,7*delay,now);
         for (let shot=0;shot<8;shot++) setTimeout(()=>{
             if(fromEntity.hp<=0)return;
             const side=((shot%2===0)?-1:1)*(reverse?-1:1);
@@ -17690,6 +19242,7 @@
         const damageGrowth = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'robberWaveDamagePct') : 0;
         const ricochet = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'robberRicochet') : 0;
         const attackId = `rob_${fromEntity.id}_${Math.round(now)}_${Math.random().toString(36).slice(2,6)}`;
+        lockMainAttackSequence(fromEntity,(waveCount-1)*85,now);
         for (let wave=0; wave<waveCount; wave++) {
             setTimeout(() => {
                 if (fromEntity.hp <= 0) return;
@@ -17709,35 +19262,52 @@
     } else if (brawler === 'money_and_tax') {
         const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
         const mode = isBot ? (fromEntity.moneyAndTaxMode || 'money') : (player.moneyAndTaxMode || 'money');
+        const mutationAttack = consumeMoneyTaxMutationAttack(fromEntity, now);
         
         if (mode === 'money') {
             const attackId = Math.random().toString(36).substr(2, 9); // For SP1 tracking
             const firedAtFullAmmo = isBot ? ((fromEntity.ammo ?? 3) >= 2) : (ammo >= maxAmmo - 1.01);
+            const mutationVolley = mutationAttack;
             const extraWaves=isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'moneyExtraWaves')):0;
             const centerSize=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'moneyCenterSizePct'):0;
             const centerDamage=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'moneyCenterDamagePct'):0;
+            lockMainAttackSequence(fromEntity,(3+extraWaves-1)*150,now);
             for (let w = 0; w < 3 + extraWaves; w++) {
                 setTimeout(() => {
                     if (fromEntity.hp <= 0 && isBot) return; // Don't fire remaining waves if bot dies
-                    const waveSpread = 0.0875; // 30% narrower than the previous cone
-                    for (let i = 0; i < 3; i++) { // 3 coins per wave
-                        const a = ang + (i - 1) * waveSpread;
-                        const empoweredCenter = firedAtFullAmmo && i === 1;
+                    const coinsPerWave = mutationVolley ? 5 : 3;
+                    const centerIndex = Math.floor(coinsPerWave / 2);
+                    for (let i = 0; i < coinsPerWave; i++) {
+                        const a = ang + (i - centerIndex) * MONEY_TAX_BASE_SPREAD;
+                        const empoweredCenter = firedAtFullAmmo && i === centerIndex;
+                        const enlargedCenter = (firedAtFullAmmo || mutationVolley) && i === centerIndex;
                         bullets.push({
                             ownerBrawler: 'money_and_tax', isCoin: true, moneyAttackId: attackId,
                             x: fromEntity.x + Math.cos(a)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(a)*(fromEntity.radius+4),
                             vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6,
                             life: 0, maxLife: 0.9, damage: empoweredCenter ? (isBot ? 150 : 338)*(1+centerDamage) : (isBot ? 120 : 270), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxCoinDist: 513,
-                            hitboxMod: empoweredCenter ? 1.65*(1+centerSize) : 1.0, moneyEmpoweredCenter: empoweredCenter
+                            hitboxMod: enlargedCenter ? 1.65*(1+centerSize) : 1.0, moneyEmpoweredCenter: enlargedCenter,
+                            moneyTaxMutationVisual: mutationVolley
                         });
                     }
                 }, w * 150); // 150ms delay between waves
             }
         } else {
             for (let i = 0; i < 2; i++) { // 2 banknotes side-by-side
-                const a = ang + (i === 0 ? -0.1 : 0.1);
+                const a = ang + (i === 0 ? -MONEY_TAX_TAX_SPREAD : MONEY_TAX_TAX_SPREAD);
                 bullets.push({ ownerBrawler: 'money_and_tax', isTaxNote: true, hitIds: {}, x: fromEntity.x + Math.cos(a)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(a)*(fromEntity.radius+4),
-                    vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6, life: 0, maxLife: 1.0, damage: isBot ? 170 : 375, pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxTaxNoteDist: 850 });
+                    vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6, life: 0, maxLife: 1.0, damage: Math.round((isBot ? 170 : 375) * MONEY_TAX_TAX_DAMAGE_MULT), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxTaxNoteDist: 850, hitboxMod: MONEY_TAX_TAX_SIZE_MULT });
+            }
+            if (mutationAttack) {
+                setTimeout(() => {
+                    if (fromEntity.hp <= 0) return;
+                    for (let i = 0; i < 2; i++) {
+                        const a = ang + (i === 0 ? -MONEY_TAX_TAX_SPREAD : MONEY_TAX_TAX_SPREAD);
+                        bullets.push({ownerBrawler:'money_and_tax',isTaxNote:true,moneyTaxMutationReturn:true,moneyTaxMutationVisual:true,moneyTaxReturnPhase:0,moneyTaxReturnAt:.52,
+                            hitIds:{},x:fromEntity.x+Math.cos(a)*(fromEntity.radius+4),y:fromEntity.y+Math.sin(a)*(fromEntity.radius+4),vx:Math.cos(a)*950*.6,vy:Math.sin(a)*950*.6,
+                            life:0,maxLife:2.1,damage:Math.round((isBot?170:375)*MONEY_TAX_TAX_DAMAGE_MULT),pierce:true,hyperVisual:isHyper,ownerId:fromEntity.id,hitboxMod:MONEY_TAX_TAX_SIZE_MULT});
+                    }
+                }, 105);
             }
         }
     } else if (brawler === 'hunter') {
@@ -17811,6 +19381,7 @@
 
         const angles = [-0.175, 0, 0.175]; // Shoot left to right (30% tighter)
         const delayMs = 150;
+        lockMainAttackSequence(fromEntity,(angles.length-1)*delayMs,now);
         
         angles.forEach((angOffset, idx) => {
             setTimeout(() => {
@@ -17827,6 +19398,7 @@
             }, delayMs * idx);
         });
     } else if (brawler === 'bouncin_balls') {
+        finalizeBouncinSignatureCollector(fromEntity,now);
         const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
         const g1 = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
         const sp1 = !isBot ? (selectedStar === 'slow') : (fromEntity.selectedStar === 'slow'); // Desperation Bounce
@@ -17842,13 +19414,38 @@
         if (sp1 && (fromEntity.hp / fromEntity.maxHp) <= 0.3) balls = 7;
         if (transformed) balls = 10;
         if (transformed && isHyper) balls = 12;
+        const signatureFollowup = Math.max(0, Math.floor(fromEntity.bouncySignatureFollowupBalls || 0));
+        if (signatureFollowup > 0) {
+            balls += signatureFollowup;
+            fromEntity.bouncySignatureFollowupBalls = 0;
+            fromEntity.bouncySignatureCollectorHits = 0;
+            // The immediately next eligible volley consumes the live result.
+            // Any collector balls still in flight stop contributing afterward.
+            fromEntity.bouncySignatureCollectorActive = false;
+            fromEntity.bouncySignatureCollectorHitBalls = {};
+        }
+        const signatureCollector = !!fromEntity.bouncySignatureCollectorArmed && g1 && signatureFollowup <= 0;
+        if (signatureCollector) {
+            fromEntity.bouncySignatureCollectorArmed = false;
+            fromEntity.bouncySignatureCollectorActive = true;
+            fromEntity.bouncySignatureCollectorHits = 0;
+            fromEntity.bouncySignatureCollectorHitBalls = {};
+            fromEntity.bouncySignatureCollectorVolley = `${fromEntity.id}:${now}`;
+            // The final Elasticity ball launches at 440ms and can travel for
+            // about 1.32s. Finalize after every ball has had time to hit.
+            fromEntity.bouncySignatureCollectorEndsAt = now + 1950;
+        }
 
         const sushiBounceRange = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'bouncyRangePct') : 0;
         const sushiSplit = isSlopSushiMode && getEntitySlopEffectTotal(fromEntity,'bouncySplitOnHit') > 0;
+        // Signature stacks its skill reward on top of Elasticity: collector
+        // balls keep G1's +50% range and gain another +20% of their pre-G1
+        // base range for every wall bounce.
         const rangeMult = (g1 ? 1.5 : 1.0) * (isHyper ? 1.2 : 1.0) * (transformed ? 1.35 : 1.0) * (1+sushiBounceRange);
         const speedMult = (isHyper ? 1.2 : 1.0) * (transformed ? 1.18 : 1.0);
         const damageBase = isBot ? 194 : (transformed ? 335 : 285);
         const canSplit = !!isHyper || transformed || sushiSplit;
+        lockMainAttackSequence(fromEntity,(balls-1)*88,now);
 
         for (let i = 0; i < balls; i++) {
             setTimeout(() => { // +10% Delay (80ms -> 88ms)
@@ -17856,6 +19453,23 @@
                 const isShiny = (balls === 7 && i === 6);
                 bullets.push({ ownerBrawler: 'bouncin_balls', x: fromEntity.x + Math.cos(ang)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(ang)*(fromEntity.radius+4),
                     vx: Math.cos(ang) * 900 * 0.6 * speedMult, vy: Math.sin(ang) * 900 * 0.6 * speedMult, life: 0, maxLife: 0.88 * rangeMult, damage: isBot ? damageBase : (isShiny ? Math.round(damageBase * 1.18) : damageBase), pierce: false, hyperVisual: isHyper || isShiny || transformed, ownerId: fromEntity.id, canBounce: true, bounceDmgLoss: transformed ? 0.0 : 0.08, bounceLifeLoss: transformed ? 0.0 : 0.05, ownerSp2: sp2, splitOnHit: canSplit, hitboxMod: transformed ? 1.8 : 1.5, maxBounceDist: transformed ? 1320 : 880 });
+                const b = bullets[bullets.length - 1];
+                if (signatureCollector) {
+                    b.bouncySignatureCollector = true;
+                    b.bouncySignatureVolley = fromEntity.bouncySignatureCollectorVolley;
+                    b.bouncySignatureBallIndex=i;
+                    b.bouncySignatureWallRangePct=.20;
+                    // Remove only Elasticity's 1.5x multiplier here so each
+                    // bounce adds exactly +20% base range: 150, 170, 190...
+                    b.bouncySignatureBaseMaxLife=b.maxLife/1.5;
+                    b.bouncySignatureBaseRange=b.maxBounceDist||880;
+                    // Signature wall contact grants a true +20% range instead
+                    // of first paying the ordinary -5% bounce range penalty.
+                    b.bounceLifeLoss=0;
+                    b.hitIds = b.hitIds || {};
+                    b.fxKind = 'signature';
+                }
+                if (signatureFollowup > 0) { b.bouncySignatureFollowup = true; b.hyperVisual = true; b.fxKind = 'signatureFollowup'; }
             }, i * 88);
         }
     } else if (brawler === 'goonbob') {
@@ -17864,6 +19478,7 @@
         const sp1 = !isBot ? (selectedStar === 'slow') : (fromEntity.selectedStar === 'slow');
         const rooted = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
 
+        lockMainAttackSequence(fromEntity,(count-1)*150,now);
         for(let i=0; i<count; i++) {
             setTimeout(() => {
                 bullets.push({ 
@@ -17982,7 +19597,7 @@
         const sideFlip = isBot ? (fromEntity.beastAttackFlip || 0) : (player.beastAttackFlip || 0);
         const primaryFlip = sideFlip % 2 === 0 ? -1 : 1;
         const ownerBeastMode = beastModeActive;
-        const ownerAttackDamage = isBot ? Math.round(500/2) : Math.round(950/2);
+        const ownerAttackDamage = getBeastRawPrimaryClawDamage(fromEntity, isBot);
         const smallClawDamage = Math.round(ownerAttackDamage * 0.58);
         const clawOffsets = beastModeActive ? [0, -0.16, 0.16] : [-0.25, 0.25];
         const baseLife = beastModeActive ? 0.23 : 0.18;
@@ -18146,6 +19761,8 @@
         let baseDmg = 650;
         let speed = 900;
         let star = getOwnerStarChoice(fromEntity);
+        // Preserve Temporal Fracture's existing shot tuning while restoring its
+        // missing, described Super-triggered pattern below.
         if (star === 'long') {
             baseDmg += 100;
             speed += 150;
@@ -18159,16 +19776,17 @@
         // Phase 1: travel 0.33s (~180px), then skip 110px, then phase 2: 0.17s (~90px)
         const paradoxSpeed = speed * 0.6; // 540px/s
         const skipAt = isHc ? 0.28 : 0.33; // Hyper double-skip begins faster
-        bullets.push({
+        const fractureActive = star === 'long' && now < (fromEntity.paradoxFractureUntil || 0);
+        const spawnParadoxShot = (shotAngle, damageScale, sideShot = false) => bullets.push({
             ownerBrawler: 'paradox',
-            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 6),
-            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 6),
-            vx: Math.cos(ang) * paradoxSpeed,
-            vy: Math.sin(ang) * paradoxSpeed,
+            x: fromEntity.x + Math.cos(shotAngle) * (fromEntity.radius + 6),
+            y: fromEntity.y + Math.sin(shotAngle) * (fromEntity.radius + 6),
+            vx: Math.cos(shotAngle) * paradoxSpeed,
+            vy: Math.sin(shotAngle) * paradoxSpeed,
             life: 0,
             maxLife: skipAt + 0.17,
-            damage: bulletDmg,
-            pierce: paradoxCharged,
+            damage: Math.round(bulletDmg * damageScale),
+            pierce: paradoxCharged || (fractureActive && !sideShot),
             isParadoxMain: true,
             paradoxSkipAt: skipAt,
             paradoxSkipDone: false,
@@ -18177,8 +19795,15 @@
             hyperVisual: isHc,
             ownerId: fromEntity.id,
             hitIds: {},
-            radius: 15.12
+            radius: sideShot ? 11 : 15.12,
+            paradoxFractureVisual: fractureActive,
+            paradoxSideShot: sideShot
         });
+        spawnParadoxShot(ang, 1, false);
+        if (fractureActive) {
+            spawnParadoxShot(ang - 0.20, 0.45, true);
+            spawnParadoxShot(ang + 0.20, 0.45, true);
+        }
         if (paradoxCharged) {
             if (isBot) fromEntity.gadgetArmed = false;
             else {
@@ -18258,6 +19883,7 @@
         } else {
             const waves = [[0], [-0.28, 0.28], [-0.12, 0.12]];
             if(isSlopSushiMode&&getEntitySlopEffectTotal(fromEntity,'teetherExtraToothWave')>0)waves.push([-.4,0,.4]);
+            lockMainAttackSequence(fromEntity,(waves.length-1)*95,now);
             waves.forEach((offsets, wave) => setTimeout(() => {
                 if (fromEntity.hp <= 0) return;
                 for (const offset of offsets) {
@@ -18796,9 +20422,32 @@
         return false;
     }
 
+    function getAwakenatorSuperTargets(owner) {
+        if (!owner) return [];
+        return [player, ...bots].filter(target => target && target.hp > 0 && target.id !== owner.id && !areAlliedEntities(owner,target) && owner.awakenatorSleptTargetIds?.[target.id])
+            .filter(target => [player, ...bots].some(ally => ally && ally.hp > 0 && ally.id !== target.id && getEntityTeam(ally) === getEntityTeam(target)))
+            .sort((a,b) => Math.hypot(a.x-owner.x,a.y-owner.y)-Math.hypot(b.x-owner.x,b.y-owner.y));
+    }
+    function castAwakenatorSuper(owner, hyper) {
+        const eligible = getAwakenatorSuperTargets(owner);
+        const allyCount = [player, ...bots].filter(e => e && e.hp > 0 && getEntityTeam(e) === getEntityTeam(owner)).length;
+        const maxTargets = allyCount >= 3 ? 2 : 1;
+        for (const target of eligible.slice(0,maxTargets)) {
+            target.awakenatorCorruptAttacks = Math.max(target.awakenatorCorruptAttacks || 0, hyper ? 2 : 1);
+            if (hyper) target.hp = Math.max(1, target.hp - target.hp * .30);
+            explosions.push({x:target.x,y:target.y,radius:72,life:0,maxLife:.48,color:hyper?'rgba(73,20,120,.9)':'rgba(125,94,255,.72)',legendary:true,fxKind:'awakenatorCorrupt'});
+            spawnFloatingText(target.x,target.y-48,hyper?'DOUBLE CORRUPTION':'CORRUPTED','#d09cff');
+        }
+        return eligible.length > 0;
+    }
+
     function fireSuper(){
         normalizeSelectedBrawler();
     if(superCharge < 100 || player.hp <= 0) return;
+        if (selectedBrawler === 'beast' && isBeastyBeastActive(player)) {
+            spawnFloatingText(player.x, player.y - 34, 'BEASTYBEAST ACTIVE', '#ffd34f');
+            return;
+        }
         if (selectedBrawler === 'forest' && bots.some(b => b.brawler === 'parrot' && b.ownerId === player.id && !b.laidEgg && b.hp > 0)) {
             spawnFloatingText(player.x, player.y - 28, 'PARROT ACTIVE', '#7ee787');
             return;
@@ -18809,6 +20458,10 @@
         }
         if (selectedBrawler === 'hyperorigin' && getHyperoriginEnergy(player) < 1) {
             updateSuperButton();
+            return;
+        }
+        if (selectedBrawler === 'awakenator' && getAwakenatorSuperTargets(player).length < 1) {
+            spawnFloatingText(player.x,player.y-32,'NO SLEEPING TEAM TARGET','#b9a7ff');
             return;
         }
             if (selectedBrawler === 'copyphase') {
@@ -18832,6 +20485,8 @@
     const mult = (selectedStar === 'long') ? 1.38 : 1.0;
     const combatBrawler = getCombatBrawler(player, false);
 
+    if (combatBrawler === 'awakenator') { castAwakenatorSuper(player,!!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'darkener') { castDarkagon(player,wm.x,wm.y,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'ghoul') { castGhoulSuper(player,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'jacktrade') { castJackTradeSuper(player,wm.x,wm.y,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'portalo') { castPortaloSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return; }
@@ -19063,7 +20718,7 @@
         if (hc) {
             for (let i = 0; i < 6; i++) {
                 const flareAngle = (i / 6) * Math.PI * 2;
-                bullets.push({ ownerBrawler: 'sera_eclipse', isSeraFlare: true, x: player.x, y: player.y, vx: Math.cos(flareAngle) * 836 * 0.6, vy: Math.sin(flareAngle) * 836 * 0.6, life: 0, maxLife: 1.1, damage: 620, pierce: true, hyperVisual: true, ownerId: player.id, hitIds: {} });
+                bullets.push({ ownerBrawler: 'sera_eclipse', isSeraFlare: true, super: true, x: player.x, y: player.y, vx: Math.cos(flareAngle) * 836 * 0.6, vy: Math.sin(flareAngle) * 836 * 0.6, life: 0, maxLife: 1.1, damage: 620, pierce: true, hyperVisual: true, ownerId: player.id, hitIds: {} });
             }
         }
         updateSuperButton();
@@ -19243,52 +20898,9 @@
     if (selectedBrawler === 'splitter') {
         const isHyper = !!isHypercharged;
         const starSlow = selectedStar === 'slow';
-        const travelSplitCount = 2 + (isHyper ? 1 : 0);
         const hyperSuperMult = (isSplitterPoweredMode && isHyper) ? SPLITTER_POWERED_HYPER_SUPER_DAMAGE_MULT : 1;
-        const chainId = createSplitterChain(player.id, SPLITTER_SUPER_CHILD_CAP);
-        bullets.push({
-            ownerBrawler: 'splitter',
-            isSplitterSuperCore: true,
-            ownerId: player.id,
-            x: player.x + Math.cos(ang) * (player.radius + 7),
-            y: player.y + Math.sin(ang) * (player.radius + 7),
-            vx: Math.cos(ang) * 700 * 0.6,
-            vy: Math.sin(ang) * 700 * 0.6,
-            life: 0,
-            maxLife: 1.28,
-            damage: Math.round((isHyper ? 620 : 500) * hyperSuperMult),
-            pierce: true,
-            super: true,
-            hyperVisual: isHyper,
-            hitIds: {},
-            hitboxMod: 1.85,
-            splitterBlastRadius: 92,
-            splitterTravelSplitCount: travelSplitCount,
-            splitterTravelSplitDone: 0,
-            splitterTravelSplitDamage: Math.round((isHyper ? 310 : 270) * hyperSuperMult),
-            splitterTravelSplitLife: 0.54,
-            splitterChildPlan: isHyper ? [4, 2] : [4],
-            splitterStarSlow: starSlow,
-            splitterChainId: chainId,
-            splitterChainChildCap: SPLITTER_SUPER_CHILD_CAP
-        });
-        if (isHyper) {
-            for (let i = 0; i < 3; i++) {
-                const sideAng = ang + i * (Math.PI * 2 / 3);
-                spawnSplitterGrenade(player, sideAng, {
-                    splitPlan: [3, 4],
-                    damage: Math.round(280 * hyperSuperMult),
-                    maxLife: 0.36,
-                    radius: 23,
-                    blastRadius: 44,
-                    childDamageMult: 0.58,
-                    hyperVisual: true,
-                    starSlow,
-                    chainId,
-                    chainChildCap: SPLITTER_SUPER_CHILD_CAP
-                });
-            }
-        }
+        spawnSplitterSuperTree(player, ang, isHyper, hyperSuperMult, starSlow);
+        addSpecialQuestProgress('splitter','use_super',1);
         updateSuperButton();
         return;
     }
@@ -19375,6 +20987,7 @@
     }
 
     if(selectedBrawler === 'minigunnin'){
+      addSpecialQuestProgress('minigunnin','use_super',1);
       // Check for MiniBrickkin skin
       const minigunninSkin = getActiveSkinForBrawler('minigunnin');
       const isMiniBrickkin = minigunninSkin?.id === 'minibrickkin';
@@ -19413,7 +21026,7 @@
               const wa = (i / numWalls) * Math.PI * 2;
               destructibleWalls.push({
                   x: wm.x + Math.cos(wa) * radius - wallSize/2, y: wm.y + Math.sin(wa) * radius - wallSize/2,
-                  w: wallSize, h: wallSize, hp: wallHp, maxHp: wallHp, ownerId: player.id, isLegoWall: true
+                  w: wallSize, h: wallSize, hp: wallHp, maxHp: wallHp, ownerId: player.id, isLegoWall: true, expiresAt: now + 7000
               });
           }
       } else {
@@ -19439,7 +21052,7 @@
               const wa = (i / numWalls) * Math.PI * 2;
               destructibleWalls.push({
                   x: wm.x + Math.cos(wa) * radius - wallSize/2, y: wm.y + Math.sin(wa) * radius - wallSize/2,
-                  w: wallSize, h: wallSize, hp: wallHp, maxHp: wallHp, ownerId: player.id
+                  w: wallSize, h: wallSize, hp: wallHp, maxHp: wallHp, ownerId: player.id, expiresAt: now + 7000
               });
           }
       }
@@ -19630,8 +21243,11 @@
             classyAuraRadius: (hc ? 300 : 220) * 1.08,
             classyHyper: hc,
             classyAutoShoot: !!hc,
+            classySignatureUsed: false,
+            classySignatureUntil: 0,
             lastTurretFire: performance.now()
         });
+        addSpecialQuestProgress('classy','use_super',1);
         updateSuperButton();
         return;
     }
@@ -19796,24 +21412,7 @@
       cheseyGhost = { x: player.x, y: player.y, active: isHypercharged };
     }
     if(selectedBrawler === 'paradox'){
-      const rad = isHypercharged ? 240 : 160;
-      const dur = isHypercharged ? 6000 : 4000;
-      for (let i = relativityZones.length - 1; i >= 0; i--) {
-          if (relativityZones[i].ownerId === player.id) {
-              relativityZones.splice(i, 1);
-          }
-      }
-      relativityZones.push({
-          x: player.x,
-          y: player.y,
-          radius: rad,
-          ownerId: player.id,
-          ownerTeam: player.team,
-          expiresAt: now + dur,
-          attachedToEntity: player,
-          hyper: isHypercharged
-      });
-      explosions.push({ x: player.x, y: player.y, radius: rad, life: 0, maxLife: 0.35, color: isHypercharged ? 'rgba(168, 0, 255, 0.4)' : 'rgba(0, 255, 255, 0.4)' });
+      castParadoxSuper(player, wm.x, wm.y, !!isHypercharged);
     }
     // visual/feedback handled in render
     updateSuperButton();
@@ -19948,6 +21547,10 @@
       if ((bot.lastTargetDistance || 0) > GHOUL_HAUNT_RANGE*.82 && ready.includes('g1')) g='g1';
       else if (ready.includes('g2')) g='g2';
     }
+    if (bot.brawler === 'darkener') {
+      const hasHex=darkagons.some(zone=>zone.ownerId===bot.id&&now<zone.expiresAt);
+      if(hasHex&&ready.includes('g2'))g='g2';else if(ready.includes('g1'))g='g1';
+    }
     if (bot.brawler === 'jacktrade') {
       if ((bot.superCharge||0)>=100 && ready.includes('g1')) g='g1';
       else if (getJackTradeStage(bot)===4 && ready.includes('g2')) g='g2';
@@ -19961,7 +21564,15 @@
 
     if (activateRecoveryGadget(bot, bot.brawler, g, target?.x ?? (bot.x+Math.cos(ang)*200), target?.y ?? (bot.y+Math.sin(ang)*200))) return;
 
-    if (bot.brawler === 'ghoul' && g === 'g1') {
+    if (bot.brawler === 'awakenator' && g === 'g1') {
+      bot.awakenatorLucidEchoArmed=true;spawnFloatingText(bot.x,bot.y-34,'LUCID ECHO','#b8a5ff');
+    } else if (bot.brawler === 'awakenator' && g === 'g2') {
+      const slept=getAwakenatorSuperTargets(bot)[0];if(slept){slept.awakenatorSleepUntil=Math.max(slept.awakenatorSleepUntil||0,now+1000);spawnFloatingText(slept.x,slept.y-34,'MEMORY LEAK','#b8a5ff');}
+    } else if (bot.brawler === 'darkener' && g === 'g1') {
+      bot.darkenerDenseFogArmed=true;spawnFloatingText(bot.x,bot.y-34,'DENSE FOG','#c995ff');
+    } else if (bot.brawler === 'darkener' && g === 'g2') {
+      if(!triggerDarkenerHexRecall(bot))setEntityGadgetCooldownUntil(bot,now,g);
+    } else if (bot.brawler === 'ghoul' && g === 'g1') {
       bot.ghoulPhantomReachArmed=true;spawnFloatingText(bot.x,bot.y-34,'PHANTOM REACH','#c895ff');
     } else if (bot.brawler === 'ghoul' && g === 'g2') {
       spawnGhoulClone(bot);
@@ -20278,7 +21889,8 @@
         bot.gadgetArmed = true;
     } else if (bot.brawler === 'bouncin_balls' && g === 'g2') {
         healingPods.push({
-            x: bot.x, y: bot.y, hp: 3500, maxHp: 3500, radius: 20, healRadius: 0, healAmount: 0, decayPerSec: 200,
+            // 6000 combat HP, with the original 17.5-second natural lifetime preserved.
+            x: bot.x, y: bot.y, hp: 6000, maxHp: 6000, radius: 20, healRadius: 0, healAmount: 0, decayPerSec: 6000 / 17.5,
             ownerId: bot.id, lastDecayTick: performance.now(), lastHealTick: performance.now(),
             isBouncyTurret: true, lastTurretFire: performance.now()
         });
@@ -20293,7 +21905,7 @@
 
     // If gadget was armed for a "next shot" type, but the brawler doesn't have one, disarm it.
     // This prevents issues if a brawler is switched mid-game or if logic is missing.
-    if (bot.gadgetArmed && !['orbo', 'homer', 'warrior', 'outlit', 'decayer', 'cheseypuff', 'unopcoloco', 'echo', 'dashaholic', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'tempo_maker', 'copyphase', 'trapper', 'classy', 'heater_miser', 'steamer', 'amplifier', 'skeleflying', 'crystila', 'evil_doctor', 'splitter', 'hoop','swimmer','boomer','daggershard','adlof','cluster','witch','ice_cream','blade_vane','duck'].includes(bot.brawler)) {
+    if (bot.gadgetArmed && !['orbo', 'homer', 'warrior', 'outlit', 'decayer', 'cheseypuff', 'unopcoloco', 'echo', 'dashaholic', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'tempo_maker', 'copyphase', 'trapper', 'classy', 'heater_miser', 'steamer', 'amplifier', 'skeleflying', 'crystila', 'evil_doctor', 'splitter', 'hoop','swimmer','boomer','daggershard','adlof','cluster','witch','ice_cream','blade_vane','duck','awakenator'].includes(bot.brawler)) {
         bot.gadgetArmed = false;
     }
   }
@@ -20306,6 +21918,7 @@
             ensureCopyphaseState(bot);
             if (!bot.copyphaseSlot1) return;
         }
+        if (bot.brawler === 'awakenator' && getAwakenatorSuperTargets(bot).length < 1) return;
     bot.superCharge = 0;
     bot.lastAttackAt = performance.now();
     if (isSlopSushiMode) {
@@ -20331,8 +21944,10 @@
     const isHyper = bot.isHypercharged;
         const botCombatBrawler = getCombatBrawler(bot, true);
     const now = performance.now();
+    if (botCombatBrawler === 'awakenator') { castAwakenatorSuper(bot,isHyper); return; }
     const dx = targetX - bot.x; const dy = targetY - bot.y; const ang = Math.atan2(dy, dx);
 
+        if (botCombatBrawler === 'darkener') { castDarkagon(bot,targetX,targetY,isHyper); return; }
         if (botCombatBrawler === 'ghoul') { castGhoulSuper(bot,isHyper); return; }
         if (botCombatBrawler === 'jacktrade') { castJackTradeSuper(bot,targetX,targetY,isHyper); return; }
         if (botCombatBrawler === 'portalo') { castPortaloSuper(bot,isHyper,targetX,targetY); return; }
@@ -20376,24 +21991,7 @@
         }
 
         if (botCombatBrawler === 'paradox') {
-            const rad = isHyper ? 240 : 160;
-            const dur = isHyper ? 6000 : 4000;
-            for (let i = relativityZones.length - 1; i >= 0; i--) {
-                if (relativityZones[i].ownerId === bot.id) {
-                    relativityZones.splice(i, 1);
-                }
-            }
-            relativityZones.push({
-                x: bot.x,
-                y: bot.y,
-                radius: rad,
-                ownerId: bot.id,
-                ownerTeam: bot.team || 'bot',
-                expiresAt: now + dur,
-                attachedToEntity: bot,
-                hyper: isHyper
-            });
-            explosions.push({ x: bot.x, y: bot.y, radius: rad, life: 0, maxLife: 0.35, color: isHyper ? 'rgba(168, 0, 255, 0.4)' : 'rgba(0, 255, 255, 0.4)' });
+            castParadoxSuper(bot, targetX, targetY, !!isHyper);
             return;
         }
 
@@ -20624,52 +22222,8 @@
     }
     if (bot.brawler === 'splitter') {
         const starSlow = bot.selectedStar === 'slow';
-        const travelSplitCount = 2 + (isHyper ? 1 : 0);
         const hyperSuperMult = (isSplitterPoweredMode && isHyper) ? SPLITTER_POWERED_HYPER_SUPER_DAMAGE_MULT : 1;
-        const chainId = createSplitterChain(bot.id, SPLITTER_SUPER_CHILD_CAP);
-        bullets.push({
-            ownerBrawler: 'splitter',
-            isSplitterSuperCore: true,
-            ownerId: bot.id,
-            x: bot.x + Math.cos(ang) * (bot.radius + 7),
-            y: bot.y + Math.sin(ang) * (bot.radius + 7),
-            vx: Math.cos(ang) * 700 * 0.6,
-            vy: Math.sin(ang) * 700 * 0.6,
-            life: 0,
-            maxLife: 1.28,
-            damage: Math.round((isHyper ? 620 : 500) * hyperSuperMult),
-            pierce: true,
-            super: true,
-            hyperVisual: !!isHyper,
-            hitIds: {},
-            hitboxMod: 1.85,
-            splitterBlastRadius: 92,
-            splitterTravelSplitCount: travelSplitCount,
-            splitterTravelSplitDone: 0,
-            splitterTravelSplitDamage: Math.round((isHyper ? 310 : 270) * hyperSuperMult),
-            splitterTravelSplitLife: 0.54,
-            splitterChildPlan: isHyper ? [4, 2] : [4],
-            splitterStarSlow: starSlow,
-            splitterChainId: chainId,
-            splitterChainChildCap: SPLITTER_SUPER_CHILD_CAP
-        });
-        if (isHyper) {
-            for (let i = 0; i < 3; i++) {
-                const sideAng = ang + i * (Math.PI * 2 / 3);
-                spawnSplitterGrenade(bot, sideAng, {
-                    splitPlan: [3, 4],
-                    damage: Math.round(280 * hyperSuperMult),
-                    maxLife: 0.36,
-                    radius: 23,
-                    blastRadius: 44,
-                    childDamageMult: 0.58,
-                    hyperVisual: true,
-                    starSlow,
-                    chainId,
-                    chainChildCap: SPLITTER_SUPER_CHILD_CAP
-                });
-            }
-        }
+        spawnSplitterSuperTree(bot, ang, isHyper, hyperSuperMult, starSlow);
         return;
     }
 
@@ -20750,7 +22304,7 @@
       const wallSize = 40; const numWalls = 24; const radius = 250;
       for (let i = 0; i < numWalls; i++) {
           const wa = (i / numWalls) * Math.PI * 2;
-          destructibleWalls.push({ x: bot.x + Math.cos(wa) * radius - wallSize/2, y: bot.y + Math.sin(wa) * radius - wallSize/2, w: wallSize, h: wallSize, hp: wallHp, maxHp: wallHp, ownerId: bot.id });
+          destructibleWalls.push({ x: bot.x + Math.cos(wa) * radius - wallSize/2, y: bot.y + Math.sin(wa) * radius - wallSize/2, w: wallSize, h: wallSize, hp: wallHp, maxHp: wallHp, ownerId: bot.id, expiresAt: now + 7000 });
       }
       if (bot.isBoss) {
           for(let i=0; i<3; i++) {
@@ -20906,6 +22460,8 @@
             classyAuraRadius: (isHyper ? 300 : 220) * 1.08,
             classyHyper: isHyper,
             classyAutoShoot: !!isHyper,
+            classySignatureUsed: false,
+            classySignatureUntil: 0,
             lastTurretFire: now
         });
         return;
@@ -20983,6 +22539,8 @@
     }
   }
 
+  signatureBtn?.addEventListener('click', () => activateSignatureAbility(player));
+
   gadgetBtn.addEventListener('click', ()=>{
     const prog = getSelectedProgress();
         if (!prog.gadgetUnlocked && !isTraining) return;
@@ -20992,6 +22550,7 @@
     const curGadget = selectedGadget;
     absorbLegacyPlayerGadgetCooldownWrite(curGadget, now);
     if(now < getPlayerGadgetCooldownUntil(curGadget, now)) return; // still cooling
+    if(curBrawler==='bouncin_balls')addSpecialQuestProgress('bouncin_balls',curGadget==='g1'?'use_g1':'use_g2',1);
     addEventQuestProgress('use_gadget');
     progressSeasonPassQuest('use_gadget');
     const gadgetWorld=getMouseWorld();
@@ -20999,14 +22558,26 @@
       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();return;
     }
     
-    if (curBrawler === 'ghoul' && curGadget === 'g1') {
+    if (curBrawler === 'awakenator' && curGadget === 'g1') {
+      if(player.awakenatorLucidEchoArmed)return;
+      player.awakenatorLucidEchoArmed=true;gadgetArmed=true;spawnFloatingText(player.x,player.y-34,'LUCID ECHO READY','#b8a5ff');updateGadgetButton();
+    } else if (curBrawler === 'awakenator' && curGadget === 'g2') {
+      const slept=getAwakenatorSuperTargets(player)[0];if(!slept)return;
+      slept.awakenatorSleepUntil=Math.max(slept.awakenatorSleepUntil||0,now+1000);gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;spawnFloatingText(slept.x,slept.y-34,'MEMORY LEAK','#b8a5ff');updateGadgetButton();
+    } else if (curBrawler === 'darkener' && curGadget === 'g1') {
+      if(player.darkenerDenseFogArmed)return;
+      player.darkenerDenseFogArmed=true;gadgetArmed=true;spawnFloatingText(player.x,player.y-34,'DENSE FOG READY','#c995ff');updateGadgetButton();
+    } else if (curBrawler === 'darkener' && curGadget === 'g2') {
+      if(!triggerDarkenerHexRecall(player))return;
+      gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
+    } else if (curBrawler === 'ghoul' && curGadget === 'g1') {
       if(player.ghoulPhantomReachArmed)return;
       player.ghoulPhantomReachArmed=true;gadgetArmed=true;spawnFloatingText(player.x,player.y-34,'PHANTOM REACH READY','#c895ff');updateGadgetButton();
     } else if (curBrawler === 'ghoul' && curGadget === 'g2') {
       spawnGhoulClone(player);gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
     } else if (curBrawler === 'jacktrade' && curGadget === 'g1') {
       if(player.jackTradeJackpotArmed)return;
-      player.jackTradeJackpotArmed=true;gadgetArmed=true;if(superCharge>=100)prepareJackTradeOutcomes(player,2);spawnFloatingText(player.x,player.y-34,'JACKPOT READY','#ffd85c');updateGadgetButton();updateSuperButton();
+      player.jackTradeJackpotArmed=true;gadgetArmed=true;if(superCharge>=100)prepareJackTradeOutcomes(player,getJackTradePreparedOutcomeCount(player));spawnFloatingText(player.x,player.y-34,'JACKPOT READY','#ffd85c');updateGadgetButton();updateSuperButton();
     } else if (curBrawler === 'jacktrade' && curGadget === 'g2') {
       if(player.jackTradeSafeBetArmed)return;
       player.jackTradeSafeBetArmed=true;gadgetArmed=true;spawnFloatingText(player.x,player.y-34,'SAFE BET READY','#7ef4ff');updateGadgetButton();
@@ -21385,7 +22956,8 @@
       gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton();
     } else if (curBrawler === 'bouncin_balls' && curGadget === 'g2') {
       ammo = 0; ammoReloadTimer = 0;
-      healingPods.push({ x: player.x, y: player.y, hp: 3500, maxHp: 3500, radius: 20, healRadius: 0, healAmount: 0, decayPerSec: 200,
+      // 6000 combat HP, with the original 17.5-second natural lifetime preserved.
+      healingPods.push({ x: player.x, y: player.y, hp: 6000, maxHp: 6000, radius: 20, healRadius: 0, healAmount: 0, decayPerSec: 6000 / 17.5,
           ownerId: player.id, lastDecayTick: now, lastHealTick: now, isBouncyTurret: true, lastTurretFire: now });
       gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton();
         } else if (curBrawler === 'trapper' && curGadget === 'g1') {
@@ -21546,6 +23118,173 @@
     }
   });
 
+  const BOUNCIN_SIGNATURE_COOLDOWN_MS = 10000;
+  function finalizeBouncinSignatureCollector(entity, now = performance.now()) {
+      if(!entity?.bouncySignatureCollectorActive||now<(entity.bouncySignatureCollectorEndsAt||0))return false;
+      const gained=Math.max(0,Math.floor(entity.bouncySignatureCollectorHits||0));
+      entity.bouncySignatureFollowupBalls=gained;
+      entity.bouncySignatureCollectorActive=false;
+      entity.bouncySignatureCollectorHitBalls={};
+      if(entity.id===player.id){
+          spawnFloatingText(entity.x,entity.y-48,gained>0?`NEXT VOLLEY +${gained} BALLS`:'NO BALLS COLLECTED',gained>0?'#ffd34f':'#8aa0b9');
+      }
+      return true;
+  }
+  function getBouncinSignatureState(entity = player, now = performance.now()) {
+      finalizeBouncinSignatureCollector(entity,now);
+      if (!isSpecialAbilityAvailableForEntity(entity, 'bouncin_balls')) return { ready:false, label:'LOCKED' };
+      if (entity.hp <= 1) return { ready:false, label:'NOT ENOUGH HP' };
+      const cooldownLeft=Math.max(0,(entity.bouncySignatureCooldownUntil||0)-now);
+      if(cooldownLeft>0)return {ready:false,label:`COOLDOWN ${(cooldownLeft/1000).toFixed(1)}s`,cooldownLeft};
+      if(entity.bouncySignatureCollectorArmed||entity.bouncySignatureCollectorActive)return {ready:false,label:'COLLECTOR ACTIVE'};
+      const ownedTurret = healingPods.find(p => p.isBouncyTurret && p.ownerId === entity.id && p.hp > 0);
+      if (entity.id === player.id) {
+          if (selectedGadget === 'g1' && gadgetArmed) return { ready:true, mode:'g1', label:'ELASTIC ARMED' };
+          if (selectedGadget === 'g2' && ownedTurret) return { ready:true, mode:'g2', label:'TURRET READY' };
+          return { ready:false, label:selectedGadget === 'g2' ? 'NO TURRET' : 'NEED TOOL' };
+      }
+      if (entity.selectedGadget === 'g1' && entity.gadgetArmed) return { ready:true, mode:'g1', label:'ELASTIC ARMED' };
+      if (entity.selectedGadget === 'g2' && ownedTurret) return { ready:true, mode:'g2', label:'TURRET READY' };
+      return { ready:false, label:'NEED TOOL' };
+  }
+
+  function getClassySignatureState(entity = player, now = performance.now()) {
+      if (!isSpecialAbilityAvailableForEntity(entity,'classy')) return {ready:false,label:'LOCKED'};
+      if (entity.hp <= 1) return {ready:false,label:'NOT ENOUGH HP'};
+      const speaker=getClassySpeaker(entity);
+      if (!speaker) return {ready:false,label:'NEED BASS DROP'};
+      const remaining=Math.max(0,(speaker.classySignatureUntil||0)-now);
+      if (remaining>0) return {ready:false,label:`MARCHING ${(remaining/1000).toFixed(1)}s`,remaining};
+      if (speaker.classySignatureUsed) return {ready:false,label:'ENCORE SPENT'};
+      return {ready:true,label:'MARCHING ENCORE',speaker};
+  }
+
+  function getSmoothDisplayedHp(entity) {
+      if (!entity) return 0;
+      const exact=Math.max(0,Number(entity.hp)||0);
+      if (!Number.isFinite(entity.displayHp)) entity.displayHp=exact;
+      entity.displayHp += (exact-entity.displayHp)*.22;
+      if (Math.abs(entity.displayHp-exact)<1) entity.displayHp=exact;
+      const step=(entity.maxHp||0)>=2000 ? (entity.displayHp<1000?10:100) : 10;
+      return Math.max(0,Math.round(entity.displayHp/step)*step);
+  }
+  function paySignatureHpCost(entity) {
+      if (!entity || entity.hp <= 1) return false;
+      const cost = Math.min(1000, Math.max(0, entity.hp - 1));
+      entity.hp = Math.max(1, entity.hp - cost);
+      const now=performance.now();
+      entity.lastDamagedAt=now;
+      entity.trinketLastCombatAt=now;
+      entity.idleRegenNextAt=0;
+      spawnFloatingText(entity.x, entity.y - 44, `-${Math.round(cost)} HP SIGNATURE`, '#ffd34f');
+      return true;
+  }
+  function payBouncinTurretSignatureHpCost(turret) {
+      if (!turret || turret.hp <= 1) return false;
+      const cost=Math.min(750,Math.max(0,turret.hp-1));
+      turret.hp=Math.max(1,turret.hp-cost);
+      turret.displayHp=turret.hp;
+      spawnFloatingText(turret.x,turret.y-44,`-${Math.round(cost)} TURRET HP`,'#ffd34f');
+      return true;
+  }
+  function fireBouncinTurretSignature(owner, turret) {
+      if (!owner || !turret) return false;
+      if (!payBouncinTurretSignatureHpCost(turret)) return false;
+      turret.bouncySignatureWavesAt = performance.now();
+      const perWave = 12;
+      for (let wave = 0; wave < 2; wave++) {
+          setTimeout(() => {
+              if (!playing || gameOver || turret.hp <= 0) return;
+              explosions.push({ x: turret.x, y: turret.y, radius: 88 + wave * 24, life: 0, maxLife: .36, color: 'rgba(255,211,79,.62)', fxKind: 'signatureWave' });
+              for (let i = 0; i < perWave; i++) {
+                  const a = Math.PI * 2 * (i / perWave) + wave * .13;
+                  bullets.push({ ownerBrawler:'bouncin_balls', x:turret.x, y:turret.y, vx:Math.cos(a)*900*.6, vy:Math.sin(a)*900*.6, life:0, maxLife:1.25, damage:250, pierce:false, ownerId:owner.id, canBounce:true, bounceDmgLoss:.05, bounceLifeLoss:.05, hitIds:{}, hitboxMod:1.45, hyperVisual:true, fxKind:'signatureTurret' });
+              }
+          }, wave * 260);
+      }
+      return true;
+  }
+  function activateSignatureAbility(entity = player) {
+      const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
+      if (fighterId === 'classy') {
+          const classyState=getClassySignatureState(entity);
+          if (!classyState.ready) {
+              spawnFloatingText(entity.x,entity.y-34,classyState.label,'#8aa0b9');
+              return false;
+          }
+          if (!paySignatureHpCost(entity)) return false;
+          const now=performance.now();
+          classyState.speaker.classySignatureUsed=true;
+          classyState.speaker.classySignatureUntil=now+6000;
+          entity.classySignatureUntil=now+6000;
+          explosions.push({x:classyState.speaker.x,y:classyState.speaker.y,radius:76,life:0,maxLife:.3,color:'rgba(255,211,79,.72)',fxKind:'classySignature'});
+          spawnFloatingText(classyState.speaker.x,classyState.speaker.y-52,'MARCHING ENCORE!','#ffd34f');
+          updateSignatureButton();
+          return true;
+      }
+      if (fighterId === 'beast') {
+          const state = getBeastSignatureState(entity);
+          if (!state.ready) {
+              spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9');
+              return false;
+          }
+          const now = performance.now();
+          if (entity.id === player.id) {
+              ammo = 0;
+              ammoReloadTimer = 0;
+          } else {
+              entity.ammo = 0;
+          }
+          entity.beastyBeastUntil = now + 5000;
+          entity.beastyBeastNextClawAt = now;
+          entity.beastyBeastClawFlip = -1;
+          explosions.push({x:entity.x,y:entity.y,radius:94,life:0,maxLife:.42,color:'rgba(255,211,79,.78)',legendary:true,fxKind:'beastyBeast'});
+          spawnFloatingText(entity.x, entity.y - 56, 'BEASTYBEAST!', '#ffd34f');
+          updateSignatureButton();
+          return true;
+      }
+      if (fighterId !== 'bouncin_balls') return false;
+      const state = getBouncinSignatureState(entity);
+      if (!state.ready) {
+          spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9');
+          return false;
+      }
+      if (!paySignatureHpCost(entity)) return false;
+      if (state.mode === 'g1') {
+          entity.bouncySignatureCollectorArmed = true;
+          entity.bouncySignatureCooldownUntil = performance.now() + BOUNCIN_SIGNATURE_COOLDOWN_MS;
+          explosions.push({ x: entity.x, y: entity.y, radius: 62, life: 0, maxLife: .28, color: 'rgba(255,211,79,.66)', fxKind: 'signature' });
+          spawnFloatingText(entity.x, entity.y - 54, 'COLLECTOR VOLLEY', '#ffd34f');
+          return true;
+      }
+      const turret = healingPods.find(p => p.isBouncyTurret && p.ownerId === entity.id && p.hp > 0);
+      if (turret) {
+          const fired=fireBouncinTurretSignature(entity, turret);
+          if(fired)entity.bouncySignatureCooldownUntil=performance.now()+BOUNCIN_SIGNATURE_COOLDOWN_MS;
+          return fired;
+      }
+      return false;
+  }
+  function updateSignatureButton() {
+      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast';
+      const shouldShow = playing && signatureFighter && isSpecialAbilityAvailableForEntity(player, selectedBrawler);
+      if (signatureTouchBtn) signatureTouchBtn.style.display = shouldShow ? 'flex' : 'none';
+      if (signatureBtn) signatureBtn.style.display = shouldShow ? '' : 'none';
+      if (!shouldShow) return;
+      const state = selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : getBouncinSignatureState(player));
+      const costText = selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP');
+      if (signatureTouchBtn) {
+          signatureTouchBtn.textContent = state.ready ? 'SIG' : '×';
+          signatureTouchBtn.title = `Signature: ${state.label}${costText}`;
+          signatureTouchBtn.classList.toggle('signature-ready', !!state.ready);
+      }
+      if (signatureBtn) {
+          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : ' · up to 1000 HP + 750 turret HP')} (R)`;
+          signatureBtn.disabled = !state.ready;
+          signatureBtn.classList.toggle('signature-ready', !!state.ready);
+      }
+  }
+
   const superAimCancelState = { source: 'desktop', pointerId: null, leftDeadZone: false, cancel: false };
   function setSuperAimCancelVisual(cancelled) {
       superAimCancelState.cancel = !!cancelled;
@@ -21603,11 +23342,20 @@
     }));
   if(gadgetInputs) gadgetInputs.forEach(inp=> inp.addEventListener('change', ()=>{
       if(inp.checked) {
+          const previousGadget=selectedGadget;
           selectedGadget = inp.value;
+          const progress=getSelectedProgress();
+          progress.selectedGadget=selectedGadget;
+          if(previousGadget!==selectedGadget){
+              gadgetArmed=false;
+              player.bouncySignatureCollectorArmed=false;
+          }
           syncSelectedGadgetCooldown();
+          saveProgress();
       }
       updateGadgetInfo();
       updateGadgetButton();
+      updateSignatureButton();
   }));
   if (brawlerSelect) {
     rebuildBrawlerSelectOptions();
@@ -21649,11 +23397,11 @@
     syncSelectedGadgetCooldown();
     const activeCdUntil = getPlayerGadgetCooldownUntil(selectedGadget, now);
     gadgetCooldownUntil = activeCdUntil;
-        if(!unlocked){ gadgetBtn.textContent = 'Gadget: Locked'; gadgetBtn.disabled = true; }
-    else if(gadgetArmed){ gadgetBtn.textContent = 'Gadget: Armed'; gadgetBtn.disabled = false; }
-    else if(healingRingActive){ gadgetBtn.textContent = 'Gadget: Active'; gadgetBtn.disabled = true; }
-    else if(activeCdUntil && now < activeCdUntil){ const s = Math.max(0, Math.ceil((activeCdUntil - now)/1000)); gadgetBtn.textContent = `Gadget: CD ${s}s`; gadgetBtn.disabled = true; }
-    else { gadgetBtn.textContent = 'Gadget: Ready'; gadgetBtn.disabled = false; }
+        if(!unlocked){ gadgetBtn.textContent = 'Tool: Locked'; gadgetBtn.disabled = true; }
+    else if(gadgetArmed){ gadgetBtn.textContent = 'Tool: Armed'; gadgetBtn.disabled = false; }
+    else if(healingRingActive){ gadgetBtn.textContent = 'Tool: Active'; gadgetBtn.disabled = true; }
+    else if(activeCdUntil && now < activeCdUntil){ const s = Math.max(0, Math.ceil((activeCdUntil - now)/1000)); gadgetBtn.textContent = `Tool: CD ${s}s`; gadgetBtn.disabled = true; }
+    else { gadgetBtn.textContent = 'Tool: Ready'; gadgetBtn.disabled = false; }
     updateGadgetInfo();
   }
 
@@ -21748,13 +23496,13 @@
     if (selectedBrawler === 'hyperorigin') {
         const energy = getHyperoriginEnergy(player);
         if (superCharge >= 100 && energy >= 1) {
-            superBtn.textContent = `Super: Ready (${energy})`;
+            superBtn.textContent = `Power Move: Ready (${energy})`;
             superBtn.disabled = false;
         } else if (superCharge >= 100) {
-            superBtn.textContent = 'Super: Need Energy';
+            superBtn.textContent = 'Power Move: Need Energy';
             superBtn.disabled = true;
         } else {
-            superBtn.textContent = `Super: ${Math.floor(superCharge)}%`;
+            superBtn.textContent = `Power Move: ${Math.floor(superCharge)}%`;
             superBtn.disabled = true;
         }
         return;
@@ -21762,13 +23510,13 @@
     if (selectedBrawler === 'copyphase') {
         ensureCopyphaseState(player);
         if (superCharge >= 100 && player.copyphaseSlot1) {
-            superBtn.textContent = 'Super: Ready';
+            superBtn.textContent = 'Power Move: Ready';
             superBtn.disabled = false;
         } else if (superCharge >= 100) {
-            superBtn.textContent = 'Super: Need Slot 1';
+            superBtn.textContent = 'Power Move: Need Slot 1';
             superBtn.disabled = true;
         } else {
-            superBtn.textContent = `Super: ${Math.floor(superCharge)}%`;
+            superBtn.textContent = `Power Move: ${Math.floor(superCharge)}%`;
             superBtn.disabled = true;
         }
         return;
@@ -21776,25 +23524,25 @@
     if (selectedBrawler === 'jacktrade') {
         if (superCharge >= 100) {
             if (isHypercharged) {
-                superBtn.textContent = 'Super: ALL IN';
+                superBtn.textContent = 'Power Move: ALL IN';
                 superBtn.dataset.lockedOutcome = 'ALL IN';
             } else {
-                const outcomes=prepareJackTradeOutcomes(player,player.jackTradeJackpotArmed?2:1);
+                const outcomes=prepareJackTradeOutcomes(player,getJackTradePreparedOutcomeCount(player));
                 const lockedLabel=outcomes.map(outcome=>JACKTRADE_OUTCOME_LABELS[outcome]||outcome.toUpperCase()).join(' + ');
-                superBtn.textContent=`Super: ${lockedLabel}`;
+                superBtn.textContent=`Power Move: ${lockedLabel}`;
                 superBtn.dataset.lockedOutcome=lockedLabel;
             }
             superBtn.disabled=false;
         } else {
             clearJackTradePreparedOutcomes(player);
             delete superBtn.dataset.lockedOutcome;
-            superBtn.textContent=`Super: ${Math.floor(superCharge)}%`;
+            superBtn.textContent=`Power Move: ${Math.floor(superCharge)}%`;
             superBtn.disabled=true;
         }
         return;
     }
     delete superBtn.dataset.lockedOutcome;
-    superBtn.textContent = (superCharge>=100) ? 'Super: Ready' : `Super: ${Math.floor(superCharge)}%`; superBtn.disabled = superCharge<100;
+    superBtn.textContent = (superCharge>=100) ? 'Power Move: Ready' : `Power Move: ${Math.floor(superCharge)}%`; superBtn.disabled = superCharge<100;
   }
   function updateHyperButton(){
     if(hyperBtn){
@@ -21803,25 +23551,25 @@
             hyperBtn.style.animation = 'none';
             hyperBtn.style.boxShadow = 'none';
             hyperBtn.style.borderColor = 'transparent';
-            hyperBtn.textContent = 'Hypercharge: Locked';
+            hyperBtn.textContent = 'Core Surge: Locked';
             hyperBtn.disabled = true;
             return;
         }
         if(isHypercharged) { 
-            hyperBtn.textContent = 'HYPERCHARGED'; 
+            hyperBtn.textContent = 'CORE SURGED';
             hyperBtn.disabled = false; 
             hyperBtn.style.animation = 'hc-active-flame 0.3s infinite alternate';
         }
         else { 
             if (hyperChargeCharge >= 100) {
-                hyperBtn.textContent = 'HYPERCHARGE: Ready'; 
+                hyperBtn.textContent = 'CORE SURGE: Ready';
                 hyperBtn.disabled = false; 
                 hyperBtn.style.animation = 'hc-ready-flame 0.5s infinite alternate';
             } else {
                 hyperBtn.style.animation = 'none';
                 hyperBtn.style.boxShadow = 'none';
                 hyperBtn.style.borderColor = 'transparent';
-                hyperBtn.textContent = `HC: ${Math.floor(hyperChargeCharge)}%`; 
+                hyperBtn.textContent = `CORE: ${Math.floor(hyperChargeCharge)}%`;
                 hyperBtn.disabled = true; 
             }
         }
@@ -21872,6 +23620,8 @@
   const homeModeCardMap = {};
   const HOME_MODE_CARDS = [
       ['tug_zone', 'TZ', 'Tug Zone', '3v3 - pull the moving zone home'],
+      ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
+      ['lava_boss_s3', 'LAVA', 'Lava Villain Boss', 'Permanent co-op ladder • Hard to Impossible XV'],
       ['tower_duels_weekend', 'TD', 'Tower Duels Weekend', '5 floors - fresh random P11 trio each floor'],
       ['slop_sushi_plus', '🗼', 'Tower Fusion Lab', 'Legacy seven-power sandbox'],
       ['slop_sushi', '🏰', 'Tower Trouble', '10 floors • random maxed brawler • fuse 4'],
@@ -21892,20 +23642,23 @@
       ['impossible', 'AI', 'The Impossible', '1v1 against an adaptive dodger']
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
-  const HOME_PERMANENT_MODE_IDS = ['slop_sushi', 'slop_sushi_gauntlet', 'arena_forge', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
+  const HOME_PERMANENT_MODE_IDS = ['corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'arena_forge', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
   const WEEKLY_FEATURED_START = new Date(2026, 7, 9, 0, 0, 0).getTime();
   const WEEKLY_FEATURED_END = new Date(2026, 7, 16, 0, 0, 0).getTime();
   const TOWER_DUELS_WEEKEND_START = new Date(2026, 7, 14, 0, 0, 0).getTime();
   const TOWER_DUELS_WEEKEND_END = new Date(2026, 7, 17, 0, 0, 0).getTime();
+  const TOWER_POWER_VAULT_WEEKEND_START = new Date(2026, 7, 15, 0, 0, 0).getTime();
+  const TOWER_POWER_VAULT_WEEKEND_END = new Date(2026, 7, 17, 0, 0, 0).getTime();
   function isWeeklyTowerFeatureActive(now = Date.now()) { return now >= WEEKLY_FEATURED_START && now < WEEKLY_FEATURED_END; }
   function isTowerDuelsWeekendActive(now = Date.now()) { return now >= TOWER_DUELS_WEEKEND_START && now < TOWER_DUELS_WEEKEND_END; }
+  function isTowerPowerVaultWeekendActive(now = Date.now()) { return now >= TOWER_POWER_VAULT_WEEKEND_START && now < TOWER_POWER_VAULT_WEEKEND_END; }
   function getHomePermanentModeIds(now = Date.now()) {
-      return [...HOME_PERMANENT_MODE_IDS, ...(isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : []), ...(isWeeklyTowerFeatureActive(now) ? WEEKLY_FEATURED_MODE_IDS : [])];
+      return [...new Set([...HOME_PERMANENT_MODE_IDS, ...(TOWER_EVENT_MODES_ENABLED&&isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : []), ...(isWeeklyTowerFeatureActive(now) ? WEEKLY_FEATURED_MODE_IDS : []), ...(TOWER_POWER_SYSTEM_ENABLED&&isTowerPowerVaultWeekendActive(now) ? ['brick_vault'] : [])])].filter(id=>!isRetiredTowerMode(id));
   }
   function getHomeRotatingModeIds(now = Date.now()) {
-      return HOME_ROTATING_MODE_IDS.filter(id => !isWeeklyTowerFeatureActive(now) || !WEEKLY_FEATURED_MODE_IDS.includes(id));
+      return HOME_ROTATING_MODE_IDS.filter(id => !isRetiredTowerMode(id) && (!isWeeklyTowerFeatureActive(now) || !WEEKLY_FEATURED_MODE_IDS.includes(id)));
   }
   const HOME_EVENT_ROTATION_KEY = 'arenaForgeHomeEventRotationV3';
   const HOME_SHOWDOWN_CHOICE_KEY = 'arenaForgeLastShowdownChoice';
@@ -21929,7 +23682,8 @@
       marked_mayhem: ['3v3 hunt', 'Marked targets award bonus score', 'First team to the score goal'],
       objective: ['3v3 control', 'Hold the center zone', 'Reach the control goal first'],
       tug_zone: ['3v3 moving control zone', 'Outnumber enemies to pull it toward your goal', 'Center hazards and 25/50/75% chaos checkpoints'],
-      brick_vault: ['3v3 assault', 'Break the enemy vaults', 'Protect your own vaults'],
+      corrupted_showdown: ['Season 3 survival', 'Unstable Packet signals alter combat', 'Separate progression from normal Showdown'],
+      brick_vault: ['3v3 assault', 'Weekend: all 8 Tower Powers are active', 'Weekend vaults have +350% HP'],
       mirror: ['5v5 mirror battle', 'Everyone uses one brawler', 'First team to 20 eliminations'],
       power_gods: ['Solo power event', 'Extreme combat modifiers', 'Outlast every enemy'],
       solo_td: ['Solo defense', 'Protect the core for five waves', 'Build through escalating pressure'],
@@ -22071,6 +23825,7 @@
           'Mythic': '#ff7bd1',
           'Legendary': '#ff9b42',
           'Exotic': '#b983ff',
+          'Anomaly': '#7a4dff',
       };
       const rarityColor = rarityColors[rarity] || '#9fb4c7';
       const stats = getScaledStats(selectedBrawler);
@@ -22407,6 +24162,12 @@
 
   function clearJackTradePreparedOutcomes(owner){if(owner)owner.jackTradePreparedOutcomes=[];}
 
+  function getJackTradePreparedOutcomeCount(owner){
+      if(!owner)return 1;
+      if(isSlopSushiMode&&getEntitySlopEffectTotal(owner,'jackTradeSuperUnloadAll')>0)return JACKTRADE_SUPER_OUTCOMES.length;
+      return Math.min(3,1+(owner.jackTradeJackpotArmed?1:0)+(owner.jackTradeLoadedDiceReady?1:0));
+  }
+
   function isJackTradeEntity(entity) {
       return !!entity && getEntityBrawlerId(entity) === 'jacktrade';
   }
@@ -22439,24 +24200,44 @@
       const stage = hyper ? 4 : getJackTradeStage(owner);
       const hotBonus = !hyper && stage === 4 && getEntityStarChoice(owner) === 'slow' && (owner.jackTradeHotStreak || 0) === 2;
       const volleyId = `jacktrade_${owner.id}_${Math.floor(now)}_${Math.floor(Math.random()*99999)}`;
+      const towerEffect=key=>isSlopSushiMode?getEntitySlopEffectTotal(owner,key):0;
+      const fifthAce=towerEffect('jackTradeFifthAce');
+      const readTheTell=towerEffect('jackTradeReadTheTell')>0;
+      const lockedOutcome=readTheTell&&Array.isArray(owner.jackTradePreparedOutcomes)?owner.jackTradePreparedOutcomes[0]:null;
       const offsets = stage === 1 ? [0] : stage === 2 ? [-.04416,.04416] : [-.09246,-.03036,.03036,.09246];
-      const speed = JACKTRADE_CARD_SPEED * (hotBonus ? 1.15 : 1);
+      if(stage===4&&fifthAce>0)offsets.splice(2,0,0);
+      const speed = JACKTRADE_CARD_SPEED * (hotBonus ? 1.15 : 1) * (lockedOutcome==='rush'?1.5:1);
       const damage = JACKTRADE_CARD_DAMAGE * (hotBonus ? 1.10 : 1);
+      const compound=towerEffect('jackTradeCompoundInterest');
       const cardRange = getJackTradeCardRange(stage);
       const volley = {id:volleyId,ownerId:owner.id,stage,hyper,hotBonus,hit:false,createdAt:now,resolveAt:now+(cardRange/speed)*1000+180};
       jackTradeVolleys.push(volley);
       offsets.forEach((spread,index) => {
           const shotAngle=angle+spread;
+          const compoundStep=stage===4&&compound>0?(fifthAce>0&&index===2?3:Math.min(index,3)):0;
           const card={
               ownerBrawler:'jacktrade', ownerId:owner.id, isJackTradeCard:true, jackTradeVolleyId:volleyId,
               jackTradeCardIndex:index, jackTradeStage:stage, x:owner.x+Math.cos(shotAngle)*(owner.radius+9), y:owner.y+Math.sin(shotAngle)*(owner.radius+9),
               vx:Math.cos(shotAngle)*speed, vy:Math.sin(shotAngle)*speed, life:0, maxLife:cardRange/speed,
-              damage, pierce:false, hitIds:{}, hitboxMod:1.08, hyperVisual:hyper, jackTradeHotBonus:hotBonus,
+              damage:damage*(1+compoundStep*compound)*(stage===4&&fifthAce>0&&index===2?fifthAce:1),
+              pierce:false, hitIds:{}, hitboxMod:1.08*(lockedOutcome==='demolition'?1.5:1), hyperVisual:hyper, jackTradeHotBonus:hotBonus,
+              jackTradeRiggedOutcome:lockedOutcome,
           };
           bullets.push(card);
           if (hyper) jackTradeEndpointShots.push({projectile:card,ownerId:owner.id,spawned:false,expiresAt:now+1800});
       });
       explosions.push({x:owner.x+Math.cos(angle)*24,y:owner.y+Math.sin(angle)*24,radius:stage===4?34:22,life:0,maxLife:.18,color:stage===4?'rgba(255,205,63,.72)':'rgba(153,91,255,.62)',fxKind:'jackTradeMuzzle',ringCount:stage});
+  }
+
+  function applyJackTradeTowerCardHit(owner,target,projectile,dealtDamage){
+      if(!isSlopSushiMode||!owner||!target||projectile.jackTradeTowerHitApplied)return;
+      projectile.jackTradeTowerHitApplied=true;
+      if(getEntitySlopEffectTotal(owner,'jackTradeReadTheTell')<=0)return;
+      const outcome=projectile.jackTradeRiggedOutcome;
+      if(outcome==='toxic')applyJackTradeToxicPoison(owner,target,450,1000,false);
+      else if(outcome==='slow')applyStatusEffect(target,'slow',1200);
+      else if(outcome==='regeneration'||outcome==='healing')doHeal(owner,Math.min(450,Math.max(0,dealtDamage)*.25));
+      if(outcome)explosions.push({x:target.x,y:target.y,radius:22,life:0,maxLife:.18,color:outcome==='toxic'?'rgba(111,255,112,.65)':outcome==='slow'?'rgba(151,91,255,.65)':'rgba(255,205,75,.58)',fxKind:'jackTradeTell'});
   }
 
   function registerJackTradeVolleyHit(owner, projectile) {
@@ -22465,11 +24246,16 @@
       if (!volley || volley.hit) return;
       volley.hit = true;
       if (volley.hyper) return;
-      if (volley.stage === 1) setJackTradeStage(owner,2);
+      if (volley.stage === 1) setJackTradeStage(owner,isSlopSushiMode&&getEntitySlopEffectTotal(owner,'jackTradeDoubleDown')>0?4:2);
       else if (volley.stage === 2) setJackTradeStage(owner,4);
       else {
           owner.jackTradeHotStreak=((owner.jackTradeHotStreak||0)+1)%3;
           setJackTradeStage(owner,4);
+          if(isSlopSushiMode&&getEntitySlopEffectTotal(owner,'jackTradeLoadedDice')>0){
+              owner.jackTradeLoadedDiceCount=(owner.jackTradeLoadedDiceCount||0)+1;
+              const needed=Math.max(1,Math.round(getEntitySlopEffectTotal(owner,'jackTradeLoadedDice')));
+              if(owner.jackTradeLoadedDiceCount>=needed){owner.jackTradeLoadedDiceCount=0;owner.jackTradeLoadedDiceReady=true;spawnFloatingText(owner.x,owner.y-62,'LOADED DICE: +1 OUTCOME','#ffd85c');}
+          }
       }
       spawnFloatingText(owner.x,owner.y-42,`NEXT: ${getJackTradeStage(owner)} CARDS`,getJackTradeStage(owner)===4?'#ffd85c':'#c59aff');
   }
@@ -22513,7 +24299,9 @@
           if(!wall||wall.indestructible||wall.isPlatform||wall.isVault||!(wall.isPowerBox||wall.isGreenBox||wall.isPurpleBox||wall.expiresAt))continue;
           const dx=x-clamp(x,wall.x,wall.x+wall.w),dy=y-clamp(y,wall.y,wall.y+wall.h);
           if(Math.hypot(dx,dy)>radius)continue;
-          wall.hp-=Math.max(damage,wall.isArenaWall?wall.hp:0);
+          const wallDamage=Math.max(damage,wall.isArenaWall?wall.hp:0);
+          recordFullOnDamageToTarget(wall,wallDamage);
+          wall.hp-=wallDamage;
           if(wall.hp<=0){if(wall.isPowerBox)spawnShowdownPowerBoxReward(wall);destructibleWalls.splice(index,1);if(owner.id===player.id){addEventQuestProgress('destroy_walls');progressSeasonPassQuest('destroy_walls');}}
       }
   }
@@ -22526,14 +24314,42 @@
       explosions.push({x,y,radius:180,life:0,maxLife:.55,color:'rgba(100,255,173,.68)',legendary:true,fxKind:'jackTradeHealing'});
   }
 
+  function throwJackTradeRoyalFlush(owner,targetX,targetY){
+      const now=performance.now(),angle=Math.atan2(targetY-owner.y,targetX-owner.x),distance=Math.min(650,Math.max(90,Math.hypot(targetX-owner.x,targetY-owner.y)||90));
+      const centerX=clamp(owner.x+Math.cos(angle)*distance,150,WORLD_W-150),centerY=clamp(owner.y+Math.sin(angle)*distance,150,WORLD_H-150);
+      for(let index=0;index<5;index++){
+          const cardAngle=-Math.PI/2+index*Math.PI*2/5,targetCardX=centerX+Math.cos(cardAngle)*125,targetCardY=centerY+Math.sin(cardAngle)*125;
+          jackTradeThrownEffects.push({id:`jt_royal_${nextId++}`,type:'royalCard',ownerId:owner.id,startX:owner.x,startY:owner.y,x:owner.x,y:owner.y,
+              targetX:targetCardX,targetY:targetCardY,centerX,centerY,royalIndex:index,createdAt:now,impactAt:now+360+index*105,hyper:true});
+      }
+      spawnFloatingText(centerX,centerY-175,'ROYAL FLUSH!','#ff72e6');
+  }
+
   function resolveJackTradeImpact(effect, now=performance.now()) {
       const owner=getEntityById(effect.ownerId);
       if(!owner||owner.hp<=0)return;
       const scale=getJackTradeDamageScale(owner);
+      if(effect.type==='royalCard'){
+          AOEDamage(effect.x,effect.y,110,1800*scale,owner.id,true);
+          explosions.push({x:effect.x,y:effect.y,radius:118,life:0,maxLife:.52,color:effect.royalIndex%2?'rgba(255,209,74,.82)':'rgba(225,85,255,.82)',legendary:true,hyperVisual:true,fxKind:'jackTradeRoyalCard'});
+          if(effect.royalIndex===4){
+              AOEDamage(effect.centerX,effect.centerY,235,4800*scale,owner.id,true);
+              damageJackTradeWalls(owner,effect.centerX,effect.centerY,255,5200*scale);
+              for(const target of [player,...bots]){
+                  if(!target||target.hp<=0||areAlliedEntities(owner,target)||Math.hypot(target.x-effect.centerX,target.y-effect.centerY)>260+(target.radius||14))continue;
+                  const dx=effect.centerX-target.x,dy=effect.centerY-target.y,length=Math.hypot(dx,dy)||1,mult=getEntityKnockbackMultiplier(target,now);
+                  if(mult>0){target.jackTradePushVX=dx/length*390*mult;target.jackTradePushVY=dy/length*390*mult;target.jackTradePushUntil=now+480;}
+              }
+              explosions.push({x:effect.centerX,y:effect.centerY,radius:260,life:0,maxLife:.82,color:'rgba(207,69,255,.88)',legendary:true,hyperVisual:true,fxKind:'jackTradeRoyalFlush'});
+          }
+          return;
+      }
       const demolition=effect.type==='demolition'||effect.type==='allin';
+      const suits=effect.type==='allin'?Math.max(0,Math.min(4,effect.royalSuits||0)):0;
+      const royalDamage=1+suits*.08,royalRadius=1+suits*.05;
       if(demolition){
-          AOEDamage(effect.x,effect.y,155,2200*scale,owner.id,true);
-          damageJackTradeWalls(owner,effect.x,effect.y,185,2600*scale);
+          AOEDamage(effect.x,effect.y,155*royalRadius,2200*scale*royalDamage,owner.id,true);
+          damageJackTradeWalls(owner,effect.x,effect.y,185*royalRadius,2600*scale*royalDamage);
           for(const target of [player,...bots]){
               if(!target||target.hp<=0||areAlliedEntities(owner,target)||Math.hypot(target.x-effect.x,target.y-effect.y)>175+(target.radius||14))continue;
               const dx=target.x-effect.x,dy=target.y-effect.y,length=Math.hypot(dx,dy)||1,mult=getEntityKnockbackMultiplier(target,now);
@@ -22548,9 +24364,9 @@
           // travel up, left, down and right instead of becoming a magic ring.
           for(const angle of [-Math.PI/2,Math.PI,Math.PI/2,0]){
               const edgeX=effect.x+Math.cos(angle)*72,edgeY=effect.y+Math.sin(angle)*72;
-              spawnJackTradeZone('toxicWave',owner,edgeX,edgeY,{angle,radius:70,cloudRadius:106,travelDistance:360,travelDuration:1600,duration:1900,poisonDuration:2000,poisonDamagePerSecond:800*scale,hyper:true,returnsToCenter:true,returnX:effect.x,returnY:effect.y});
+              spawnJackTradeZone('toxicWave',owner,edgeX,edgeY,{angle,radius:70,cloudRadius:106*(1+suits*.04),travelDistance:360,travelDuration:1600,duration:1900,poisonDuration:2000,poisonDamagePerSecond:800*scale*(1+suits*.05),hyper:true,returnsToCenter:true,returnX:effect.x,returnY:effect.y});
           }
-          spawnJackTradeZone('slow',owner,effect.x,effect.y,{radius:145,duration:7000,damagePerSecond:740*scale,healPerSecond:300,hyper:true});
+          spawnJackTradeZone('slow',owner,effect.x,effect.y,{radius:145*(1+suits*.06),duration:7000,damagePerSecond:740*scale,healPerSecond:300,hyper:true});
           healJackTradePot(owner,effect.x,effect.y);
           explosions.push({x:effect.x,y:effect.y,radius:230,life:0,maxLife:.72,color:'rgba(190,72,255,.72)',legendary:true,hyperVisual:true,fxKind:'jackTradeAllIn'});
           spawnFloatingText(effect.x,effect.y-58,'ALL IN!','#ffd85c');
@@ -22560,7 +24376,7 @@
   function throwJackTradeEffect(owner,type,targetX,targetY,options={}) {
       const now=performance.now(),angle=Math.atan2(targetY-owner.y,targetX-owner.x),distance=Math.min(650,Math.max(70,Math.hypot(targetX-owner.x,targetY-owner.y)||70));
       jackTradeThrownEffects.push({id:`jt_throw_${nextId++}`,type,ownerId:owner.id,startX:owner.x,startY:owner.y,x:owner.x,y:owner.y,
-          targetX:clamp(owner.x+Math.cos(angle)*distance,20,WORLD_W-20),targetY:clamp(owner.y+Math.sin(angle)*distance,20,WORLD_H-20),createdAt:now,impactAt:now+520,hyper:!!options.hyper});
+          targetX:clamp(owner.x+Math.cos(angle)*distance,20,WORLD_W-20),targetY:clamp(owner.y+Math.sin(angle)*distance,20,WORLD_H-20),createdAt:now,impactAt:now+520,hyper:!!options.hyper,royalSuits:options.royalSuits||0});
   }
 
   function activateJackTradeOutcome(owner,outcome,targetX,targetY) {
@@ -22579,19 +24395,30 @@
       const now=performance.now();
       if(hyper){
           clearJackTradePreparedOutcomes(owner);
+          if(isSlopSushiMode&&getEntitySlopEffectTotal(owner,'jackTradeRoyalFlush')>0){
+              throwJackTradeRoyalFlush(owner,targetX,targetY);
+              owner.jackTradeRoyalSuits=0;
+              return;
+          }
           owner.jackTradeRushUntil=Math.max(owner.jackTradeRushUntil||0,now+5000);
           owner.jackTradeRegenRemaining=(owner.jackTradeRegenRemaining||0)+6000;
           owner.jackTradeRegenUntil=now+6000;
           owner.jackTradeRegenFxUntil=now+6000;
+          owner.jackTradeRoyalSuits=0;
           throwJackTradeEffect(owner,'allin',targetX,targetY,{hyper:true});
           return;
       }
       const jackpot=!!owner.jackTradeJackpotArmed;
-      const count=jackpot?2:1;
+      const count=getJackTradePreparedOutcomeCount(owner);
       owner.jackTradeJackpotArmed=false;
+      owner.jackTradeLoadedDiceReady=false;
       if(jackpot&&owner.id===player.id){gadgetArmed=false;gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();}
       const rolled=[...prepareJackTradeOutcomes(owner,count)].slice(0,count);
       clearJackTradePreparedOutcomes(owner);
+      if(isSlopSushiMode&&getEntitySlopEffectTotal(owner,'jackTradeHouseReloadPct')>0){
+          if(!Array.isArray(owner.jackTradeTowerOutcomesSeen))owner.jackTradeTowerOutcomesSeen=[];
+          for(const outcome of rolled)if(!owner.jackTradeTowerOutcomesSeen.includes(outcome))owner.jackTradeTowerOutcomesSeen.push(outcome);
+      }
       rolled.forEach(outcome=>activateJackTradeOutcome(owner,outcome,targetX,targetY));
       if(getEntityStarChoice(owner)==='long')owner.jackTradeLuckyUntil=now+2500;
       spawnFloatingText(owner.x,owner.y-48,rolled.map(v=>v.toUpperCase()).join(' + '),'#f8c95f');
@@ -22605,7 +24432,12 @@
           const owner=getEntityById(volley.ownerId);
           if(!owner||owner.hp<=0||volley.hit||volley.hyper)continue;
           if(owner.jackTradeSafeBetArmed){owner.jackTradeSafeBetArmed=false;if(owner.id===player.id){gadgetArmed=false;gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();}spawnFloatingText(owner.x,owner.y-40,'SAFE BET','#7ef4ff');}
-          else setJackTradeStage(owner,1);
+          else if(isSlopSushiMode&&getEntitySlopEffectTotal(owner,'jackTradeDealerInsurance')>0){
+              setJackTradeStage(owner,volley.stage>=4?2:1);
+              const refund=getEntitySlopEffectTotal(owner,'jackTradeDealerInsurance');
+              if(owner.id===player.id)ammo=Math.min(maxAmmo,ammo+refund);else owner.lastShot=0;
+              spawnFloatingText(owner.x,owner.y-40,`INSURED: ${getJackTradeStage(owner)} CARDS`,'#7ef4ff');
+          }else setJackTradeStage(owner,1);
       }
       for(let index=jackTradeEndpointShots.length-1;index>=0;index--){
           const endpoint=jackTradeEndpointShots[index];
@@ -22677,6 +24509,164 @@
       }
   }
 
+  const DARKENER_CLOUD_RANGE = 610;
+  const DARKENER_CLOUD_SPEED = 360;
+  const DARKENER_CLOUD_TICK_MS = 416;
+  const DARKAGON_RADIUS = 285;
+  const DARKAGON_DURATION_MS = 7000;
+
+  function isDarkenerEntity(entity) {
+      return !!entity && getCombatBrawler(entity, entity.id !== player.id) === 'darkener';
+  }
+
+  function getDarkenerTargets(owner) {
+      return [player, ...bots].filter(target => target && target.hp > 0 && target.id !== owner.id && !areAlliedEntities(owner, target));
+  }
+
+  function getDarkenerStarChoice(entity) {
+      if(!entity)return 'none';
+      if(entity.id!==player.id)return entity.selectedStar||'none';
+      const checked=starInputs.find(input=>input.checked&&!input.disabled);
+      if(checked?.value==='slow'||checked?.value==='long')return checked.value;
+      if(selectedStar==='slow'||selectedStar==='long')return selectedStar;
+      return isTraining?(getSelectedProgress().selectedStar||'slow'):'none';
+  }
+
+  function getDarkagonVertices(zone) {
+      const vertices=[];
+      for(let side=0;side<6;side++){
+          const angle=-Math.PI/2+side*Math.PI/3;
+          vertices.push({x:zone.x+Math.cos(angle)*zone.radius,y:zone.y+Math.sin(angle)*zone.radius});
+      }
+      return vertices;
+  }
+
+  function isPointInsideDarkagon(x,y,zone) {
+      if(!zone||performance.now()>=zone.expiresAt)return false;
+      const vertices=getDarkagonVertices(zone);
+      let inside=false;
+      for(let i=0,j=vertices.length-1;i<vertices.length;j=i++){
+          const a=vertices[i],b=vertices[j];
+          if(((a.y>y)!==(b.y>y))&&(x<(b.x-a.x)*(y-a.y)/Math.max(.0001,b.y-a.y)+a.x))inside=!inside;
+      }
+      return inside;
+  }
+
+  function getHostileDarkagonContaining(entity) {
+      if(!entity)return null;
+      return darkagons.find(zone=>{
+          const owner=getEntityById(zone.ownerId);
+          return owner&&owner.hp>0&&!areAlliedEntities(owner,entity)&&isPointInsideDarkagon(entity.x,entity.y,zone);
+      })||null;
+  }
+
+  function canDarkagonObserverSeeTarget(observer,target) {
+      const prison=getHostileDarkagonContaining(observer);
+      return !prison||isPointInsideDarkagon(target.x,target.y,prison);
+  }
+
+  function spawnDarkenerCloud(owner,angle,options={}) {
+      if(!owner||owner.hp<=0)return null;
+      const now=performance.now(),hyper=isEntityHyperchargedNow(owner,now),starChoice=getDarkenerStarChoice(owner),slow=starChoice==='slow';
+      const rangeBonus=isSlopSushiMode?getEntitySlopEffectTotal(owner,'darkenerCloudRangePct'):0,widthBonus=isSlopSushiMode?getEntitySlopEffectTotal(owner,'darkenerCloudWidthPct'):0,lingerBonus=isSlopSushiMode?getEntitySlopEffectTotal(owner,'darkenerCloudLingerPct'):0;
+      const dense=!!options.dense,range=DARKENER_CLOUD_RANGE*(hyper?1.5:1)*(1+rangeBonus),speed=DARKENER_CLOUD_SPEED,lingerMult=slow?3.30:1,linger=650*lingerMult*(1+lingerBonus);
+      const stats=getScaledStats('darkener',owner.id===player.id?getSelectedBrawlerLevel():(owner.powerLevel||owner.level||11));
+      const cloud={id:`dark-cloud-${owner.id}-${now}`,ownerId:owner.id,x:owner.x,y:owner.y,startX:owner.x,startY:owner.y,angle,speed,range,traveled:0,
+          width:134.4*(hyper?1.5:1)*(dense?1.35:1)*(1+widthBonus),damage:stats.dmg,createdAt:now,
+          expiresAt:now+(range/speed)*1000+linger,stoppedAt:0,hitState:Object.create(null),wallHitState:Object.create(null),hyper,dense,slowSuffocation:slow,hasHitEnemy:false,
+          activationId:owner.currentMainAttackActivationId};
+      darkenerClouds.push(cloud);
+      if(slow&&now>=(owner.darkenerSp1TextAt||0)){owner.darkenerSp1TextAt=now+900;spawnFloatingText(owner.x,owner.y-38,'SUFFOCATION','#d4a2ff');}
+      return cloud;
+  }
+
+  function applyDarkenerFirstTick(target,owner,cloud,now) {
+      applyGhoulDarkness(target,now);
+      const darknessBonus=isSlopSushiMode?getEntitySlopEffectTotal(owner,'darkenerDarknessBonusMs'):0;
+      if(darknessBonus>0){target.ghoulDarknessUntil=Math.min(now+4000,(target.ghoulDarknessUntil||now)+darknessBonus);target.ghoulDarknessFxUntil=target.ghoulDarknessUntil;}
+      if(getDarkenerStarChoice(owner)==='long'){
+          target.ghoulDarknessUntil=Math.max(target.ghoulDarknessUntil||0,now+1800);
+          target.ghoulDarknessFxUntil=target.ghoulDarknessUntil;
+          target.slowUntil=Math.max(target.slowUntil||0,now+1250);
+          target.darkenerSlowMult=.8;
+      }
+      if(cloud.dense){target.slowUntil=Math.max(target.slowUntil||0,now+1500);target.darkenerSlowMult=.75;}
+  }
+
+  function castDarkagon(owner,targetX,targetY,hyper=false) {
+      if(!owner||owner.hp<=0)return;
+      const angle=Math.atan2(targetY-owner.y,targetX-owner.x),distance=Math.min(650,Math.hypot(targetX-owner.x,targetY-owner.y));
+      const x=clamp(owner.x+Math.cos(angle)*distance,DARKAGON_RADIUS,WORLD_W-DARKAGON_RADIUS);
+      const y=clamp(owner.y+Math.sin(angle)*distance,DARKAGON_RADIUS,WORLD_H-DARKAGON_RADIUS);
+      for(let i=darkagons.length-1;i>=0;i--)if(darkagons[i].ownerId===owner.id)darkagons.splice(i,1);
+      const radius=DARKAGON_RADIUS*(1+(isSlopSushiMode?getEntitySlopEffectTotal(owner,'darkenerDarkagonRadiusPct'):0));
+      darkagons.push({ownerId:owner.id,x,y,radius,createdAt:performance.now(),expiresAt:performance.now()+DARKAGON_DURATION_MS,hyper:!!hyper,edgeHits:Object.create(null)});
+      explosions.push({x,y,radius:DARKAGON_RADIUS,life:0,maxLife:.35,color:hyper?'rgba(157,58,224,.42)':'rgba(55,19,92,.42)',fxKind:'darkagon'});
+      spawnFloatingText(x,y-42,'DARKAGON','#d89aff');
+  }
+
+  function triggerDarkenerHexRecall(owner) {
+      const zone=darkagons.find(item=>item.ownerId===owner.id&&performance.now()<item.expiresAt);
+      if(!zone)return false;
+      for(const target of getDarkenerTargets(owner)){
+          if(!isPointInsideDarkagon(target.x,target.y,zone))continue;
+          const dx=zone.x-target.x,dy=zone.y-target.y,length=Math.hypot(dx,dy)||1;
+          const nx=target.x+dx/length*95,ny=target.y+dy/length*95;
+          if(canMoveToPosition(target,nx,ny)){target.x=nx;target.y=ny;}
+      }
+      if(owner.id===player.id){ammo=Math.min(maxAmmo,ammo+1);ammoReloadTimer=0;}else owner.ammo=Math.min(owner.maxAmmo||3,(owner.ammo||0)+1);
+      explosions.push({x:zone.x,y:zone.y,radius:zone.radius*.78,life:0,maxLife:.25,color:'rgba(176,81,255,.38)',fxKind:'darkagonRecall'});
+      return true;
+  }
+
+  function updateDarkenerSystems(now,dt) {
+      for(let i=darkenerClouds.length-1;i>=0;i--){
+          const cloud=darkenerClouds[i],owner=getEntityById(cloud.ownerId);
+          if(!owner||owner.hp<=0||now>=cloud.expiresAt){darkenerClouds.splice(i,1);continue;}
+          if(cloud.traveled<cloud.range){const effectiveSpeed=DARKENER_CLOUD_SPEED*(cloud.slowSuffocation&&cloud.hasHitEnemy?0.625:1);const step=Math.min(effectiveSpeed*dt,cloud.range-cloud.traveled);cloud.x+=Math.cos(cloud.angle)*step;cloud.y+=Math.sin(cloud.angle)*step;cloud.traveled+=step;}
+          const progress=clamp(cloud.traveled/cloud.range,0,1),radius=34+cloud.width*progress,depth=150;
+          const maxTicks=999+Math.max(0,Math.round(isSlopSushiMode?getEntitySlopEffectTotal(owner,'darkenerExtraTicks'):0));
+          for(const target of getDarkenerTargets(owner)){
+              const relX=target.x-cloud.x,relY=target.y-cloud.y,forward=relX*Math.cos(cloud.angle)+relY*Math.sin(cloud.angle),lateral=Math.abs(-relX*Math.sin(cloud.angle)+relY*Math.cos(cloud.angle));
+              const absoluteForward=(target.x-cloud.startX)*Math.cos(cloud.angle)+(target.y-cloud.startY)*Math.sin(cloud.angle);
+              const coneProgress=clamp((forward+depth)/(depth+35),0,1),allowedHalf=radius*(.34+.66*coneProgress)+(target.radius||14);
+              if(absoluteForward<-(target.radius||14)||absoluteForward>cloud.range+35+(target.radius||14)||forward < -depth-(target.radius||14)||forward > 35+(target.radius||14)||lateral>allowedHalf)continue;
+              const state=cloud.hitState[target.id]||(cloud.hitState[target.id]={ticks:0,nextAt:0});
+              if(state.ticks>=maxTicks||now<state.nextAt)continue;
+              cloud.hasHitEnemy=true;
+              const source={ownerBrawler:'darkener',ownerId:owner.id,damage:cloud.damage,pierce:true,hitIds:{},mainAttackActivationId:cloud.activationId,isDarkenerCloud:true,darkenerSlowSuffocation:cloud.slowSuffocation,darkenerTickDamageMult:cloud.slowSuffocation?(1+state.ticks*.25):1};
+              checkHit(target,source,-1);
+              if(state.ticks===0)applyDarkenerFirstTick(target,owner,cloud,now);
+              state.ticks++;state.nextAt=now+DARKENER_CLOUD_TICK_MS;
+          }
+          for(const wall of destructibleWalls){
+              if(!wall||wall.hp<=0||wall.isPlatform)continue;
+              const wallCx=wall.x+wall.w/2,wallCy=wall.y+wall.h/2,relX=wallCx-cloud.x,relY=wallCy-cloud.y,forward=relX*Math.cos(cloud.angle)+relY*Math.sin(cloud.angle),lateral=Math.abs(-relX*Math.sin(cloud.angle)+relY*Math.cos(cloud.angle)),absoluteForward=(wallCx-cloud.startX)*Math.cos(cloud.angle)+(wallCy-cloud.startY)*Math.sin(cloud.angle);
+              const coneProgress=clamp((forward+depth)/(depth+35),0,1),allowedHalf=radius*(.34+.66*coneProgress)+Math.max(wall.w,wall.h)*.5;
+              if(absoluteForward<0||absoluteForward>cloud.range+35||forward < -depth-Math.max(wall.w,wall.h)*.5||forward > 35+Math.max(wall.w,wall.h)*.5||lateral>allowedHalf)continue;
+              if(wall.isVault&&(owner.team||'player')===wall.vaultTeam)continue;
+              const id=getDestructibleWallHitId(wall),state=cloud.wallHitState[id]||(cloud.wallHitState[id]={ticks:0,nextAt:0});
+              if(state.ticks>=maxTicks||now<state.nextAt)continue;
+              applyHeaterBoxDamage(owner,wall,cloud.damage*(cloud.slowSuffocation?(1+state.ticks*.25):1));state.ticks++;state.nextAt=now+DARKENER_CLOUD_TICK_MS;
+          }
+      }
+      for(let i=darkagons.length-1;i>=0;i--){
+          const zone=darkagons[i],owner=getEntityById(zone.ownerId);
+          if(!owner||owner.hp<=0||now>=zone.expiresAt){darkagons.splice(i,1);continue;}
+          const cardEdge=isSlopSushiMode&&getEntitySlopEffectTotal(owner,'darkenerEdgeActive')>0;
+          if(!zone.hyper&&!cardEdge)continue;
+          const edgeDamage=Math.max(1,isSlopSushiMode&&getEntitySlopEffectTotal(owner,'darkenerEdgeDamage')>0?getEntitySlopEffectTotal(owner,'darkenerEdgeDamage'):600);
+          for(const target of getDarkenerTargets(owner)){
+              const distance=Math.hypot(target.x-zone.x,target.y-zone.y),nearEdge=distance>=zone.radius-58&&distance<=zone.radius+24;
+              if(!nearEdge||now<(zone.edgeHits[target.id]||0))continue;
+              zone.edgeHits[target.id]=now+700;
+              checkHit(target,{ownerBrawler:'darkener',ownerId:owner.id,damage:edgeDamage,super:true,pierce:true,hitIds:{}},-1);
+              const dx=zone.x-target.x,dy=zone.y-target.y,length=Math.hypot(dx,dy)||1,nx=target.x+dx/length*82,ny=target.y+dy/length*82;
+              if(canMoveToPosition(target,nx,ny)){target.x=nx;target.y=ny;}
+          }
+      }
+  }
+
   const GHOUL_BASE_INVIS_MS = 1800;
   const GHOUL_HYPER_INVIS_MS = 2400;
   const GHOUL_REVEAL_RADIUS = 150;
@@ -22693,6 +24683,7 @@
   }
 
   function isGhoulInvisible(entity, now = performance.now()) {
+      if(entity&&entity.hp>0&&now<(entity.packetInvisibleUntil||0))return true;
       if (!isGhoulEntity(entity) || entity.hp <= 0 || now < (entity.ghoulForcedVisibleUntil || 0)) return false;
       if (now < (entity.ghoulAimInvisibleUntil || 0)) return true;
       if (now < (entity.ghoulSuperUntil || 0)) {
@@ -23119,6 +25110,58 @@
       updateHomeCurrencyBar();
       syncHomeModeCards();
       updateBrickPowerGateUI();
+      refreshPersonalizedHome();
+  }
+
+  function refreshPersonalizedHome() {
+      const name = String(playerData?.profile?.playerName || playerData?.playerName || 'BRAWLER').trim().slice(0, 18) || 'BRAWLER';
+      const progress = playerData?.brawlers?.[selectedBrawler] || {};
+      const lifetime = typeof getLifetimeBricks === 'function' ? getLifetimeBricks(progress) : Math.max(0, (progress.bricks || 0) + (progress.prestige || 0) * 1000);
+      const roster = Object.keys(playerData?.unlockedBrawlers || {}).filter((id) => playerData.unlockedBrawlers[id]).length;
+      const rushLeft = typeof getDailyBrickRushTimeLeft === 'function' ? getDailyBrickRushTimeLeft() : 0;
+      const greeting = document.getElementById('homeGreeting');
+      const brief = document.getElementById('homeDailyBrief');
+      const snapshot = document.getElementById('homeCareerSnapshot');
+      const season = document.getElementById('homeSeasonPulse');
+      const welcome = document.getElementById('homeWelcomeLine');
+      const modeEntry = HOME_MODE_DATA?.[showdownMode] || HOME_MODE_DATA?.solo || [showdownMode, '⚔', 'Battle', 'Enter the arena'];
+      const modeIcon = modeEntry[1] || '⚔';
+      const modeName = modeEntry[2] || 'Battle';
+      const modeRule = modeEntry[3] || 'Enter the arena';
+      if (greeting) greeting.textContent = modeName.toUpperCase();
+      if (welcome) welcome.textContent = `${name}'s lobby · Season 3`;
+      if (brief) brief.textContent = rushLeft > 0 ? `Brick Rush live · ${Math.ceil(rushLeft / 60000)} min remaining` : `${name}, your fighter and loadout are ready.`;
+      const eventIcon = document.getElementById('homeSelectedEventIcon');
+      const eventName = document.getElementById('homeSelectedEventName');
+      const eventRule = document.getElementById('homeSelectedEventRule');
+      if (eventIcon) eventIcon.textContent = modeIcon;
+      if (eventName) eventName.textContent = modeName;
+      if (eventRule) eventRule.textContent = modeRule;
+      if (snapshot) snapshot.innerHTML = `
+          <div class="home-career-stat"><small>FIGHTERS</small><b>${roster}</b></div>
+          <div class="home-career-stat"><small>WIN STREAK</small><b>${Math.max(0, playerData?.winStreak || 0)}</b></div>
+          <div class="home-career-stat"><small>SELECTED BRICKS</small><b>${lifetime.toLocaleString()}</b></div>
+          <div class="home-career-stat"><small>POWER</small><b>${Math.max(1, Math.min(11, progress.level || 1))}</b></div>`;
+      if (season) season.innerHTML = `<b>SEASON 3 · CORE BREAKER × ARENA FORGE</b><br>${ensureSeason3State().season.coreBreachCompleted?'Packet signals are active across six biomes.':'Core Breach incoming in your first eligible Showdown.'}`;
+  }
+
+  function setHomeTab(tab = 'home') {
+      const safeTab = tab === 'events' ? 'events' : 'home';
+      document.getElementById('homeLobbyView')?.classList.toggle('is-active', safeTab === 'home');
+      document.getElementById('homeEventsView')?.classList.toggle('is-active', safeTab === 'events');
+      const navMap = {
+          home: ['homeLobbyNav', 'homeMobileLobby'],
+          events: ['homeEventsNav', 'homeMobileEvents']
+      };
+      for (const ids of Object.values(navMap)) for (const id of ids) {
+          const button = document.getElementById(id);
+          if (!button) continue;
+          const active = ids === navMap[safeTab];
+          button.classList.toggle('is-active', active);
+          if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+      }
+      if (safeTab === 'events') syncHomeModeCards();
+      document.getElementById('homePanel')?.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   let homeModeSelect = null;
@@ -23202,6 +25245,10 @@
               <span class="home-mode-info-btn" role="button" aria-label="About ${name}" title="Rules and rewards">i</span>
           `;
           const selectMode = () => {
+              if (id === 'lava_boss_s3') {
+                  openLavaBossEvent();
+                  return;
+              }
               showdownMode = id;
               clearRankedSessionState();
               updateShowdownModeUI();
@@ -23281,7 +25328,7 @@
                   timer.innerHTML = `<span>EVENT ENDS IN</span><strong data-tower-duels-countdown>${formatHomeEventCountdown(TOWER_DUELS_WEEKEND_END-Date.now())}</strong>`;
                   card.appendChild(timer);
               }
-              if (isWeeklyTowerFeatureActive() && WEEKLY_FEATURED_MODE_IDS.includes(id)) {
+              if (isWeeklyTowerFeatureActive() && WEEKLY_FEATURED_MODE_IDS.includes(id) && !(id === 'brick_vault' && isTowerPowerVaultWeekendActive())) {
                   card.classList.add('featured-event-card');
                   const reward = getHomeEventRewardForMode(id);
                   const badge = document.createElement('div');
@@ -23291,6 +25338,20 @@
                   const timer = document.createElement('div');
                   timer.className = 'rotating-event-timer';
                   timer.innerHTML = `<span>FEATURE ENDS IN</span><strong data-weekly-feature-countdown>${formatHomeEventCountdown(WEEKLY_FEATURED_END-Date.now())}</strong>`;
+                  card.appendChild(timer);
+              }
+              if (id === 'brick_vault' && isTowerPowerVaultWeekendActive()) {
+                  card.classList.add('featured-event-card');
+                  card.dataset.baseSubtitle = 'ALL 8 Tower Powers • vault HP +350%';
+                  const subtitle = card.querySelector('.home-mode-subtitle');
+                  if (subtitle) subtitle.textContent = 'ALL 8 Tower Powers • vault HP +350%';
+                  const badge = document.createElement('div');
+                  badge.className = 'rotating-event-reward';
+                  badge.textContent = 'WEEKEND • TOWER POWER VAULT SIEGE';
+                  card.appendChild(badge);
+                  const timer = document.createElement('div');
+                  timer.className = 'rotating-event-timer';
+                  timer.innerHTML = `<span>EVENT ENDS IN</span><strong data-vault-weekend-countdown>${formatHomeEventCountdown(TOWER_POWER_VAULT_WEEKEND_END-Date.now())}</strong>`;
                   card.appendChild(timer);
               }
               permanent.grid.appendChild(card);
@@ -23355,6 +25416,9 @@
           });
           homeModeCompactRow.querySelectorAll('[data-tower-duels-countdown]').forEach((element) => {
               element.textContent = formatHomeEventCountdown(TOWER_DUELS_WEEKEND_END - Date.now());
+          });
+          homeModeCompactRow.querySelectorAll('[data-vault-weekend-countdown]').forEach((element) => {
+              element.textContent = formatHomeEventCountdown(TOWER_POWER_VAULT_WEEKEND_END - Date.now());
           });
       }, 1000);
       syncHomeModeCards();
@@ -24006,12 +26070,21 @@
 
   function launchShowdownMatch() {
       try { console.log('[GAME] Start showdown', { showdownMode, selectedBrawler }); } catch(e) {}
+      if(isRetiredTowerMode(showdownMode)){
+          showdownMode='solo';
+          sushiMatchArmed=false;
+          slopSushiActiveCards=[];
+          updateShowdownModeUI();
+      }
+      resetPacketRuntime(player);
       const brickGate = getSelectedBrickPowerGate();
       if (brickGate.locked) { updateBrickPowerGateUI(); return; }
       if (showdownMode === 'splitter_powered') showdownMode = 'power_gods';
       matchHomeEventReward = isRankedMatch ? null : getHomeEventRewardForMode(showdownMode);
       isBossFight = false;
       isBeastBossEvent = false;
+      isLavaBossEvent = showdownMode === 'lava_boss_s3';
+      isBossFight = isLavaBossEvent;
       isOverlordTrialEvent = false;
       isHyperEvent = false;
       isSoloTrial = false;
@@ -24020,7 +26093,11 @@
       isDuels = false;
       isTowerDuelEvent = false;
       isWarperEvent = false;
-      isSlopSushiMode = sushiMatchArmed;
+      isTowerPowerVaultWeekendMatch = TOWER_POWER_SYSTEM_ENABLED && showdownMode === 'brick_vault' && isTowerPowerVaultWeekendActive();
+      if (isTowerPowerVaultWeekendMatch) {
+          slopSushiActiveCards = getActiveSlopSushiDeck(selectedBrawler).map(card => card.id);
+      }
+      isSlopSushiMode = sushiMatchArmed || isTowerPowerVaultWeekendMatch;
       isTowerTroubleMode = sushiMatchArmed && (showdownMode === 'slop_sushi' || towerTroubleVariant === 'gauntlet');
       closeKnockDonateDonationUI();
       closeArenaForgeUI();
@@ -24028,6 +26105,7 @@
       isPowerGodsMode = showdownMode === 'power_gods';
       isMirrorMode = showdownMode === 'mirror';
       isImpossibleMode = showdownMode === 'impossible';
+      isCorruptedShowdownMode = showdownMode === 'corrupted_showdown';
       isKnockDonateMode = showdownMode === 'knock_donate';
       isBrickVaultMode = showdownMode === 'brick_vault';
       isSoloTdMode = showdownMode === 'solo_td';
@@ -24075,7 +26153,7 @@
           else if (isSplitterPoweredMode) baseTitle = `Arena Forge - Splitter Powered 10v10 (${SPLITTER_POWERED_BRAWLER.toUpperCase()} ONLY)`;
           else if (isPowerGodsMode) baseTitle = 'Arena Forge - Power of the Gods';
           else if (isKnockDonateMode) baseTitle = 'Arena Forge - Knock n Donate 3v3';
-          else if (isBrickVaultMode) baseTitle = 'Arena Forge - Vault Siege 3v3';
+          else if (isBrickVaultMode) baseTitle = isTowerPowerVaultWeekendMatch ? 'Arena Forge - Tower Power Vault Siege' : 'Arena Forge - Vault Siege 3v3';
           else if (isArenaForgeMode) baseTitle = 'Arena Forge - Arena Forge';
           else if (isMarkedMayhemMode) baseTitle = 'Arena Forge - Target Rush 3v3';
           else if (isTugZoneMode) baseTitle = 'Arena Forge - Tug Zone 3v3';
@@ -24084,6 +26162,8 @@
           else if (isObjectiveMode) baseTitle = 'Arena Forge - Control Clash (Prototype)';
           else if (isDuoShowdown) baseTitle = 'Arena Forge - Duo Showdown';
           else if (isImpossibleMode) baseTitle = 'Arena Forge - The Impossible';
+          else if (isCorruptedShowdownMode) baseTitle = 'Arena Forge - Corrupted Showdown';
+          else if (isLavaBossEvent) baseTitle = `Arena Forge - Lava Villain Boss • ${getLavaBossDifficulty().name}`;
           if (isSlopSushiMode && showdownMode !== 'slop_sushi' && showdownMode !== 'slop_sushi_plus') baseTitle += ' 🗼 Tower Transformations';
           if (isRankedMatch) baseTitle = `[RANKED] ${baseTitle}`;
           document.getElementById('topbar').textContent = `${baseTitle} | ${activeShowdownModifierLabel}`;
@@ -24100,7 +26180,10 @@
           showdownMapIndex=(floor-1)%TOWER_TROUBLE_FLOORS;
       }
     constructionMapIndex = getRotatingConstructionMapIndex();
-      if (isMirrorMode) {
+      if (isLavaBossEvent) {
+          WORLD_W = 2400;
+          WORLD_H = 2200;
+      } else if (isMirrorMode) {
           WORLD_W = 2400;
           WORLD_H = 1800;
       } else if (isKnockDonateMode) {
@@ -24194,6 +26277,7 @@
       playing = true;
       gameOver = false;
       hasHandledGameOver = false;
+      resetFullOnDamageMatchLedger();
       objectiveControl = 0;
       objectiveTimer = 0;
       objectiveWon = false;
@@ -24203,6 +26287,9 @@
       if (isMarkedMayhemMode) initMarkedMayhemModeState();
       if (isTugZoneMode) initTugZoneModeState();
       spawnBots();
+      initCoreBreachIntro();
+      initCorruptedShowdown();
+      if (isLavaBossEvent) initLavaBossMatch();
       if (isBrickVaultMode) initBrickVaultModeState();
       if (isArenaForgeMode) {
           spawnArenaForgeStructures();
@@ -24228,25 +26315,16 @@
       }
   }
 
-  function launchTowerDuelsWeekendFloor() {
-      ensureSlopSushiState();
-      const event = playerData.slopSushi.towerDuelWeekend;
-      if (!isTowerDuelsWeekendActive()) {
-          alert('Tower Duels Weekend is not active right now.');
-          return;
+  function rollTowerDuelPowerLoadouts(team) {
+      const result = {};
+      for (const id of team) {
+          const deck = [...getActiveSlopSushiDeck(id)].sort(() => Math.random() - .5);
+          result[id] = deck.slice(0, 2).map(card => card.id);
       }
-      if (event.completed) {
-          alert('Tower Duels Weekend complete - TOWER DUELAR is already yours!');
-          return;
-      }
-      const pool = getTowerTroubleBrawlerPool();
-      if (pool.length < 3) {
-          alert('Tower Duels needs at least three active brawlers.');
-          return;
-      }
-      towerDuelOriginalBrawler = selectedBrawler;
-      playerTeam = createTowerTroubleRoster(pool, 3);
-      botTeam = createTowerTroubleRoster(pool, 3);
+      return result;
+  }
+
+  function beginTowerDuelsWeekendFloor(event) {
       isDuoShowdown = false;
       isConstructionMode = false;
       isDamageFillerMode = false;
@@ -24281,10 +26359,80 @@
       amplifierScrewZones.length = 0;
       skeleParachutes.length = 0;
       skelePortals.length = 0;
-      if (document.getElementById('topbar')) document.getElementById('topbar').textContent = `Tower Duels Weekend - Floor ${event.floor}/5`;
+      if (document.getElementById('topbar')) document.getElementById('topbar').textContent = `Tower Duels Weekend - Floor ${event.floor}/5 - Tower Power`;
       startDuelsRound();
       if (brawlerSelect) brawlerSelect.disabled = true;
       if (homeScreen) homeScreen.style.display = 'none';
+  }
+
+  function showTowerDuelsCrewPreview(event) {
+      const overlay = document.createElement('div');
+      overlay.id = 'towerDuelsCrewPreview';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:2600;padding:18px;overflow:auto;background:radial-gradient(circle at 50% 0,#213d74 0,#11172e 48%,#060a14 100%);color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center';
+      const panel = document.createElement('div');
+      panel.style.cssText = 'width:min(920px,96vw);max-height:94vh;overflow:auto;padding:clamp(18px,4vw,34px);border:2px solid #67e8ff;border-radius:26px;background:rgba(7,15,31,.96);box-shadow:0 0 55px #46cfff55;text-align:center';
+      panel.innerHTML = `<div style="font-size:12px;font-weight:1000;letter-spacing:.16em;color:#67e8ff">WEEKEND TOWER EVENT - FLOOR ${event.floor}/5</div><h1 style="margin:7px 0 5px;font-size:clamp(30px,6vw,54px)">YOUR RANDOM DUEL CREW</h1><p style="margin:0 auto 18px;max-width:650px;color:#bdd4ec">Three random guest brawlers. All are Power 11 with complete kits, even when locked in your collection.</p><div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:20px;padding:8px 13px;border:1px solid #b78cff;border-radius:999px;background:#241a49;color:#e5d5ff;font-weight:900">TOWER POWER ACTIVE - 2 transformations per fighter</div>`;
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;text-align:left';
+      for (const id of playerTeam) {
+          const data = brawlerData[id] || {};
+          const powers = (towerDuelPowerLoadouts[id] || []).map(powerId => getActiveSlopSushiDeck(id).find(card => card.id === powerId)).filter(Boolean);
+          const card = document.createElement('article');
+          card.style.cssText = 'min-width:0;padding:16px;border:1px solid #4b76a8;border-radius:18px;background:linear-gradient(155deg,#172b4e,#0a1224);box-shadow:inset 0 0 24px #4dcfff12';
+          card.innerHTML = `<div style="display:flex;align-items:center;gap:11px"><div style="width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#168ec8;border:3px solid #dff8ff;font-size:32px">${getBrawlerPortraitIcon(id)}</div><div style="min-width:0"><small style="color:#67e8ff;font-weight:1000">POWER 11</small><h2 style="margin:2px 0;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${data.name || id}</h2><div style="font-size:11px;color:#94abc5">${data.role || 'Fighter'}</div></div></div><div style="margin-top:14px;font-size:10px;font-weight:1000;letter-spacing:.12em;color:#c7a8ff">TOWER POWERS</div>`;
+          for (const power of powers) {
+              const chip = document.createElement('div');
+              chip.title = power.desc || '';
+              chip.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:7px;padding:8px;border-radius:10px;background:#251b45;border:1px solid #7f69ba;color:#fff;font-size:12px;font-weight:800';
+              chip.innerHTML = `<span style="font-size:20px">${power.icon || 'TP'}</span><span>${power.name}</span>`;
+              card.appendChild(chip);
+          }
+          grid.appendChild(card);
+      }
+      panel.appendChild(grid);
+      const hint = document.createElement('p');
+      hint.textContent = 'Each fighter keeps the two Tower Powers shown here whenever they enter this floor.';
+      hint.style.cssText = 'margin:18px 0 12px;color:#9eb6cf;font-size:13px';
+      panel.appendChild(hint);
+      const actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;justify-content:center;gap:12px;flex-wrap:wrap';
+      const cancel = document.createElement('button');
+      cancel.textContent = 'BACK';
+      cancel.style.cssText = 'padding:12px 22px;border:1px solid #8094ad;border-radius:12px;background:#18243a;color:#dbe9f7;font-weight:1000;cursor:pointer';
+      cancel.onclick = () => { towerDuelOriginalBrawler = null; towerDuelPowerLoadouts = {}; towerDuelBotPowerLoadouts = {}; overlay.remove(); };
+      const enter = document.createElement('button');
+      enter.textContent = `ENTER FLOOR ${event.floor}`;
+      enter.style.cssText = 'padding:13px 28px;border:0;border-radius:12px;background:linear-gradient(135deg,#67e8ff,#8c7dff);color:#07111e;font-size:17px;font-weight:1000;cursor:pointer;box-shadow:0 0 24px #67e8ff66';
+      enter.onclick = () => { overlay.remove(); beginTowerDuelsWeekendFloor(event); };
+      actions.append(cancel, enter);
+      panel.appendChild(actions);
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+      if (innerWidth < 700) grid.style.gridTemplateColumns = '1fr';
+  }
+
+  function launchTowerDuelsWeekendFloor() {
+      ensureSlopSushiState();
+      const event = playerData.slopSushi.towerDuelWeekend;
+      if (!isTowerDuelsWeekendActive()) {
+          alert('Tower Duels Weekend is not active right now.');
+          return;
+      }
+      if (event.completed) {
+          alert('Tower Duels Weekend complete - TOWER DUELAR is already yours!');
+          return;
+      }
+      const pool = getTowerTroubleBrawlerPool();
+      if (pool.length < 3) {
+          alert('Tower Duels needs at least three active brawlers.');
+          return;
+      }
+      towerDuelOriginalBrawler = selectedBrawler;
+      playerTeam = createTowerTroubleRoster(pool, 3);
+      botTeam = createTowerTroubleRoster(pool, 3);
+      towerDuelPowerLoadouts = rollTowerDuelPowerLoadouts(playerTeam);
+      towerDuelBotPowerLoadouts = rollTowerDuelPowerLoadouts(botTeam);
+      showTowerDuelsCrewPreview(event);
   }
 
   // wire start button and keyboard controls
@@ -24432,6 +26580,7 @@
       isImpossibleMode = false;
       isSoloTrial = false;
       isBeastBossEvent = false;
+      isLavaBossEvent = false;
       isOverlordTrialEvent = false;
       isHyperEvent = false;
       isBossFight = false;
@@ -24509,6 +26658,7 @@
       isImpossibleMode = false;
       isSoloTrial = false;
       isBeastBossEvent = false;
+      isLavaBossEvent = false;
       isOverlordTrialEvent = false;
       isHyperEvent = false;
       isBossFight = false;
@@ -24619,11 +26769,30 @@
     balanceBlogBtn.addEventListener('click', ()=>{ openBalanceBlog(); });
 
     const shopBtn = document.createElement('button');
+    shopBtn.id = 'gemShopBtn';
     shopBtn.textContent = '💎 Gem Shop';
     styleHomeButton(shopBtn, 'purple', true);
     if(homeUtilityRow) homeUtilityRow.appendChild(shopBtn);
     else if(startBtn) startBtn.parentNode.appendChild(shopBtn);
     shopBtn.addEventListener('click', ()=>{ openGemShop(); });
+
+    const openHomeFighters = () => brawlerBtn?.click();
+    const focusHomeEvents = () => setHomeTab('events');
+    const focusHomeLobby = () => setHomeTab('home');
+    const openHomeShop = () => shopBtn.click();
+    document.getElementById('homeLobbyNav')?.addEventListener('click',focusHomeLobby);
+    document.getElementById('homeCollectionNav')?.addEventListener('click',openHomeFighters);
+    document.getElementById('homeEventsNav')?.addEventListener('click',focusHomeEvents);
+    document.getElementById('homeShopNav')?.addEventListener('click',openHomeShop);
+    document.getElementById('homeMobileFighters')?.addEventListener('click',openHomeFighters);
+    document.getElementById('homeMobileLobby')?.addEventListener('click',focusHomeLobby);
+    document.getElementById('homeMobileEvents')?.addEventListener('click',focusHomeEvents);
+    document.getElementById('homeMobileShop')?.addEventListener('click',openHomeShop);
+    const toggleHomeTools=()=>{const tools=document.getElementById('homeUtilityDetails');if(tools){tools.open=!tools.open;tools.scrollIntoView({behavior:'smooth',block:'nearest'});}};
+    document.getElementById('homeMenuBtn')?.addEventListener('click',toggleHomeTools);
+    document.getElementById('homeMobileMore')?.addEventListener('click',toggleHomeTools);
+    document.getElementById('homeFeaturedOffer')?.addEventListener('click',openHomeShop);
+    document.getElementById('homeSelectedEventCard')?.addEventListener('click',focusHomeEvents);
 
     const attachiesBtn = document.createElement('button');
     attachiesBtn.id = 'attachiesBtn';
@@ -25422,7 +27591,7 @@
             headerRow.style.width = '1000px'; headerRow.style.maxWidth = '90%'; headerRow.style.marginBottom = '40px';
 
             const title = document.createElement('h1');
-            title.textContent = 'Select Your Brawler'; title.style.margin = '0';
+            title.textContent = 'Select Your Fighter'; title.style.margin = '0';
             title.className = 'brawler-browser__title';
             
              const statsDiv = document.createElement('div');
@@ -25509,11 +27678,26 @@
             selectedBanner.className = 'brawler-browser__selected';
             selectedBanner.style.setProperty('--selected-brawler-color', selectedData.color || '#6ee7ff');
             selectedBanner.style.setProperty('--selected-rarity-color', selectedRarityColor);
+            const selectedBrickLabel = getBrickRankLabel(selectedProgress);
+            const selectedBrickNext = getNextBrickRankInfo(selectedProgress);
+            const selectedSpecial = getSpecialAbilityDef(selectedBrawler);
             selectedBanner.innerHTML = `
-                <div class="brawler-browser__selected-portrait">${getBrawlerPortraitIcon(selectedBrawler)}</div>
-                <div class="brawler-browser__selected-copy"><small>CURRENT BRAWLER</small><strong>${selectedData.name || selectedBrawler}</strong><span>${selectedRarity.toUpperCase()} · ${(selectedData.role || 'Fighter').toUpperCase()}</span></div>
-                <div class="brawler-browser__selected-stats"><span><b>POWER</b>${selectedProgress.level}</span><span><b>HP</b>${selectedStats.hp}</span><span><b>DAMAGE</b>${selectedStats.dmg}</span></div>
-                <button type="button" class="brawler-browser__selected-open">OPEN LOADOUT</button>`;
+                <div class="brawler-browser__selected-hero">
+                  <div class="brawler-browser__selected-portrait">${getBrawlerPortraitIcon(selectedBrawler)}</div>
+                  <div class="brawler-browser__selected-copy"><small>ACTIVE FIGHTER</small><strong>${selectedData.name || selectedBrawler}</strong><span>${selectedRarity.toUpperCase()} · ${(selectedData.role || 'Fighter').toUpperCase()}</span></div>
+                  <div class="brawler-browser__selected-power"><small>POWER</small><b>${selectedProgress.level}</b></div>
+                </div>
+                <div class="brawler-browser__selected-rank"><span>◆ ${selectedBrickLabel}</span><div><i style="width:${Math.min(100,(selectedBrickNext.current/Math.max(1,selectedBrickNext.threshold))*100)}%"></i></div><small>${selectedBrickNext.current}/${selectedBrickNext.threshold}</small></div>
+                <div class="brawler-browser__selected-stats"><span><b>HP</b>${selectedStats.hp}</span><span><b>DAMAGE</b>${selectedStats.dmg}</span><span><b>SPEED</b>${selectedStats.speed}</span></div>
+                <div class="brawler-browser__selected-kit">
+                  <article><small>MAIN ATTACK</small><b>${selectedData.attack || 'Attack'}</b><p>${selectedData.attackDesc || 'Open the loadout for full combat details.'}</p></article>
+                  <article><small>POWER MOVE</small><b>${selectedData.super || 'Super'}</b><p>${selectedData.superDesc || 'Charge the Power Move by fighting.'}</p></article>
+                  <article class="is-tool"><small>TOOL</small><b>${selectedProgress.gadgetUnlocked ? (selectedProgress.selectedGadget === 'g2' ? selectedData.g2 : selectedData.g1) : 'LOCKED'}</b></article>
+                  <article class="is-talent"><small>TALENT</small><b>${selectedProgress.starPowerUnlocked ? (selectedProgress.selectedStar === 'long' ? selectedData.sp2 : selectedData.sp1) : 'LOCKED'}</b></article>
+                  <article class="is-core"><small>CORE SURGE</small><b>${selectedProgress.hyperchargeUnlocked ? selectedData.hyper : 'POWER 11 REQUIRED'}</b></article>
+                  ${selectedSpecial ? `<article class="is-signature"><small>${selectedSpecial.type.toUpperCase()}</small><b>${selectedSpecial.icon} ${selectedSpecial.name}</b><p>${selectedSpecial.shortDesc}</p></article>` : ''}
+                </div>
+                <button type="button" class="brawler-browser__selected-open">OPEN FULL LOADOUT</button>`;
             selectedBanner.querySelector('button').onclick = () => showDetails(selectedBrawler);
             overlay.appendChild(selectedBanner);
 
@@ -25561,7 +27745,7 @@
                 <option value="all">All Rarities</option>
                 <option value="Common">Common</option>
                 <option value="Rare">Rare</option>
-                <option value="Super Rare">Super Rare</option>
+                <option value="Super Rare">Elite</option>
                 <option value="Epic">Epic</option>
                 <option value="Mythic">Mythic</option>
                 <option value="Legendary">Legendary</option>
@@ -25621,6 +27805,7 @@
                 'Mythic': '#ff7bd1',
                 'Legendary': '#ff9b42',
                 'Exotic': '#b983ff',
+                'Anomaly': '#7a4dff',
             };
 
             const visibleBrawlers = [...allBrawlers]
@@ -25631,7 +27816,7 @@
                     const query = modalSortState.search.trim().toLowerCase();
                     if (modalSortState.role !== 'all' && role !== modalSortState.role) return false;
                     if (modalSortState.rarity !== 'all' && rarity !== modalSortState.rarity) return false;
-                    if (query && !`${brawlerData[id]?.name || ''} ${role} ${rarity}`.toLowerCase().includes(query)) return false;
+                    if (query && !`${brawlerData[id]?.name || ''} ${role} ${rarity} ${getDisplayRarityName(rarity)}`.toLowerCase().includes(query)) return false;
                     return true;
                 })
                 .sort((left, right) => {
@@ -25669,7 +27854,7 @@
                     lineRight.style.flex = '1';
                     lineRight.style.background = 'rgba(202,166,255,0.5)';
                     const label = document.createElement('div');
-                    label.textContent = 'LOCKED BRAWLERS';
+                    label.textContent = 'LOCKED FIGHTERS';
                     label.style.fontSize = '11px';
                     label.style.fontWeight = '900';
                     label.style.letterSpacing = '0.08em';
@@ -25711,7 +27896,7 @@
                 card.style.setProperty('--brawler-accent', data.color || rarityColor);
                 card.dataset.brickProgress = brickProgressPct.toFixed(1);
                 card.setAttribute('data-brawler-card', id);
-                card.setAttribute('data-search', `${data.name} ${data.role} ${rarity}`.toLowerCase());
+                card.setAttribute('data-search', `${data.name} ${data.role} ${rarity} ${getDisplayRarityName(rarity)}`.toLowerCase());
                 card.style.background = `linear-gradient(180deg, #121b2b 0%, #080d16 100%)`;
                 card.style.border = `3px solid transparent`;
                 card.style.borderRadius = '22px'; card.style.padding = '14px';
@@ -25730,6 +27915,26 @@
                 card.onmouseover = () => card.style.transform = 'scale(1.05)';
                 card.onmouseout = () => card.style.transform = 'scale(1)';
 
+                const cardSpecialDef = getSpecialAbilityDef(id);
+                const rawSpecialPieces = cardSpecialDef ? getSpecialPieceCount(cardSpecialDef.type, id) : 0;
+                const ownedSpecialPieces = cardSpecialDef
+                    ? Math.max(0, Math.min(3, isSpecialAbilityUnlocked(id) ? 3 : rawSpecialPieces))
+                    : 0;
+                const specialTriangle = document.createElement('div');
+                specialTriangle.className = `brawler-card__special-triangle ${cardSpecialDef ? 'has-special' : 'no-special'}${ownedSpecialPieces === 3 ? ' is-complete' : ''}`;
+                specialTriangle.style.setProperty('--special-color', cardSpecialDef?.color || '#788397');
+                specialTriangle.title = cardSpecialDef
+                    ? `${cardSpecialDef.name}: ${ownedSpecialPieces}/3 pieces owned`
+                    : 'Special ability coming later';
+                specialTriangle.setAttribute('aria-label', specialTriangle.title);
+                const triangleSegments = [
+                    '32,3 42,27 32,34 22,27',
+                    '4,52 20,29 30,36 30,52',
+                    '60,52 44,29 34,36 34,52',
+                ];
+                specialTriangle.innerHTML = `<svg viewBox="0 0 64 56" aria-hidden="true">${triangleSegments.map((points, segmentIndex) => `<polygon class="special-triangle__segment${segmentIndex < ownedSpecialPieces ? ' is-filled' : ''}" points="${points}"></polygon>`).join('')}</svg><small>${cardSpecialDef ? `${ownedSpecialPieces}/3` : '—'}</small>`;
+                card.appendChild(specialTriangle);
+
                 const chipRow = document.createElement('div');
                 chipRow.className = 'brawler-card__chips';
                 chipRow.style.display = 'flex';
@@ -25740,7 +27945,7 @@
                 chipRow.style.flexWrap = 'wrap';
 
                 const rarityChip = document.createElement('div');
-                rarityChip.textContent = rarity.toUpperCase();
+                rarityChip.textContent = getDisplayRarityName(rarity).toUpperCase();
                 rarityChip.style.background = `${rarityColor}33`;
                 rarityChip.style.color = rarityColor;
                 rarityChip.style.border = `1px solid ${rarityColor}`;
@@ -25827,7 +28032,7 @@
 
                 const role = document.createElement('div');
                 role.className = 'brawler-card__role';
-                role.textContent = isDisabled ? 'DISABLED' : (isLocked ? (sushiDeckReady ? 'SUSHI DECK OWNED • BRAWLER LOCKED' : 'BRAWLER LOCKED') : data.role.toUpperCase()); role.style.fontSize = '12px'; role.style.fontWeight = '900';
+                role.textContent = isDisabled ? 'DISABLED' : (isLocked ? (sushiDeckReady ? 'TOWER DECK OWNED • FIGHTER LOCKED' : 'FIGHTER LOCKED') : data.role.toUpperCase()); role.style.fontSize = '12px'; role.style.fontWeight = '900';
                 role.style.letterSpacing = '0.08em';
                 role.style.color = isDisabled ? '#ff8b8b' : (isLocked ? '#a9bdd8' : rankAccent); role.style.marginBottom = '12px';
 
@@ -25843,7 +28048,7 @@
                 if (isDisabled) {
                     const disabledPill = document.createElement('div');
                     disabledPill.className = 'brawler-card__status brawler-card__status--disabled';
-                    disabledPill.textContent = 'THIS BRAWLER IS CURRENTLY DISABLED';
+                    disabledPill.textContent = 'THIS FIGHTER IS CURRENTLY DISABLED';
                     disabledPill.style.position = 'absolute';
                     disabledPill.style.left = '50%';
                     disabledPill.style.top = '172px';
@@ -25863,7 +28068,7 @@
                     const lockedPill = document.createElement('div');
                     lockedPill.className = 'brawler-card__status brawler-card__status--locked';
                     const rarity = getBrawlerRarity(id);
-                    lockedPill.textContent = sushiDeckReady ? `🍣 DECK OWNED • BRAWLER: ${getSoulUnlockCostForRarity(rarity)} SOULS` : `BRAWLER LOCKED • ${getSoulUnlockCostForRarity(rarity)} SOULS`;
+                    lockedPill.textContent = sushiDeckReady ? `🗼 DECK OWNED • FIGHTER: ${getSoulUnlockCostForRarity(rarity)} SOULS` : `FIGHTER LOCKED • ${getSoulUnlockCostForRarity(rarity)} SOULS`;
                     lockedPill.style.position = 'absolute';
                     lockedPill.style.left = '50%';
                     lockedPill.style.top = '172px';
@@ -25903,9 +28108,9 @@
                 powerMedal.style.cssText = `position:absolute;left:7px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,${rankAccent},#101827);border:4px solid #080d15;box-shadow:0 0 0 2px ${rankAccent},inset 0 2px 0 #ffffff44;color:#fff;font-size:19px;font-weight:1000;text-shadow:0 2px 0 #000`;
                 abilityBar.appendChild(powerMedal);
                 [
-                    { kind: 'gadget', label: 'Gadget', unlocked: progress.gadgetUnlocked, color: '#20d847' },
-                    { kind: 'star', label: 'Star Power', unlocked: progress.starPowerUnlocked, color: '#ffd32a' },
-                    { kind: 'hc', label: 'Hypercharge', unlocked: progress.hyperchargeUnlocked, color: '#7185ff' },
+                    { kind: 'gadget', label: 'Tool', unlocked: progress.gadgetUnlocked, color: '#20d847' },
+                    { kind: 'star', label: 'Talent', unlocked: progress.starPowerUnlocked, color: '#ffd32a' },
+                    { kind: 'hc', label: 'Core Surge', unlocked: progress.hyperchargeUnlocked, color: '#7185ff' },
                 ].forEach((entry) => {
                     const ability = document.createElement('div');
                     ability.title = entry.unlocked ? `${entry.label} unlocked` : `${entry.label} locked`;
@@ -25919,7 +28124,6 @@
                     ability.style.opacity = entry.unlocked ? '1' : '.75';
                     abilityBar.appendChild(ability);
                 });
-
                 const rankLabel = document.createElement('div');
                 rankLabel.className = 'brawler-card__rank';
                 rankLabel.textContent = `${rankName} • ${nextRank.current}/${nextRank.threshold} • P${getBrickMinimumPlayerPower(progress)} REQUIRED`;
@@ -26053,14 +28257,14 @@
 
                 const header = document.createElement('h2');
                 header.style.margin = '0 0 8px 0'; header.style.color = data.color;
-                header.textContent = kind === 'gadget' ? 'GADGET' : kind === 'star' ? 'STAR POWER' : kind === 'hc' ? 'HYPERCHARGE' : kind === 'super' ? 'SUPER' : 'ATTACK';
+                header.textContent = kind === 'gadget' ? 'TOOL' : kind === 'star' ? 'TALENT' : kind === 'hc' ? 'CORE SURGE' : kind === 'super' ? 'POWER MOVE' : 'ATTACK';
 
                 const desc = document.createElement('div');
                 desc.style.fontSize = '18px'; desc.style.color = '#c9d7ff'; desc.style.lineHeight = '1.5';
                 if (kind === 'gadget') {
-                    desc.textContent = pData.gadgetUnlocked ? 'Choose a gadget below.' : 'Locked until Power 7. You can still preview both gadgets below.';
+                    desc.textContent = pData.gadgetUnlocked ? 'Choose a Tool below.' : 'Locked until Power 7. You can still preview both Tools below.';
                 } else if (kind === 'star') {
-                    desc.textContent = pData.starPowerUnlocked ? 'Choose a star power below.' : 'Locked until Power 9. You can still preview both star powers below.';
+                    desc.textContent = pData.starPowerUnlocked ? 'Choose a Talent below.' : 'Locked until Power 9. You can still preview both Talents below.';
                 } else if (kind === 'hc') {
                     desc.textContent = data.hyper;
                 } else if (kind === 'super') {
@@ -26358,11 +28562,25 @@
                     <div style="font-size:13px;color:#93a7da">${data.attackDesc}</div>
                 </div>
                 <div style="background:#0a1327;border:1px solid #304876;border-radius:12px;padding:10px 12px;margin-bottom:8px">
-                    <div style="font-size:12px;color:#8fb3dc;font-weight:800">SUPER</div>
+                    <div style="font-size:12px;color:#8fb3dc;font-weight:800">POWER MOVE</div>
                     <div style="font-weight:900;color:#ff9090">${data.super}</div>
                     <div style="font-size:13px;color:#93a7da">${data.superDesc}</div>
                 </div>
             `;
+
+            const specialDef = getSpecialAbilityDef(id);
+            if (specialDef) {
+                const specialState = getSpecialAbilityState(specialDef.type,id);
+                const specialCard = document.createElement('div');
+                specialCard.style.cssText = `margin-top:12px;padding:14px;border:2px solid ${specialDef.color};border-radius:14px;background:${specialDef.color}12`;
+                specialCard.innerHTML = `<div style="display:flex;justify-content:space-between;gap:10px"><div><small style="color:${specialDef.color};font-weight:1000;letter-spacing:.12em">${specialDef.type.toUpperCase()}</small><div style="font-size:18px;font-weight:1000">${specialDef.name}</div></div><b style="color:${specialDef.color}">${specialState.unlocked?'UNLOCKED':`Pieces: ${specialState.pieces}/3`}</b></div><p style="color:#c9d7ff;margin:8px 0">${specialDef.shortDesc}</p>`;
+                const viewQuests=document.createElement('button');
+                viewQuests.textContent='VIEW QUESTS';
+                viewQuests.style.cssText=`width:100%;padding:9px;border:1px solid ${specialDef.color};border-radius:9px;background:#07111d;color:${specialDef.color};font-weight:1000;cursor:pointer`;
+                viewQuests.onclick=()=>{if(overlay?.isConnected)overlay.remove();openQuestBoard('special');};
+                specialCard.appendChild(viewQuests);
+                detailsContainer.appendChild(specialCard);
+            }
 
             const iconRow = document.createElement('div');
             iconRow.style.display = 'flex'; iconRow.style.justifyContent = 'space-between'; iconRow.style.gap = '14px';
@@ -26412,7 +28630,7 @@
             gadgetPanel.style.borderRadius = '12px';
             gadgetPanel.style.padding = '10px';
             const gadgetHead = document.createElement('div');
-            gadgetHead.textContent = `GADGET ${gadUnlocked ? '(UNLOCKED)' : '(500 COINS)'}`;
+            gadgetHead.textContent = `TOOL ${gadUnlocked ? '(UNLOCKED)' : '(500 COINS)'}`;
             gadgetHead.style.fontWeight = '800'; gadgetHead.style.color = gadUnlocked ? '#5df2c2' : '#95a6c8'; gadgetHead.style.marginBottom = '8px';
             gadgetPanel.appendChild(gadgetHead);
 
@@ -26420,7 +28638,7 @@
             if (!gadUnlocked) {
                 const buyG = document.createElement('button');
                 const gadgetReady = pData.level >= 7;
-                buyG.textContent = gadgetReady ? 'Buy Gadget (🪙 500)' : 'POWER 7';
+                buyG.textContent = gadgetReady ? 'Buy Tool (🪙 500)' : 'POWER 7';
                 buyG.style.background = gadgetReady && playerData.coins >= 500 ? '#5df2c2' : '#444';
                 buyG.style.border = 'none'; buyG.style.padding = '10px 12px'; buyG.style.borderRadius = '10px'; buyG.style.fontWeight = '800';
                 buyG.onclick = () => {
@@ -26460,7 +28678,7 @@
             starPanel.style.borderRadius = '12px';
             starPanel.style.padding = '10px';
             const starHead = document.createElement('div');
-            starHead.textContent = `STAR POWER ${spUnlocked ? '(UNLOCKED)' : '(750 COINS)'}`;
+            starHead.textContent = `TALENT ${spUnlocked ? '(UNLOCKED)' : '(750 COINS)'}`;
             starHead.style.fontWeight = '800'; starHead.style.color = spUnlocked ? '#ffd27a' : '#95a6c8'; starHead.style.marginBottom = '8px';
             starPanel.appendChild(starHead);
 
@@ -26468,7 +28686,7 @@
             if (!spUnlocked) {
                 const buyS = document.createElement('button');
                 const starReady = pData.level >= 9;
-                buyS.textContent = starReady ? 'Buy Star Power (🪙 750)' : 'POWER 9';
+                buyS.textContent = starReady ? 'Buy Talent (🪙 750)' : 'POWER 9';
                 buyS.style.background = starReady && playerData.coins >= 750 ? '#ccaaff' : '#444';
                 buyS.style.border = 'none'; buyS.style.padding = '10px 12px'; buyS.style.borderRadius = '10px'; buyS.style.fontWeight = '800';
                 buyS.onclick = () => {
@@ -26503,7 +28721,7 @@
             hyperPanel.style.borderRadius = '12px';
             hyperPanel.style.padding = '10px';
             const hyperHead = document.createElement('div');
-            hyperHead.textContent = `HYPERCHARGE ${hcUnlocked ? '(UNLOCKED)' : '(1000 COINS)'}`;
+            hyperHead.textContent = `CORE SURGE ${hcUnlocked ? '(UNLOCKED)' : '(1000 COINS)'}`;
             hyperHead.style.fontWeight = '800'; hyperHead.style.color = hcUnlocked ? '#ff9bff' : '#95a6c8'; hyperHead.style.marginBottom = '8px';
             hyperPanel.appendChild(hyperHead);
 
@@ -26511,7 +28729,7 @@
             if (!hcUnlocked) {
                 const buyH = document.createElement('button');
                 const hcReady = pData.level >= 11;
-                buyH.textContent = hcReady ? 'Buy Hypercharge (🪙 1000)' : 'POWER 11';
+                buyH.textContent = hcReady ? 'Buy Core Surge (🪙 1000)' : 'POWER 11';
                 buyH.style.background = hcReady && playerData.coins >= 1000 ? '#ff88ff' : '#444';
                 buyH.style.border = 'none'; buyH.style.padding = '10px 12px'; buyH.style.borderRadius = '10px'; buyH.style.fontWeight = '800';
                 buyH.onclick = () => {
@@ -26616,6 +28834,21 @@
             trinketPanel.appendChild(trinketGrid);
             overlay.appendChild(trinketPanel);
 
+            const {packets}=ensureSeason3State();
+            const packetPanel=document.createElement('section');
+            packetPanel.className='packet-loadout';
+            packetPanel.innerHTML=`<div class="packet-loadout__head"><div><small>SEASON 3 • CORE BREAKER</small><h2>PACKET</h2><p>One passive Packet works with every Fighter. Switching Fighters keeps this choice.</p></div><b>${packets.equipped?(PACKET_DEFS[packets.equipped]?.name||'PACKET'):'NO PACKET'}</b></div>`;
+            const packetGrid=document.createElement('div');packetGrid.className='packet-catalog';
+            const noneCard=document.createElement('button');noneCard.className=`packet-card${packets.equipped?'':' is-equipped'}`;noneCard.innerHTML='<i>NONE</i><strong>No Packet</strong><span>Fight with the normal kit.</span>';
+            noneCard.onclick=()=>{packets.equipped=null;saveProgress();showDetails(id);};packetGrid.appendChild(noneCard);
+            for(const packet of Object.values(PACKET_DEFS)){
+                const unlocked=!!packets.unlocked[packet.id],equipped=packets.equipped===packet.id,card=document.createElement('button');
+                card.className=`packet-card${equipped?' is-equipped':unlocked?' is-unlocked':' is-locked'}`;card.disabled=!unlocked;
+                card.innerHTML=`<i>${packet.icon}</i><strong>${packet.name}</strong><small>${packet.biome}</small><span>${packet.description}</span><em>${equipped?'EQUIPPED':unlocked?'EQUIP':`LOCKED • ${Math.floor(Number(packets.progress[packet.id])||0)}% SIGNAL`}</em>`;
+                card.onclick=()=>{if(!packets.unlocked[packet.id])return;packets.equipped=packet.id;saveProgress();showDetails(id);};packetGrid.appendChild(card);
+            }
+            packetPanel.appendChild(packetGrid);overlay.appendChild(packetPanel);
+
             const btnRow = document.createElement('div');
             btnRow.style.display = 'flex'; btnRow.style.gap = '20px'; btnRow.style.marginTop = '40px';
 
@@ -26683,6 +28916,9 @@
             if (isTutorialMode) tutorialProgress.gadget = true;
             gadgetBtn.click();
         }
+    if(k === 'r'){
+        activateSignatureAbility(player);
+    }
     if(k === 'e'){
         if (isTutorialMode) tutorialProgress.super = true;
         startAimingSuper();
@@ -26732,6 +28968,57 @@
     if (tryCrystilaGlassReflect(target, b)) return false;
     
     let owner = (b.ownerId === player.id) ? player : bots.find(bt=>bt.id===b.ownerId);
+    if(isCoreBreachIntroMode&&coreBreachState?.phase!=='pvp'&&owner&&target&&areAlliedEntities(owner,target))return true;
+    const hitNow = performance.now();
+    if (b.minigunninMutationExplosive) ensureMinigunninMutationImpactZone(b);
+    if (owner && target && b.isAwakenatorMain) {
+        const boosted = owner.awakenatorLucidEchoArmed;
+        owner.awakenatorLucidEchoArmed = false;
+        target.awakenatorSleepUntil = Math.max(target.awakenatorSleepUntil || 0, hitNow + (boosted ? 1500 : 1000));
+        target.awakenatorDeepSleep = getEntityStarChoice(owner) === 'slow';
+        target.awakenatorSleptBy = target.awakenatorSleptBy || {};
+        target.awakenatorSleptBy[owner.id] = true;
+        owner.awakenatorSleptTargetIds = owner.awakenatorSleptTargetIds || {};
+        owner.awakenatorSleptTargetIds[target.id] = true;
+        if (b.awakenatorHyper) target.awakenatorCorruptAttacks = Math.max(target.awakenatorCorruptAttacks || 0, 1);
+        explosions.push({x:target.x,y:target.y,radius:45,life:0,maxLife:.34,color:b.awakenatorHyper?'rgba(98,42,155,.82)':'rgba(112,105,255,.62)',fxKind:'awakenatorSleep'});
+        spawnFloatingText(target.x,target.y-38,b.awakenatorHyper?'SLEEP + CORRUPT':'SLEEP','#b8a5ff');
+    }
+    if (owner && target && (owner.awakenatorCorruptFriendlyUntil || 0) > hitNow && owner.awakenatorCorruptTargetId === target.id) {
+        target.awakenatorSleepUntil = Math.max(target.awakenatorSleepUntil || 0, hitNow + (getEntityStarChoice(owner) === 'long' ? 1500 : 1000));
+        owner.awakenatorCorruptFriendlyUntil = 0;
+        owner.awakenatorCorruptTargetId = null;
+        spawnFloatingText(target.x,target.y-38,'FRIENDLY NIGHTMARE','#d193ff');
+    }
+    if (b.ownerBrawler === 'bouncin_balls' && b.bouncySignatureCollector && owner && owner.bouncySignatureCollectorActive) {
+        const ballKey=`${b.bouncySignatureVolley}:${b.bouncySignatureBallIndex}`;
+        owner.bouncySignatureCollectorHitBalls ||= {};
+        if(!owner.bouncySignatureCollectorHitBalls[ballKey]){
+            owner.bouncySignatureCollectorHitBalls[ballKey]=true;
+            b.bouncySignatureCounted=true;
+            owner.bouncySignatureCollectorHits=Math.max(0,Math.floor(owner.bouncySignatureCollectorHits||0)+1);
+            // Keep the reward live so the very next attack can consume it;
+            // waiting for a fixed timer made a fast follow-up appear broken.
+            owner.bouncySignatureFollowupBalls=owner.bouncySignatureCollectorHits;
+            explosions.push({x:target.x,y:target.y,radius:32,life:0,maxLife:.2,color:'rgba(255,211,79,.72)',fxKind:'signatureHit'});
+            if(owner.id===player.id)spawnFloatingText(owner.x,owner.y-42,`${owner.bouncySignatureCollectorHits} BALL${owner.bouncySignatureCollectorHits===1?'':'S'} COLLECTED`,'#ffd34f');
+        }
+    }
+
+    if (b.outlitMutationPull && owner && target && !areAlliedEntities(owner,target)) {
+        const pullKey=b.outlitMutationAttackId||`${b.ownerId}:${Math.floor(hitNow/100)}`;
+        if(target.outlitMutationPullActivationId!==pullKey){
+            target.outlitMutationPullActivationId=pullKey;
+            const dx=owner.x-target.x,dy=owner.y-target.y,length=Math.hypot(dx,dy)||1;
+            const pullMult=getEntityKnockbackMultiplier(target,hitNow);
+            if(pullMult>0){
+                target.ghoulPushVX=dx/length*420*pullMult;
+                target.ghoulPushVY=dy/length*420*pullMult;
+                target.ghoulPushUntil=Math.max(target.ghoulPushUntil||0,hitNow+420);
+            }
+            explosions.push({x:target.x,y:target.y,radius:42,life:0,maxLife:.24,color:'rgba(255,55,75,.76)',fxKind:'outlitMutationHit'});
+        }
+    }
     if (b.isUpiedownCorePie && b.upiedownFresh && owner) {
         doHeal(owner, 1200);
         b.upiedownFresh = false;
@@ -26835,6 +29122,7 @@
     }
     let mult = 1.0 + ((owner ? owner.powerCubes : 0) || 0) * 0.1;
     let dealtDamage = b.damage * mult;
+    if (b.isDarkenerCloud && b.darkenerSlowSuffocation) dealtDamage *= Math.max(0, Number(b.darkenerTickDamageMult) || 1);
     if (b.isArenaForgeTowerShell && owner) {
         const repeatHit = owner.forgeLastShellTargetId === target.id;
         const shellDamage = repeatHit ? ARENA_FORGE_TOWER_REPEAT_DAMAGE : ARENA_FORGE_TOWER_DAMAGE;
@@ -26869,6 +29157,7 @@
         } else if (owner && owner.level) {
             dealtDamage *= getLevelDamageScale(owner.level);
         }
+    if (owner && isBeastyBeastActive(owner)) dealtDamage *= 0.60;
     if (owner && owner.copyphaseClone) {
         dealtDamage *= owner.copyphaseCloneDamageMult || 0.30;
     }
@@ -27236,6 +29525,7 @@
     }
     if (b.isClassyNote && b.hyperVisual && b.pierce && Object.keys(b.hitIds || {}).length > 1) dealtDamage *= 0.80;
     if (isArenaForgeMode && arenaForgeOvertime && target?.isArenaForgeStructure) dealtDamage *= 1.35;
+    dealtDamage *= getPacketOutgoingDamageMultiplier(owner);
 
     dealtDamage = normalizeDamageBreakpoint(dealtDamage);
 
@@ -27254,7 +29544,7 @@
         target.lastDamagedAt = performance.now();
     }
     if (b.isPortaloShot && owner && rawDmg > 0) handlePortaloMainHit(owner, target, b);
-    if (b.isJackTradeCard && owner && rawDmg > 0) registerJackTradeVolleyHit(owner,b);
+    if (b.isJackTradeCard && owner && rawDmg > 0) {applyJackTradeTowerCardHit(owner,target,b,dealtDamage);registerJackTradeVolleyHit(owner,b);}
     if (b.isGhoulHand && b.ghoulHyper && rawDmg > 0) applyGhoulDarkness(target);
     if (b.isFastpassTicket && owner && rawDmg > 0) {
         addFastpassMomentum(owner, FASTPASS_MOMENTUM_PER_HIT, false);
@@ -27305,6 +29595,7 @@
         if(judgment)AOEDamage(target.x,target.y,145,1800,target.id);
     }
     handleTrinketDamageDealt(owner, target, dealtDamage);
+    applyPacketHit(owner,target,dealtDamage,b);
             if (dealtDamage > 0) {
                 target.lastDamagedAt = performance.now();
                 target.lastDamagerId = b.ownerId;
@@ -27316,10 +29607,19 @@
                 triggerHitConfirmFeedback(target, dealtDamage, b.ownerId);
                 applyDirectHitBoxDamage(owner, target, b, dealtDamage);
                 applySlopSushiOnHit(owner, target, dealtDamage);
+                recordCoreBreachCombatDamage(owner,target,dealtDamage);
+                recordPacketEquippedDamage(owner,dealtDamage);
                 if (b.ownerId === player.id) {
                     const damageAmount = Math.round(dealtDamage);
                     addEventQuestProgress('deal_damage', damageAmount);
                     progressSeasonPassQuest('deal_damage', damageAmount);
+                    if (ownerBaseBrawler === 'outlit') addSpecialQuestProgress('outlit','deal_damage',damageAmount);
+                    if (ownerBaseBrawler === 'echo') addSpecialQuestProgress('echo','deal_damage',damageAmount);
+                    if (ownerBaseBrawler === 'bouncin_balls' && !b.super) addSpecialQuestProgress('bouncin_balls','main_hit',1);
+                    if (ownerBaseBrawler === 'echo' && !b.super) addSpecialQuestProgress('echo','main_hit',1);
+                    if (ownerBaseBrawler === 'minigunnin') addSpecialQuestProgress('minigunnin','deal_damage',damageAmount);
+                    if (ownerBaseBrawler === 'classy' && b.isClassyNote && !b.isClassySuperShot && !b.classySignatureMirror) addSpecialQuestProgress('classy','main_hit',1);
+                    if (ownerBaseBrawler === 'splitter' && !b.super) addSpecialQuestProgress('splitter','main_hit',1);
                 }
         if (target.brawler === 'hyperorigin' && !target.isHypercharged) {
             const takenGain = (dealtDamage / 18000) * 100;
@@ -27372,7 +29672,7 @@
     }
     // One connected main-attack activation grants one charge step, regardless
     // of pellet count, fragments, repeated damage, or raw damage dealt.
-    if(!b.super && !b.isSuperDash && !target.isPet) grantMainAttackCharge(owner, b);
+    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet) grantMainAttackCharge(owner, b);
     if(b.ownerBrawler === 'decayer' && b.shieldGain){
       const decayerOwner = b.ownerId === player.id ? player : (bots.find(bt => bt.id === b.ownerId) || null);
       grantShield(decayerOwner, b.shieldGain, b.shieldCap);
@@ -27425,7 +29725,7 @@
             }
         }
     }
-    if (b.ownerBrawler === 'minigunnin' && !b.super && !b.isSuperDash) {
+    if (b.ownerBrawler === 'minigunnin' && !b.super && !b.isSuperDash && !b.isMinigunninMutationFire) {
         const owner = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
         const ownerStar = b.ownerId === player.id ? selectedStar : (owner?.selectedStar || 'slow');
         if (owner && owner.hp > 0) {
@@ -27434,7 +29734,7 @@
                 let currentAmmo = owner.id === player.id ? ammo : (owner.minigunAmmo || 100);
                 if (currentAmmo < 30) hpGain += 140; // 140% more HP gain below 30% ammo
             }
-            owner.maxHp = Math.min(10000, owner.maxHp + hpGain);
+            owner.maxHp = Math.min(19000, owner.maxHp + hpGain);
             doHeal(owner, hpGain);
         }
     }
@@ -27472,6 +29772,10 @@
                 target.reloadDebuffUntil = performance.now() + 3000;
                 spawnFloatingText(target.x, target.y - 20, "DEBT!", "#27ae60");
                 b.hasStolenAmmo = true; // Prevent infinite ammo spam from piercing
+            }
+            if (b.moneyTaxMutationReturn && !b.moneyTaxMutationAmmoStolen) {
+                stealAmmo(target, b.ownerId, 0.25);
+                b.moneyTaxMutationAmmoStolen = true;
             }
             if (ownerStar === 'long' && ownerEntity) doHeal(ownerEntity, 200);
         } else if (b.isStickySuper) {
@@ -27666,6 +29970,14 @@
       }
       if (b.ownerBrawler === 'bouncin_balls') {
           b.bouncyBounceCount = (b.bouncyBounceCount || 0) + 1;
+          if(b.bouncySignatureCollector&&b.bouncySignatureWallRangePct>0){
+              const lifeGain=(b.bouncySignatureBaseMaxLife||b.maxLife)*b.bouncySignatureWallRangePct;
+              const distanceGain=(b.bouncySignatureBaseRange||880)*b.bouncySignatureWallRangePct;
+              b.life=Math.max(0,b.life-lifeGain);
+              b.maxBounceDist=(b.maxBounceDist||880)+distanceGain;
+              b.bouncySignatureWallBounces=(b.bouncySignatureWallBounces||0)+1;
+              explosions.push({x:b.x,y:b.y,radius:30,life:0,maxLife:.18,color:'rgba(255,211,79,.68)',fxKind:'signatureWallBounce'});
+          }
           const cap = Math.max(1, b.bouncyBounceGrowthCap || 5);
           if (b.bouncyBounceCount <= cap && b.bouncyBounceSizePct > 0) {
               b.hitboxMod = (b.hitboxMod || 1) * (1 + b.bouncyBounceSizePct);
@@ -27894,6 +30206,7 @@
           maxLife: opts.maxLife || 0.42,
           damage: opts.damage || 340,
           pierce: false,
+          super: !!opts.super,
           hitIds: {},
           hyperVisual: !!opts.hyperVisual,
           hitboxMod: opts.hitboxMod || Math.max(1.4, radius / 16),
@@ -27907,9 +30220,41 @@
           splitterGenerationCaps: Array.isArray(opts.generationCaps) ? opts.generationCaps.slice() : null,
           splitterStarSlow: !!opts.starSlow,
           splitterExoticCascade: !!opts.exoticCascade,
+          splitterFanMult: Math.max(0.5, opts.fanMult || 1),
+          splitterInstinctVisual: !!opts.splitterInstinctVisual,
+          splitterHyperMain: !!opts.splitterHyperMain,
+          splitterSuperTree: !!opts.splitterSuperTree,
+          splitterPostSplitLife: Number.isFinite(opts.splitterPostSplitLife) ? opts.splitterPostSplitLife : null,
           splitterChainId: chainId,
           splitterChainChildCap: chainCap
       });
+  }
+
+  function spawnSplitterSuperTree(ownerEntity, angle, isHyper, damageMult=1, starSlow=false) {
+      const directions = isHyper ? [angle, angle + Math.PI * 2 / 3, angle - Math.PI * 2 / 3] : [angle];
+      for (const direction of directions) {
+          const chainId = createSplitterChain(ownerEntity.id, 30);
+          spawnSplitterGrenade(ownerEntity, direction, {
+              splitPlan: [2,2,2,2],
+              generationCaps: [2,4,8,16],
+              chainId,
+              chainChildCap: 30,
+              damage: Math.round((isHyper ? 620 : 500) * damageMult),
+              childDamageMult: 0.72,
+              speed: 860 * 0.6,
+              // The core now fractures almost immediately; the resulting tree keeps its immense reach.
+              maxLife: SPLITTER_SUPER_INITIAL_LIFE,
+              splitterPostSplitLife: SPLITTER_SUPER_POST_SPLIT_LIFE,
+              radius: isHyper ? 32 : 29,
+              blastRadius: isHyper ? 82 : 72,
+              hitboxMod: isHyper ? 2 : 1.8,
+              fanMult: 0.78,
+              super: true,
+              hyperVisual: !!isHyper,
+              starSlow,
+              splitterSuperTree: true
+          });
+      }
   }
 
   function triggerSplitterGrenadeImpact(b) {
@@ -27951,13 +30296,17 @@
               if (state) state.generationCounts = generationCounts;
           }
       }
-      // Exact-wave generations may be triggered by a side fragment. Using that
-      // fragment's velocity rotated the whole next fan; always use the original
-      // attack direction instead.
-      const baseAng = Number.isFinite(b.splitterRootAngle) ? b.splitterRootAngle : Math.atan2(b.vy, b.vx);
-      const fan = Math.min(1.9, 0.34 * Math.max(1, allowedChildren - 1));
-      const starBoost = b.splitterStarSlow ? 1.12 : 1.0;
       const generationIndex = Math.max(0, b.splitterSplitIndex || 0);
+      // The Instinct's final 5→2 generation is local to each of the five
+      // fragments. Each pair follows its parent in a small forward cone.
+      const instinctPair = !!b.splitterInstinctVisual && generationIndex > 0;
+      const baseAng = instinctPair
+          ? Math.atan2(b.vy, b.vx)
+          : (Number.isFinite(b.splitterRootAngle) ? b.splitterRootAngle : Math.atan2(b.vy, b.vx));
+      const fanCap = instinctPair ? 0.48 : (b.splitterHyperMain ? 2.55 : 2.25);
+      const fanMult = instinctPair ? 0.7 : (b.splitterFanMult || 1);
+      const fan = Math.min(fanCap, 0.34 * Math.max(1, allowedChildren - 1) * fanMult);
+      const starBoost = b.splitterStarSlow ? 1.12 : 1.0;
       const exactWaveDamage = generationCaps
           ? (b.hyperVisual ? [320, 240, 180, 95, 77][generationIndex] : [320, 240, 180, 95][generationIndex])
           : null;
@@ -27966,7 +30315,10 @@
           : Math.max(95, Math.round(b.damage * (b.splitterChildDamageMult || 0.58) * starBoost));
       const childRadius = Math.max(16, Math.round((b.splitterRadius || 28) * 0.85));
       const childBlast = Math.max(34, Math.round((b.splitterBlastRadius || 56) * 0.86));
-      const childLife = Math.max(0.2, (b.maxLife || 0.42) * 0.86);
+      const postSplitLife = Number.isFinite(b.splitterPostSplitLife) ? b.splitterPostSplitLife : null;
+      const childLife = postSplitLife == null
+          ? Math.max(0.2, (b.maxLife || 0.42) * 0.86)
+          : Math.max(0.3, postSplitLife * Math.pow(0.88, generationIndex));
       const childSpeed = Math.max(280, Math.hypot(b.vx, b.vy) * 1.05);
       for (let n = 0; n < allowedChildren; n++) {
           const lane = allowedChildren === 1 ? 0 : (n / (allowedChildren - 1)) - 0.5;
@@ -27995,6 +30347,11 @@
               splitterGenerationCaps: generationCaps ? generationCaps.slice() : null,
               splitterStarSlow: !!b.splitterStarSlow,
               splitterExoticCascade: !!b.splitterExoticCascade,
+              splitterFanMult: b.splitterFanMult || 1,
+              splitterInstinctVisual: !!b.splitterInstinctVisual,
+              splitterHyperMain: !!b.splitterHyperMain,
+              splitterSuperTree: !!b.splitterSuperTree,
+              splitterPostSplitLife: postSplitLife,
               splitterChainId: chainId,
               splitterChainChildCap: chainCap
           });
@@ -28271,6 +30628,10 @@
 
   function update(dt){
     if(!playing || gameOver) return;
+    const now = performance.now();
+    updateCoreBreachIntro(dt);
+    updateCorruptedShowdown(now);
+    updateLavaBossEvent(now,dt);
 
     updateAngelDemonStates(dt);
     updatePredatorStates();
@@ -28341,7 +30702,6 @@
         }
     }
 
-    const now = performance.now();
     if (explosions.length > MAX_ACTIVE_EXPLOSIONS) {
         explosions.splice(0, explosions.length - MAX_ACTIVE_EXPLOSIONS);
     }
@@ -28606,9 +30966,14 @@
                 e.stormTicks = e.stormTicks || 0;
                 if (now > e.stormDamageTick) {
                     e.stormTicks++;
-                    const stormDmg = (1000 + (e.stormTicks * 250)) * getModeStormDamageMultiplier();
+                    const stormDamagePct = Math.min(
+                        STORM_MAX_HP_DAMAGE_PCT_CAP,
+                        STORM_BASE_MAX_HP_DAMAGE_PCT + Math.max(0, e.stormTicks - 1) * STORM_RAMP_MAX_HP_DAMAGE_PCT
+                    );
+                    const stormDmg = Math.max(1, Math.round((e.maxHp || 1) * stormDamagePct * getModeStormDamageMultiplier()));
+                    recordFullOnDamageToTarget(e, stormDmg);
                     e.hp -= stormDmg;
-                    spawnDamageText(e, stormDmg, "#27ae60");
+                    spawnDamageText(e, stormDmg, "#39d879");
                     e.stormDamageTick = now + 1000;
                 }
             } else {
@@ -29018,13 +31383,13 @@
     } else if (isBossFight) {
         if (player.hp <= 0 && !gameOver) {
             player.respawnTimer = (player.respawnTimer || 0) + dt;
-            if (player.respawnTimer >= 20) {
-                player.bossLives = (player.bossLives || 3) - 1;
+            if (player.respawnTimer >= (isLavaBossEvent ? 3 : 20)) {
+                if (!isLavaBossEvent) player.bossLives = (player.bossLives || 3) - 1;
                 if (player.bossLives <= 0) {
                     gameOver = true;
                 } else {
                     player.hp = player.maxHp;
-                    player.x = 1200; player.y = 2000;
+                    player.x = WORLD_W * .5; player.y = WORLD_H - 240;
                     player.isJumping = false; player.isDashing = false; player.isFlying = false; player.z = 0;
                     player.slowUntil = 0; player.stunUntil = 0; player.poisonUntil = 0; player.defenseUntil = 0; player.shield = 0;
                     clearPoisonState(player);
@@ -29034,6 +31399,7 @@
                     player.isDead = false;
                     player.empoweredBeastUntil = 0;
                     player.forceBeastCombat = false;
+                    if(isLavaBossEvent)player.defenseUntil=performance.now()+1400;
                 }
             }
         }
@@ -29041,7 +31407,7 @@
         for (const b of bots) {
             if (b.isTeammate && b.hp <= 0 && !gameOver) {
                 b.respawnTimer = (b.respawnTimer || 0) + dt;
-                if (b.respawnTimer >= 10) { // Respawn every 10s
+                if (b.respawnTimer >= (isLavaBossEvent ? 3 : 10)) {
                     b.hp = b.maxHp;
                     b.x = 1200 + (Math.random() * 400 - 200); b.y = 2000 + (Math.random() * 200 - 100);
                     b.isJumping = false; b.isDashing = false; b.isFlying = false; b.z = 0;
@@ -29050,6 +31416,7 @@
                     b.respawnTimer = 0; b.isDead = false;
                     b.empoweredBeastUntil = 0;
                     b.forceBeastCombat = false;
+                    if(isLavaBossEvent)b.defenseUntil=performance.now()+1400;
                 }
             }
         }
@@ -29089,6 +31456,12 @@
                 e.hyperChargeCharge = clamp((e.hyperChargeCharge || 0) + dt * 10, 0, 100);
             }
         }
+    }
+
+    // BeastyBeast's Signature is a true survival lock. Most damage is capped
+    // in applyShieldDamage; this catches intentional direct-damage/DoT paths.
+    for (const entity of [player, ...bots]) {
+        if (entity && isBeastyBeastActive(entity) && entity.hp < 1) entity.hp = 1;
     }
 
     // Death drops
@@ -29868,7 +32241,9 @@
       while(cheseySuperTickAt <= now){
         for(const bot of bots){
           if(bot.hp > 0 && Math.hypot(bot.x - player.x, bot.y - player.y) <= 34){
-            bot.hp -= 250 * pMult;
+            const cheeseDamage=250*pMult;
+            recordFullOnDamageToTarget(bot,cheeseDamage);
+            bot.hp -= cheeseDamage;
             bot.slowUntil = Math.max(bot.slowUntil || 0, now + 300);
           }
         }
@@ -29970,6 +32345,19 @@
                   }
               }
               pod.lastTurretFire = now;
+          }
+      }
+
+      if (pod.isClassySpeaker && now < (pod.classySignatureUntil || 0)) {
+          const marchingOwner=pod.ownerId===player.id?player:bots.find(bt=>bt.id===pod.ownerId);
+          if (marchingOwner&&marchingOwner.hp>0) {
+              const dx=marchingOwner.x-pod.x,dy=marchingOwner.y-pod.y,dist=Math.hypot(dx,dy)||1;
+              if (dist>76) {
+                  const travel=Math.min(235*dt,dist-76);
+                  const nx=clamp(pod.x+dx/dist*travel,(pod.radius||34),WORLD_W-(pod.radius||34));
+                  const ny=clamp(pod.y+dy/dist*travel,(pod.radius||34),WORLD_H-(pod.radius||34));
+                  if (canMoveToPosition(pod,nx,ny)) { pod.x=nx;pod.y=ny; }
+              }
           }
       }
 
@@ -30123,6 +32511,7 @@
               if (isHypercharged && player.copyphaseTransformUntil > now && player.copyphaseTransformBrawler) hcSpd *= 1.15;
       }
     if ((selectedBrawler === 'beast' || isEntityEmpoweredBeast(player, true)) && player.beastModeActive) hcSpd *= (player.beastMoveMult || (player.beastHyper ? 1.35 : 1.25));
+    if (selectedBrawler === 'beast' && isBeastyBeastActive(player, now)) hcSpd *= 1.40;
 
     // Spacetime Tether speed boost (+30%) inside friendly Relativity Zone
     let playerInFriendlyDome = false;
@@ -30142,6 +32531,8 @@
 
     let activeSpeed = player.speed * (player.speedMult || 1.0); // Apply Chaird super speed mult
     activeSpeed *= getFastpassSpeedMultiplier(player, now);
+    if(now<(player.packetDragonUntil||0))activeSpeed*=1.12;
+    if(now<(player.packetSpicySpeedUntil||0))activeSpeed*=1.08;
     if (isArenaForgeMode) activeSpeed *= player.arenaForgeBlueprintSpeedMult || 1;
     if (now < (player.relaySignalSpeedUntil || 0)) activeSpeed *= 1.10;
     if (isSlopSushiMode) {
@@ -30316,6 +32707,9 @@
     updateSteamerRail(player, now);
     for (const sb of aliveBots) updateSteamerRail(sb, now);
 
+    updateSpecialAbilityRuntime(now);
+    updateSignatureButton();
+
     updateBeamState(player, false, dt);
     for (const sb of aliveBots) updateBeamState(sb, true, dt);
 
@@ -30348,11 +32742,13 @@
     }
 
         updateRocketeerEffects(now);
+        updateMinigunninMutationZones(now);
         updateDuckHealOrbs(now, dt);
         updateIceCreamEffects(now, dt);
         updateFastpassAndFreestyle(now, dt);
         updatePortaloSystems(now, dt);
         updateGhoulSystems(now, dt);
+        updateDarkenerSystems(now, dt);
         updateJackTradeSystems(now, dt);
 
         for (let i=chickpigEggZones.length-1;i>=0;i--) {
@@ -30483,6 +32879,21 @@
           b.vx += (steerDx / steerLen) * steer;
           b.vy += (steerDy / steerLen) * steer;
         }
+      } else if (b.moneyTaxMutationReturn) {
+          if (b.life > (b.moneyTaxReturnAt || .52) && b.moneyTaxReturnPhase === 0) b.moneyTaxReturnPhase = 1;
+          if (b.moneyTaxReturnPhase === 1) {
+              const owner = b.ownerId === player.id ? player : bots.find(bt => bt.id === b.ownerId);
+              if (!owner || owner.hp <= 0) { bullets.splice(i, 1); continue; }
+              const dx = owner.x - b.x, dy = owner.y - b.y, distance = Math.hypot(dx, dy) || 1;
+              const speed = 950 * .6;
+              b.vx = lerp(b.vx, dx / distance * speed, Math.min(1, 9 * dt));
+              b.vy = lerp(b.vy, dy / distance * speed, Math.min(1, 9 * dt));
+              if (!b.moneyTaxReturnHitsCleared) {
+                  b.hitIds = {};
+                  b.moneyTaxReturnHitsCleared = true;
+              }
+              if (distance < owner.radius + 14) { bullets.splice(i, 1); continue; }
+          }
       } else if (b.isBoomerang) {
           if (b.life > (b.boomerangTurnAt || 1.0) && b.boomerangPhase === 0) b.boomerangPhase = 1;
           if (b.boomerangPhase === 1) {
@@ -30756,11 +33167,13 @@
               b.origVx = b.vx;
               b.origVy = b.vy;
               if (isFriendly) {
-                  b.vx *= 1.5;
-                  b.vy *= 1.5;
+                  b.vx *= 1.10;
+                  b.vy *= 1.10;
+                  b.paradoxTimeEffect = 'sped';
               } else {
-                  b.vx *= 0.6;
-                  b.vy *= 0.6;
+                  b.vx *= 0.70;
+                  b.vy *= 0.70;
+                  b.paradoxTimeEffect = 'slowed';
               }
           }
 
@@ -30782,7 +33195,7 @@
                   let diff = targetAngle - currentAngle;
                   diff = Math.atan2(Math.sin(diff), Math.cos(diff));
 
-                  const turnRate = 3.5;
+                  const turnRate = 3.5 * 0.70;
                   const newAngle = currentAngle + Math.sign(diff) * Math.min(Math.abs(diff), turnRate * dt);
                   const currentSpeed = Math.hypot(b.vx, b.vy);
                   b.vx = Math.cos(newAngle) * currentSpeed;
@@ -30792,6 +33205,7 @@
       } else {
           if (b.relativityZoneProcessed) {
               b.relativityZoneProcessed = false;
+              b.paradoxTimeEffect = '';
               if (typeof b.origVx === 'number' && typeof b.origVy === 'number') {
                   b.vx = b.origVx;
                   b.vy = b.origVy;
@@ -30909,6 +33323,13 @@
           }
       }
       b.life += dt;
+      if (b.minigunninMutationExplosive && !b.minigunninMutationZonePlaced && b.minigunninMutationZoneStage < 2) {
+          const zoneProgress = b.minigunninMutationZoneStage === 0 ? 0.12 : 0.50;
+          if (b.life >= Math.max(0.01,b.maxLife||0.8) * zoneProgress) {
+              b.minigunninMutationZonePlaced = true;
+              spawnMinigunninMutationFireZone(b.ownerId,b.x,b.y,b.minigunninMutationZoneStage===0?'launch':'middle');
+          }
+      }
       if(b.isClusterMine&&now>=(b.clusterArmedAt||0)){
           const mineOwner=getEntityById(b.ownerId);
           const triggered=[player,...bots].some(target=>target&&target.hp>0&&target.id!==b.ownerId&&mineOwner&&!areAlliedEntities(mineOwner,target)&&Math.hypot(target.x-b.x,target.y-b.y)<=(b.clusterMineRadius||56)+(target.radius||14));
@@ -31071,6 +33492,10 @@
           }
       }
       if(b.life > b.maxLife){ 
+            if (b.minigunninMutationExplosive) {
+                triggerMinigunninMutationEndpoint(b);
+                bullets.splice(i,1); i--; continue;
+            }
             if (b.isBoomerNite) {
                 const radius=108*(getEntityStarChoice(getEntityById(b.ownerId))==='long'?1.18:1);
                 AOEDamage(b.x,b.y,radius,b.damage||1180,b.ownerId,false);
@@ -31291,11 +33716,9 @@
           }
       }
       
-      // remove bullets that leave player's cone range (if player fired them)
-      if(b.ownerId === player.id && b.ownerBrawler === 'outlit'){
-        const distFromPlayer = Math.hypot(b.x - player.x, b.y - player.y);
-        if(distFromPlayer > coneRange && !b.super){ bullets.splice(i,1); continue; }
-      }
+      // Outlit range is governed by each projectile's maxLife. The old global
+      // 140px cone limiter silently cut normal shots short and completely
+      // canceled Mutation's +100% range.
 
       // bullets hit cubes
       let hitCube = false;
@@ -31343,6 +33766,7 @@
                   if (ownerTeam !== dw.vaultTeam) {
                   const wallRawDmg = Math.max(0, b.damage * mult * (b.ownerBrawler === 'outlit' && b.super ? 1.15 : 1));
                       const wallDmg = Math.min(dw.hp, getVaultDamagePerHit(wallRawDmg, dw));
+                      recordFullOnDamageToTarget(dw, wallDmg);
                       dw.hp -= wallDmg;
                       registerBrickVaultWallDamage(b.ownerId, dw, wallDmg);
                       if (dw.hp <= 0) {
@@ -31359,6 +33783,7 @@
                       : (dw.isArenaWall && !b.super
                           ? (botDirectedWallBreak ? b.damage * mult * 0.45 : 0)
                           : b.damage * mult * (b.ownerBrawler === 'outlit' && b.super ? 1.15 : 1));
+                  recordFullOnDamageToTarget(dw,wallDamage);
                   dw.hp -= wallDamage;
                   if(dw.hp <= 0) {
                       if (dw.isArenaWall) {
@@ -31397,6 +33822,8 @@
           }
       }
       if (heaterBoxConsumed) continue;
+
+      if (hitCube && b.minigunninMutationExplosive) ensureMinigunninMutationImpactZone(b);
 
       if (hitCube && b.isRocketeerMain) {
           splitRocketeerRocket(b);
@@ -31529,6 +33956,8 @@
           const podOwner = getEntityById(pod.ownerId);
           if (projectileOwner && podOwner && areAlliedEntities(projectileOwner, podOwner)) continue;
           if(Math.hypot(b.x - pod.x, b.y - pod.y) < pod.radius + 4){
+              if (b.minigunninMutationExplosive) ensureMinigunninMutationImpactZone(b);
+              recordFullOnDamageToTarget(pod,b.damage);
               pod.hp -= b.damage;
               if(!b.super && !b.isSuperDash){
                   const chargeOwner=b.ownerId===player.id?player:bots.find(bt=>bt.id===b.ownerId);
@@ -31567,6 +33996,7 @@
 
           let damageToScrew = b.damage;
           if (ownerEntity) damageToScrew *= (1 + ((ownerEntity.powerCubes || 0) * 0.1));
+          recordFullOnDamageToTarget(screw,damageToScrew);
           screw.hp -= damageToScrew;
           explosions.push({ x: screw.x, y: screw.y, radius: 18, life: 0, maxLife: 0.12, color: 'rgba(255, 203, 112, 0.55)' });
 
@@ -31838,6 +34268,7 @@
                r.hitIds[player.id] = true;
                hitAnyone = true;
                checkHit(player, {damage: r.damage, ownerBrawler: r.sourceBullet.ownerBrawler, ownerId: r.ownerId, pierce: true}, -1);
+               if(r.sourceBullet?.echoInstinctVisual)explosions.push({x:player.x,y:player.y,radius:38,life:0,maxLife:.22,color:'rgba(98,239,136,.7)',fxKind:'echoInstinctHit'});
            }
        }
        // check collision against bots
@@ -31848,6 +34279,7 @@
                    r.hitIds[bot.id] = true;
                    hitAnyone = true;
                    checkHit(bot, {damage: r.damage, ownerBrawler: r.sourceBullet.ownerBrawler, ownerId: r.ownerId, pierce: true}, -1);
+                   if(r.sourceBullet?.echoInstinctVisual)explosions.push({x:bot.x,y:bot.y,radius:38,life:0,maxLife:.22,color:'rgba(98,239,136,.7)',fxKind:'echoInstinctHit'});
                }
            }
        }
@@ -32210,7 +34642,7 @@
     // bots logic (movement & shooting)
     
     // Player Reload logic
-    if(player.hp > 0 && ammo < maxAmmo){
+    if(player.hp > 0 && ammo < maxAmmo && !isBeastyBeastActive(player, now)){
        let currentReloadTime = getReloadTime(selectedBrawler) * ((selectedBrawler === 'decayer' && now < player.reloadBuffUntil) ? 0.5 : 1);
        if (isArenaForgeMode) currentReloadTime *= player.arenaForgeReloadMult || 1;
        if(selectedBrawler==='chickpig'&&selectedStar==='long'&&now<(player.chickpigChickenUntil||0))currentReloadTime*=.85;
@@ -32281,6 +34713,9 @@
                 }
                 const poisonHpDamage = applyShieldDamage(e, poisonDmg);
                 e.hp -= poisonHpDamage;
+                const poisonSourceId=e.evilDoctorPoisonOwnerId||e.poisonOwnerId;
+                const poisonSource=poisonSourceId===player.id?player:bots.find(bot=>bot.id===poisonSourceId);
+                recordCoreBreachCombatDamage(poisonSource,e,poisonHpDamage);
                 e.poisonTickAt = now + (e.evilDoctorPoisonTagged ? 700 : 1000);
                 if (typeof e.poisonTicksLeft === 'number') {
                     e.poisonTicksLeft -= 1;
@@ -32556,12 +34991,16 @@
           while((t.cheseySuperTickAt || 0) <= now) {
              for(const o of aliveBots) {
                  if(o.id !== t.id && Math.hypot(o.x - t.x, o.y - t.y) <= 34) {
-                     o.hp -= 250 * tMult;
+                     const cheeseDamage=250*tMult;
+                     recordFullOnDamageToTarget(o,cheeseDamage);
+                     o.hp -= cheeseDamage;
                      o.slowUntil = Math.max(o.slowUntil || 0, now + 300);
                  }
              }
              if(player.hp > 0 && Math.hypot(player.x - t.x, player.y - t.y) <= 34) {
-                 player.hp -= 250 * tMult;
+                 const cheeseDamage=250*tMult;
+                 recordFullOnDamageToTarget(player,cheeseDamage);
+                 player.hp -= cheeseDamage;
              }
              if(t.selectedStar === 'slow') {
                  spawnCheeseField(t.x, t.y, 50, 2000, 0.55, t.id, true);
@@ -32584,6 +35023,11 @@
       let bestScore = 999999;
       const nowTarget = performance.now();
       const botAi = getBotModeAiContext(t, nowTarget);
+      const botTargetScanDue = nowTarget >= (t.nextTargetScanAt || 0);
+      if (botTargetScanDue) {
+          const stagger = Math.abs(Number(t.id) || 0) % 70;
+          t.nextTargetScanAt = nowTarget + (LOW_POWER_DEVICE || aliveBots.length > 24 ? 250 : 140) + stagger;
+      }
 
       if (isSoloTdMode && t.team === 'enemy') {
           let bestTdTarget = null;
@@ -32622,7 +35066,7 @@
         }
       }
 
-            if(player.hp > 0 && t.ownerId !== player.id && !(t.team && player.team && t.team === player.team) && canDetectThroughBush(t, player)){
+            if(botTargetScanDue && player.hp > 0 && t.ownerId !== player.id && !(t.team && player.team && t.team === player.team) && canDetectThroughBush(t, player)){
           const d = Math.hypot(player.x - t.x, player.y - t.y);
           const score = getBotEnemyScore(t, player, botAi, nowTarget);
           if(score < bestScore){
@@ -32630,11 +35074,13 @@
             bestScore = score;
           }
       }
-      for(const o of aliveBots){
-          if(o.id === t.id || o.id === t.ownerId || (t.team && o.team && t.team === o.team)) continue;
-                    if (!canDetectThroughBush(t, o)) continue;
-          const score = getBotEnemyScore(t, o, botAi, nowTarget);
-          if(score < bestScore){ bestScore = score; target = o; }
+      if (botTargetScanDue) {
+          for(const o of aliveBots){
+              if(o.id === t.id || o.id === t.ownerId || (t.team && o.team && t.team === o.team)) continue;
+                        if (!canDetectThroughBush(t, o)) continue;
+              const score = getBotEnemyScore(t, o, botAi, nowTarget);
+              if(score < bestScore){ bestScore = score; target = o; }
+          }
       }
       
       const shouldFarmObjectives = !t.isBoss && !t.isPet && !isDamageFillerMode && !isMirrorMode && (isConstructionMode || isBrickVaultMode || (!isDuoShowdown && !isKnockDonateMode && !isTrioShowdownMode && !t.isTeammate));
@@ -32975,6 +35421,7 @@
           activeBotSpeed *= getTerrainMoveMultiplier(t);
           if (nowTarget < (t.chickpigChickenUntil||0)) activeBotSpeed *= t.chickpigChickenSpeedMult||1.4;
           if ((t.brawler === 'beast' || isEntityEmpoweredBeast(t, false)) && t.beastModeActive) activeBotSpeed *= (t.beastMoveMult || (t.beastHyper ? 1.35 : 1.25));
+          if (t.brawler === 'beast' && isBeastyBeastActive(t, nowTarget)) activeBotSpeed *= 1.40;
 
           // Spacetime Tether speed boost (+30%) inside friendly Relativity Zone
           let botInFriendlyDome = false;
@@ -33220,8 +35667,8 @@
         const teamAlive = (player.hp > 0) || !!(teammate && teammate.hp > 0);
         const hostileTeams = new Set(aliveBots.filter(b => !b.isTeammate && !areAlliedEntities(player, b)).map((b) => b.team || `enemy_${b.id}`));
         aliveCount = hostileTeams.size + (teamAlive ? 1 : 0);
-        if (!isBossFight && !isSoloTrial && !teamAlive) gameOver = true;
-        if (!isBossFight && !isSoloTrial && hostileTeams.size === 0) gameOver = true;
+        if (!isCoreBreachIntroMode && !isBossFight && !isSoloTrial && !teamAlive) gameOver = true;
+        if (!isCoreBreachIntroMode && !isBossFight && !isSoloTrial && hostileTeams.size === 0) gameOver = true;
     } else if (isTrioShowdownMode) {
         const teamAlive = getTeamLivingEntities('player').length > 0;
         const hostileTeams = new Set();
@@ -33230,8 +35677,8 @@
             hostileTeams.add(b.team || 'enemy');
         }
         aliveCount = hostileTeams.size + (teamAlive ? 1 : 0);
-        if (!isBossFight && !isSoloTrial && !teamAlive) gameOver = true;
-        if (!isBossFight && !isSoloTrial && hostileTeams.size === 0) {
+        if (!isCoreBreachIntroMode && !isBossFight && !isSoloTrial && !teamAlive) gameOver = true;
+        if (!isCoreBreachIntroMode && !isBossFight && !isSoloTrial && hostileTeams.size === 0) {
             objectiveWon = true;
             gameOver = true;
         }
@@ -33241,7 +35688,7 @@
         aliveCount = hostileAlive + (teamAlive ? 1 : 0);
     } else {
         aliveCount = aliveBots.length + (player.hp > 0 ? 1 : 0);
-        if (!isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isBossFight && !isSoloTrial && (player.hp <= 0 || aliveBots.length === 0)) {
+        if (!isCoreBreachIntroMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isBossFight && !isSoloTrial && (player.hp <= 0 || aliveBots.length === 0)) {
             gameOver = true;
         }
     }
@@ -33331,9 +35778,96 @@
       ctx.arc(entity.x, entity.y, entity.radius + 18, -spin, -spin + Math.PI * 2);
       ctx.stroke(); ctx.setLineDash([]);
     }
+    const fighterId=isPlayer?selectedBrawler:entity.brawler;
+    if(fighterId==='echo'){
+      ctx.save();
+      const orbit=now/620;
+      ctx.strokeStyle='rgba(80,210,255,.58)';ctx.lineWidth=2;
+      for(let n=0;n<3;n++){
+        const side=n%2===0?1:-1,base=orbit+n*2.1;
+        ctx.beginPath();ctx.arc(entity.x+Math.cos(base)*5,entity.y+Math.sin(base)*5,entity.radius+8+n*4,base-.42*side,base+.42*side);ctx.stroke();
+      }
+      ctx.restore();
+      if(isSpecialAbilityAvailableForEntity(entity,'echo'))ensureEchoInstinctState(entity,now);
+      if(isSpecialAbilityAvailableForEntity(entity,'echo')&&entity.echoInstinctReady){
+        ctx.save();const pulse=.5+Math.sin(now/120)*.5;
+        ctx.strokeStyle=`rgba(98,239,136,${.64+pulse*.25})`;ctx.lineWidth=3;ctx.setLineDash([7,5]);ctx.lineDashOffset=-now/35;
+        ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+25+pulse*5,0,Math.PI*2);ctx.stroke();
+        ctx.strokeStyle=`rgba(110,210,255,${.5+pulse*.25})`;ctx.lineWidth=2;ctx.setLineDash([]);
+        ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+17-pulse*3,0,Math.PI*2);ctx.stroke();ctx.restore();
+      }
+    }
+    if(fighterId==='outlit'&&isSpecialAbilityAvailableForEntity(entity,'outlit')&&(entity.outlitMutationCharges||0)>0){
+      ctx.save();const pulse=.5+Math.sin(now/105)*.5;ctx.strokeStyle=`rgba(255,55,75,${.65+pulse*.28})`;ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+19+pulse*4,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+    if(fighterId==='minigunnin'&&isSpecialAbilityAvailableForEntity(entity,'minigunnin')){
+      ensureMinigunninMutationState(entity);const incendiary=(entity.minigunninMutationExplosiveRemaining||0)>0;
+      if(incendiary){ctx.save();ctx.strokeStyle='rgba(255,75,85,.88)';ctx.lineWidth=3;ctx.setLineDash([5,4]);ctx.lineDashOffset=-now/28;ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+16,0,Math.PI*2);ctx.stroke();ctx.restore();}
+    }
+    if(fighterId==='money_and_tax'&&isSpecialAbilityAvailableForEntity(entity,'money_and_tax')){
+      ensureMoneyTaxMutationState(entity);
+      if((entity.moneyTaxMutationEmpoweredRemaining||0)>0){ctx.save();const pulse=.5+Math.sin(now/115)*.5;ctx.strokeStyle=`rgba(255,75,85,${.65+pulse*.28})`;ctx.lineWidth=3;ctx.setLineDash([6,4]);ctx.lineDashOffset=-now/30;ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+18+pulse*4,0,Math.PI*2);ctx.stroke();ctx.restore();}
+    }
+    if(fighterId==='classy'&&now<(entity.classySignatureUntil||0)){
+      ctx.save();ctx.strokeStyle='rgba(255,211,79,.9)';ctx.lineWidth=3;ctx.setLineDash([9,5]);ctx.lineDashOffset=-now/32;ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+17,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+    if(fighterId==='beast'&&isBeastyBeastActive(entity,now)){
+      ctx.save();const pulse=.5+Math.sin(now/70)*.5;ctx.strokeStyle=`rgba(255,211,79,${.72+pulse*.25})`;ctx.lineWidth=4;ctx.setLineDash([10,4]);ctx.lineDashOffset=-now/22;ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+20+pulse*5,0,Math.PI*2);ctx.stroke();ctx.strokeStyle='rgba(255,91,60,.7)';ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+13-pulse*2,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+    if(fighterId==='splitter'&&isSpecialAbilityAvailableForEntity(entity,'splitter')){
+      const instinct=ensureSplitterInstinctState(entity,now);
+      if(instinct?.ready){ctx.save();const pulse=.5+Math.sin(now/105)*.5;ctx.strokeStyle=`rgba(98,239,136,${.66+pulse*.25})`;ctx.lineWidth=3;ctx.setLineDash([4,5]);ctx.lineDashOffset=-now/25;ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+18+pulse*4,0,Math.PI*2);ctx.stroke();ctx.restore();}
+    }
   }
 
   function getPlayerMechanicHudState(now = performance.now()) {
+      const specialDef = getSpecialAbilityDef(selectedBrawler);
+      if (specialDef && isSpecialAbilityAvailableForEntity(player, selectedBrawler)) {
+          if (selectedBrawler === 'outlit') {
+              const charges = Math.max(0, Math.floor(player.outlitMutationCharges || 0));
+              const count = Math.max(0, Math.min(9, Math.floor(player.outlitMutationShotCounter || 0)));
+              return { label: charges > 0 ? `MUTATION - ${charges} OVERCHARGED` : `MUTATION - ${count}/9`, value: charges > 0 ? 9 : count, max: 9, color: '#ff4b55' };
+          }
+          if (selectedBrawler === 'echo') {
+              ensureEchoInstinctState(player, now);
+              const ready = !!player.echoInstinctReady;
+              const charge = ready ? 8000 : clamp(now - (player.echoInstinctStartedAt || now), 0, 8000);
+              return { label: ready ? 'INSTINCT - READY' : `INSTINCT - ${(charge / 1000).toFixed(1)}/8s`, value: charge, max: 8000, color: '#62ef88' };
+          }
+          if (selectedBrawler === 'bouncin_balls') {
+              const state = getBouncinSignatureState(player);
+              const cooldownValue=state.cooldownLeft?BOUNCIN_SIGNATURE_COOLDOWN_MS-state.cooldownLeft:(state.ready?BOUNCIN_SIGNATURE_COOLDOWN_MS:0);
+              return { label: `SIGNATURE (R) - ${state.label}`, value: cooldownValue, max: BOUNCIN_SIGNATURE_COOLDOWN_MS, color: '#ffd34f' };
+          }
+          if (selectedBrawler === 'minigunnin') {
+              ensureMinigunninMutationState(player);
+              const rounds=Math.max(0,Math.floor(player.minigunninMutationExplosiveRemaining||0));
+              const count=Math.max(0,Math.min(MINIGUNNIN_MUTATION_TRIGGER_BULLETS,Math.floor(player.minigunninMutationBulletCount||0)));
+              return {label:rounds>0?`MUTATION - ${rounds} INCENDIARY`:`MUTATION - ${count}/${MINIGUNNIN_MUTATION_TRIGGER_BULLETS}`,value:rounds>0?rounds:count,max:rounds>0?MINIGUNNIN_MUTATION_INCENDIARY_ROUNDS:MINIGUNNIN_MUTATION_TRIGGER_BULLETS,color:'#ff4b55'};
+          }
+          if (selectedBrawler === 'money_and_tax') {
+              ensureMoneyTaxMutationState(player);
+              const tax=(player.moneyAndTaxMode||'money')==='tax';
+              const volleys=Math.max(0,Math.floor(player.moneyTaxMutationEmpoweredRemaining||0));
+              const count=Math.max(0,Math.min(MONEY_TAX_MUTATION_TRIGGER_ATTACKS,Math.floor(player.moneyTaxMutationAttackCount||0)));
+              const poweredLabel=tax?'RETURN AUDITS':'TAKEOVER VOLLEYS';
+              return {label:volleys>0?`MUTATION - ${volleys} ${poweredLabel}`:`MUTATION - ${count}/${MONEY_TAX_MUTATION_TRIGGER_ATTACKS}`,value:volleys>0?volleys:count,max:volleys>0?MONEY_TAX_MUTATION_POWERED_ATTACKS:MONEY_TAX_MUTATION_TRIGGER_ATTACKS,color:'#ff4b55'};
+          }
+          if (selectedBrawler === 'classy') {
+              const state=getClassySignatureState(player,now);
+              return {label:`SIGNATURE (R) - ${state.label}`,value:state.remaining?6000-state.remaining:(state.ready?6000:0),max:6000,color:'#ffd34f'};
+          }
+          if (selectedBrawler === 'beast') {
+              const state = getBeastSignatureState(player, now);
+              return {label:`SIGNATURE (R) - ${state.label}`,value:state.active?state.remaining:(state.ready?5000:0),max:5000,color:'#ffd34f'};
+          }
+          if (selectedBrawler === 'splitter') {
+              const state=ensureSplitterInstinctState(player,now);
+              const charged=state?.ready?SPLITTER_INSTINCT_COOLDOWN_MS:SPLITTER_INSTINCT_COOLDOWN_MS-(state?.remaining||0);
+              return {label:state?.ready?'INSTINCT - 1 > 5 > 2 READY':`INSTINCT - ${(Math.max(0,state?.remaining||0)/1000).toFixed(1)}s`,value:charged,max:SPLITTER_INSTINCT_COOLDOWN_MS,color:'#62ef88'};
+          }
+      }
       if (selectedBrawler === 'jetpack') {
           const flight=player.jetpackFlight;
           if(flight)return {label:flight.superFlight?'BOMBING RUN  •  FLIGHT LOCKED':'CRASH LANDING  •  AIRBORNE',value:Math.max(0,flight.duration-(now-flight.startAt)),max:flight.duration,color:flight.hyper?'#d96cff':'#5fd9ff'};
@@ -33857,6 +36391,17 @@
     ctx.save();
     ctx.translate(-camX, -camY);
 
+    // Rendering is the dominant cost in crowded matches. Keep simulation and
+    // collision intact, but skip world art that cannot be seen. During effect
+    // storms, decorative particles are sampled at 1/4 density; telegraphs,
+    // projectiles, entities, and other gameplay-readable visuals remain.
+    const visualPressure = LOW_POWER_DEVICE || bullets.length > 520 || explosions.length > 105 || bots.length > 32;
+    const decorativeFxStride = visualPressure ? 4 : 1;
+    const simplifyExplosionFx = explosions.length > (LOW_POWER_DEVICE ? 28 : 80);
+    const isWorldVisualVisible = (x, y, margin = 120) => Number.isFinite(x) && Number.isFinite(y)
+        && x >= camX - margin && x <= camX + innerWidth + margin
+        && y >= camY - margin && y <= camY + innerHeight + margin;
+
     // shared angle variable for aim helpers
     let ang = 0;
 
@@ -33867,19 +36412,28 @@
     ctx.fillRect(-2000,-2000,WORLD_W+4000, WORLD_H+4000); // exterior
     ctx.fillStyle = envColors.bgInner;
     ctx.fillRect(0,0,WORLD_W,WORLD_H); // arena
+    renderCoreBreachIntro();
+    renderCorruptedShowdown();
+    renderLavaBossEvent();
     
-    // Optional grid to show movement
+    // Draw only the visible section of the grid. The old full-world paths
+    // became very expensive on the larger mode maps.
     ctx.strokeStyle = envColors.grid;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    for(let x=0; x<=WORLD_W; x+=100){ ctx.moveTo(x,0); ctx.lineTo(x,WORLD_H); }
-    for(let y=0; y<=WORLD_H; y+=100){ ctx.moveTo(0,y); ctx.lineTo(WORLD_W,y); }
+    const gridStartX = Math.max(0, Math.floor((camX - 100) / 100) * 100);
+    const gridEndX = Math.min(WORLD_W, camX + innerWidth + 100);
+    const gridStartY = Math.max(0, Math.floor((camY - 100) / 100) * 100);
+    const gridEndY = Math.min(WORLD_H, camY + innerHeight + 100);
+    for(let x=gridStartX; x<=gridEndX; x+=100){ ctx.moveTo(x,gridStartY); ctx.lineTo(x,gridEndY); }
+    for(let y=gridStartY; y<=gridEndY; y+=100){ ctx.moveTo(gridStartX,y); ctx.lineTo(gridEndX,y); }
     ctx.stroke();
 
     ctx.strokeStyle = envColors.wallBorder; ctx.lineWidth = 10;
     ctx.strokeRect(0,0,WORLD_W,WORLD_H);
 
     for (const zone of waterZones) {
+        if (!isWorldVisualVisible(zone.x + zone.w / 2, zone.y + zone.h / 2, Math.max(zone.w, zone.h) / 2 + 40)) continue;
         const grad = ctx.createLinearGradient(zone.x, zone.y, zone.x, zone.y + zone.h);
         grad.addColorStop(0, 'rgba(96, 194, 255, 0.34)');
         grad.addColorStop(1, 'rgba(44, 112, 194, 0.46)');
@@ -33891,6 +36445,7 @@
     }
 
     for (const zone of bushZones) {
+        if (!isWorldVisualVisible(zone.x + zone.w / 2, zone.y + zone.h / 2, Math.max(zone.w, zone.h) / 2 + 40)) continue;
         ctx.fillStyle = 'rgba(46, 131, 66, 0.35)';
         ctx.fillRect(zone.x, zone.y, zone.w, zone.h);
         ctx.strokeStyle = 'rgba(135, 227, 158, 0.38)';
@@ -33949,6 +36504,7 @@
     const aliveBots = bots.filter(t=>t.hp>0);
     // bots
     for(const t of aliveBots){
+            if (!isWorldVisualVisible(t.x, t.y, Math.max(150, Number(t.radius) || 0) + 90)) continue;
             const liftAmt = (t.hyperoriginLiftUntil && performance.now() < t.hyperoriginLiftUntil) ? (18 + Math.sin(performance.now() / 70) * 3) : 0;
             const drawY = t.y - (t.z || 0) - liftAmt;
       const isInvis = t.invisUntil && performance.now() < t.invisUntil;
@@ -34462,8 +37018,8 @@
       ctx.lineWidth = 2;
       ctx.font = 'bold 8px sans-serif';
       ctx.textAlign = 'center';
-      ctx.strokeText(Math.ceil(t.hp), t.x, hpY + 5.5);
-      ctx.fillText(Math.ceil(t.hp), t.x, hpY + 5.5);
+      ctx.strokeText(getSmoothDisplayedHp(t), t.x, hpY + 5.5);
+      ctx.fillText(getSmoothDisplayedHp(t), t.x, hpY + 5.5);
       ctx.textAlign = 'left';
     drawEntityStatusChips(t, t.x, hpY - (t.shield > 0 ? 42 : 25), false);
       if ((t.xrayRevealedUntil || 0) > performance.now()) {
@@ -34759,8 +37315,8 @@
       ctx.lineWidth = 2.5;
       ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
-      ctx.strokeText(Math.ceil(player.hp), player.x, drawY - 35);
-      ctx.fillText(Math.ceil(player.hp), player.x, drawY - 35);
+      ctx.strokeText(getSmoothDisplayedHp(player), player.x, drawY - 35);
+      ctx.fillText(getSmoothDisplayedHp(player), player.x, drawY - 35);
     ctx.textAlign = 'left';
     
     // Floor indicator with level badge and ability icons
@@ -35130,10 +37686,34 @@
           if(hyperMain){for(const lane of [-24,24]){ctx.strokeStyle='rgba(226,118,255,.72)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(player.x+Math.cos(perp)*lane,player.y+Math.sin(perp)*lane);ctx.lineTo(endX+Math.cos(perp)*lane,endY+Math.sin(perp)*lane);ctx.stroke();}}
           ctx.fillStyle='rgba(255,95,24,.15)';ctx.strokeStyle=hyperMain?'#df79ff':'#ffad4c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(endX,endY,hyperMain?67:48,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
       }
+      if (selectedBrawler === 'darkener') {
+          ctx.save();
+          if(aimingSuper){
+              const distance=Math.min(650,Math.max(70,Math.hypot(dx,dy)||70)),tx=player.x+Math.cos(ang)*distance,ty=player.y+Math.sin(ang)*distance;
+              ctx.strokeStyle=isHypercharged?'#d66cff':'#8860bd';ctx.lineWidth=3;ctx.setLineDash([12,8]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(tx,ty);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(23,6,44,.22)';ctx.lineWidth=isHypercharged?7:4;ctx.beginPath();for(let side=0;side<6;side++){const a=-Math.PI/2+side*Math.PI/3,x=tx+Math.cos(a)*DARKAGON_RADIUS,y=ty+Math.sin(a)*DARKAGON_RADIUS;side?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.closePath();ctx.fill();ctx.stroke();
+          }else{
+              const hyper=!!isHypercharged,dense=!!player.darkenerDenseFogArmed,rangeBonus=isSlopSushiMode?getEntitySlopEffectTotal(player,'darkenerCloudRangePct'):0,widthBonus=isSlopSushiMode?getEntitySlopEffectTotal(player,'darkenerCloudWidthPct'):0;
+              const range=DARKENER_CLOUD_RANGE*(hyper?1.5:1)*(1+rangeBonus),width=134.4*(hyper?1.5:1)*(dense?1.35:1)*(1+widthBonus),startHalf=34,endHalf=34+width,px=-Math.sin(ang),py=Math.cos(ang),ex=player.x+Math.cos(ang)*(range+35),ey=player.y+Math.sin(ang)*(range+35);
+              ctx.fillStyle='rgba(31,8,57,.16)';ctx.strokeStyle=hyper?'rgba(211,102,255,.95)':'rgba(139,94,190,.9)';ctx.lineWidth=2.5;ctx.setLineDash([11,7]);ctx.beginPath();ctx.moveTo(player.x+px*startHalf,player.y+py*startHalf);ctx.lineTo(ex+px*endHalf,ey+py*endHalf);ctx.quadraticCurveTo(ex+Math.cos(ang)*28,ey+Math.sin(ang)*28,ex-px*endHalf,ey-py*endHalf);ctx.lineTo(player.x-px*startHalf,player.y-py*startHalf);ctx.closePath();ctx.fill();ctx.stroke();ctx.setLineDash([]);
+              ctx.globalAlpha=.55;for(const stepPct of [.33,.66,1]){const cx=player.x+Math.cos(ang)*range*stepPct,cy=player.y+Math.sin(ang)*range*stepPct,half=34+width*stepPct;ctx.beginPath();ctx.moveTo(cx+px*half,cy+py*half);ctx.quadraticCurveTo(cx+Math.cos(ang)*18,cy+Math.sin(ang)*18,cx-px*half,cy-py*half);ctx.stroke();}ctx.globalAlpha=1;
+          }
+          ctx.restore();
+      }
       if (selectedBrawler === 'ghoul') {
           ctx.save();
           if(aimingSuper){ctx.fillStyle='rgba(91,36,137,.16)';ctx.strokeStyle=isHypercharged?'#db73ff':'#8ff9ef';ctx.lineWidth=4;ctx.beginPath();ctx.arc(player.x,player.y,205,0,Math.PI*2);ctx.fill();ctx.stroke();}
           else{const phantom=!!player.ghoulPhantomReachArmed,range=GHOUL_HAUNT_RANGE*(phantom?1.25:1),distance=Math.min(range,Math.max(55,Math.hypot(dx,dy)||55)),tx=player.x+Math.cos(ang)*distance,ty=player.y+Math.sin(ang)*distance,perp=ang+Math.PI/2,count=performance.now()<(player.ghoulSuperUntil||0)?3:2,offsets=count===3?[-48,0,48]:[-27,27],hyper=getPlayerHyperMainActive('ghoul');ctx.strokeStyle=hyper?'rgba(198,92,255,.9)':'rgba(117,239,228,.82)';ctx.lineWidth=3;ctx.setLineDash([10,7]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(tx,ty);ctx.stroke();ctx.setLineDash([]);for(const off of offsets){ctx.fillStyle=hyper?'rgba(107,31,169,.22)':'rgba(98,225,215,.18)';ctx.strokeStyle=hyper?'#d477ff':'#8ff9ef';ctx.lineWidth=2;ctx.beginPath();ctx.arc(tx+Math.cos(perp)*off,ty+Math.sin(perp)*off,46,0,Math.PI*2);ctx.fill();ctx.stroke();}}
+          ctx.restore();
+      }
+      if (selectedBrawler === 'awakenator') {
+          ctx.save();
+          if (aimingSuper) {
+              const eligible=getAwakenatorSuperTargets(player),limit=([player,...bots].filter(e=>e?.hp>0&&areAlliedEntities(player,e)).length>=3)?2:1;
+              ctx.strokeStyle=isHypercharged?'#dc78ff':'#69f7ee';ctx.fillStyle=isHypercharged?'rgba(112,25,147,.14)':'rgba(34,224,212,.10)';ctx.lineWidth=4;ctx.setLineDash([10,7]);ctx.beginPath();ctx.arc(player.x,player.y,560,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);
+              for(const target of eligible.slice(0,limit)){const pulse=target.radius+15+Math.sin(performance.now()/105)*4;ctx.strokeStyle=isHypercharged?'#e9a0ff':'#ff6b70';ctx.lineWidth=4;ctx.beginPath();ctx.arc(target.x,target.y,pulse,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#f5ffff';ctx.font='900 14px sans-serif';ctx.textAlign='center';ctx.fillText('MEMORY',target.x,target.y-target.radius-24);}
+          } else {
+              drawStandardAimCone(player.x,player.y,ang,790,.055,{fill:'rgba(74,232,224,.10)',stroke:'rgba(103,247,238,.92)',center:'rgba(255,112,118,.82)'});
+          }
           ctx.restore();
       }
       if (selectedBrawler === 'jacktrade') {
@@ -35142,6 +37722,13 @@
               const distance=Math.min(650,Math.max(70,Math.hypot(dx,dy)||70)),tx=player.x+Math.cos(ang)*distance,ty=player.y+Math.sin(ang)*distance,hyper=!!isHypercharged;
               ctx.lineCap='round';
               if(hyper){
+                  const royalPreview=isSlopSushiMode&&getEntitySlopEffectTotal(player,'jackTradeRoyalFlush')>0;
+                  if(royalPreview){
+                      ctx.strokeStyle='rgba(244,145,255,.95)';ctx.lineWidth=4;ctx.setLineDash([14,7]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+tx)/2,(player.y+ty)/2-105,tx,ty);ctx.stroke();ctx.setLineDash([]);
+                      ctx.fillStyle='rgba(190,48,220,.16)';ctx.strokeStyle='#ff8bea';ctx.shadowColor='#d348ff';ctx.shadowBlur=18;ctx.lineWidth=4;ctx.beginPath();for(let point=0;point<5;point++){const a=-Math.PI/2+point*Math.PI*2/5,x=tx+Math.cos(a)*125,y=ty+Math.sin(a)*125;point?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.closePath();ctx.fill();ctx.stroke();
+                      for(let point=0;point<5;point++){const a=-Math.PI/2+point*Math.PI*2/5,x=tx+Math.cos(a)*125,y=ty+Math.sin(a)*125;ctx.fillStyle=point%2?'rgba(255,216,82,.25)':'rgba(223,81,255,.25)';ctx.strokeStyle=point%2?'#ffe075':'#f29aff';ctx.beginPath();ctx.arc(x,y,110,0,Math.PI*2);ctx.fill();ctx.stroke();}
+                      ctx.strokeStyle='#fff0a8';ctx.lineWidth=5;ctx.beginPath();ctx.arc(tx,ty,235,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#fff1ad';ctx.font='900 13px sans-serif';ctx.textAlign='center';ctx.fillText('ROYAL FLUSH',tx,ty-250);
+                  }else{
                   ctx.strokeStyle='rgba(235,143,255,.94)';ctx.lineWidth=4;ctx.setLineDash([13,8]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+tx)/2,(player.y+ty)/2-92,tx,ty);ctx.stroke();ctx.setLineDash([]);
                   // ALL IN previews every relevant footprint: demolition,
                   // growing ground field and the four traveling poison lanes.
@@ -35153,8 +37740,9 @@
                       ctx.strokeStyle='#f1b0ff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.stroke();
                   }
                   ctx.fillStyle='#ffd85c';ctx.strokeStyle='#fff2ad';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(tx-13,ty-17,26,34,5);ctx.fill();ctx.stroke();ctx.fillStyle='#6d2787';ctx.font='900 18px serif';ctx.textAlign='center';ctx.fillText('♦',tx,ty+6);
+                  }
               }else{
-                  const outcomes=prepareJackTradeOutcomes(player,player.jackTradeJackpotArmed?2:1);
+                  const outcomes=prepareJackTradeOutcomes(player,getJackTradePreparedOutcomeCount(player));
                   for(const outcome of outcomes){
                       if(outcome==='regeneration'||outcome==='rush'){
                           const regen=outcome==='regeneration',radius=regen?88:72;ctx.fillStyle=regen?'rgba(69,242,154,.15)':'rgba(255,205,64,.15)';ctx.strokeStyle=regen?'#72ffc0':'#ffd85c';ctx.lineWidth=4;ctx.setLineDash(regen?[8,6]:[15,6]);ctx.beginPath();ctx.arc(player.x,player.y,radius,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);for(let ray=0;ray<(regen?4:8);ray++){const a=ray*Math.PI*2/(regen?4:8),inner=radius*.45;ctx.beginPath();ctx.moveTo(player.x+Math.cos(a)*inner,player.y+Math.sin(a)*inner);ctx.lineTo(player.x+Math.cos(a)*radius,player.y+Math.sin(a)*radius);ctx.stroke();}
@@ -35270,7 +37858,20 @@
       if (aimingSuper && superCharge >= 100) {
         ctx.save();
         ctx.lineCap = 'round';
-                if(selectedBrawler==='rocketeer'){
+                if(selectedBrawler==='paradox'){
+                        const target=getParadoxSuperTarget(player,wm.x,wm.y);
+                        const radius=isHypercharged?PARADOX_HYPER_ZONE_RADIUS:PARADOX_NORMAL_ZONE_RADIUS;
+                        const pulse=1+Math.sin(performance.now()/155)*.035;
+                        ctx.strokeStyle=isHypercharged?'#dc78ff':'#69f5ff';ctx.lineWidth=4;ctx.setLineDash([13,8]);
+                        ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(target.x,target.y);ctx.stroke();ctx.setLineDash([]);
+                        ctx.fillStyle=isHypercharged?'rgba(139,42,199,.17)':'rgba(38,220,235,.14)';
+                        ctx.beginPath();ctx.arc(target.x,target.y,radius*pulse,0,Math.PI*2);ctx.fill();
+                        ctx.strokeStyle=isHypercharged?'rgba(240,183,255,.94)':'rgba(195,255,255,.94)';ctx.lineWidth=5;
+                        ctx.beginPath();ctx.arc(target.x,target.y,radius,0,Math.PI*2);ctx.stroke();
+                        ctx.strokeStyle=isHypercharged?'rgba(180,86,240,.72)':'rgba(70,224,242,.68)';ctx.lineWidth=2;ctx.setLineDash([6,11]);
+                        ctx.beginPath();ctx.arc(target.x,target.y,radius*.7,-performance.now()/500,Math.PI*2-performance.now()/500);ctx.stroke();ctx.setLineDash([]);
+                        if(isHypercharged){ctx.strokeStyle='rgba(220,110,255,.75)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(player.x,player.y,PARADOX_HYPER_ZONE_RADIUS,0,Math.PI*2);ctx.stroke();}
+                } else if(selectedBrawler==='rocketeer'){
                         const dist=Math.min(760,Math.hypot(dx,dy)),cx=player.x+Math.cos(ang)*dist,cy=player.y+Math.sin(ang)*dist;
                         ctx.strokeStyle=isHypercharged?'#e17cff':'#ffad4c';ctx.lineWidth=4;ctx.setLineDash([12,7]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(cx,cy);ctx.stroke();ctx.setLineDash([]);
                         for(let n=0;n<3;n++){const a=-Math.PI/2+n*Math.PI*2/3,off=n===0?0:72,x=cx+Math.cos(a)*off,y=cy+Math.sin(a)*off;ctx.fillStyle=isHypercharged?'rgba(210,77,255,.17)':'rgba(255,88,24,.16)';ctx.beginPath();ctx.arc(x,y,112,0,Math.PI*2);ctx.fill();ctx.stroke();}
@@ -35438,19 +38039,45 @@
                 ctx.stroke();
             }
         } else if (selectedBrawler === 'splitter') {
-            const ringR = (isHypercharged ? 760 : 690) * 0.6 * (selectedStar === 'long' ? 1.2 : 1.0);
-            const pulse = 1 + Math.sin(performance.now() / 190) * 0.05;
-            ctx.fillStyle = isHypercharged ? 'rgba(255, 175, 96, 0.13)' : 'rgba(255, 209, 120, 0.12)';
+            const ringR = 760 * 0.6 * 0.42 * (selectedStar === 'long' ? 1.2 : 1.0);
+            const endpointX = player.x + Math.cos(ang) * ringR;
+            const endpointY = player.y + Math.sin(ang) * ringR;
+            const instinctReady = !!ensureSplitterInstinctState(player, performance.now())?.ready;
+            const fragmentReach = 150;
+            const fanSpan = isHypercharged ? 2.55 : 1.36;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = instinctReady ? 'rgba(98,239,136,.92)' : (isHypercharged ? 'rgba(225,122,255,.9)' : 'rgba(255,220,112,.88)');
+            ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.arc(player.x, player.y, ringR * pulse, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = isHypercharged ? 'rgba(255, 222, 182, 0.88)' : 'rgba(255, 232, 176, 0.82)';
-            ctx.lineWidth = 2.4;
-            ctx.setLineDash([10, 8]);
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, ringR, 0, Math.PI * 2);
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(endpointX, endpointY);
             ctx.stroke();
-            ctx.setLineDash([]);
+            for (let i = 0; i < 5; i++) {
+                const lane = (i / 4) - 0.5;
+                const fragmentAngle = ang + lane * fanSpan;
+                const fx = endpointX + Math.cos(fragmentAngle) * fragmentReach;
+                const fy = endpointY + Math.sin(fragmentAngle) * fragmentReach;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(endpointX, endpointY);
+                ctx.lineTo(fx, fy);
+                ctx.stroke();
+                if (instinctReady) {
+                    ctx.setLineDash([6, 6]);
+                    for (const pairOffset of [-0.119, 0.119]) {
+                        const pairAngle = fragmentAngle + pairOffset;
+                        ctx.beginPath();
+                        ctx.moveTo(fx, fy);
+                        ctx.lineTo(fx + Math.cos(pairAngle) * 125, fy + Math.sin(pairAngle) * 125);
+                        ctx.stroke();
+                    }
+                    ctx.setLineDash([]);
+                }
+            }
+            ctx.fillStyle = instinctReady ? '#62ef88' : (isHypercharged ? '#e67aff' : '#ffd166');
+            ctx.beginPath();
+            ctx.arc(endpointX, endpointY, 8, 0, Math.PI * 2);
+            ctx.fill();
         } else if (selectedBrawler === 'scuba_diver') {
             ensureScubaDiverState(player);
             const mode = player.scubaDiverMode || 'submarine';
@@ -36141,25 +38768,30 @@
                         ctx.stroke();
                         ctx.setLineDash([]);
                   } else if (selectedBrawler === 'splitter') {
-                        const range = 760 * 0.6 * (selectedStar === 'long' ? 1.2 : 1.0);
-                        drawStandardAimCone(player.x, player.y, ang, range, 0.12, {
-                            fill: isHypercharged ? 'rgba(255, 184, 113, 0.13)' : 'rgba(255, 216, 133, 0.11)',
-                            stroke: isHypercharged ? 'rgba(255, 229, 192, 0.9)' : 'rgba(255, 238, 196, 0.84)',
-                            center: 'rgba(255, 245, 220, 0.76)'
-                        });
-                        const reach = Math.min(range, Math.hypot(wm.x - player.x, wm.y - player.y));
-                        const tx = player.x + Math.cos(ang) * reach;
-                        const ty = player.y + Math.sin(ang) * reach;
-                        ctx.strokeStyle = isHypercharged ? 'rgba(255, 230, 198, 0.92)' : 'rgba(255, 239, 206, 0.84)';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.moveTo(player.x, player.y);
-                        ctx.lineTo(tx, ty);
-                        ctx.stroke();
-                        ctx.fillStyle = 'rgba(255, 214, 140, 0.75)';
-                        ctx.beginPath();
-                        ctx.arc(tx, ty, 9, 0, Math.PI * 2);
-                        ctx.fill();
+                        const initialRange = 860 * 0.6 * SPLITTER_SUPER_INITIAL_LIFE;
+                        const postSplitRange = 1180 * (selectedStar === 'long' ? 1.2 : 1.0);
+                        const directions = isHypercharged ? [ang, ang + Math.PI * 2 / 3, ang - Math.PI * 2 / 3] : [ang];
+                        for (const direction of directions) {
+                            const splitX = player.x + Math.cos(direction) * initialRange;
+                            const splitY = player.y + Math.sin(direction) * initialRange;
+                            ctx.strokeStyle = isHypercharged ? 'rgba(238,194,255,.96)' : 'rgba(190,247,255,.92)';
+                            ctx.lineWidth = 5;
+                            ctx.beginPath();
+                            ctx.moveTo(player.x, player.y);
+                            ctx.lineTo(splitX, splitY);
+                            ctx.stroke();
+                            drawStandardAimCone(splitX, splitY, direction, postSplitRange, 0.19, {
+                                fill: isHypercharged ? 'rgba(211,100,255,.1)' : 'rgba(87,220,255,.09)',
+                                stroke: isHypercharged ? 'rgba(238,194,255,.92)' : 'rgba(190,247,255,.86)',
+                                center: 'rgba(255,255,255,.78)'
+                            });
+                            const tx = splitX + Math.cos(direction) * postSplitRange;
+                            const ty = splitY + Math.sin(direction) * postSplitRange;
+                            ctx.fillStyle = isHypercharged ? '#e67aff' : '#66e5ff';
+                            ctx.beginPath();
+                            ctx.arc(tx, ty, 9, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
                   } else if (selectedBrawler === 'scuba_diver') {
                         ensureScubaDiverState(player);
                         const mode = player.scubaDiverMode || 'submarine';
@@ -36293,14 +38925,14 @@
                         }
           } else if (selectedBrawler === 'outlit') {
             const hyperMain=getPlayerHyperMainActive('outlit');
-            const starRange=selectedStar==='long'&&hasSelectedAttachie('star','long','outlit')?1.2:1;
-            const sushiRange=isSlopSushiMode?1+getSlopEffectTotal('sushiAttackRangePct'):1;
-            const range=285*(hyperMain?1.1:1)*starRange*sushiRange;
+            const mutationReady=isSpecialAbilityAvailableForEntity(player,'outlit')&&(player.outlitMutationCharges||0)>0;
+            const starRange=selectedStar==='long'&&hasSelectedAttachie('star','long','outlit')?1.15:1;
+            const range=285*(hyperMain?1.1:1)*starRange*(mutationReady?2:1);
             const halfSpread=baseSpread*.6*(hyperMain?.6:1)*(isSlopSushiMode?Math.max(1,getSlopEffectTotal('outlitSpreadMult')):1);
             drawStandardAimCone(player.x,player.y,ang,range,halfSpread,{
-              fill:hyperMain?'rgba(222,80,255,.14)':'rgba(255,190,70,.13)',
-              stroke:hyperMain?'rgba(238,155,255,.9)':'rgba(255,220,145,.86)',
-              center:'rgba(255,248,220,.78)'
+              fill:mutationReady?'rgba(255,55,75,.16)':(hyperMain?'rgba(222,80,255,.14)':'rgba(255,190,70,.13)'),
+              stroke:mutationReady?'rgba(255,92,105,.94)':(hyperMain?'rgba(238,155,255,.9)':'rgba(255,220,145,.86)'),
+              center:mutationReady?'rgba(255,210,214,.88)':'rgba(255,248,220,.78)'
             });
           } else if (selectedBrawler === 'echo') {
             const echoRange = 850 * 0.6 * 1.3;
@@ -36336,8 +38968,8 @@
                         });
             ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(wm.x, wm.y); ctx.stroke();
           } else if (selectedBrawler === 'minigunnin') {
-            const coneAngle = baseSpread * (isHypercharged ? 0.8 : 1.0); 
-            const range = 900 * 0.6 * 0.8;
+            const coneAngle = baseSpread * MINIGUNNIN_MAIN_CONE_MULT * (isHypercharged ? 0.8 : 1.0);
+            const range = 900 * 0.6 * 0.8 * MINIGUNNIN_MAIN_RANGE_MULT;
             ctx.fillStyle = isHypercharged ? 'rgba(230,0,255,0.1)' : 'rgba(160,220,255,0.06)';
             ctx.beginPath(); ctx.moveTo(player.x, player.y);
             ctx.arc(player.x, player.y, range, ang - coneAngle, ang + coneAngle);
@@ -36345,14 +38977,17 @@
             ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(wm.x, wm.y); ctx.stroke();
           } else if (selectedBrawler === 'money_and_tax') {
             if ((player.moneyAndTaxMode || 'money') === 'money') {
-                ctx.fillStyle = 'rgba(241, 196, 15, 0.15)';
+                ensureMoneyTaxMutationState(player);
+                const mutationReady=isSpecialAbilityAvailableForEntity(player,'money_and_tax')&&(player.moneyTaxMutationEmpoweredRemaining||0)>0;
+                const halfSpread=mutationReady?MONEY_TAX_BASE_SPREAD*2:MONEY_TAX_BASE_SPREAD;
+                ctx.fillStyle = mutationReady ? 'rgba(255, 75, 85, 0.17)' : 'rgba(241, 196, 15, 0.15)';
                 ctx.beginPath(); ctx.moveTo(player.x, player.y);
-                ctx.arc(player.x, player.y, 950 * 0.6 * 0.9, ang - 0.0875, ang + 0.0875); // Matches the 30% narrower cone
+                ctx.arc(player.x, player.y, 950 * 0.6 * 0.9, ang - halfSpread, ang + halfSpread);
                 ctx.closePath(); ctx.fill();
             } else {
                 ctx.fillStyle = 'rgba(39, 174, 96, 0.15)';
                 ctx.beginPath(); ctx.moveTo(player.x, player.y);
-                ctx.arc(player.x, player.y, 950 * 0.6 * 1.0, ang - 0.1, ang + 0.1); // Narrow parallel
+                ctx.arc(player.x, player.y, 950 * 0.6 * 1.0, ang - MONEY_TAX_TAX_SPREAD, ang + MONEY_TAX_TAX_SPREAD);
                 ctx.closePath(); ctx.fill();
                 ctx.strokeStyle = 'rgba(39, 174, 96, 0.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(player.x + Math.cos(ang)*950*0.6, player.y + Math.sin(ang)*950*0.6); ctx.stroke();
             }
@@ -36375,16 +39010,27 @@
             ctx.arc(player.x + Math.cos(ang) * hopeRange, player.y + Math.sin(ang) * hopeRange, 7, 0, Math.PI * 2);
             ctx.fill();
           } else if (selectedBrawler === 'bouncin_balls') {
-            // Trajectory raycaster for standard attack
-            const rangeMult = gadgetArmed ? 1.5 : 1.0;
-            const maxDist = 900 * 0.6 * rangeMult * (isHypercharged ? 1.2 : 1.0);
+            // Exact standard-attack geometry: mirror the real projectile's
+            // speed, lifetime, Hyper, transformation, G1 and Signature rules.
+            const g1Active=gadgetArmed&&selectedGadget==='g1';
+            const signatureCollector=!!player.bouncySignatureCollectorArmed&&g1Active&&(player.bouncySignatureFollowupBalls||0)<=0;
+            const transformed=player.bouncyBallsCrystalActive||player.bouncyBallsCrystalUntil>performance.now();
+            const sushiBounceRange=isSlopSushiMode?getEntitySlopEffectTotal(player,'bouncyRangePct'):0;
+            const speedMult=(isHypercharged?1.2:1)*(transformed?1.18:1);
+            const rangeMult=(g1Active?1.5:1)*(isHypercharged?1.2:1)*(transformed?1.35:1)*(1+sushiBounceRange);
+            const projectileSpeed=900*.6*speedMult;
+            const projectileLife=.88*rangeMult;
+            const baseTravel=projectileSpeed*projectileLife;
+            const signatureWallTravelGain=signatureCollector?baseTravel/1.5*.20:0;
+            const maxBounceTravel=transformed?1320:880;
+            const maxDist=Math.min(baseTravel,maxBounceTravel);
             let rx = player.x, ry = player.y;
             let vx = Math.cos(ang), vy = Math.sin(ang);
             let distLeft = maxDist;
             ctx.beginPath(); ctx.moveTo(rx, ry);
-            ctx.strokeStyle = 'rgba(0, 170, 255, 0.5)'; ctx.lineWidth = 4;
-            let bounces = 0; const step = 15;
-            while(distLeft > 0 && bounces < 3) {
+            ctx.strokeStyle = signatureCollector?'rgba(255,211,79,.82)':'rgba(0,170,255,.5)'; ctx.lineWidth = signatureCollector?5:4;
+            let bounces = 0; const step = 12;
+            while(distLeft > 0 && bounces < 6) {
                 let nextX = rx + vx * step; let nextY = ry + vy * step;
                 let hit = false; let refX = false, refY = false; let hitRect = null;
                 if (nextX < 0 || nextX > WORLD_W) { refX = true; hit = true; }
@@ -36403,7 +39049,11 @@
                         if (!refX && !refY) { refX = true; refY = true; }
                     }
                     if (refX) vx *= -1; if (refY) vy *= -1;
-                    bounces++; distLeft -= maxDist * 0.05; // -5% range on bounce visually
+                    bounces++;
+                    if(signatureCollector){
+                        distLeft+=signatureWallTravelGain;
+                        ctx.moveTo(rx,ry);ctx.arc(rx,ry,7,0,Math.PI*2);ctx.moveTo(rx,ry);
+                    }else distLeft-=baseTravel*.05;
                 } else {
                     rx = nextX; ry = nextY; distLeft -= step;
                 }
@@ -36436,6 +39086,18 @@
       ctx.fillStyle=grad;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.radius*pulse,0,Math.PI*2);ctx.fill();
       ctx.strokeStyle=zone.hyper?'rgba(229,103,255,.9)':'rgba(255,145,48,.85)';ctx.lineWidth=3;ctx.setLineDash([7,5]);ctx.stroke();ctx.setLineDash([]);ctx.restore();
     }
+    for(const zone of minigunninMutationFireZones){
+      const remaining=clamp((zone.until-performance.now())/1200,0,1);
+      const pulse=1+Math.sin(performance.now()/90)*.05;
+      ctx.save();
+      ctx.globalAlpha=.25+remaining*.28;
+      ctx.fillStyle='#ff3d25';
+      ctx.beginPath();ctx.arc(zone.x,zone.y,zone.radius*pulse,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=.75;
+      ctx.strokeStyle='#ff9a42';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(zone.x,zone.y,zone.radius*.82,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    }
     for(const strike of rocketeerAirstrikes){
       const remain=Math.max(0,strike.landAt-performance.now()),pulse=.82+Math.sin(performance.now()/70)*.12;ctx.save();
       ctx.fillStyle=strike.hyper?'rgba(204,76,255,.15)':'rgba(255,85,30,.14)';ctx.strokeStyle=strike.hyper?'#dc77ff':'#ffb04a';ctx.lineWidth=4;ctx.setLineDash([10,6]);
@@ -36464,7 +39126,7 @@
           ctx.fillStyle='#51e6f2'; ctx.beginPath();ctx.arc(0,23,8,0,Math.PI*2);ctx.fill();ctx.restore();
           const pct=Math.max(0,pod.hp/pod.maxHp), bx=pod.x-34, by=pod.y-48;
           ctx.fillStyle='rgba(4,15,24,.78)';ctx.beginPath();ctx.roundRect(bx,by,68,7,4);ctx.fill();ctx.fillStyle=pod.xrayHyper?'#d66cff':'#58edf5';ctx.beginPath();ctx.roundRect(bx,by,68*pct,7,4);ctx.fill();
-          ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(Math.ceil(pod.hp),pod.x,by-3);ctx.textAlign='left';
+          ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(getSmoothDisplayedHp(pod),pod.x,by-3);ctx.textAlign='left';
           continue;
       }
       if (pod.isRelayDevice) {
@@ -36474,7 +39136,7 @@
           ctx.lineWidth=2;ctx.beginPath();ctx.arc(pod.x,pod.y,pod.relayLinkRadius||520,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
           ctx.shadowColor=pod.relayHyper?'#d96cff':'#42e7f5';ctx.shadowBlur=18;ctx.fillStyle='#102d3b';ctx.strokeStyle=pod.relayHyper?'#dc71ff':'#68f1ff';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(pod.x-30,pod.y-35,60,70,16);ctx.fill();ctx.stroke();
           ctx.fillStyle=pod.relayHyper?'#df77ff':'#67e8ff';ctx.beginPath();ctx.arc(pod.x,pod.y,13,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(`${Math.round((pod.relayRedirectPct||.75)*100)}%`,pod.x,pod.y+3);
-          const pct=Math.max(0,pod.hp/pod.maxHp),w=76,x=pod.x-w/2,y=pod.y-51;ctx.fillStyle='#08141d';ctx.beginPath();ctx.roundRect(x,y,w,9,5);ctx.fill();ctx.fillStyle=pod.relayHyper?'#d96cff':'#42ddeb';ctx.beginPath();ctx.roundRect(x,y,w*pct,9,5);ctx.fill();ctx.fillStyle='#fff';ctx.fillText(`${Math.ceil(pod.hp)}/${pod.maxHp}`,pod.x,y-4);ctx.restore();continue;
+          const pct=Math.max(0,pod.hp/pod.maxHp),w=76,x=pod.x-w/2,y=pod.y-51;ctx.fillStyle='#08141d';ctx.beginPath();ctx.roundRect(x,y,w,9,5);ctx.fill();ctx.fillStyle=pod.relayHyper?'#d96cff':'#42ddeb';ctx.beginPath();ctx.roundRect(x,y,w*pct,9,5);ctx.fill();ctx.fillStyle='#fff';ctx.fillText(`${getSmoothDisplayedHp(pod)}/${pod.maxHp}`,pod.x,y-4);ctx.restore();continue;
       }
 
             if (pod.isClassySpeaker) {
@@ -36484,6 +39146,17 @@
                     const owner = [player, ...aliveBots].find(e => e.id === pod.ownerId);
                     const ownerSkin = owner ? getActiveSkinForBrawler(owner.brawler || (owner === player ? selectedBrawler : '')) : null;
                     const isClassicClassy = ownerSkin?.id === 'classic-classy';
+
+                    if (performance.now() < (pod.classySignatureUntil || 0)) {
+                        const step = Math.sin(performance.now() / 95) * 3;
+                        ctx.save();
+                        ctx.fillStyle = '#ffd34f';
+                        ctx.beginPath();ctx.ellipse(pod.x-14,pod.y+(pod.radius||34)+5+step,10,5,0,0,Math.PI*2);ctx.fill();
+                        ctx.beginPath();ctx.ellipse(pod.x+14,pod.y+(pod.radius||34)+5-step,10,5,0,0,Math.PI*2);ctx.fill();
+                        ctx.strokeStyle='rgba(255,211,79,.88)';ctx.lineWidth=3;ctx.setLineDash([8,6]);
+                        ctx.beginPath();ctx.arc(pod.x,pod.y,(pod.radius||34)+13,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+                        ctx.restore();
+                    }
 
                     // 1. Draw Custom Outward Range Aura Line
                     ctx.beginPath();
@@ -36572,15 +39245,13 @@
                         ctx.fillStyle = '#ffffff';
                         ctx.font = '11px sans-serif';
                         ctx.textAlign = 'center';
-                        ctx.fillText(`${Math.ceil(pod.hp)}`, pod.x, pod.y - pod.radius - 12);
+                        ctx.fillText(`${getSmoothDisplayedHp(pod)}`, pod.x, pod.y - pod.radius - 12);
                         ctx.textAlign = 'left';
                     continue;
             }
       
-      ctx.beginPath();
-      ctx.fillStyle = `rgba(100, 255, 150, ${0.4 + (pod.hp / pod.maxHp) * 0.4})`;
-      ctx.arc(pod.x, pod.y, pod.radius, 0, Math.PI * 2);
-      ctx.fill();
+      if(pod.isBouncyTurret){const r=pod.radius||20,pulse=1+Math.sin(performance.now()/120)*.05;ctx.save();ctx.translate(pod.x,pod.y);ctx.shadowColor='#42dfff';ctx.shadowBlur=14;ctx.fillStyle='#152d43';ctx.strokeStyle='#66e8ff';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(-r,-r*.72,r*2,r*1.44,6);ctx.fill();ctx.stroke();ctx.rotate(performance.now()/500);for(let i=0;i<4;i++){ctx.rotate(Math.PI/2);ctx.fillStyle='#4acff2';ctx.fillRect(r*.55,-3,r*.8,6);}ctx.fillStyle='#dffcff';ctx.beginPath();ctx.arc(0,0,7*pulse,0,Math.PI*2);ctx.fill();ctx.restore();}
+      else {ctx.save();ctx.translate(pod.x,pod.y);ctx.shadowColor='#5df2c2';ctx.shadowBlur=12;ctx.fillStyle='#163f3a';ctx.strokeStyle='#85ffcf';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(-pod.radius,-pod.radius,pod.radius*2,pod.radius*2,8);ctx.fill();ctx.stroke();ctx.fillStyle='#dfffee';ctx.fillRect(-4,-pod.radius*.65,8,pod.radius*1.3);ctx.fillRect(-pod.radius*.65,-4,pod.radius*1.3,8);ctx.restore();}
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(120, 255, 180, 0.45)';
       ctx.lineWidth = 3;
@@ -36597,7 +39268,7 @@
       ctx.fillStyle = '#fff';
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(Math.ceil(pod.hp), pod.x, pod.y - pod.radius - 10);
+      ctx.fillText(getSmoothDisplayedHp(pod), pod.x, pod.y - pod.radius - 10);
       ctx.textAlign = 'left';
       
       if (pod.isBouncyTurret && pod.ownerId === player.id) {
@@ -36828,6 +39499,19 @@
     for(const checkpoint of fastpassCheckpoints){
         const life=clamp((checkpoint.expiresAt-performance.now())/5000,0,1),pulse=1+Math.sin(performance.now()/130)*.08;ctx.save();ctx.globalAlpha=.45+.45*life;ctx.strokeStyle='#55efff';ctx.shadowColor='#55efff';ctx.shadowBlur=18;ctx.lineWidth=5;ctx.setLineDash([10,6]);ctx.beginPath();ctx.arc(checkpoint.x,checkpoint.y,checkpoint.radius*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(68,231,255,.12)';ctx.beginPath();ctx.arc(checkpoint.x,checkpoint.y,checkpoint.radius,0,Math.PI*2);ctx.fill();ctx.restore();
     }
+    for(const cloud of darkenerClouds){
+        if(!isWorldVisualVisible(cloud.x,cloud.y,cloud.width+80))continue;
+        const progress=clamp(cloud.traveled/cloud.range,0,1),radius=34+cloud.width*progress,life=clamp((cloud.expiresAt-performance.now())/900,0,1),depth=150,now=performance.now();
+        ctx.save();ctx.translate(cloud.x,cloud.y);ctx.rotate(cloud.angle);ctx.globalAlpha=.3+.5*life;ctx.globalCompositeOperation='source-over';ctx.shadowColor=cloud.hyper?'#a94cff':'#54228c';ctx.shadowBlur=cloud.hyper?22:14;
+        for(let row=0;row<5;row++){const rowPct=row/4,x=-depth+rowPct*(depth+24),rowWidth=radius*(.28+.72*rowPct),count=1+row;for(let plume=0;plume<count;plume++){const lane=count===1?0:(plume/(count-1)-.5)*2,wobble=Math.sin(now/145+row*1.7+plume*2.1)*6;ctx.globalAlpha=(.18+.13*row)*life;ctx.fillStyle=(row+plume)%3===0?(cloud.hyper?'#a94bdb':'#58307c'):'#120820';ctx.beginPath();ctx.ellipse(x+wobble,lane*rowWidth*.7,24+row*7,15+row*5,.08*lane,0,Math.PI*2);ctx.fill();}}
+        ctx.globalAlpha=.68*life;ctx.strokeStyle=cloud.hyper?'#d986ff':'#9268b7';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(22,-radius*.78);ctx.quadraticCurveTo(52,0,22,radius*.78);ctx.stroke();ctx.globalAlpha=.45*life;ctx.strokeStyle=cloud.hyper?'#f0b0ff':'#b99ad3';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(5,-radius*.45);ctx.quadraticCurveTo(27,0,5,radius*.45);ctx.stroke();ctx.restore();
+    }
+    for(const zone of darkagons){
+        if(!isWorldVisualVisible(zone.x,zone.y,zone.radius+40))continue;
+        const vertices=getDarkagonVertices(zone),remaining=clamp((zone.expiresAt-performance.now())/DARKAGON_DURATION_MS,0,1),pulse=1+Math.sin(performance.now()/130)*.018;
+        ctx.save();ctx.translate(zone.x,zone.y);ctx.scale(pulse,pulse);ctx.translate(-zone.x,-zone.y);ctx.fillStyle=zone.hyper?'rgba(31,2,52,.38)':'rgba(12,4,28,.32)';ctx.strokeStyle=zone.hyper?'#cf54ff':'#7950a8';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=zone.hyper?28:17;ctx.lineWidth=zone.hyper?8:5;ctx.beginPath();vertices.forEach((point,index)=>index?ctx.lineTo(point.x,point.y):ctx.moveTo(point.x,point.y));ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.globalAlpha=.38+.4*remaining;ctx.lineWidth=2;ctx.setLineDash([14,9]);ctx.lineDashOffset=-performance.now()/28;ctx.strokeStyle=zone.hyper?'#f0a5ff':'#b89ada';ctx.stroke();ctx.setLineDash([]);ctx.restore();
+    }
     for (const entity of [player,...bots]) {
         if (!entity || entity.hp<=0 || !isGhoulEntity(entity)) continue;
         const now=performance.now();
@@ -36872,6 +39556,12 @@
         ctx.save();ctx.translate(entity.x,entity.y);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.38+.32*life;ctx.strokeStyle='#79ffc0';ctx.shadowColor='#45f29c';ctx.shadowBlur=18;ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.lineDashOffset=-now/24;ctx.beginPath();ctx.arc(0,0,((entity.radius||16)+18)*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);for(let card=0;card<3;card++){const a=card*Math.PI*2/3-now/650,r=(entity.radius||16)+27;ctx.save();ctx.translate(Math.cos(a)*r,Math.sin(a)*r);ctx.rotate(a+.4);ctx.fillStyle=card===1?'#ffd85c':'#a8ffcf';ctx.fillRect(-4,-6,8,12);ctx.fillStyle='#176c4c';ctx.font='900 9px sans-serif';ctx.textAlign='center';ctx.fillText('+',0,3);ctx.restore();}ctx.restore();ctx.textAlign='left';
     }
     for(const effect of jackTradeThrownEffects){
+        if(effect.type==='royalCard'){
+            const suit=['♥','♦','♣','♠','★'][effect.royalIndex||0],gold=(effect.royalIndex||0)%2===1;
+            ctx.save();ctx.translate(effect.x,effect.y);ctx.rotate(performance.now()/115+(effect.royalIndex||0)*.7);ctx.shadowColor=gold?'#ffd84f':'#e258ff';ctx.shadowBlur=30;
+            ctx.fillStyle=gold?'#fff0a6':'#5c176f';ctx.strokeStyle=gold?'#fff8cf':'#ff9df4';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(-18,-27,36,54,7);ctx.fill();ctx.stroke();
+            ctx.fillStyle=gold?'#74204f':'#ffd85c';ctx.font='900 25px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(suit,0,1);ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';continue;
+        }
         const look=effect.type==='demolition'?{fill:'#df5b35',glow:'#ffb34d',mark:'!'}:effect.type==='slow'?{fill:'#6542b8',glow:'#c89cff',mark:'S'}:effect.type==='healing'?{fill:'#279968',glow:'#79ffc0',mark:'+'}:{fill:'#531064',glow:'#ef70ff',mark:'A'};
         ctx.save();ctx.translate(effect.x,effect.y);ctx.rotate(performance.now()/80);ctx.shadowColor=look.glow;ctx.shadowBlur=effect.hyper?26:18;
         if(effect.type==='demolition'||effect.type==='allin'){
@@ -36905,6 +39595,7 @@
     // for every projectile renderer without replacing its unique artwork.
     for (const b of bullets) {
       if (!b || !(b.slopSizeMultiplier > 1)) continue;
+      if (!isWorldVisualVisible(b.x, b.y, 90)) continue;
       const radius = Math.max(7, (b.super ? 8 : 5) * (b.hitboxMod || 1));
       ctx.save();
       ctx.globalAlpha = .52;
@@ -36940,12 +39631,14 @@
 
     // draw bullets 
     for (const orb of duckHealOrbs) {
+      if (!isWorldVisualVisible(orb.x, orb.y, 80)) continue;
       ctx.save();ctx.globalAlpha=.86;ctx.strokeStyle='rgba(255,226,122,.34)';ctx.lineWidth=2;
       ctx.beginPath();ctx.moveTo(orb.x,orb.y);ctx.lineTo(orb.x-10,orb.y+8);ctx.stroke();
       ctx.shadowColor='#ffd45e';ctx.shadowBlur=12;ctx.fillStyle='#fff0a0';ctx.beginPath();ctx.arc(orb.x,orb.y,5,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#5df2c2';ctx.beginPath();ctx.arc(orb.x+2,orb.y-1,2,0,Math.PI*2);ctx.fill();ctx.restore();
     }
     for(const b of bullets){ 
+      if (!b || !isWorldVisualVisible(b.x, b.y, 120)) continue;
       if(b.portaloWarpTrailUntil>performance.now()){
           const fade=clamp((b.portaloWarpTrailUntil-performance.now())/220,0,1);ctx.save();ctx.globalAlpha=.62*fade;ctx.strokeStyle='#7cecff';ctx.shadowColor='#a65dff';ctx.shadowBlur=16;ctx.lineWidth=3;ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(b.portaloWarpFromX||b.x,b.portaloWarpFromY||b.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);ctx.restore();
       }
@@ -36970,6 +39663,7 @@
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
       const earlyProjectileSkin = getActiveSkinForBrawler(earlyProjectileBrawler);
       if (renderUniversalSkinProjectile(b, earlyProjectileSkin)) continue;
+      if(b.isAwakenatorMain){const a=Math.atan2(b.vy,b.vx),pulse=1+Math.sin(performance.now()/75)*.12;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);ctx.shadowColor=b.awakenatorHyper?'#8d38d8':'#7c73ff';ctx.shadowBlur=b.awakenatorHyper?24:16;ctx.globalAlpha=.42;ctx.strokeStyle=ctx.shadowColor;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-30,0);ctx.lineTo(-7,0);ctx.stroke();ctx.globalAlpha=1;ctx.rotate(performance.now()/170);ctx.fillStyle=b.awakenatorHyper?'#32104f':'#655bea';ctx.strokeStyle='#e8e1ff';ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<8;i++){const r=i%2?7:12*pulse,a2=i*Math.PI/4;i?ctx.lineTo(Math.cos(a2)*r,Math.sin(a2)*r):ctx.moveTo(Math.cos(a2)*r,Math.sin(a2)*r);}ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('Z',0,0);ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';continue;}
       if(b.isJackTradeCard){const a=Math.atan2(b.vy,b.vx),gold=b.jackTradeStage===4||b.jackTradeHotBonus;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a+Math.sin(performance.now()/75+b.jackTradeCardIndex)*.08);ctx.shadowColor=b.hyperVisual?'#dc69ff':gold?'#ffd85c':'#a879ff';ctx.shadowBlur=b.hyperVisual?22:gold?16:11;ctx.globalAlpha=.35;ctx.strokeStyle=ctx.shadowColor;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-27,0);ctx.lineTo(-11,0);ctx.stroke();ctx.globalAlpha=1;ctx.fillStyle=b.hyperVisual?'#6b208f':gold?'#44246f':'#f4ecff';ctx.strokeStyle=gold?'#ffd85c':'#9d6bdf';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-9,-12,18,24,3);ctx.fill();ctx.stroke();ctx.fillStyle=gold?'#fff0a3':'#8d4fc4';ctx.font='bold 13px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText((b.jackTradeCardIndex%2)?'♦':'♠',0,1);ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';continue;}
       if(b.isPortaloShot){const a=Math.atan2(b.vy,b.vx),pulse=1+Math.sin(performance.now()/70)*.12;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);ctx.shadowColor=b.hyperVisual?'#c847ff':'#45eaff';ctx.shadowBlur=b.hyperVisual?24:18;ctx.globalAlpha=.36;ctx.strokeStyle=b.hyperVisual?'#df79ff':'#63efff';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-35,0);ctx.lineTo(-9,0);ctx.stroke();ctx.globalAlpha=1;ctx.rotate(performance.now()/120);const g=ctx.createRadialGradient(0,0,2,0,0,12*pulse);g.addColorStop(0,'#f3ffff');g.addColorStop(.35,b.hyperVisual?'#e68aff':'#65efff');g.addColorStop(.72,'#7553dc');g.addColorStop(1,'#160e43');ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,12*pulse,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#dffcff';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(0,0,16*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();continue;}
       if(b.isFastpassTicket){
@@ -37138,6 +39832,46 @@
                     ctx.arc(b.x, b.y, (b.super ? 11 : 8) * (b.hitboxMod || 1), 0, Math.PI * 2);
                     ctx.fill();
             }
+      if (b.ownerBrawler === 'money_and_tax' && b.moneyTaxMutationVisual) {
+          const angle=Math.atan2(b.vy||0,b.vx||1);
+          ctx.save();
+          if (b.isCoin) {
+              const radius=(b.moneyEmpoweredCenter?10:6)*(b.hitboxMod||1);
+              ctx.shadowColor='#ff334c';ctx.shadowBlur=9;
+              ctx.fillStyle='#ff4b55';ctx.beginPath();ctx.arc(b.x,b.y,radius,0,Math.PI*2);ctx.fill();
+              ctx.shadowBlur=0;ctx.strokeStyle='#ffd166';ctx.lineWidth=2;ctx.stroke();
+              ctx.fillStyle='#fff1b8';ctx.font=`bold ${Math.max(7,radius)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',b.x,b.y+.5);
+          } else if (b.isTaxNote) {
+              const w=12*(b.hitboxMod||1),h=8*(b.hitboxMod||1);
+              ctx.strokeStyle='rgba(255,75,85,.48)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(b.x-Math.cos(angle)*22,b.y-Math.sin(angle)*22);ctx.lineTo(b.x,b.y);ctx.stroke();
+              ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.shadowColor='#ff334c';ctx.shadowBlur=8;ctx.fillStyle='#7b1730';ctx.fillRect(-w/2,-h/2,w,h);ctx.shadowBlur=0;ctx.strokeStyle='#ffcf70';ctx.lineWidth=1.5;ctx.strokeRect(-w/2,-h/2,w,h);
+              ctx.fillStyle='#fff3d0';ctx.font='bold 8px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('TAX',0,0);
+          }
+          ctx.restore();
+          continue;
+      }
+      if (b.paradoxTimeEffect) {
+          const a = Math.atan2(b.vy, b.vx);
+          const sped = b.paradoxTimeEffect === 'sped';
+          ctx.save();
+          ctx.globalAlpha = 0.86;
+          ctx.strokeStyle = sped ? '#6ffcff' : '#dc79ff';
+          ctx.shadowColor = sped ? '#24dfff' : '#8f35dd';
+          ctx.shadowBlur = 13;
+          ctx.lineWidth = sped ? 3 : 4;
+          ctx.setLineDash(sped ? [10, 4] : [3, 6]);
+          ctx.beginPath();
+          ctx.moveTo(b.x - Math.cos(a) * (sped ? 30 : 18), b.y - Math.sin(a) * (sped ? 30 : 18));
+          ctx.lineTo(b.x - Math.cos(a) * 7, b.y - Math.sin(a) * 7);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.strokeStyle = sped ? 'rgba(174,255,255,.9)' : 'rgba(241,190,255,.9)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, sped ? 10 : 13, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+      }
       // New catalogue skins use one shared renderer so their previews and live
       // projectiles stay consistent without changing any combat hitboxes.
       if (renderUniversalSkinProjectile(b, activeSkin)) continue;
@@ -37190,8 +39924,9 @@
               ctx.restore();
           } else if (b.isTaxNote || b.isStickySuper) {
               // Custom super/tax visual: Silver banknote with gold borders
-              const w = b.isStickySuper ? 24 : 14;
-              const h = b.isStickySuper ? 14 : 8;
+              const noteScale = b.isStickySuper ? 1 : (b.hitboxMod || 1);
+              const w = (b.isStickySuper ? 24 : 14) * noteScale;
+              const h = (b.isStickySuper ? 14 : 8) * noteScale;
               
               ctx.save();
               ctx.translate(b.x, b.y);
@@ -37582,9 +40317,9 @@
               ctx.lineWidth = 2;
               ctx.stroke();
           } else if (b.isTaxNote || b.isStickySuper) {
+              const noteScale=b.isStickySuper?1:(b.hitboxMod||1);
               ctx.fillStyle = 'rgba(255, 23, 68, 0.9)';
-              ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.fillRect(b.isStickySuper ? -13 : -8, b.isStickySuper ? -8 : -5, b.isStickySuper ? 26 : 16, b.isStickySuper ? 16 : 10); ctx.restore();
-              ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)'; ctx.lineWidth = 2; ctx.strokeRect(b.x - (b.isStickySuper ? 13 : 8), b.y - (b.isStickySuper ? 8 : 5), b.isStickySuper ? 26 : 16, b.isStickySuper ? 16 : 10);
+              ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.fillRect((b.isStickySuper ? -13 : -8)*noteScale, (b.isStickySuper ? -8 : -5)*noteScale, (b.isStickySuper ? 26 : 16)*noteScale, (b.isStickySuper ? 16 : 10)*noteScale); ctx.restore();
           }
           continue;
       }
@@ -37723,17 +40458,17 @@
           }
           const scale = (b.classySpeakerShot ? 1.25 : 1.0) * (b.hitboxMod || 1);
           const superShot = !!b.isClassySuperShot;
-          const noteColor = (b.classySpeakerShot || superShot) ? 'rgba(77, 246, 255, 0.98)' : (b.classyGolden ? 'rgba(255, 215, 90, 0.95)' : (b.hyperVisual ? 'rgba(255, 170, 255, 0.9)' : 'rgba(212, 175, 55, 0.92)'));
-          const glowColor = (b.classySpeakerShot || superShot) ? 'rgba(77, 246, 255, 0.55)' : (b.classyGolden ? 'rgba(255, 220, 110, 0.3)' : 'rgba(212, 175, 55, 0.22)');
+          const noteColor = b.classySignatureMirror ? 'rgba(255,232,112,.98)' : ((b.classySpeakerShot || superShot) ? 'rgba(77, 246, 255, 0.98)' : (b.classyGolden ? 'rgba(255, 215, 90, 0.95)' : (b.hyperVisual ? 'rgba(255, 170, 255, 0.9)' : 'rgba(212, 175, 55, 0.92)')));
+          const glowColor = b.classySignatureMirror ? 'rgba(255,211,79,.58)' : ((b.classySpeakerShot || superShot) ? 'rgba(77, 246, 255, 0.55)' : (b.classyGolden ? 'rgba(255, 220, 110, 0.3)' : 'rgba(212, 175, 55, 0.22)'));
           if (b.classySpeakerShot || superShot) {
-              ctx.strokeStyle = 'rgba(170, 255, 255, 0.9)';
+              ctx.strokeStyle = b.classySignatureMirror ? 'rgba(255,232,112,.92)' : 'rgba(170, 255, 255, 0.9)';
               ctx.lineWidth = Math.max(2.6, 2.6 * scale);
               ctx.beginPath();
               ctx.moveTo(b.prevX ?? b.x, b.prevY ?? b.y);
               ctx.lineTo(b.x, b.y);
               ctx.stroke();
               ctx.beginPath();
-              ctx.fillStyle = 'rgba(210, 255, 255, 0.95)';
+              ctx.fillStyle = b.classySignatureMirror ? '#fff0a8' : 'rgba(210, 255, 255, 0.95)';
               ctx.arc(b.x, b.y, Math.max(2.5, 2.0 * scale), 0, Math.PI * 2);
               ctx.fill();
           }
@@ -37800,9 +40535,9 @@
           const side = b.beastSlashDir || 1;
           const progress = Math.max(0, Math.min(1, b.life / b.maxLife));
           const slashLen = (b.beastMode ? 42 : 34) + progress * ((b.beastRangeMult || 1) * (b.beastMode ? 72 : 52));
-          const slashWidth = b.beastMode ? 9 : 7;
-          const mainColor = b.beastMode ? 'rgba(255, 61, 110, 0.9)' : 'rgba(255, 159, 28, 0.88)';
-          const shadowColor = b.beastMode ? 'rgba(135, 15, 66, 0.6)' : 'rgba(74, 20, 35, 0.45)';
+          const slashWidth = b.beastyBeastClaw ? 10 : (b.beastMode ? 9 : 7);
+          const mainColor = b.beastyBeastClaw ? 'rgba(255, 219, 82, 0.96)' : (b.beastMode ? 'rgba(255, 61, 110, 0.9)' : 'rgba(255, 159, 28, 0.88)');
+          const shadowColor = b.beastyBeastClaw ? 'rgba(120, 40, 8, 0.72)' : (b.beastMode ? 'rgba(135, 15, 66, 0.6)' : 'rgba(74, 20, 35, 0.45)');
           ctx.save();
           ctx.translate(b.x, b.y);
           ctx.rotate(a + (side >= 0 ? 0.65 : -0.65));
@@ -37819,7 +40554,7 @@
           ctx.moveTo(-slashLen * 0.5, -slashLen * 0.12);
           ctx.quadraticCurveTo(0, -slashLen * 0.38, slashLen * 0.5, slashLen * 0.12);
           ctx.stroke();
-          if (b.beastMode) {
+          if (b.beastMode || b.beastyBeastClaw) {
               ctx.strokeStyle = 'rgba(255, 214, 102, 0.65)';
               ctx.lineWidth = 2;
               ctx.beginPath();
@@ -38153,8 +40888,9 @@
           ctx.strokeStyle = b.hyperVisual ? '#ba00d6' : '#d4ac0d'; ctx.lineWidth = 2; ctx.stroke();
           continue;
       } else if (b.isTaxNote || b.isStickySuper) {
+          const noteScale=b.isStickySuper?1:(b.hitboxMod||1);
           ctx.fillStyle = b.hyperVisual ? '#e0f' : '#27ae60'; // Green Note or Purple
-          ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.fillRect(b.isStickySuper ? -10 : -6, b.isStickySuper ? -6 : -4, b.isStickySuper ? 20 : 12, b.isStickySuper ? 12 : 8); ctx.restore();
+          ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.fillRect((b.isStickySuper ? -10 : -6)*noteScale, (b.isStickySuper ? -6 : -4)*noteScale, (b.isStickySuper ? 20 : 12)*noteScale, (b.isStickySuper ? 12 : 8)*noteScale); ctx.restore();
           continue;
       } else if (b.ownerBrawler === 'scuba_diver') {
             const travelAng = Math.atan2(b.vy || 0, b.vx || 1);
@@ -38288,6 +41024,15 @@
           continue;
       }
       else if (b.ownerBrawler === 'outlit') {
+          if(b.mutationVisual){
+              const angle=Math.atan2(b.vy||0,b.vx||1),pulse=.5+Math.sin(performance.now()/80)*.5;
+              ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.globalCompositeOperation='lighter';ctx.shadowColor='#ff3346';ctx.shadowBlur=16;
+              ctx.strokeStyle='rgba(255,45,66,.96)';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-28,0);ctx.lineTo(6,0);ctx.stroke();
+              ctx.strokeStyle='rgba(255,151,159,.9)';ctx.lineWidth=2;
+              for(let mark=0;mark<2;mark++){const mx=-18+mark*11;ctx.beginPath();ctx.moveTo(mx-6,-7);ctx.lineTo(mx,0);ctx.lineTo(mx-6,7);ctx.stroke();}
+              ctx.fillStyle='#ff3346';ctx.beginPath();ctx.arc(0,0,7+pulse*2,0,Math.PI*2);ctx.fill();
+              ctx.fillStyle='#ffd7da';ctx.beginPath();ctx.arc(1,0,3.2,0,Math.PI*2);ctx.fill();ctx.restore();continue;
+          }
           // Check for Electrified Outlit skin
           const outlitSkin = getActiveSkinForBrawler('outlit');
           const isElectrified = outlitSkin?.id === 'electrified-outlit';
@@ -38338,45 +41083,113 @@
           ctx.stroke();
           continue;
       }
+      else if (b.ownerBrawler === 'splitter') {
+          const angle = Math.atan2(b.vy || 0, b.vx || 1);
+          const generation = Math.max(0, b.splitterSplitIndex || 0);
+          const radius = Math.max(5, Math.min(13, (b.splitterRadius || 24) * .32));
+          const instinct = !!b.splitterInstinctVisual;
+          const superTree = !!b.splitterSuperTree;
+          const mainColor = instinct ? '#62ef88' : (b.hyperVisual ? '#e67aff' : (superTree ? '#66e5ff' : '#ffd166'));
+          const edgeColor = instinct ? '#d7ffe1' : (b.hyperVisual ? '#f5d2ff' : '#fff1ba');
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(angle);
+          ctx.strokeStyle = mainColor;
+          ctx.globalAlpha = .65;
+          ctx.lineWidth = Math.max(2, 4 - generation * .35);
+          ctx.beginPath();
+          ctx.moveTo(-20 - generation * 2, 0);
+          ctx.lineTo(-3, 0);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = mainColor;
+          ctx.beginPath();
+          ctx.moveTo(radius + 3, 0);
+          ctx.lineTo(0, -radius);
+          ctx.lineTo(-radius * .85, 0);
+          ctx.lineTo(0, radius);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = edgeColor;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.lineWidth = 1.3;
+          for (let band = 0; band < Math.min(4, generation + 1); band++) {
+              ctx.beginPath();
+              ctx.arc(0, 0, radius + 4 + band * 3, -.72, .72);
+              ctx.stroke();
+          }
+          if (instinct) {
+              ctx.strokeStyle = 'rgba(98,239,136,.8)';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(-radius, -radius * .8);
+              ctx.lineTo(radius, radius * .8);
+              ctx.moveTo(-radius, radius * .8);
+              ctx.lineTo(radius, -radius * .8);
+              ctx.stroke();
+          }
+          ctx.restore();
+          continue;
+      }
       else if (b.ownerBrawler === 'minigunnin') {
+          if (b.minigunninMutationExplosive) {
+              const angle=Math.atan2(b.vy||0,b.vx||1);
+              const size=b.minigunninSizeMult||1,pulse=(1+Math.sin(performance.now()/55)*.12)*size;
+              ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);
+              ctx.strokeStyle='rgba(255,83,32,.78)';ctx.lineWidth=4*size;
+              ctx.beginPath();ctx.moveTo(-18*size,0);ctx.lineTo(0,0);ctx.stroke();
+              ctx.fillStyle='#ff9a42';ctx.beginPath();ctx.arc(0,0,6*pulse,0,Math.PI*2);ctx.fill();
+              ctx.fillStyle='#fff0a0';ctx.beginPath();ctx.arc(2*size,0,2.4*size,0,Math.PI*2);ctx.fill();
+              ctx.restore();continue;
+          }
           // Check for MiniBrickkin skin
           const minigunninSkin = getActiveSkinForBrawler('minigunnin');
           const isMiniBrickkin = minigunninSkin?.id === 'minibrickkin';
           
           if (isMiniBrickkin) {
+              const size = b.minigunninSizeMult || 1;
               // Use the unique color assigned at bullet creation time
               const brickColor = b.brickColor || '#ff6b6b';
               
               // Render as a blocky lego brick
               ctx.fillStyle = brickColor;
-              ctx.fillRect(b.x - 8, b.y - 6, 16, 12);
+              ctx.fillRect(b.x - 8*size, b.y - 6*size, 16*size, 12*size);
               
               // Add studs on top (lego studs)
               ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
               ctx.beginPath();
-              ctx.arc(b.x - 4, b.y - 6, 2, 0, Math.PI * 2);
+              ctx.arc(b.x - 4*size, b.y - 6*size, 2*size, 0, Math.PI * 2);
               ctx.fill();
               ctx.beginPath();
-              ctx.arc(b.x + 4, b.y - 6, 2, 0, Math.PI * 2);
+              ctx.arc(b.x + 4*size, b.y - 6*size, 2*size, 0, Math.PI * 2);
               ctx.fill();
               
               // Glow effect for hypercharge
               if (b.hyperVisual) {
                   ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-                  ctx.lineWidth = 2;
-                  ctx.strokeRect(b.x - 8, b.y - 6, 16, 12);
+                  ctx.lineWidth = 2*size;
+                  ctx.strokeRect(b.x - 8*size, b.y - 6*size, 16*size, 12*size);
               }
               continue;
           } else {
               // Regular minigunnin bullet
+              const size = b.minigunninSizeMult || 1;
               ctx.fillStyle = b.hyperVisual ? 'rgba(238, 0, 255, 0.8)' : 'rgba(100, 100, 100, 0.8)';
               ctx.beginPath();
-              ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+              ctx.arc(b.x, b.y, 4*size, 0, Math.PI * 2);
               ctx.fill();
               continue;
           }
       }
       else if (b.ownerBrawler === 'bouncin_balls') {
+          if(b.fxKind==='signature'||b.fxKind==='signatureFollowup'||b.fxKind==='signatureTurret'){
+              const angle=Math.atan2(b.vy||0,b.vx||1),pulse=.5+Math.sin(performance.now()/72+(b.bouncySignatureBallIndex||0))*.5;
+              ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.globalCompositeOperation='lighter';ctx.shadowColor='#ffd34f';ctx.shadowBlur=15;
+              ctx.strokeStyle='rgba(255,211,79,.94)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-22-pulse*5,0);ctx.lineTo(4,0);ctx.stroke();
+              ctx.fillStyle='#ffd34f';ctx.beginPath();ctx.arc(0,0,8+pulse*2,0,Math.PI*2);ctx.fill();
+              ctx.strokeStyle='#fff3ad';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,12+pulse*3,0,Math.PI*2);ctx.stroke();ctx.restore();continue;
+          }
           const ballsSkin = getActiveSkinForBrawler('bouncin_balls');
           const isOutlaw = ballsSkin?.id === 'outlaw-bouncin-balls';
           
@@ -38596,6 +41409,42 @@
       }
 
 
+      if(b.fxKind==='signature'||b.fxKind==='signatureFollowup'||b.fxKind==='signatureTurret'){
+          const angle=Math.atan2(b.vy||0,b.vx||1),pulse=.5+Math.sin(performance.now()/72+(b.bouncySignatureBallIndex||0))*.5;
+          ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.globalCompositeOperation='lighter';
+          ctx.shadowColor='#ffd34f';ctx.shadowBlur=14;ctx.strokeStyle='rgba(255,211,79,.92)';ctx.lineWidth=3;
+          ctx.beginPath();ctx.moveTo(-20-pulse*5,0);ctx.lineTo(3,0);ctx.stroke();
+          ctx.strokeStyle='rgba(255,244,168,.76)';ctx.lineWidth=1.5;
+          ctx.beginPath();ctx.moveTo(-17,-6);ctx.quadraticCurveTo(-5,-11-pulse*3,7,-5);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(-17,6);ctx.quadraticCurveTo(-5,11+pulse*3,7,5);ctx.stroke();
+          ctx.fillStyle='#fff1a3';ctx.beginPath();ctx.arc(0,0,6+pulse*2,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle='rgba(255,247,203,.8)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,10+pulse*3,0,Math.PI*2);ctx.stroke();ctx.restore();continue;
+      }
+      if(b.echoInstinctVisual){
+          const angle=Math.atan2(b.vy||0,b.vx||1),pulse=.5+Math.sin(performance.now()/70)*.5;
+          ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.globalCompositeOperation='lighter';
+          ctx.strokeStyle=`rgba(98,239,136,${.65+pulse*.3})`;ctx.shadowColor='#62ef88';ctx.shadowBlur=14;ctx.lineWidth=4;
+          ctx.beginPath();ctx.moveTo(-34,0);ctx.lineTo(8,0);ctx.stroke();
+          ctx.strokeStyle='rgba(171,255,195,.88)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,13+pulse*4,0,Math.PI*2);ctx.stroke();
+          ctx.rotate(Math.PI/4);ctx.strokeRect(-7-pulse*2,-7-pulse*2,14+pulse*4,14+pulse*4);
+          ctx.beginPath();ctx.arc(0,0,6,0,Math.PI*2);ctx.fillStyle='#dbffe5';ctx.fill();ctx.restore();continue;
+      }
+      if(b.isEchoRingProj){
+          const angle=Math.atan2(b.vy||0,b.vx||1),pulse=.5+Math.sin(performance.now()/90+b.life*12)*.5;
+          const primary=b.hyperVisual?'#e66cff':(b.super?'#ffe27a':'#50d2ff');
+          ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.globalCompositeOperation='lighter';ctx.shadowColor=primary;ctx.shadowBlur=b.super?16:10;
+          ctx.strokeStyle=primary;ctx.lineWidth=b.super?4:3;ctx.beginPath();ctx.moveTo(-22,0);ctx.bezierCurveTo(-14,-7-pulse*3,-6,7+pulse*3,7,0);ctx.stroke();
+          ctx.strokeStyle='rgba(220,250,255,.78)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(1,0,(b.super?10:7)+pulse*2,0,Math.PI*2);ctx.stroke();
+          ctx.fillStyle='rgba(235,255,255,.9)';ctx.beginPath();ctx.arc(1,0,b.super?4:3,0,Math.PI*2);ctx.fill();ctx.restore();continue;
+      }
+      if(b.mutationVisual){
+          const angle=Math.atan2(b.vy||0,b.vx||1),pulse=.5+Math.sin(performance.now()/80)*.5;
+          ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.globalCompositeOperation='lighter';ctx.shadowColor='#ff3346';ctx.shadowBlur=13;
+          ctx.strokeStyle='rgba(255,55,75,.88)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-24,0);ctx.lineTo(5,0);ctx.stroke();
+          ctx.strokeStyle='rgba(255,137,146,.8)';ctx.lineWidth=2;
+          for(let mark=0;mark<2;mark++){const mx=-17+mark*10;ctx.beginPath();ctx.moveTo(mx-5,-6);ctx.lineTo(mx,0);ctx.lineTo(mx-5,6);ctx.stroke();}
+          ctx.fillStyle='#ff7a84';ctx.beginPath();ctx.arc(0,0,5+pulse*2,0,Math.PI*2);ctx.fill();ctx.restore();continue;
+      }
       if (b.isBoomerNite || b.isDaggershardDagger || b.isClusterBomb || b.isClusterMine || b.isWitchPotion || b.isAdlofCommand || b.isAdlofTakeover) {
           const angle=Math.atan2(b.vy||0,b.vx||1),size=Math.max(7,5*(b.hitboxMod||1));
           ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.shadowBlur=b.hyperVisual?14:7;
@@ -38630,6 +41479,7 @@
 
     // draw destructible walls
     for(const dw of destructibleWalls) {
+        if (!isWorldVisualVisible(dw.x + dw.w / 2, dw.y + dw.h / 2, Math.max(dw.w, dw.h) / 2 + 45)) continue;
         if (dw.isVault) {
             const teamColor = dw.vaultTeam === 'player' ? '#4db7ff' : '#ff7b7b';
             const strokeColor = dw.vaultTeam === 'player' ? '#b8ecff' : '#ffd5d5';
@@ -38913,8 +41763,15 @@
         const activeSkin = getActiveSkinForBrawler('echo');
         const activeSkinId = activeSkin?.id || '';
         const isHyperRing = r.sourceBullet && r.sourceBullet.hyperVisual;
+        const isInstinctRing = !!r.sourceBullet?.echoInstinctVisual;
         
-        if (activeSkinId === 'soda-pop-echo' && !isHyperRing) {
+        if (isInstinctRing) {
+            ctx.save();
+            ctx.strokeStyle=`rgba(98,239,136,${a})`;ctx.shadowColor='#62ef88';ctx.shadowBlur=14;ctx.lineWidth=7+(a*5);
+            ctx.arc(r.x,r.y,r.radius,0,Math.PI*2);ctx.stroke();
+            ctx.beginPath();ctx.strokeStyle=`rgba(104,205,255,${a*.82})`;ctx.lineWidth=2;ctx.setLineDash([10,8]);ctx.lineDashOffset=-performance.now()/28;
+            ctx.arc(r.x,r.y,Math.max(2,r.radius-9),0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+        } else if (activeSkinId === 'soda-pop-echo' && !isHyperRing) {
             ctx.strokeStyle = `rgba(51, 204, 255, ${a})`;
             ctx.lineWidth = 5 + (a * 5);
             ctx.arc(r.x, r.y, r.radius, 0, Math.PI*2);
@@ -38933,6 +41790,16 @@
             ctx.lineWidth = 4 + (a * 4);
             ctx.arc(r.x, r.y, r.radius, 0, Math.PI*2);
             ctx.stroke();
+            ctx.beginPath();
+            ctx.strokeStyle=isHyperRing?`rgba(255,180,255,${a*.72})`:`rgba(190,245,255,${a*.72})`;
+            ctx.lineWidth=2;ctx.setLineDash([6,7]);ctx.lineDashOffset=-performance.now()/32;
+            ctx.arc(r.x,r.y,Math.max(2,r.radius-8),0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+            const waveCount=6;
+            ctx.strokeStyle=isHyperRing?`rgba(238,100,255,${a*.55})`:`rgba(80,210,255,${a*.55})`;
+            for(let n=0;n<waveCount;n++){
+                const angle=n*Math.PI*2/waveCount+performance.now()/900;
+                ctx.beginPath();ctx.moveTo(r.x+Math.cos(angle)*(r.radius-3),r.y+Math.sin(angle)*(r.radius-3));ctx.lineTo(r.x+Math.cos(angle)*(r.radius+5),r.y+Math.sin(angle)*(r.radius+5));ctx.stroke();
+            }
         }
     }
 
@@ -38952,18 +41819,38 @@
             ctx.globalAlpha = 1.0;
     }
 
+    // Packet world effects use their own lightweight telegraphs so gameplay is
+    // readable without flooding the generic explosion particle list.
+    for(const field of packetTimeFields){
+        const now=performance.now(),remaining=clamp((field.expiresAt-now)/Math.max(1,field.expiresAt-field.createdAt),0,1),pulse=1+Math.sin(now/130)*.04;
+        ctx.save();ctx.fillStyle=`rgba(112,95,255,${.10+.12*remaining})`;ctx.strokeStyle=`rgba(190,181,255,${.45+.35*remaining})`;ctx.lineWidth=3;ctx.setLineDash([10,8]);ctx.lineDashOffset=-now/35;ctx.beginPath();ctx.arc(field.x,field.y,field.radius*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);ctx.restore();
+    }
+    for(const event of packetTelegraphs){
+        const now=performance.now(),progress=clamp((now-event.createdAt)/Math.max(1,event.impactAt-event.createdAt),0,1),pulse=.82+progress*.18;
+        ctx.save();ctx.globalAlpha=.45+progress*.5;ctx.strokeStyle=event.kind==='eagle'?'#ffe874':'#d8a05c';ctx.fillStyle=event.kind==='eagle'?'rgba(255,232,116,.14)':'rgba(190,126,62,.13)';ctx.lineWidth=3+progress*2;ctx.beginPath();ctx.arc(event.x,event.y,(event.kind==='eagle'?58:68)*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=event.kind==='eagle'?'#fff4ad':'#f0c184';ctx.font='900 13px sans-serif';ctx.textAlign='center';ctx.fillText(event.kind==='eagle'?'EAGLE DIVE':'BEAR CHARGE',event.x,event.y-76);ctx.restore();
+    }
+
     // Render Relativity Zones for Paradox
     for (const zone of relativityZones) {
         const remaining = zone.expiresAt - performance.now();
         if (remaining <= 0) continue;
-        const alpha = Math.max(0.08, Math.min(0.25, remaining / 4000));
-        ctx.beginPath();
-        ctx.fillStyle = zone.hyper ? `rgba(168, 0, 255, ${alpha * 0.7})` : `rgba(0, 255, 255, ${alpha * 0.7})`;
-        ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = zone.hyper ? `rgba(220, 100, 255, ${alpha + 0.15})` : `rgba(100, 255, 255, ${alpha + 0.15})`;
-        ctx.lineWidth = zone.hyper ? 3.5 : 2;
-        ctx.stroke();
+        const now = performance.now();
+        const alpha = Math.max(0.12, Math.min(0.38, remaining / 2600));
+        const pulse = 1 + Math.sin(now / 145 + zone.x * .01) * .025;
+        const spin = now / (zone.hyper ? 310 : 520);
+        ctx.save();ctx.translate(zone.x,zone.y);
+        const gradient=ctx.createRadialGradient(0,0,zone.radius*.12,0,0,zone.radius*pulse);
+        gradient.addColorStop(0,zone.hyper?'rgba(35,4,62,.35)':'rgba(5,39,66,.24)');
+        gradient.addColorStop(.62,zone.hyper?`rgba(122,37,181,${alpha*.45})`:`rgba(24,190,211,${alpha*.38})`);
+        gradient.addColorStop(1,zone.hyper?'rgba(231,128,255,.06)':'rgba(157,255,255,.05)');
+        ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(0,0,zone.radius*pulse,0,Math.PI*2);ctx.fill();
+        ctx.rotate(spin);ctx.strokeStyle=zone.hyper?`rgba(226,132,255,${alpha+.42})`:`rgba(132,250,255,${alpha+.38})`;
+        ctx.shadowColor=zone.hyper?'#b33cff':'#35e9ff';ctx.shadowBlur=zone.hyper?24:16;ctx.lineWidth=zone.hyper?5:4;
+        ctx.setLineDash([22,12]);ctx.beginPath();ctx.arc(0,0,zone.radius-3,0,Math.PI*2);ctx.stroke();
+        ctx.rotate(-spin*1.8);ctx.strokeStyle=zone.hyper?'rgba(255,205,255,.62)':'rgba(218,255,255,.58)';ctx.lineWidth=2;ctx.setLineDash([8,15]);
+        ctx.beginPath();ctx.arc(0,0,zone.radius*.72,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+        for(let n=0;n<(zone.hyper?8:6);n++){const a=n*Math.PI*2/(zone.hyper?8:6)+spin*.4,r=zone.radius*(.38+(n%2)*.2);ctx.fillStyle=n%2?(zone.hyper?'#d574ff':'#65efff'):'rgba(245,255,255,.88)';ctx.beginPath();ctx.arc(Math.cos(a)*r,Math.sin(a)*r,zone.hyper?4:3,0,Math.PI*2);ctx.fill();}
+        ctx.restore();
     }
 
     // Sera Eclipse Orbit: a readable solar/lunar field that follows Sera.
@@ -39360,7 +42247,26 @@
         }
     }
 
+    let decorativeFxSeen = 0;
     for(const ex of explosions){
+        const visualRadius = Math.max(80, Number(ex?.radius) || 0) + 80;
+        if (!ex || !isWorldVisualVisible(ex.x, ex.y, visualRadius)) continue;
+        if ((ex.isParticle || ex.isSteamPuff) && decorativeFxStride > 1 && (decorativeFxSeen++ % decorativeFxStride) !== 0) continue;
+        const preserveWarningDetail = /warning|telegraph/i.test(String(ex.fxKind || ''));
+        if (simplifyExplosionFx && !preserveWarningDetail && !ex.isParticle && !ex.isSteamPuff) {
+            const simpleAlpha = Math.max(0, 1 - ex.life / Math.max(0.01, ex.maxLife || 0.2));
+            const simpleRadius = Math.max(4, Number(ex.radius) || 18);
+            ctx.save();
+            ctx.globalAlpha = simpleAlpha * 0.52;
+            ctx.fillStyle = ex.color || 'rgba(255,110,85,.55)';
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, simpleRadius, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = simpleAlpha * 0.8;
+            ctx.strokeStyle = ex.hyperVisual ? '#e89aff' : '#ffe2bd';
+            ctx.lineWidth = ex.legendary ? 3 : 2;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, simpleRadius * (0.72 + (1 - simpleAlpha) * 0.3), 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+            continue;
+        }
         if (ex.isSteamPuff) {
             const alpha = Math.max(0, 1 - ex.life / ex.maxLife);
             const dir = ex.steamDir || 0;
@@ -39405,6 +42311,14 @@
             ctx.globalAlpha=alpha*.38;const healGlow=ctx.createRadialGradient(0,0,0,0,0,ex.radius*(.25+.75*open));healGlow.addColorStop(0,'rgba(225,255,238,.86)');healGlow.addColorStop(.35,'rgba(76,255,169,.42)');healGlow.addColorStop(1,'rgba(42,214,135,0)');ctx.fillStyle=healGlow;ctx.beginPath();ctx.arc(0,0,ex.radius*(.25+.75*open),0,Math.PI*2);ctx.fill();
             for(let ring=0;ring<3;ring++){ctx.globalAlpha=alpha*(1-ring*.18);ctx.strokeStyle=ring===1?'#fff0a3':'#6dffb8';ctx.lineWidth=5-ring;ctx.beginPath();ctx.arc(0,0,ex.radius*(.18+open*(.48+ring*.17)),0,Math.PI*2);ctx.stroke();}
             for(let plus=0;plus<8;plus++){const angle=plus*Math.PI/4-progress*.45,r=ex.radius*(.18+open*(.72+(plus%2)*.1));ctx.save();ctx.translate(Math.cos(angle)*r,Math.sin(angle)*r);ctx.rotate(-angle);ctx.globalAlpha=alpha;ctx.strokeStyle=plus%2?'#fff4ad':'#aaffd1';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(6,0);ctx.moveTo(0,-6);ctx.lineTo(0,6);ctx.stroke();ctx.restore();}
+            ctx.restore();continue;
+        }
+        if(ex.fxKind==='jackTradeRoyalCard'||ex.fxKind==='jackTradeRoyalFlush'){
+            const progress=clamp(ex.life/ex.maxLife,0,1),burst=1-Math.pow(1-progress,3),finale=ex.fxKind==='jackTradeRoyalFlush';
+            ctx.save();ctx.translate(ex.x,ex.y);ctx.globalCompositeOperation='lighter';ctx.shadowColor=finale?'#f15cff':'#ffd85c';ctx.shadowBlur=finale?46:28;
+            const rings=finale?5:3;for(let ring=0;ring<rings;ring++){ctx.globalAlpha=alpha*(1-ring*.1);ctx.strokeStyle=ring%2?'#ffd85c':'#ef88ff';ctx.lineWidth=Math.max(2,7-ring);ctx.beginPath();ctx.arc(0,0,ex.radius*(.12+burst*(.34+ring*.13)),0,Math.PI*2);ctx.stroke();}
+            const cards=finale?20:8;for(let card=0;card<cards;card++){const angle=card*Math.PI*2/cards+progress*(card%2?2:-2),r=ex.radius*(.18+burst*(.45+(card%4)*.08));ctx.save();ctx.translate(Math.cos(angle)*r,Math.sin(angle)*r);ctx.rotate(angle+progress*6);ctx.globalAlpha=alpha;ctx.fillStyle=card%2?'#ffe477':'#f6b0ff';ctx.fillRect(-4,-7,8,14);ctx.restore();}
+            if(finale){ctx.globalAlpha=alpha*.7;ctx.fillStyle='rgba(224,75,255,.28)';ctx.beginPath();for(let point=0;point<5;point++){const a=-Math.PI/2+point*Math.PI*2/5,r=ex.radius*burst*.82;const x=Math.cos(a)*r,y=Math.sin(a)*r;point?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.closePath();ctx.fill();}
             ctx.restore();continue;
         }
         if(ex.fxKind==='jackTradeAllIn'){
@@ -39610,6 +42524,7 @@
     
     // draw rida super dropping pins
     for(const c of pendingClones){
+        if (!c || !isWorldVisualVisible(c.x, c.y, Math.max(100, Number(c.radius) || 0) + 70)) continue;
         if (c.isRidaBomb) {
             const ridaSkin = getActiveSkinForBrawler('bowlin_rida');
             const isBowling = ridaSkin?.id === 'rapture-bowlin_rida';
@@ -39710,6 +42625,7 @@
     ctx.textAlign = 'center';
     ctx.font = 'bold 14px sans-serif';
     for(const ft of floatingTexts){
+        if (!ft || !isWorldVisualVisible(ft.x, ft.y, 70)) continue;
         ctx.fillStyle = ft.color;
         ctx.globalAlpha = 1 - (ft.life / ft.maxLife);
         ctx.fillText(ft.text, ft.x, ft.y);
@@ -39718,6 +42634,15 @@
     ctx.textAlign = 'left';
 
     ctx.restore();
+
+    if(player.hp>0){
+        const prison=getHostileDarkagonContaining(player);
+        if(prison){
+            const now=performance.now(),vertices=getDarkagonVertices(prison).map(point=>({x:point.x-camX,y:point.y-camY}));
+            ctx.save();ctx.fillStyle='rgba(1,0,7,.965)';ctx.beginPath();ctx.rect(0,0,innerWidth,innerHeight);vertices.forEach((point,index)=>index?ctx.lineTo(point.x,point.y):ctx.moveTo(point.x,point.y));ctx.closePath();ctx.fill('evenodd');
+            ctx.strokeStyle=prison.hyper?'#d25bff':'#7950a8';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=25;ctx.lineWidth=6;ctx.setLineDash([16,10]);ctx.lineDashOffset=-now/24;ctx.beginPath();vertices.forEach((point,index)=>index?ctx.lineTo(point.x,point.y):ctx.moveTo(point.x,point.y));ctx.closePath();ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#dca6ff';ctx.font='900 12px sans-serif';ctx.textAlign='center';ctx.fillText('DARKAGON — OUTSIDE VISION BLOCKED',innerWidth/2,42);ctx.restore();ctx.textAlign='left';
+        }
+    }
 
     if (player.hp > 0 && performance.now() < (player.ghoulDarknessUntil || 0)) {
         const now=performance.now(),remaining=clamp(((player.ghoulDarknessUntil||0)-now)/4000,0,1),radius=108+Math.sin(now/85)*5;
@@ -39750,7 +42675,7 @@
     } else if (isConstructionMode) {
         ctx.fillText('Brick Run 3v3', innerWidth/2 - 70, 48);
     } else if (isBrickVaultMode) {
-        ctx.fillText('Vault Siege 3v3', innerWidth/2 - 78, 48);
+        ctx.fillText(isTowerPowerVaultWeekendMatch ? 'Tower Power Vault Siege' : 'Vault Siege 3v3', innerWidth/2 - 78, 48);
     } else if (isArenaForgeMode) {
         const now = performance.now();
         const prepLeft = Math.max(0, Math.ceil((arenaForgePrepUntil - now) / 1000));
@@ -39968,7 +42893,7 @@
         ctx.fillStyle = '#d8f0ff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`Vault Siege 3v3 | Enemy Vault Damage ${yourPct}% | Your Vault Damage ${enemyPct}% | ${timeLeft}s`, innerWidth / 2, 98);
+        ctx.fillText(`${isTowerPowerVaultWeekendMatch ? 'Tower Power Vault Siege • ALL 8' : 'Vault Siege 3v3'} | Enemy Vault Damage ${yourPct}% | Your Vault Damage ${enemyPct}% | ${timeLeft}s`, innerWidth / 2, 98);
         ctx.font = '12px sans-serif';
         ctx.fillStyle = '#9ef6d6';
         ctx.fillText(`Enemy vault HP: ${enemyVaultHp.toLocaleString()} | Your vault HP: ${playerVaultHp.toLocaleString()}`, innerWidth / 2, 117);
@@ -40218,7 +43143,7 @@
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(bx-6, by-6, barW+12, barH+12);
     ctx.fillStyle = '#223a47'; ctx.fillRect(bx, by, barW, barH);
     ctx.fillStyle = '#f4a261'; ctx.fillRect(bx, by, barW * (superCharge/100), barH);
-    ctx.fillStyle = '#cfeef7'; ctx.font = '12px sans-serif'; ctx.fillText('SUPER', bx, by-10);
+    ctx.fillStyle = '#cfeef7'; ctx.font = '12px sans-serif'; ctx.fillText('POWER MOVE', bx, by-10);
 
     // hypercharge bar
     const hy = by - 36;
@@ -40226,7 +43151,7 @@
     ctx.fillStyle = HYPER_VISUALS.barBack; ctx.fillRect(bx, hy, barW, barH);
     ctx.fillStyle = isHypercharged ? HYPER_VISUALS.activeFill : HYPER_VISUALS.chargeFill;
     ctx.fillRect(bx, hy, barW * (isHypercharged ? (hyperchargeUntil - performance.now())/5000 : hyperChargeCharge/100), barH);
-    ctx.fillStyle = HYPER_VISUALS.textPrimary; ctx.fillText('HYPERCHARGE (F)', bx, hy-10);
+    ctx.fillStyle = HYPER_VISUALS.textPrimary; ctx.fillText('CORE SURGE (F)', bx, hy-10);
 
     // One consistent, screen-fixed home for decision-critical brawler state.
     // Keeping it beside Super/Hyper avoids collisions with health, ammo,
@@ -40294,14 +43219,14 @@
         ctx.fillStyle = isHyperGlow ? HYPER_VISUALS.textPrimary : '#cfeef7';
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText('Gadget', hudX + 12, hudY + 22);
+        ctx.fillText('Tool', hudX + 12, hudY + 22);
         if (isTraining || playerProgress.gadgetUnlocked) {
             if (isHyperGlow && selectedBrawler === 'outlit') {
                 ctx.fillStyle = HYPER_VISUALS.textAccent;
                 ctx.fillText('Double Shot Pierces!', hudX + 80, hudY + 22);
             } else if (isHyperGlow) {
                 ctx.fillStyle = HYPER_VISUALS.textAccent;
-                ctx.fillText('Hyper Active', hudX + 80, hudY + 22);
+                ctx.fillText('Core Surge Active', hudX + 80, hudY + 22);
             } else if (now < getPlayerGadgetCooldownUntil(selectedGadget, now)) {
                 const s = Math.ceil((getPlayerGadgetCooldownUntil(selectedGadget, now) - now) / 1000);
                 ctx.fillStyle = '#ffd166';
@@ -40319,7 +43244,7 @@
         }
 
         ctx.fillStyle = isHyperGlow ? HYPER_VISUALS.textPrimary : '#cfeef7';
-        ctx.fillText('SP', hudX + 12, hudY + 46);
+        ctx.fillText('Talent', hudX + 12, hudY + 46);
         if (isTraining || playerProgress.starPowerUnlocked) {
             const spName = selectedStar === 'long' ? (brawlerData[selectedBrawler]?.sp2 || 'SP2') : (brawlerData[selectedBrawler]?.sp1 || 'SP1');
             ctx.fillStyle = isHyperGlow ? HYPER_VISUALS.textAccent : (selectedStar === 'long' ? '#ffd166' : '#9ed9ff');
@@ -40330,7 +43255,7 @@
         }
 
         ctx.fillStyle = isHyperGlow ? HYPER_VISUALS.textPrimary : '#cfeef7';
-        ctx.fillText('HC', hudX + 12, hudY + 70);
+        ctx.fillText('Core', hudX + 12, hudY + 70);
         if (isTraining || playerProgress.hyperchargeUnlocked) {
             if (isHyperGlow) {
                 const remain = Math.max(0, Math.ceil((hyperchargeUntil - now) / 1000));
@@ -40374,7 +43299,7 @@
                         }
                         ctx.textAlign = 'center';
                     } else {
-                        ctx.fillText('🏋️ TRAINING MODE - ALL ABILITIES UNLOCKED 🏋️', innerWidth/2, 60);
+                        ctx.fillText('TRAINING MODE · ALL ABILITIES ENABLED', innerWidth/2, 60);
                     }
                 ctx.textAlign = 'left';
         } else if (isSoloTrial) {
@@ -40384,11 +43309,11 @@
                 ctx.fillText(`⚔️ SOLO TRIAL MODE - WAVE ${Math.min(soloTrialWave + 1, SOLO_TRIAL_MAX_WAVES)}/${SOLO_TRIAL_MAX_WAVES} ⚔️`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isBossFight) {
-        ctx.fillStyle = '#ff6bb2';
+        ctx.fillStyle = isLavaBossEvent ? '#ff9a3d' : '#ff6bb2';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
         const diffName = getBeastBossDifficultyName(getBeastBossDifficultyIndex());
-        ctx.fillText(`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`, innerWidth/2, 60);
+        ctx.fillText(isLavaBossEvent?`LAVA VILLAIN 3V1 • ${getLavaBossDifficulty(lavaBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((lavaBossRuntime.timeLimitMs-(performance.now()-lavaBossRuntime.startedAt))/1000))}s`:`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isConstructionMode) {
         ctx.fillStyle = '#7dd8ff';
@@ -40468,7 +43393,9 @@
     if(gameOver){
         if (!hasHandledGameOver) {
             hasHandledGameOver = true;
+            const fullOnDamageEarned=commitFullOnDamageMatch();
             removeSlopSushiCardHud();
+            const completedMatchFighter = selectedBrawler;
             let won = false;
             let rankText = "";
             let matchText = "";
@@ -40478,11 +43405,16 @@
             if (isBossFight) {
                 const boss = bots.find(b => b.isBoss);
                 won = (!boss || boss.hp <= 0);
-                if (isBeastBossEvent) {
+                if (isLavaBossEvent) {
+                    const cfg=getLavaBossDifficulty(lavaBossRuntime?.difficulty||activeLavaBossDifficulty);
+                    rankText=`Difficulty: ${cfg.name}`;
+                    if(won)rankText+=` • ${completeLavaBossDifficulty(cfg.id)}`;
+                    matchText=won?'LAVA VILLAIN DEFEATED!':'THE CORE OVERHEATED — TRY AGAIN!';
+                } else if (isBeastBossEvent) {
                     const diffName = getBeastBossDifficultyName(getBeastBossDifficultyIndex());
                     rankText = `Difficulty: ${diffName}`;
                 }
-                matchText = won ? (isBeastBossEvent ? "BEAST BOSS DEFEATED!" : "BOSS DEFEATED!") : "TEAM WIPED OUT!";
+                if(!isLavaBossEvent)matchText = won ? (isBeastBossEvent ? "BEAST BOSS DEFEATED!" : "BOSS DEFEATED!") : "TEAM WIPED OUT!";
             } else if (isSoloTrial) {
                 won = player.hp > 0 && soloTrialWave >= SOLO_TRIAL_MAX_WAVES && bots.every(b => b.hp <= 0 || b.isDead);
                 matchText = won ? "SOLO TRIAL COMPLETE!" : "SOLO TRIAL FAILED!";
@@ -40581,6 +43513,15 @@
                 rankText = "Rank: " + (player.hp > 0 ? "1st" : (rankNum + ["th","st","nd","rd"][rankNum>3?0:rankNum]));
                 won = rankNum <= 4;
                 matchText = "MATCH OVER!";
+            }
+
+            if(!isTraining&&!isTutorialMode){
+                const {season,packets}=ensureSeason3State();
+                if(!Array.isArray(season.questProgress.fightersUsed))season.questProgress.fightersUsed=[];
+                if(!season.questProgress.fightersUsed.includes(completedMatchFighter))season.questProgress.fightersUsed.push(completedMatchFighter);
+                progressSeason3Quest('different_fighters',season.questProgress.fightersUsed.length,true);
+                if(packets.equipped&&won)progressSeason3Quest('packet_wins',1);
+                if(isCorruptedShowdownMode){progressSeason3Quest('corrupted_matches',1);if(won)progressSeason3Quest('corrupted_wins',1);}
             }
 
             if (isTowerTroubleMode) {
@@ -40748,6 +43689,8 @@
                 if (towerDuelOriginalBrawler && allBrawlers.includes(towerDuelOriginalBrawler)) selectedBrawler = towerDuelOriginalBrawler;
                 if (brawlerSelect) brawlerSelect.value = selectedBrawler;
                 towerDuelOriginalBrawler = null;
+                towerDuelPowerLoadouts = {};
+                towerDuelBotPowerLoadouts = {};
                 isTowerDuelEvent = false;
             }
             let soulReward = getSoulsForPlacement(placement);
@@ -40810,6 +43753,9 @@
             if (rankedPromotionGems > 0) playerData.gems = (playerData.gems || 0) + rankedPromotionGems;
             addEventQuestProgress('play_match');
             progressSeasonPassQuest('play_match');
+            if (UNLEASH_POTENTIAL_FIGHTERS.includes(completedMatchFighter)) {
+                addSpecialQuestProgress(completedMatchFighter, 'play_match', 1);
+            }
             addEventQuestProgress('collect_coins_event', rewardCoins);
             progressSeasonPassQuest('collect_coins_event', 1);
             // Progress event quests on wins
@@ -40873,6 +43819,9 @@
             soulDiv.style.fontSize = '22px';
             soulDiv.style.fontWeight = 'bold';
             soulDiv.style.color = '#d4b4ff';
+            const fullDamageDiv=document.createElement('div');
+            fullDamageDiv.textContent=`💥 +${fullOnDamageEarned.toLocaleString()} Full On Damage`;
+            fullDamageDiv.style.cssText='font-size:20px;font-weight:900;color:#ff8c70;margin-top:7px';
             const rankedDiv = document.createElement('div');
             rankedDiv.style.fontSize = '20px';
             rankedDiv.style.fontWeight = 'bold';
@@ -40885,6 +43834,7 @@
             rewardsBox.appendChild(coinsDiv);
             rewardsBox.appendChild(brickDiv);
             rewardsBox.appendChild(soulDiv);
+            rewardsBox.appendChild(fullDamageDiv);
             if (rotationReward) {
                 const rotationRewardDiv = document.createElement('div');
                 rotationRewardDiv.textContent = `⚡ ${rotationReward.multiplier === 2 ? 'FEATURED 2X • ' : 'LIVE EVENT • '}${rotationReward.label}`;
@@ -40963,6 +43913,7 @@
                 currentMapOverride = null;
                 isHyperEvent = false;
                 isBeastBossEvent = false;
+                isLavaBossEvent = false;
                 isOverlordTrialEvent = false;
                 window.location.reload();
             };
@@ -41082,7 +44033,9 @@
             requestAnimationFrame(loop);
             return;
         }
-        const minimumFrameMs = LOW_POWER_DEVICE ? (1000 / 45) : 0;
+        const heavyScene = bullets.length > 520 || explosions.length > 105 || bots.length > 32 || pendingClones.length > 150;
+        const targetFrameRate = LOW_POWER_DEVICE ? (heavyScene ? 30 : 45) : (heavyScene ? 50 : 0);
+        const minimumFrameMs = targetFrameRate ? (1000 / targetFrameRate) : 0;
         if (minimumFrameMs && now - lastPresentedFrame < minimumFrameMs) {
             requestAnimationFrame(loop);
             return;
@@ -41633,12 +44586,12 @@
       close.onclick = () => document.body.removeChild(overlay);
 
       const title = document.createElement('h1');
-      title.textContent = 'Season 2 Pass — Battle of the Towers';
+      title.textContent = 'Season 3 Pass — Core Breaker × Arena Forge';
       title.style.margin = '0 0 6px 0';
       title.style.color = '#ffb15a';
 
       const subtitle = document.createElement('div');
-      subtitle.textContent = 'Climb Tower Trouble, earn Pass XP, and unlock Tower Drops on both tracks.';
+      subtitle.textContent = 'Route Packet signals, break the Core, and climb the Lava Villain ladder before September 20.';
       subtitle.style.color = '#cfeef7';
       subtitle.style.fontWeight = '700';
       subtitle.style.marginBottom = '12px';

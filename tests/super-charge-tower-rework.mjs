@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 const rosterFiles = [
-  'common', 'rare', 'super-rare', 'epic', 'mythic', 'legendary', 'exotic',
+  'common', 'rare', 'super-rare', 'epic', 'mythic', 'legendary', 'exotic', 'anomaly',
 ].map(rarity => fs.readFileSync(new URL(`../modules/brawlers/${rarity}/roster.js`, import.meta.url), 'utf8')).join('\n');
 
 const chargeStart = game.indexOf('const SUPER_CHARGE_HITS_BY_BRAWLER =');
@@ -16,8 +16,8 @@ vm.runInContext(`${game.slice(chargeStart, chargeEnd)}\nthis.table=SUPER_CHARGE_
 const chargeTable = chargeSandbox.table;
 
 const rosterIds = new Set([...rosterFiles.matchAll(/'([a-z0-9_]+)'/g)].map(match => match[1]));
-assert.equal(rosterIds.size, 71, 'The current modular roster contains 71 brawlers');
-assert.equal(Object.keys(chargeTable).length, 71, 'Every current brawler has an explicit Super charge rule');
+assert.equal(rosterIds.size, 73, 'The current modular roster contains 73 fighters');
+assert.equal(Object.keys(chargeTable).length, 73, 'Every current fighter has an explicit Power Move charge rule');
 for (const id of rosterIds) assert.ok(chargeTable[id], `${id} has a Super charge hit count`);
 assert.equal(chargeTable.dashaholic, 2, 'Dashaholic charges in two successful attacks');
 assert.equal(chargeTable.minigunnin, 72, 'Minigunnin needs sustained projectile accuracy instead of earning a three-second Super');
@@ -34,6 +34,7 @@ assert.equal(chargeTable.heater_miser, 20, 'Heater Miser earns Super through sus
 assert.equal(chargeTable.portalo, 7, 'Portalo uses the proposed seven-hit rule');
 assert.equal(chargeTable.ghoul, 6, 'Ghoul uses the proposed six-hit rule');
 assert.equal(chargeTable.jacktrade, 18, 'JackTrade accounts for the one-two-four projectile progression');
+assert.equal(chargeTable.awakenator, 8, 'Awakenator requires eight successful Dream Bolt hits');
 
 assert.match(game, /beginMainAttackActivation\(fromEntity, brawler, now\)/, 'Normal attacks receive an activation id');
 assert.match(game, /entry\.isPrimaryChargeProjectile = true/, 'Every spawned main-attack projectile is marked as an independent charge source');
@@ -42,7 +43,7 @@ assert.match(game, /source\?\.isIndependentChargeTick === true/, 'Continuous att
 assert.match(game, /isHeaterTether: true,[\s\S]{0,100}isIndependentChargeTick: true/, 'Heater Miser enemy tether ticks feed the shared charge system');
 assert.match(game, /chargedMainAttackActivations\.includes\(activationId\)/, 'Non-projectile attacks remain deduplicated by activation');
 assert.match(game, /owner\.isPet \|\| owner\.isSummon \|\| owner\.isBoss/, 'Summons and bosses do not receive normal player charge steps');
-assert.match(game, /if\(!b\.super && !b\.isSuperDash && !target\.isPet\) grantMainAttackCharge\(owner, b\)/, 'Projectile hits use the shared charge helper');
+assert.match(game, /if\(!b\.super && !b\.isSuperDash && !b\.isMinigunninMutationFire && !target\.isPet\) grantMainAttackCharge\(owner, b\)/, 'Projectile hits use the shared charge helper while mutation fire ticks cannot farm charge');
 assert.doesNotMatch(game, /rawDmg\s*\/\s*8000|damage\s*\/\s*8000|dealt\s*\/\s*8000/, 'The old damage-based 8000 Super formula is removed');
 
 const rewardStart = game.indexOf('const TOWER_FLOOR_COIN_REWARDS =');
