@@ -40064,9 +40064,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           const maxRange = g1Armed ? 330 : 220;
           const landRadius = 65;
 
-          const dist = Math.hypot(targetX - player.x, targetY - player.y);
-          let landX = targetX;
-          let landY = targetY;
+          const dist = Math.hypot(wm.x - player.x, wm.y - player.y);
+          let landX = wm.x;
+          let landY = wm.y;
           if (dist > maxRange) {
               landX = player.x + Math.cos(ang) * maxRange;
               landY = player.y + Math.sin(ang) * maxRange;
@@ -40102,9 +40102,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if (selectedBrawler === 'trampaheal' && aimingSuper) {
           ctx.save();
           const maxDist = 620;
-          const dist = Math.hypot(targetX - player.x, targetY - player.y);
-          let deployX = targetX;
-          let deployY = targetY;
+          const dist = Math.hypot(wm.x - player.x, wm.y - player.y);
+          let deployX = wm.x;
+          let deployY = wm.y;
           if (dist > maxDist) {
               deployX = player.x + Math.cos(ang) * maxDist;
               deployY = player.y + Math.sin(ang) * maxDist;
@@ -40137,7 +40137,6 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.fillText(isHypercharged ? '⚡ TRAMPAWIND (6500 HP + WIND BLAST) ⚡' : '🤸 MEGA TRAMPOLINE (5000 HP + HIGH BOUNCE) 🤸', deployX, deployY - 48);
           ctx.restore();
       }
-
       if (selectedBrawler === 'axeywaxy' && !aimingSuper && !(player.axeyWaxySuperUntil > performance.now())) {
           ctx.save();
           const isHeft = player.axeyWaxyHeftReady || isHypercharged;
