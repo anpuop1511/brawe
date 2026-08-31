@@ -1,6 +1,56 @@
 (function(){
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
+
+function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
+    ctx.save();
+    ctx.translate(x, y);
+    const rot = performance.now() * 0.0018;
+    ctx.rotate(rot);
+    ctx.strokeStyle = isBarrierActive ? '#00f5d4' : '#2ed573';
+    ctx.lineWidth = isBarrierActive ? 3.5 : 2.2;
+    ctx.shadowColor = isBarrierActive ? '#00f5d4' : '#2ed573';
+    ctx.shadowBlur = isBarrierActive ? 16 : 8;
+    ctx.fillStyle = isBarrierActive ? 'rgba(0, 245, 212, 0.25)' : 'rgba(46, 213, 115, 0.15)';
+    
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI / 3);
+        const px = Math.cos(a) * radius;
+        const py = Math.sin(a) * radius;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner facets / cyber hexagon scale lines
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI / 3);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
+    }
+    ctx.strokeStyle = isBarrierActive ? 'rgba(0, 245, 212, 0.6)' : 'rgba(46, 213, 115, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Rotating counter-ring
+    ctx.rotate(-rot * 2);
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI / 3) + (Math.PI / 6);
+        const px = Math.cos(a) * (radius * 0.62);
+        const py = Math.sin(a) * (radius * 0.62);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+}
+
   // Canvas throws and stops the entire render loop if even one temporary
   // entity supplies NaN/Infinity to a gradient. Keep rendering alive and log
   // the first offending call so the originating visual remains diagnosable.
@@ -1701,7 +1751,6 @@
       if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack')return 1;
       if(brawlerId==='demon'||brawlerId==='fastpass')return 2;
       if(brawlerId==='rocketeer')return 4;
-      if(brawlerId==='duck')return 4;
       return 3;
   }
 
@@ -1757,7 +1806,7 @@
     player.freestyleSetlistHitMask = 0;
     player.freestyleSetlistFailed = false;
     player.freestyleBassBoostArmed = false;
-    player.moneyAndTaxMode = 'money';
+    player.moneyAndTaxMode = 'money'; player.kageHologram = null; player.kageHologramUntil = 0; player.kageG1Armed = false; player.drainbowG2Armed = false; player.drainbowLastDecayAt = 0; player.drainbowLastRegenAt = 0;
     player.robberWaveCount = 1;
     player.robberBonusMaxAmmo = 0;
     player.robberSiphon = null;
@@ -2067,6 +2116,10 @@
   const packetTelegraphs = [];
   const snapperWaves = [];
   const chickpigEggZones = [];
+  // drainbowPaintTiles: Map<"tx,ty" => {until, rainbowT, ownerId, hyper, isHighway, sp1, sp2, nextTickById}>
+  const drainbowPaintTiles = new Map();
+  const drainbowPrismBarriers = [];
+  const draflygonFireZones = [];
   const rocketeerFireZones = [];
   // Lightweight, capped zones for Minigunnin's rapid-fire Mutation.
   const minigunninMutationFireZones = [];
@@ -2614,7 +2667,7 @@
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator'
+        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -2674,6 +2727,7 @@
             scuba_diver: 'Epic',
             hoop: 'Epic',
             screener: 'Legendary',
+            kage: 'Legendary',
             malakor: 'Legendary',
             beam: 'Epic',
             paradox: 'Legendary',
@@ -2697,6 +2751,7 @@
             unstable: 'Legendary',
             fastpass: 'Mythic',
             freestyle: 'Mythic',
+            drainbow: 'Mythic',
             portalo: 'Exotic',
             ghoul: 'Exotic',
             jacktrade: 'Exotic',
@@ -2712,8 +2767,9 @@
             daggershard: 'Mythic',
             adlof: 'Legendary',
             cluster: 'Mythic',
-            duck: 'Mythic',
-            witch: 'Mythic'
+            witch: 'Mythic',
+            axeywaxy: 'Epic',
+            trampaheal: 'Mythic'
         };
         let brawlerSortMode = localStorage.getItem('brawl_arena_brawler_sort') || 'rarity-desc';
 
@@ -2776,6 +2832,11 @@
             }
             playerData.unlockedBrawlers.outlit = true;
             playerData.unlockedBrawlers.fuser = true;
+            playerData.unlockedBrawlers.axeywaxy = true;
+            playerData.unlockedBrawlers.trampaheal = true;
+            playerData.unlockedBrawlers.draflygon = true;
+            playerData.unlockedBrawlers.drainbow = true;
+            playerData.unlockedBrawlers.kage = true;
             if (!playerData.soulSummoner || typeof playerData.soulSummoner !== 'object') {
                 playerData.soulSummoner = {};
             }
@@ -4921,6 +4982,53 @@
       }
 
     const brawlerData = {
+      'drainbow': {
+          name: 'Drainbow',
+          role: 'Controller',
+          desc: 'A luminous road painter who lays glowing rainbow tracks for speed and healing. Step off his road into the dark ground, and you will be drained dry!',
+          color: '#00f0ff',
+          attack: 'Rainbow Road',
+          attackDesc: 'Fires a paint roller dealing 750 damage that paints 5s glowing Rainbow Tiles. Drainbow gains +27% speed and heals on it; off the road for >1s, he takes 350 dmg/s. Enemies on tiles are -15% slowed and take 320 dmg/0.5s.',
+          super: 'Rainbow Highway',
+          superDesc: 'Takes flight for 5.0s, soaring untargetable above walls and ground melee. Rapidly drops aerial bombs (28 ammo) that burst into 8 outward cone flames dealing 150 + 400 damage on impact.',
+          hyper: 'Prismatic Overdrive: Main attacks paint +30% longer range and grant +52% speed on Hyper tiles. Emits purple neon flame visuals. Standard stat boosts.',
+          g1: 'Prism Barrier (Spawns 2 glowing neon guard rails along the aim path that block enemy projectiles for 3.5s)',
+          g2: 'Overclock Paint (Next main attack covers double width and lasts 8.0 seconds on the ground)',
+          sp1: 'Rainbow Regeneration (Standing on active Rainbow Ground regenerates 300 HP every 0.8s, with a +30% heal boost per additional overlapping tile)',
+          sp2: 'Prism Dampener (Enemies standing on Rainbow Ground deal 18% less damage to Drainbow and allies)'
+      },
+
+      'draflygon': {
+          name: 'Draflygon',
+          role: 'Assassin / Skirmisher',
+          desc: 'An aerial dragon skirmisher who scorches enemies with twin piercing flame lashes and takes to the skies with Ride the Fly, carpet-bombing explosive aerial drops from above.',
+          color: '#2ed573',
+          attack: 'Flame Lash',
+          attackDesc: 'Unleashes dual piercing flame arcs dealing 1400 damage and leaving scorched ground that burns for 300 dmg/s.',
+          super: 'Ride the Fly',
+          superDesc: 'Takes flight for 5.0s, soaring untargetable above walls and ground melee with high mobility. Rapidly drops aerial bombs that burst into 8 outward cone flames dealing 1100 + 935 damage on impact.',
+          hyper: 'Flame of Fury: Super flight duration extended to 7.0s with 40 flight ammo, wider blast radius, and curving spiral dragon flames. Standard stat boosts.',
+          g1: 'Thermal Updraft (Instantly launches airborne for a quick evasion hop while dropping 3 incendiary bombs)',
+          g2: 'Dragon Roar (Unleashes a shockwave roar that knocks back, silences, and damages nearby enemies)',
+          sp1: 'Kinetic Scale (Landing 5 ground Flame Lash hits charges Draflygon’s scales, granting a protective hexagon shield that converts 70% of incoming damage into defense)',
+          sp2: 'Aerial Ace (Increases flight duration by 1.5s and boosts flight projectile travel speed by 25%)'
+      },
+      'kage': {
+          name: 'Kage',
+          role: 'Assassin',
+          desc: 'A shadow ninja master who carves the arena with dual-sweep shuriken volleys, hologram mind-games, and explosive shadow stars.',
+          color: '#1e293b',
+          attack: 'Shadow Crossfire',
+          attackDesc: 'Fires 6 shurikens: 3 left-to-right, then 3 right-to-left in the gaps (250-600 dmg). At 3 full ammo, final 2 stars burst into a + shard cross.',
+          super: 'Magic Shadow Shurikens',
+          superDesc: 'Throws 2 giant shadow shurikens that each explode into a + shard burst on impact.',
+          hyper: 'Shadow Storm: Main attacks always detonate into + shard bursts. Super stars explode in + then X 8-way bursts and leave shadow slow pools. +25% dmg, +20% speed, +15% shield.',
+          g1: 'Hologram Swap (Leaves a 1.8s shadow hologram; press again to teleport back)',
+          g2: 'Omni Shuriken (Unleashes a 360-degree burst of 24 shurikens in all 8 directions)',
+          sp1: 'Shadow Agility (Landing 4+ shurikens from one volley grants +25% speed for 2.0s)',
+          sp2: 'Double Hologram (Hologram lasts 2.5s and detonates into 4 + shards on teleport or expiry)'
+      },
+
       'unopcoloco': { name: 'UnoPcoLoco', role: 'Support', desc: 'Leaping scarf attack and healing whacks.', color: '#ff4d4d', attack: 'Scarf & Whack (1-2-3 combo)', attackDesc: 'Fires a locking scarf, followed by 2 short-range glove whacks that heal you.', super: 'Scarf Clonin (Jump & drop clones)', superDesc: 'Jumps with a scarf and drops 3 clones at the landing spot.', hyper: 'Super clones drop faster and deal more damage.', g1: 'Scarf Switch (Next attack is scarf)', g2: 'Stretchy Scarf (+30% range/heal)', sp1: 'Heavy Scarf (Jump does 50% splash)', sp2: 'Extra Clone (Super drops an extra clone at start)' },
       'dashaholic': { name: 'Dashaholic', role: 'Assassin', desc: 'Slashes through enemies with piercing claws and dashes rapidly across the battlefield.', color: '#00ffcc', attack: 'Claw Slash', attackDesc: 'A piercing slash that damages all enemies in its path exactly once.', super: 'Unleash the Dashaholic', superDesc: 'Dashes forward at high speed, slashing anyone you pass through.', hyper: 'Super hits 3 times rapidly and stuns. Main attack fires a massive sweeping slash.', g1: 'Phase Dash (Short directional teleport)', g2: 'Adrenaline (Heal 1500 HP & Reload 1 ammo)', sp1: 'Vampiric Claws (Heal 15% from main attack)', sp2: 'Deep Cuts (Super leaves enemies bleeding)' },
       'trapper': { name: 'Trapper', role: 'Controller', desc: 'Drops gates and musical fences to lock down zones.', color: '#5a7bff', attack: 'Slam Gate', attackDesc: 'Shoots a cone gate. Hit: burst damage + knockback. Miss: gate remains as a short wall.', super: 'Sound Fence', superDesc: 'Spawns a rectangular fence that traps enemies for a short duration and deals continuous music damage.', hyper: 'Double Gate: Slam Gate launches two parallel gates and roots struck enemies for 0.7s. Fence becomes larger, speeds allies and amplifies enemy damage taken.', g1: 'Bass Blast (Nearby knockback pulse)', g2: 'Quick Patch (Instant heal)', sp1: 'Encore Set (Super lasts longer)', sp2: 'Rhythm Rush (Gain speed after landing Slam)' },
@@ -5047,8 +5155,37 @@
             'blade_vane': { name:'Blade Vane', role:'Assassin', desc:'A sword brawler whose swing tempo accelerates harder and harder during Super.', color:'#e95568', attack:'Vane Cleave', attackDesc:'A real sword swing from left to right. Slow at first, but deadly up close.', super:'Blood Cyclone', superDesc:'Spin and release blood around you, knocking enemies back. For 6 seconds each attack gets faster, deals more damage, reloads faster, and heals for 20% of damage dealt.', hyper:'Redline Vane: main attack swings at max super speed, drops blood on every hit, has unlimited ammo, and damage stacking caps at 300%.', g1:'Sharpened Edge (Next swing reaches farther)', g2:'Blood Guard (Gain shield from recent damage)', sp1:'Clean Cut (First hit in a chain slows)', sp2:'Blood Rush (Super ramp lasts longer)' },
             'daggershard': { name:'Daggershard', role:'Controller', desc:'A glass dagger chain brawler who charges up from 1 to 3 straight daggers.', color:'#8edcf4', attack:'Shard Line', attackDesc:'Shoot daggers in a straight line: 1, then 2, then 3 after hits. Third-stage hits explode into 4 shards that leave small poison zones.', super:'Glass Daggers', superDesc:'Place one 5000 HP glass item. When broken, it releases daggers and shards; shooting it adds more shards.', hyper:'Fracture Bloom: main attack always fires stage 3 daggers and shards. Super emits dagger waves at 100/75/50/25% HP and explodes 360 degrees.', g1:'Glass Tap (Instantly add charge to your glass)', g2:'Sharp Reset (Next hit jumps to stage 3)', sp1:'Poisoned Glass (Shard zones last longer)', sp2:'Reinforced Display (Glass has more HP)' },
             'adlof': { name:'Adlof', role:'Controller', desc:'A theatrical mastermind who redirects enemies instead of dealing direct damage.', color:'#d4af65', attack:'Master Plan', attackDesc:'Command an enemy to retreat faster, drop its target, and fight someone else for 4 seconds.', super:'Hostile Takeover', superDesc:'Launch a takeover sigil. The first enemy hit changes teams and fights for Adlof briefly.', hyper:'Final Order: a taken-over enemy is executed when control ends. Hypercharged Master Plan deploys 3 guards.', g1:'Forced March (Next Master Plan lasts longer)', g2:'Reinforcements (Deploy guards)', sp1:'Long Game (Master Plan lasts longer)', sp2:'Double Agent (Taken-over enemies deal more damage)' },
+                                    'trampaheal': {
+                name: 'Trampaheal',
+                role: 'Support',
+                color: '#10ac84',
+                desc: 'A joyful support brawler who leaps around the arena like Mico, slamming down with burst heals or damage while deploying high-bounce healing trampolines with air-steering mechanics.',
+                attack: 'Bouncy Leap',
+                attackDesc: 'Leaps into the air toward a target location. Landing deals 1200 damage to enemies or heals allies for 1500 HP, leaving a 1.0s healing aura on the ground.',
+                super: 'Mega Trampoline',
+                superDesc: 'Deploys a 5000 HP interactive trampoline. Stepping on it launches allies high into the air with full mid-air steering and choice of landing spot, restoring 1200 HP on each bounce.',
+                hyper: 'Trampawind: Super trampoline gains 6500 HP and releases powerful wind blasts from its sides whenever enemies approach, knocking them back.',
+                g1: 'High Spring (Trampaheal’s next jump gains +50% range and floats higher in the air)',
+                g2: 'Pocket Springboard (Drops an instant 1200 HP heal spring that launches allies forward)',
+                sp1: 'Soft Landing (Landing from any jump or trampoline bounce grants a 25% speed boost and 500 HP shield)',
+                sp2: 'Soothing Springs (The healing aura left on jump landing lasts 2.0s and heals for +50% more HP per pulse)'
+            },
+            'axeywaxy': {
+                name: 'AxeyWaxy',
+                role: 'Damage Dealer',
+                color: '#e74c3c',
+                desc: 'A relentless double-axe swinging warrior who builds kinetic heft for crushing knockback swings, spinning into high-speed whirlwind rampages.',
+                attack: 'Axe Cleave',
+                attackDesc: 'Swings a dynamic double-bladed axe in a sweeping 260-degree crescent arc for 1400 damage. At full ammo (3/3), waiting 0.7s charges Heavy Heft, empowering the next swing with heavy knockback and +250 bonus damage.',
+                super: 'Whirlwind Chopper',
+                superDesc: 'Spins continuously for 6.0s with +40% movement speed, dealing 500 damage per tick every 0.4s while projecting a 35% slowing aura and gaining a 40% damage reduction shield.',
+                hyper: 'Furious Juggernaut: Super axe radius +40% larger, moves +60% faster with complete CC immunity, main attack always knocks back, and automatically heals 4000 HP if dropping below 1000 HP.',
+                g1: 'Hatchet Toss (Throws a piercing returning tomahawk for 1200 damage that pulls enemies along)',
+                g2: 'Timber Stomp (Slams the ground to root enemies in a 160px cone for 1.2s and deal 900 damage)',
+                sp1: 'Heavy Momentum (Heavy Heft charges in 0.42s instead of 0.7s and delivers +50% knockback distance)',
+                sp2: 'Blade Shield (Super damage reduction increases to 55% and gains an additional +15% movement speed while spinning)'
+            },
             'cluster': { name:'Cluster', role:'Artillery', desc:'Throws cluster bombs that split mid-air into ground bombs with distance-based spread and damage.', color:'#ff9a5d', attack:'Cluster Toss', attackDesc:'Throw a cluster to the aimed spot. It splits into a triangle of bombs that sit for 1.2s or explode on touch. Farther throws spread more and deal more damage.', super:'The Mines', superDesc:'Throw 5 mines. Each mine waits until an enemy enters range, then ignites after 0.8s and launches them airborne.', hyper:'Minefield Deluxe: main attack adds +2 clusters. Super mines gain range and slow enemies for 5 seconds.', g1:'Tight Packing (Next cluster is compact)', g2:'Remote Pop (Trigger your mines early)', sp1:'Heavy Cluster (Far throws scale harder)', sp2:'Sticky Shrapnel (Explosions slow briefly)' },
-            'duck': { name:'Duck', role:'Sustain / Damage Dealer', desc:'A bread-crumb stream brawler with lifesteal and a flock of tail-swiping ducks.', color:'#ffd45e', attack:'Breadcrumb Stream', attackDesc:'Hold attack to keep firing bread crumbs in a sweeping cone pattern. Duck heals 18% of damage dealt.', super:'Duck Duck Goose', superDesc:'Summon 5 ducks that swipe from about 2 tiles away, knock enemies smoothly, and have decaying HP.', hyper:'Feeding Frenzy: main crumbs home harder and explode. Super ducks are larger and ram faster, but do not stack.', g1:'Breadcrumb Buffet (Next stream lasts longer)', g2:'Feather Guard (Ducks get a short shield)', sp1:'Overfeeding (Duck can overheal into shield)', sp2:'Greedy Flock (Ducks spread targets better)' },
             'witch': { name:'Witch', role:'Controller / Summoner', desc:'A terrain-reading potion thrower who changes her brew based on land, grass, or water.', color:'#b86cff', attack:'Brew Toss', attackDesc:'Throw a potion. Land creates 1 flying skeleton on landing; grass gives +15% range and poisons; water makes it bigger and slows. Puddles linger visually for 2.5s but only trigger on landing.', super:'Tombstone', superDesc:'Place a 4000 HP tombstone that spawns 3 low-HP skeletons every 9s. Recast Super while it exists for free to summon the Tomb Monster.', hyper:'Full Coven: main attack gets all terrain effects. Tombstone spawns flying skeletons plus 1 ground skeleton. Tomb Monster spawns skeletons on defeat and every 6s, up to 6.', g1:'Cursed Ground (Next potion gets all terrain effects)', g2:'Bone Refund (Break tombstone for +1 ammo and 2 skeletons)', sp1:'Longer Curse (Potion puddles linger longer)', sp2:'Monster Mash (Tomb Monster has more HP and throws farther)' },
             'fastpass': {
                 name:'Fastpass', role:'Support / Assassin', color:'#44e7ff',
@@ -5153,12 +5290,12 @@
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
         beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank',
-        blade_vane:'Assassin', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
+        blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
         boomer:'Artillery', cluster:'Artillery', evil_doctor:'Artillery', fightnfire:'Artillery', rocketeer:'Artillery', skeleflying:'Artillery', splitter:'Artillery', trapper:'Artillery', upiedown:'Artillery',
-        amplifier:'Support', angel:'Support', echo:'Support', fastpass:'Support', freestyle:'Support', hope:'Support', relay:'Support', sera_eclipse:'Support',
+        amplifier:'Support', angel:'Support', echo:'Support', fastpass:'Support', freestyle:'Support', hope:'Support', relay:'Support', trampaheal:'Support', sera_eclipse:'Support',
         adlof:'Controller', awakenator:'Controller', daggershard:'Controller', darkener:'Controller', decayer:'Controller', forest:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller',
-        beam:'Damage Dealer', duck:'Damage Dealer', fuser:'Damage Dealer', heater_miser:'Damage Dealer', jacktrade:'Damage Dealer', minigunnin:'Damage Dealer', money_and_tax:'Damage Dealer', outlit:'Damage Dealer', steamer:'Damage Dealer',
+        beam:'Damage Dealer', fuser:'Damage Dealer', heater_miser:'Damage Dealer', jacktrade:'Damage Dealer', minigunnin:'Damage Dealer', money_and_tax:'Damage Dealer', outlit:'Damage Dealer', steamer:'Damage Dealer', axeywaxy:'Damage Dealer',
         bouncin_balls:'Skirmisher', chickpig:'Skirmisher', classy:'Skirmisher', copyphase:'Skirmisher', goonbob:'Skirmisher', hoop:'Skirmisher', hyperorigin:'Skirmisher', robber:'Skirmisher'
     };
     for (const [id, role] of Object.entries(PRIMARY_ROLE_BY_BRAWLER)) if (brawlerData[id]) brawlerData[id].role = role;
@@ -5180,8 +5317,9 @@
         daggershard: '\u{1F52A}',
         adlof: '\u{1F3AD}',
         cluster: '\u{1F9E8}',
-        duck: '\u{1F986}',
         witch: '\u{1F52E}',
+        axeywaxy: '\u{1FA93}',
+        trampaheal: '\u{1FA80}',
         peter_pickle: '\u{1F952}',
         unstable: '\u{1F9EC}',
         rocketeer: '🚀',
@@ -5506,7 +5644,7 @@
         });
     }
 
-    const BEASTY_BEAST_CLAW_INTERVAL_MS = 10;
+    const BEASTY_BEAST_CLAW_INTERVAL_MS = 120;
 
     function updateBeastyBeast(entity, now) {
         if (!entity) return;
@@ -6861,7 +6999,7 @@
       },
       tutorialCompleted: false,
       evilDoctorUnlockEndAt: 0,
-      unlockedBrawlers: { outlit: true, fuser: true },
+      unlockedBrawlers: { outlit: true, fuser: true, axeywaxy: true, trampaheal: true, draflygon: true, drainbow: true, kage: true },
       soulSummoner: { pullCount: 0, deferredQueue: [], road: [], soulBank: 0, soulWater: 0, targetBrawler: null, pendingWaterReward: null, pendingTargetPick: null },
       ranked: { points: 0, rewardsClaimed: [] },
       attachies: { hyper: {}, gadget: {}, star: {}, pulls: 0 },
@@ -11455,7 +11593,7 @@
 
     function resetKnockDonateRound() {
         closeKnockDonateDonationUI();
-        bullets.length = 0;
+        bullets.length = 0; trampolines.length = 0; trampaHealAuras.length = 0;
         fastpassCheckpoints.length = 0;
         freestyleMicrophones.length = 0;
         portaloPortalPairs.length = 0;
@@ -14726,12 +14864,12 @@
   // activation. Rapid-fire and large-volley kits use higher hit requirements.
   const SUPER_CHARGE_HITS_BY_BRAWLER = Object.freeze({
       beast:20, chaird:5, forest:4, overlord:6, unopcoloco:6, warrior:10,
-      blade_vane:5, bowlin_rida:4, dashaholic:2, demon:5, jetpack:4, malakor:5, predator:5, swimmer:5, teether:6,
+      blade_vane:5, kage:10, drainbow:12, bowlin_rida:4, dashaholic:2, demon:5, jetpack:4, malakor:5, predator:5, swimmer:5, teether:6,
       boom_arang:4, cheseypuff:6, crystila:5, homer:4, hunter:5, orbo:16, snapper:7, xray:5,
       boomer:5, cluster:15, evil_doctor:6, fightnfire:30, rocketeer:18, skeleflying:6, splitter:30, trapper:5, upiedown:16,
       amplifier:6, angel:6, echo:7, fastpass:10, freestyle:12, hope:6, relay:6, sera_eclipse:6,
       adlof:6, daggershard:10, decayer:6, fuel:6, ice_cream:6, paradox:6, peter_pickle:6, scuba_diver:5, screener:6, tempo_maker:14, unstable:5, witch:7,
-      beam:8, duck:45, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
+      beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8
   });
@@ -14964,6 +15102,7 @@
       return stage >= 1 ? 150 : 168;
     }
     if (brawler === 'scuba_diver') return 360;
+    if (brawler === 'axeywaxy') return 360;
     if (Number.isFinite(BALANCE_PROFILE.fireDelayMsByBrawler[brawler])) {
         return BALANCE_PROFILE.fireDelayMsByBrawler[brawler];
     }
@@ -16024,6 +16163,7 @@
   function getOutgoingDamageMultiplier(entity, now = performance.now()) {
       if (!entity) return 1;
       let mult = 1;
+      if ((entity.prismDampenedUntil || 0) > now) mult *= 0.82; // Drainbow SP2: 18% damage reduction
       if ((entity.awakenatorSleepUntil || 0) > now) mult *= (entity.awakenatorDeepSleep ? 0.70 : 0.80);
       if ((entity.awakenatorCorruptFriendlyUntil || 0) > now) mult *= 0.30;
       if ((entity.amplifierDamageBuffUntil || 0) > now) mult *= (entity.amplifierDamageBuffMult || AMPLIFIER_DAMAGE_BUFF_MULT);
@@ -17876,6 +18016,186 @@
       spawnFloatingText(owner.x,owner.y-42,'DUCK DUCK GOOSE!','#ffd45e');
   }
 
+  
+    const PAINT_TILE = 100; // must match visual grid step
+
+    function distToSegment(px, py, x1, y1, x2, y2) {
+        const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+        if (l2 === 0) return Math.hypot(px - x1, py - y1);
+        let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+    }
+
+    function lineSegmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+        const ccw = (ax, ay, bx, by, cx, cy) => (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
+        return (ccw(x1, y1, x3, y3, x4, y4) !== ccw(x2, y2, x3, y3, x4, y4)) &&
+               (ccw(x1, y1, x2, y2, x3, y3) !== ccw(x1, y1, x2, y2, x4, y4));
+    }
+
+    // Helper: stamp a perpendicular band of tiles at position (cx,cy) along axis angle,
+    // covering halfW world-units either side. rainbowT is 0-1 progress along the road.
+    function drainbowPaintTile(cx, cy, halfW, rainbowT, ownerId, hyper, isHighway, sp1, sp2, durationMs) {
+        const now = performance.now();
+        const until = now + durationMs;
+        // Cover every tile cell that overlaps the perpendicular band centred on cx,cy
+        const margin = halfW + PAINT_TILE;
+        const x0 = Math.floor((cx - margin) / PAINT_TILE);
+        const x1 = Math.floor((cx + margin) / PAINT_TILE);
+        const y0 = Math.floor((cy - margin) / PAINT_TILE);
+        const y1 = Math.floor((cy + margin) / PAINT_TILE);
+        for (let tx = x0; tx <= x1; tx++) {
+            for (let ty = y0; ty <= y1; ty++) {
+                // Only keep tiles whose centre is within halfW of the roller's position
+                const tcx = tx * PAINT_TILE + PAINT_TILE / 2;
+                const tcy = ty * PAINT_TILE + PAINT_TILE / 2;
+                if (Math.hypot(tcx - cx, tcy - cy) > halfW + PAINT_TILE * 0.5) continue;
+                const key = tx + ',' + ty;
+                const existing = drainbowPaintTiles.get(key);
+                // Don't repaint a tile that is still alive — respects user's "no double paint" rule
+                if (existing && now < existing.until) continue;
+                drainbowPaintTiles.set(key, {
+                    until,
+                    rainbowT: Math.max(0, Math.min(1, rainbowT)),
+                    ownerId,
+                    hyper,
+                    isHighway,
+                    sp1,
+                    sp2,
+                    nextTickById: {}
+                });
+            }
+        }
+    }
+
+    // Paint a full rectangular corridor of tiles (for Super / instant effects).
+    function drainbowPaintCorridor(startX, startY, angle, length, halfW, hyper, ownerId, sp1, sp2, isHighway, durationMs) {
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const steps = Math.ceil(length / (PAINT_TILE * 0.5));
+        for (let s = 0; s <= steps; s++) {
+            const t = s / steps;
+            const cx = startX + cos * length * t;
+            const cy = startY + sin * length * t;
+            drainbowPaintTile(cx, cy, halfW, t, ownerId, hyper, isHighway, sp1, sp2, durationMs);
+        }
+    }
+
+    // Returns how many active painted tiles overlap the entity's footprint.
+    function getDrainbowOverlappingTileCount(entity, now = performance.now()) {
+        if (!entity || entity.hp <= 0) return 0;
+        const tx = Math.floor(entity.x / PAINT_TILE);
+        const ty = Math.floor(entity.y / PAINT_TILE);
+        const r = entity.radius || 18;
+        let count = 0;
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                const tile = drainbowPaintTiles.get((tx + dx) + ',' + (ty + dy));
+                if (tile && now < tile.until) {
+                    const wx = (tx + dx) * PAINT_TILE;
+                    const wy = (ty + dy) * PAINT_TILE;
+                    const closestX = Math.max(wx, Math.min(entity.x, wx + PAINT_TILE));
+                    const closestY = Math.max(wy, Math.min(entity.y, wy + PAINT_TILE));
+                    const dX = entity.x - closestX;
+                    const dY = entity.y - closestY;
+                    if ((dX * dX + dY * dY) <= (r * r)) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    // Returns the tile data if entity stands on a painted tile, else null.
+    function isEntityOnRainbowRoad(entity) {
+        if (!entity || entity.hp <= 0) return null;
+        const now = performance.now();
+        const tx = Math.floor(entity.x / PAINT_TILE);
+        const ty = Math.floor(entity.y / PAINT_TILE);
+        // Check the entity's tile and immediate neighbours (entity can straddle tile edges)
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                const tile = drainbowPaintTiles.get((tx + dx) + ',' + (ty + dy));
+                if (tile && now < tile.until) return tile;
+            }
+        }
+        return null;
+    }
+
+    function updateDrainbowGround(now, dt) {
+        // 1. Expire tiles
+        for (const [key, tile] of drainbowPaintTiles) {
+            if (now >= tile.until) drainbowPaintTiles.delete(key);
+        }
+        // 2. Expire prism barriers
+        for (let i = drainbowPrismBarriers.length - 1; i >= 0; i--) {
+            if (now >= drainbowPrismBarriers[i].until) drainbowPrismBarriers.splice(i, 1);
+        }
+
+        const allFighters = [player, ...bots].filter(e => e && e.hp > 0);
+
+        for (const entity of allFighters) {
+            const brawlerId = entity.id === player.id ? selectedBrawler : entity.brawler;
+            const isDrainbow = (brawlerId === 'drainbow');
+            const tileUnder = isEntityOnRainbowRoad(entity);
+
+            if (isDrainbow) {
+                if (tileUnder) {
+                    entity.drainbowLastOnTileAt = now;
+                    // Speed buffed by +12% on paint (1.27 regular, 1.37 highway, 1.52 hyper)
+                    const speedBonus = tileUnder.hyper ? 1.52 : (tileUnder.isHighway ? 1.37 : 1.27);
+                    entity.drainbowRoadSpeedMult = speedBonus;
+                    // SP1: Rainbow Regeneration (+300 HP base, +30% boost per overlapping tile)
+                    const hasSp1 = entity.id === player.id ? (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') : (entity.selectedStar === 'slow' || entity.selectedStar === 'fast' || entity.selectedStar === 'sp1');
+                    if (hasSp1 && (now - (entity.drainbowLastRegenAt || 0) >= 800)) {
+                        entity.drainbowLastRegenAt = now;
+                        const overlapCount = Math.max(1, getDrainbowOverlappingTileCount(entity, now));
+                        const boost = 1 + Math.max(0, overlapCount - 1) * 0.30;
+                        const healAmount = Math.round(300 * boost);
+                        doHeal(entity, healAmount, entity.id);
+                        const label = overlapCount > 1 ? '+' + healAmount + ' HP (' + overlapCount + 'x)' : '+' + healAmount + ' HP';
+                        spawnFloatingText(entity.x, entity.y - 32, label, '#4ade80');
+                    }
+                } else {
+                    entity.drainbowRoadSpeedMult = 1.0;
+                    entity.idleRegenNextAt = 0;
+                    entity.lastDamagedAt = now;
+                    if (entity.id === player.id) naturalHealTimer = 0;
+                    // Off-road decay: 1.0s grace period, 350 HP/s rate
+                    if (now - (entity.drainbowLastOnTileAt || 0) >= 1000) {
+                        if (now - (entity.drainbowLastDecayAt || 0) >= 1000) {
+                            entity.drainbowLastDecayAt = now;
+                            entity.hp = Math.max(1, entity.hp - 350);
+                            spawnFloatingText(entity.x, entity.y - 34, '-350 DECAY', '#ef4444');
+                            explosions.push({ x: entity.x, y: entity.y, radius: 24, life: 0, maxLife: 0.15, color: 'rgba(239, 68, 68, 0.5)' });
+                        }
+                    }
+                }
+            }
+
+            if (tileUnder) {
+                const tileOwner = (tileUnder.ownerId === player.id) ? player : bots.find(b => b.id === tileUnder.ownerId);
+                if (tileOwner && !areAlliedEntities(tileOwner, entity)) {
+                    applyStatusEffect(entity, 'slow', 500);
+                    if (tileUnder.sp2) entity.prismDampenedUntil = now + 600;
+                    tileUnder.nextTickById = tileUnder.nextTickById || {};
+                    if (now >= (tileUnder.nextTickById[entity.id] || 0)) {
+                        tileUnder.nextTickById[entity.id] = now + 500;
+                        checkHit(entity, {
+                            ownerBrawler: 'drainbow',
+                            ownerId: tileUnder.ownerId,
+                            damage: 320,
+                            pierce: true,
+                            isRainbowRoadTick: true,
+                            hitIds: {}
+                        }, -1);
+                        explosions.push({ x: entity.x, y: entity.y, radius: 20, life: 0, maxLife: 0.15, color: 'rgba(0, 240, 255, 0.45)' });
+                    }
+                }
+            }
+        }
+    }
+
   function updateDuckHealOrbs(now, dt) {
       for(let i=duckHealOrbs.length-1;i>=0;i--){
           const orb=duckHealOrbs[i],target=getEntityById(orb.targetId),owner=getEntityById(orb.ownerId);
@@ -17971,12 +18291,13 @@
                 ammoReloadTimer = 0;
             }
         }
+    const isDraflygonFlight = brawler === 'draflygon' && (fromEntity.draflygonFlyingUntil || 0) > now;
     let fireDelay = isBot ? 920 : getFireDelay(brawler, isBot ? fromEntity : null);
+    if (isDraflygonFlight) fireDelay = DRAFLYGON_BOMB_COOLDOWN_MS;
     if(isBot&&brawler==='fastpass'&&fromEntity.selectedStar==='long'&&(fromEntity.fastpassMomentum||0)>=.64)fireDelay/=1.15;
     if(isBot&&brawler==='freestyle'&&now<(fromEntity.freestyleRemixUntil||0))fireDelay/=1.18;
     if(brawler==='outlit'&&hasOutlitMutation(fromEntity)&&(fromEntity.outlitMutationCharges||0)>0)fireDelay*=.5;
-    if (brawler === 'duck') fireDelay = isBot ? 170 : 92;
-    if (isBot && fromEntity.isImpossibleAI) fireDelay *= 0.72;
+        if (isBot && fromEntity.isImpossibleAI) fireDelay *= 0.72;
     if (!isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getSlopEffectTotal('fireDelayPct'));
     if (isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getEntitySlopEffectTotal(fromEntity, 'fireDelayPct'));
     if(isBot && brawler === 'decayer' && now < (fromEntity.reloadBuffUntil || 0)) fireDelay *= 0.5;
@@ -17997,11 +18318,18 @@
     const ammoSaverFree = !isBot && willAmmoSaverTrigger(fromEntity);
     if(!isBot) {
         if (brawler === 'beam') return; // Beam uses its own continuous system, skip fire()
-        const steamerCost = brawler === 'steamer' ? 5 : 2;
-        const duckCost = brawler === 'duck' ? 4 : null;
-        const cost = crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1));
-        if (ammo < cost && !ammoSaverFree) return;
-    } else if (brawler === 'minigunnin') {
+        if (isDraflygonFlight) {
+            // While flying, Draflygon uses dedicated flight ammo, NOT ground ammo
+            if ((fromEntity.draflygonFlightAmmo || 0) <= 0) return;
+        } else {
+            const steamerCost = brawler === 'steamer' ? 5 : 2;
+            const duckCost = null;
+            const cost = crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1));
+            if (ammo < cost && !ammoSaverFree) return;
+        }
+    } else if (isDraflygonFlight) {
+        if ((fromEntity.draflygonFlightAmmo || 0) <= 0) return;
+    } else if (brawler === 'minigunnin' ) {
         if ((fromEntity.minigunAmmo || 0) < 2) return;
     } else if (brawler === 'beam') {
         return; // Bot beams also handled separately
@@ -18036,21 +18364,27 @@
     }
 
     if(brawler==='unstable'&&getUnstableMainContainerCount(fromEntity)>=3)return;
+    if (brawler === 'axeywaxy') {
+        if ((fromEntity.axeyWaxySuperUntil || 0) > now) return; // Cannot attack while in Super
+        if (bullets.some(b => b.isAxeyWaxyCleave && b.ownerId === fromEntity.id && b.life < b.maxLife)) return; // Wait for current swing
+    }
 
     if(isBot) {
         fromEntity.lastShot = now;
-        if (brawler === 'minigunnin') fromEntity.minigunAmmo -= 2;
+        if (brawler === 'minigunnin' ) fromEntity.minigunAmmo -= 2;
         fromEntity.lastAttackAt = now;
     } else {
         lastShot = now;
         commitTrinketAttack(fromEntity);
-        const steamerCost = brawler === 'steamer' ? 5 : 2;
-        const duckCost = brawler === 'duck' ? 4 : null;
-        const classyUnlimitedAmmo = brawler === 'classy' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'classyEndlessEncore') > 0;
-        const robberUnlimitedAmmo = brawler === 'robber' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'robberPerfectCrime') > 0;
-        if (classyUnlimitedAmmo || robberUnlimitedAmmo) ammo = maxAmmo;
-        else if (!ammoSaverFree) ammo -= (crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1)));
-        if (ammoSaverFree) spawnFloatingText(player.x, player.y - 36, 'AMMO SAVED!', '#ffd66b');
+        if (!isDraflygonFlight) {
+            const steamerCost = brawler === 'steamer' ? 5 : 2;
+            const duckCost = null;
+            const classyUnlimitedAmmo = brawler === 'classy' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'classyEndlessEncore') > 0;
+            const robberUnlimitedAmmo = brawler === 'robber' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'robberPerfectCrime') > 0;
+            if (classyUnlimitedAmmo || robberUnlimitedAmmo) ammo = maxAmmo;
+            else if (!ammoSaverFree) ammo -= (crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1)));
+            if (ammoSaverFree) spawnFloatingText(player.x, player.y - 36, 'AMMO SAVED!', '#ffd66b');
+        }
         player.lastAttackAt = now;
         applySlopSushiOnAttack();
     }
@@ -18460,6 +18794,386 @@
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         bullets.push({ownerBrawler:'demon',isDemonBlade:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+6),vx:Math.cos(ang)*680,vy:Math.sin(ang)*680,life:0,maxLife:.72,damage:isBot?1500:2000,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.1});
         if (hyper||(isSlopSushiMode&&getEntitySlopEffectTotal(fromEntity,'demonExtraBlade')>0)) bullets.push({ownerBrawler:'demon',isDemonBlade:true,isDemonSpectral:true,x:fromEntity.x+Math.cos(ang+.13)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang+.13)*(fromEntity.radius+6),vx:Math.cos(ang+.13)*700,vy:Math.sin(ang+.13)*700,life:0,maxLife:.68,damage:isBot?900:1250,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.8,hyperVisual:hyper});
+    } else if (brawler === 'drainbow') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const now = performance.now();
+        const hasSp1 = isBot ? (fromEntity.selectedStar === 'slow' || fromEntity.selectedStar === 'fast' || fromEntity.selectedStar === 'sp1') : (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1');
+        const hasSp2 = isBot ? (fromEntity.selectedStar === 'long' || fromEntity.selectedStar === 'sp2') : (selectedStar === 'long' || selectedStar === 'sp2');
+        const isG2 = !!fromEntity.drainbowG2Armed;
+        fromEntity.drainbowG2Armed = false;
+        gadgetArmed = false;
+
+        const baseRange = 580;
+        const roadRange = hyper ? Math.round(baseRange * 1.30) : baseRange;
+        const roadWidth = isG2 ? 280 : 150;  // tile widths: G2=2.8 tiles, normal=1.5 tiles
+        const roadDur = isG2 ? 8000 : 5000;
+        const rollerSpeed = 950;
+        const flightTime = roadRange / rollerSpeed;
+
+        // Launch Paint Roller — it stamps tiles as it travels
+        bullets.push({
+            ownerBrawler: 'drainbow',
+            isDrainbowRoller: true,
+            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 12),
+            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 12),
+            vx: Math.cos(ang) * rollerSpeed,
+            vy: Math.sin(ang) * rollerSpeed,
+            life: 0,
+            maxLife: flightTime,
+            damage: 750,
+            pierce: true,
+            ownerId: fromEntity.id,
+            hitIds: {},
+            hitboxMod: isG2 ? 2.2 : 1.4,
+            hyperVisual: hyper,
+            roadWidth: roadWidth,
+            roadDur: roadDur,
+            roadHalfW: roadWidth / 2,
+            roadHasSp1: hasSp1,
+            roadHasSp2: hasSp2,
+            roadIsG2: isG2,
+            roadTotalDist: roadRange,
+            roadDistTravelled: 0
+        });
+
+        spawnFloatingText(fromEntity.x, fromEntity.y - 36, isG2 ? 'OVERCLOCK PAINT!' : 'RAINBOW PAINT!', hyper ? '#c084fc' : '#ff007f');
+            } else if (brawler === 'trampaheal') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const now = performance.now();
+        const hasSp1 = isBot ? (fromEntity.selectedStar === 'slow' || fromEntity.selectedStar === 'fast' || fromEntity.selectedStar === 'sp1') : (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1');
+        const hasSp2 = isBot ? (fromEntity.selectedStar === 'long' || fromEntity.selectedStar === 'sp2') : (selectedStar === 'long' || selectedStar === 'sp2');
+        ensureTrampahealState(fromEntity);
+
+        if (fromEntity.trampahealIsJumping || (fromEntity.trampaAirSteerUntil || 0) > now) {
+            return; // Cannot jump while already airborne
+        }
+
+        const g1Armed = !isBot ? (gadgetArmed && selectedGadget === 'g1') : !!fromEntity.trampahealG1Armed;
+        const g2Armed = !isBot ? (gadgetArmed && selectedGadget === 'g2') : !!fromEntity.trampahealG2Armed;
+        if (!isBot && (g1Armed || g2Armed)) {
+            gadgetArmed = false;
+            gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+            updateGadgetButton();
+        }
+        fromEntity.trampahealG1Armed = false;
+        fromEntity.trampahealG2Armed = false;
+
+        if (g2Armed) {
+            // G2: Pocket Springboard (Drops instant 1200 HP heal spring)
+            const allies = fromEntity.id === player.id ? [player, ...aliveBots.filter(b => areAlliedEntities(player, b))] : [fromEntity, ...aliveBots.filter(b => areAlliedEntities(fromEntity, b))];
+            for (const ally of allies) {
+                if (Math.hypot(ally.x - fromEntity.x, ally.y - fromEntity.y) < 140) {
+                    doHeal(ally, 1200);
+                    spawnFloatingText(ally.x, ally.y - 25, '+1200 SPRING HEAL', '#2ed573');
+                }
+            }
+            explosions.push({
+                x: fromEntity.x,
+                y: fromEntity.y,
+                radius: 80,
+                life: 0,
+                maxLife: 0.25,
+                color: 'rgba(46, 213, 115, 0.85)'
+            });
+            spawnFloatingText(fromEntity.x, fromEntity.y - 36, 'POCKET SPRINGBOARD!', '#2ed573');
+            return;
+        }
+
+        // Main Attack: Mico-style targeted jump
+        const maxRange = g1Armed ? 330 : 220;
+        const dist = Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y);
+        let landX = targetX;
+        let landY = targetY;
+        if (dist > maxRange) {
+            landX = fromEntity.x + Math.cos(ang) * maxRange;
+            landY = fromEntity.y + Math.sin(ang) * maxRange;
+        }
+        landX = clamp(landX, fromEntity.radius, WORLD_W - fromEntity.radius);
+        landY = clamp(landY, fromEntity.radius, WORLD_H - fromEntity.radius);
+
+        const duration = g1Armed ? 580 : 450;
+        fromEntity.trampahealIsJumping = true;
+        fromEntity.trampahealJumpStartX = fromEntity.x;
+        fromEntity.trampahealJumpStartY = fromEntity.y;
+        fromEntity.trampahealJumpTargetX = landX;
+        fromEntity.trampahealJumpTargetY = landY;
+        fromEntity.trampahealJumpStartAt = now;
+        fromEntity.trampahealJumpDuration = duration;
+        fromEntity.isAirborneUntil = now + duration;
+        fromEntity.isFlying = true;
+        fromEntity.trampahealHasSp1 = hasSp1;
+        fromEntity.trampahealHasSp2 = hasSp2;
+
+        spawnFloatingText(fromEntity.x, fromEntity.y - 32, '🤸 BOUNCY LEAP!', '#10ac84');
+    } else if (brawler === 'axeywaxy') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const now = performance.now();
+        const hasSp1 = isBot ? (fromEntity.selectedStar === 'slow' || fromEntity.selectedStar === 'fast' || fromEntity.selectedStar === 'sp1') : (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1');
+        ensureAxeyWaxyState(fromEntity);
+
+
+
+        const g1Armed = !isBot ? (gadgetArmed && selectedGadget === 'g1') : !!fromEntity.axeyWaxyG1Armed;
+        const g2Armed = !isBot ? (gadgetArmed && selectedGadget === 'g2') : !!fromEntity.axeyWaxyG2Armed;
+        if (!isBot && (g1Armed || g2Armed)) {
+            gadgetArmed = false;
+            gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+            updateGadgetButton();
+        }
+        fromEntity.axeyWaxyG1Armed = false;
+        fromEntity.axeyWaxyG2Armed = false;
+
+        if (g1Armed) {
+            // G1: Hatchet Toss (piercing returning tomahawk, 1200 dmg)
+            bullets.push({
+                ownerBrawler: 'axeywaxy',
+                isAxeyWaxyHatchet: true,
+                x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8),
+                y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8),
+                startX: fromEntity.x,
+                startY: fromEntity.y,
+                vx: Math.cos(ang) * 920,
+                vy: Math.sin(ang) * 920,
+                life: 0,
+                maxLife: 0.62,
+                damage: 1200,
+                pierce: true,
+                returning: false,
+                ownerId: fromEntity.id,
+                hitIds: {},
+                hyperVisual: hyper
+            });
+            spawnFloatingText(fromEntity.x, fromEntity.y - 36, 'HATCHET TOSS!', '#ff9f43');
+            return;
+        }
+
+        if (g2Armed) {
+            // G2: Timber Stomp (roots enemies in 160px cone for 1.2s, 900 dmg)
+            const coneRange = 165;
+            const coneHalf = 0.55;
+            const candidates = fromEntity.id === player.id ? aliveBots : [player, ...aliveBots];
+            for (const target of candidates) {
+                if (!target || target.hp <= 0 || target.id === fromEntity.id || target.isFlying) continue;
+                if (areAlliedEntities(fromEntity, target)) continue;
+                const td = Math.hypot(target.x - fromEntity.x, target.y - fromEntity.y);
+                if (td <= coneRange + (target.radius || 16)) {
+                    const tAng = Math.atan2(target.y - fromEntity.y, target.x - fromEntity.x);
+                    let diff = Math.abs(tAng - ang);
+                    if (diff > Math.PI) diff = Math.PI * 2 - diff;
+                    if (diff <= coneHalf) {
+                        checkHit(target, { ownerBrawler: 'axeywaxy', damage: 900, pierce: true, ownerId: fromEntity.id, hitIds: {} }, -1);
+                        applyStatusEffect(target, 'stun', 1200);
+                        spawnFloatingText(target.x, target.y - 35, 'TIMBER ROOTED!', '#e67e22');
+                    }
+                }
+            }
+            explosions.push({
+                x: fromEntity.x + Math.cos(ang) * 80,
+                y: fromEntity.y + Math.sin(ang) * 80,
+                radius: 110,
+                life: 0,
+                maxLife: 0.28,
+                color: 'rgba(230, 126, 34, 0.75)'
+            });
+            spawnFloatingText(fromEntity.x, fromEntity.y - 36, 'TIMBER STOMP!', '#e67e22');
+            return;
+        }
+
+        // Main Attack: Dynamic Animated Axe Cleave (260 degree arc)
+        const isHeft = fromEntity.axeyWaxyHeftReady || hyper;
+        fromEntity.axeyWaxyHeftReady = false;
+        fromEntity.axeyWaxyFullAmmoSince = 0;
+
+        const cleaveRange = hyper ? 250 : 220;
+        const cleaveDamage = isHeft ? (hyper ? 1850 : 1650) : (hyper ? 1600 : 1400);
+        const knockbackDist = isHeft ? (hasSp1 ? 165 : 115) : 0;
+
+        bullets.push({
+            ownerBrawler: 'axeywaxy',
+            isAxeyWaxyCleave: true,
+            x: fromEntity.x,
+            y: fromEntity.y,
+            aimAngle: ang,
+            swingAngle: ang - 2.0,
+            targetSwingAngle: ang + 2.0,
+            range: cleaveRange,
+            arcSpan: 4.0,
+            life: 0,
+            maxLife: 0.36,
+            damage: cleaveDamage,
+            isHeft: isHeft,
+            knockbackDist: knockbackDist,
+            pierce: true,
+            ownerId: fromEntity.id,
+            hitIds: {},
+            hyperVisual: hyper,
+            hasSp1: hasSp1
+        });
+    } else if (brawler === 'draflygon') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const now = performance.now();
+        const hasSp1 = isBot ? (fromEntity.selectedStar === 'slow' || fromEntity.selectedStar === 'fast' || fromEntity.selectedStar === 'sp1') : (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1');
+        ensureDraflygonState(fromEntity);
+
+        const isFlying = (fromEntity.draflygonFlyingUntil || 0) > now;
+        if (isFlying) {
+            // Rapid flight ammo bar — drops falling flame projectile that impacts and launches 8 outward cone flames (NO fire zone)
+            if ((fromEntity.draflygonFlightAmmo || 0) <= 0) return;
+            if (now - (fromEntity.draflygonLastBombAt || 0) < DRAFLYGON_BOMB_COOLDOWN_MS) return;
+            fromEntity.draflygonLastBombAt = now;
+            fromEntity.draflygonFlightAmmo = Math.max(0, (fromEntity.draflygonFlightAmmo || 1) - 1);
+
+            const bombHyper = !!fromEntity.draflygonFlightHyper;
+            let dropX = fromEntity.x, dropY = fromEntity.y;
+            if (bombHyper) {
+                // In Hypercharge, you can aim omnidirectionally around
+                const aimDist = Math.min(240, Math.hypot(targetY - fromEntity.y, targetX - fromEntity.x) || 80);
+                dropX = clamp(fromEntity.x + Math.cos(ang) * aimDist, 40, WORLD_W - 40);
+                dropY = clamp(fromEntity.y + Math.sin(ang) * aimDist, 40, WORLD_H - 40);
+            } else {
+                // In Regular Super, bombs drop DIRECTLY beneath Draflygon without aiming away
+                dropX = fromEntity.x;
+                dropY = fromEntity.y;
+            }
+            bullets.push({
+                ownerBrawler: 'draflygon',
+                isDraflygonAerialDrop: true,
+                super: true,
+                x: fromEntity.x,
+                y: fromEntity.y,
+                startX: fromEntity.x,
+                startY: fromEntity.y,
+                targetX: dropX,
+                targetY: dropY,
+                vx: (dropX - fromEntity.x) / 0.16,
+                vy: (dropY - fromEntity.y) / 0.16,
+                life: 0,
+                maxLife: 0.16,
+                damage: bombHyper ? 220 : 150,
+                ownerId: fromEntity.id,
+                hyperVisual: bombHyper,
+                hasSp1: hasSp1
+            });
+            return;
+        }
+
+        // Ground Main Attack: Slim Flame Lash
+        const isG2 = !!fromEntity.draflygonG2Armed;
+        fromEntity.draflygonG2Armed = false;
+        gadgetArmed = false;
+
+        const baseRange = 360;
+        const range = hyper ? 450 : baseRange;
+        const flameDamage = hyper ? 1650 : 1400;
+        const poolRadius = isG2 ? 95 : (hyper ? 60 : 36);
+        const poolDur = isG2 ? 6000 : 3500;
+
+        bullets.push({
+            ownerBrawler: 'draflygon',
+            isDraflygonFlame: true,
+            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 10),
+            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 10),
+            vx: Math.cos(ang) * 980,
+            vy: Math.sin(ang) * 980,
+            life: 0,
+            maxLife: range / 980,
+            damage: flameDamage,
+            pierce: true,
+            ownerId: fromEntity.id,
+            hitIds: {},
+            hitboxMod: 1.2,
+            hyperVisual: hyper,
+            hasSp1: hasSp1,
+            isG2: isG2,
+            poolRadius: poolRadius,
+            poolDur: poolDur
+        });
+    } else if (brawler === 'kage') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const now = performance.now();
+        const level = isBot ? (fromEntity.powerLevel || 11) : getSelectedBrawlerLevel();
+        const scale = 0.55 + (level - 1) * 0.045;
+        const minDmg = Math.round(250 * scale); // 250 at P11 point blank
+        const maxDmg = Math.round(600 * scale); // 600 at P11 max range
+        // Since 1 ammo was just deducted in shoot(), full ammo (3/3) means remaining ammo is >= maxAmmo - 1.05 (>= 1.95)
+        const fullAmmo = (!isBot && ammo >= (maxAmmo - 1.05)) || hyper;
+        const hasSp1 = isBot ? (fromEntity.selectedStar === 'fast') : (selectedStar === 'fast');
+        const hasSp2 = isBot ? (fromEntity.selectedStar === 'long') : (selectedStar === 'long');
+        const activationId = fromEntity.currentMainAttackActivationId || `kage-${fromEntity.id}-${now}`;
+
+        // Projectile speed: 608 px/s (-20%), range: 580
+        const speed = 608;
+        const range = 580;
+        const flightTime = range / speed; // ~0.954s
+
+        // Spawn G1 Hologram if armed
+        if (fromEntity.kageG1Armed) {
+            fromEntity.kageG1Armed = false;
+            gadgetArmed = false;
+            const holoDur = hasSp2 ? 2500 : 1800;
+            const midDist = range * 0.5; // Midpoint of main attack
+            const holoX = fromEntity.x + Math.cos(ang) * midDist;
+            const holoY = fromEntity.y + Math.sin(ang) * midDist;
+            const maxEndX = fromEntity.x + Math.cos(ang) * range;
+            const maxEndY = fromEntity.y + Math.sin(ang) * range;
+            fromEntity.kageHologram = { 
+                x: holoX, y: holoY, 
+                originX: fromEntity.x, originY: fromEntity.y,
+                endX: maxEndX, endY: maxEndY,
+                ang: ang,
+                until: now + holoDur, totalDur: holoDur, 
+                sp2: hasSp2, ownerId: fromEntity.id 
+            };
+            fromEntity.kageHologramUntil = now + holoDur;
+            spawnFloatingText(holoX, holoY - 38, 'SHADOW DECOY', '#ffffff');
+            updateGadgetButton();
+        }
+
+        // 6 distinct lanes:
+        // Sweep 1 (Left to Right): Lane 1 (-0.20), Lane 3 (-0.04), Lane 5 (+0.12)
+        // Sweep 2 (Right to Left - Filling Gaps): Lane 6 (+0.20), Lane 4 (+0.04), Lane 2 (-0.12)
+        const starAngles = [
+            ang - 0.20, // Shot 1: Lane 1
+            ang - 0.04, // Shot 2: Lane 3
+            ang + 0.12, // Shot 3: Lane 5
+            ang + 0.20, // Shot 4: Lane 6 (gap fill)
+            ang + 0.04, // Shot 5: Lane 4 (gap fill)
+            ang - 0.12  // Shot 6: Lane 2 (gap fill)
+        ];
+
+        for (let i = 0; i < 6; i++) {
+            const starAng = starAngles[i];
+            const isFinalTwo = (i >= 4);
+            const explosiveCross = (fullAmmo && isFinalTwo) || hyper;
+            const delayMs = i * 36; // 36ms rapid sequential stagger
+
+            setTimeout(() => {
+                if (!fromEntity || fromEntity.hp <= 0) return;
+                bullets.push({
+                    ownerBrawler: 'kage',
+                    isKageShuriken: true,
+                    x: fromEntity.x + Math.cos(starAng) * (fromEntity.radius + 6),
+                    y: fromEntity.y + Math.sin(starAng) * (fromEntity.radius + 6),
+                    vx: Math.cos(starAng) * speed,
+                    vy: Math.sin(starAng) * speed,
+                    life: 0,
+                    maxLife: flightTime,
+                    startX: fromEntity.x,
+                    startY: fromEntity.y,
+                    damage: maxDmg,
+                    minDamage: minDmg, // 250 base at P11 point blank
+                    maxDamage: maxDmg, // 600 base at P11 max range
+                    pierce: false,
+                    ownerId: fromEntity.id,
+                    hitIds: {},
+                    hitboxMod: 1.45,
+                    hyperVisual: hyper,
+                    explosiveCross: explosiveCross,
+                    activationId: activationId,
+                    hasSp1: hasSp1
+                });
+            }, delayMs);
+        }
     } else if (brawler === 'outlit') {
         // Hyper main mutations are Attachies. Bots do not own Attachies, so
         // their ordinary Hypercharge may not silently gain double/piercing shots.
@@ -20270,6 +20984,286 @@
         }, 3050);
     }
 
+
+
+    const DRAFLYGON_FLIGHT_AMMO_MAX = 28;
+    const DRAFLYGON_FLIGHT_AMMO_MAX_HYPER = 40;
+    const DRAFLYGON_BOMB_COOLDOWN_MS = 140;
+
+    
+    
+    let trampolines = [];
+    let trampaHealAuras = [];
+
+    function ensureTrampahealState(entity) {
+        if (!entity) return;
+        if (typeof entity.trampahealIsJumping !== 'boolean') entity.trampahealIsJumping = false;
+        if (typeof entity.trampahealJumpStartAt !== 'number') entity.trampahealJumpStartAt = 0;
+        if (typeof entity.trampahealJumpDuration !== 'number') entity.trampahealJumpDuration = 450;
+        if (typeof entity.trampahealJumpStartX !== 'number') entity.trampahealJumpStartX = entity.x;
+        if (typeof entity.trampahealJumpStartY !== 'number') entity.trampahealJumpStartY = entity.y;
+        if (typeof entity.trampahealJumpTargetX !== 'number') entity.trampahealJumpTargetX = entity.x;
+        if (typeof entity.trampahealJumpTargetY !== 'number') entity.trampahealJumpTargetY = entity.y;
+        if (typeof entity.trampaAirSteerUntil !== 'number') entity.trampaAirSteerUntil = 0;
+        if (typeof entity.trampaAirSteerStartAt !== 'number') entity.trampaAirSteerStartAt = 0;
+        if (typeof entity.trampahealG1Armed !== 'boolean') entity.trampahealG1Armed = false;
+        if (typeof entity.trampahealG2Armed !== 'boolean') entity.trampahealG2Armed = false;
+    }
+
+    function castTrampahealSuper(owner, hyper, targetX, targetY) {
+        if (!owner || owner.hp <= 0) return;
+        const now = performance.now();
+        ensureTrampahealState(owner);
+
+        // Clamp deploy distance (max 620px)
+        const dist = Math.hypot(targetX - owner.x, targetY - owner.y);
+        const maxDist = 620;
+        let deployX = targetX;
+        let deployY = targetY;
+        if (dist > maxDist) {
+            const ang = Math.atan2(targetY - owner.y, targetX - owner.x);
+            deployX = owner.x + Math.cos(ang) * maxDist;
+            deployY = owner.y + Math.sin(ang) * maxDist;
+        }
+        deployX = clamp(deployX, 40, WORLD_W - 40);
+        deployY = clamp(deployY, 40, WORLD_H - 40);
+
+        const hp = hyper ? 6500 : 5000;
+        trampolines.push({
+            id: 'tramp_' + Math.floor(Math.random() * 999999),
+            x: deployX,
+            y: deployY,
+            hp: hp,
+            maxHp: hp,
+            radius: 36,
+            ownerId: owner.id,
+            team: owner.team,
+            isHyper: !!hyper,
+            createdNow: now,
+            lastWindBlastAt: 0,
+            lastBounceMap: {}
+        });
+
+        explosions.push({
+            x: deployX,
+            y: deployY,
+            radius: hyper ? 110 : 85,
+            life: 0,
+            maxLife: 0.30,
+            color: hyper ? 'rgba(0, 245, 212, 0.90)' : 'rgba(16, 172, 132, 0.85)'
+        });
+        spawnFloatingText(deployX, deployY - 45, hyper ? '⚡ TRAMPAWIND (6500 HP)!' : '🤸 MEGA TRAMPOLINE (5000 HP)!', hyper ? '#00f5d4' : '#10ac84');
+    }
+
+    function ensureAxeyWaxyState(entity) {
+        if (!entity) return;
+        if (typeof entity.axeyWaxyFullAmmoSince !== 'number') entity.axeyWaxyFullAmmoSince = 0;
+        if (typeof entity.axeyWaxyHeftReady !== 'boolean') entity.axeyWaxyHeftReady = false;
+        if (typeof entity.axeyWaxySuperUntil !== 'number') entity.axeyWaxySuperUntil = 0;
+        if (typeof entity.axeyWaxySuperHyper !== 'boolean') entity.axeyWaxySuperHyper = false;
+        if (typeof entity.axeyWaxyLastSpinTickAt !== 'number') entity.axeyWaxyLastSpinTickAt = 0;
+        if (typeof entity.axeyWaxyHcHealTriggered !== 'boolean') entity.axeyWaxyHcHealTriggered = false;
+        if (typeof entity.axeyWaxyG1Armed !== 'boolean') entity.axeyWaxyG1Armed = false;
+        if (typeof entity.axeyWaxyG2Armed !== 'boolean') entity.axeyWaxyG2Armed = false;
+    }
+
+    function castAxeyWaxySuper(owner, hyper, targetX, targetY) {
+        if (!owner || owner.hp <= 0) return;
+        const now = performance.now();
+        ensureAxeyWaxyState(owner);
+        const hasSp2 = owner.id === player.id ? (selectedStar === 'long' || selectedStar === 'sp2') : (owner.selectedStar === 'long' || owner.selectedStar === 'sp2');
+        owner.axeyWaxySuperUntil = now + 6000;
+        owner.axeyWaxySuperHyper = !!hyper;
+        owner.axeyWaxyLastSpinTickAt = 0;
+        owner.axeyWaxyHcHealTriggered = false;
+        owner.axeyWaxyHasSp2 = hasSp2;
+
+        explosions.push({
+            x: owner.x,
+            y: owner.y,
+            radius: hyper ? 120 : 90,
+            life: 0,
+            maxLife: 0.35,
+            color: hyper ? 'rgba(255, 60, 110, 0.85)' : 'rgba(231, 76, 60, 0.85)'
+        });
+        spawnFloatingText(owner.x, owner.y - 38, hyper ? '⚡ FURIOUS JUGGERNAUT!' : '🪓 WHIRLWIND CHOPPER!', hyper ? '#ff3860' : '#ff9f43');
+    }
+
+    function ensureDraflygonState(entity) {
+        if (!entity) return;
+        if (typeof entity.draflygonFlyingUntil !== 'number') entity.draflygonFlyingUntil = 0;
+        if (typeof entity.draflygonFlightHyper !== 'boolean') entity.draflygonFlightHyper = false;
+        if (typeof entity.draflygonFlightAmmo !== 'number') entity.draflygonFlightAmmo = 0;
+        if (typeof entity.draflygonLastBombAt !== 'number') entity.draflygonLastBombAt = 0;
+        if (typeof entity.draflygonSp1HitCounter !== 'number') entity.draflygonSp1HitCounter = 0;
+        if (typeof entity.draflygonSp1ShieldCharged !== 'boolean') entity.draflygonSp1ShieldCharged = false;
+        if (typeof entity.draflygonSp1BarrierUntil !== 'number') entity.draflygonSp1BarrierUntil = 0;
+        if (typeof entity.draflygonLandingShieldUntil !== 'number') entity.draflygonLandingShieldUntil = 0;
+        if (typeof entity.draflygonG2Armed !== 'boolean') entity.draflygonG2Armed = false;
+    }
+
+    function spawnDraflygonFireZone(ownerId, x, y, radius, durationMs, damagePerSec = 300, isHyper = false) {
+        const now = performance.now();
+        draflygonFireZones.push({
+            ownerId,
+            x: clamp(x, 20, WORLD_W - 20),
+            y: clamp(y, 20, WORLD_H - 20),
+            radius,
+            damagePerSec,
+            until: now + durationMs,
+            nextTickAt: now + 400,
+            isHyper: !!isHyper
+        });
+    }
+
+    function updateDraflygonFireZones(now, dt) {
+        for (let i = draflygonFireZones.length - 1; i >= 0; i--) {
+            const zone = draflygonFireZones[i];
+            if (now >= zone.until) {
+                draflygonFireZones.splice(i, 1);
+                continue;
+            }
+            if (now >= zone.nextTickAt) {
+                zone.nextTickAt = now + 400;
+                const zoneOwner = getEntityById(zone.ownerId);
+                const candidates = [player, ...bots];
+                for (const target of candidates) {
+                    if (!target || target.hp <= 0 || target.id === zone.ownerId) continue;
+                    if (zoneOwner && areAlliedEntities(zoneOwner, target)) continue;
+                    if (Math.hypot(target.x - zone.x, target.y - zone.y) <= zone.radius + (target.radius || 16)) {
+                        const tickDmg = Math.round(zone.damagePerSec * 0.4);
+                        checkHit(target, {
+                            ownerBrawler: 'draflygon',
+                            ownerId: zone.ownerId,
+                            damage: tickDmg,
+                            pierce: true,
+                            isDraflygonFireTick: true,
+                            hitIds: {}
+                        }, -1);
+                        explosions.push({ x: target.x, y: target.y, radius: 18, life: 0, maxLife: 0.15, color: zone.isHyper ? 'rgba(255, 60, 110, 0.5)' : 'rgba(255, 123, 0, 0.5)' });
+                    }
+                }
+            }
+        }
+    }
+
+    function castDraflygonSuper(owner, hyper, targetX, targetY) {
+        if (!owner || owner.hp <= 0) return;
+        const now = performance.now();
+        ensureDraflygonState(owner);
+        const hasSp2 = owner.id === player.id ? (selectedStar === 'long' || selectedStar === 'sp2') : (owner.selectedStar === 'long' || owner.selectedStar === 'sp2');
+
+        const durationMs = hyper ? 7000 : 5000;
+        owner.draflygonFlyingUntil = now + durationMs;
+        owner.draflygonFlightHyper = !!hyper;
+        owner.draflygonHasSp2 = hasSp2;
+        owner.draflygonFlightAmmo = hyper ? DRAFLYGON_FLIGHT_AMMO_MAX_HYPER : DRAFLYGON_FLIGHT_AMMO_MAX;
+        owner.draflygonLastBombAt = 0;
+        owner.isFlying = true;
+        owner.z = 32;
+        if (owner.id === player.id) {
+            ammo = maxAmmo;
+            ammoReloadTimer = 0;
+        } else {
+            owner.minigunAmmo = 100;
+        }
+
+        explosions.push({
+            x: owner.x,
+            y: owner.y,
+            radius: 80,
+            life: 0,
+            maxLife: 0.35,
+            color: hyper ? 'rgba(255, 60, 110, 0.85)' : 'rgba(46, 213, 115, 0.85)'
+        });
+        spawnFloatingText(owner.x, owner.y - 42, hyper ? '🔥 FLAME OF FURY! (7s)' : '🐲 RIDE THE FLY! (5s)', hyper ? '#ff3860' : '#2ed573');
+    }
+
+    function castDrainbowSuper(owner, hyper, targetX, targetY) {
+        if (!owner || owner.hp <= 0) return;
+        const now = performance.now();
+        const baseAng = Math.atan2(targetY - owner.y, targetX - owner.x);
+        const hasSp1 = owner.id === player.id ? (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') : (owner.selectedStar === 'slow' || owner.selectedStar === 'fast' || owner.selectedStar === 'sp1');
+        const hasSp2 = owner.id === player.id ? (selectedStar === 'long' || selectedStar === 'sp2') : (owner.selectedStar === 'long' || owner.selectedStar === 'sp2');
+
+        const highwayLength = 700;
+        const highwayWidth = hyper ? 400 : 300;
+        const highwayDur = 6500;
+        const speed = 1100;
+        const flightTime = highwayLength / speed;
+
+        // Launch giant Super Rainbow Roller Projectile — paints the wide corridor dynamically as it travels!
+        bullets.push({
+            ownerBrawler: 'drainbow',
+            isDrainbowRoller: true,
+            isDrainbowSuperRoller: true,
+            super: true,
+            x: owner.x + Math.cos(baseAng) * (owner.radius + 14),
+            y: owner.y + Math.sin(baseAng) * (owner.radius + 14),
+            vx: Math.cos(baseAng) * speed,
+            vy: Math.sin(baseAng) * speed,
+            life: 0,
+            maxLife: flightTime,
+            damage: 900,
+            pierce: true,
+            ownerId: owner.id,
+            hitIds: {},
+            hitboxMod: hyper ? 3.6 : 2.8,
+            hyperVisual: hyper,
+            roadWidth: highwayWidth,
+            roadDur: highwayDur,
+            roadHalfW: highwayWidth / 2,
+            roadHasSp1: hasSp1,
+            roadHasSp2: hasSp2,
+            isHighway: true,
+            roadTotalDist: highwayLength,
+            roadDistTravelled: 0
+        });
+
+        explosions.push({ x: owner.x, y: owner.y, radius: 95, life: 0, maxLife: 0.35, color: hyper ? 'rgba(192, 132, 252, 0.9)' : 'rgba(0, 240, 255, 0.85)' });
+        spawnFloatingText(owner.x, owner.y - 48, hyper ? 'PRISMATIC OVERDRIVE!' : 'RAINBOW HIGHWAY!', hyper ? '#c084fc' : '#ff007f');
+    }
+
+    function castKageSuper(owner, hyper, targetX, targetY) {
+        if (!owner || owner.hp <= 0) return;
+        const now = performance.now();
+        const baseAng = Math.atan2(targetY - owner.y, targetX - owner.x);
+        const level = owner.id === player.id ? getSelectedBrawlerLevel() : (owner.powerLevel || 11);
+        const scale = 0.55 + (level - 1) * 0.045;
+        const speed = 576; // -20% speed
+        const range = 680;
+        const maxLife = range / speed;
+        const count = hyper ? 4 : 2;
+        const spread = 0.18;
+        const superActivationId = `kage-super-${owner.id}-${now}`;
+
+        for (let i = 0; i < count; i++) {
+            const starAng = count === 2 ? (baseAng + (i === 0 ? -spread : spread)) : (baseAng + (i - 1.5) * spread);
+            bullets.push({
+                ownerBrawler: 'kage',
+                isKageGiantStar: true,
+                superActivationId: superActivationId,
+                x: owner.x + Math.cos(starAng) * (owner.radius + 12),
+                y: owner.y + Math.sin(starAng) * (owner.radius + 12),
+                vx: Math.cos(starAng) * speed,
+                vy: Math.sin(starAng) * speed,
+                life: 0,
+                maxLife: maxLife,
+                damage: Math.round(1450 * scale), // 1450 at P11
+                shardDamage: Math.round(400 * scale), // 400 at P11
+                pierce: false,
+                super: true,
+                ownerId: owner.id,
+                hitIds: {},
+                hitboxMod: 1.8,
+                hyperVisual: !!hyper,
+                isHyperSuper: !!hyper
+            });
+        }
+        explosions.push({ x: owner.x, y: owner.y, radius: 64, life: 0, maxLife: 0.25, color: hyper ? 'rgba(192, 132, 252, 0.85)' : 'rgba(226, 232, 240, 0.8)' });
+        spawnFloatingText(owner.x, owner.y - 42, hyper ? 'SHADOW STORM!' : 'MAGIC SHURIKENS!', hyper ? '#c084fc' : '#f8fafc');
+    }
+
     function castSnapperSuper(owner, hyper) {
         const maxRadius = Math.hypot(WORLD_W, WORLD_H) + 300;
         snapperWaves.push({ownerId:owner.id,x:owner.x,y:owner.y,radius:0,previousRadius:0,maxRadius,speed:1150,pct:hyper?0.45:0.30,delay:0,mini:false,hitIds:{},fxClock:0});
@@ -21392,6 +22386,209 @@
             const sx=player.x+Math.cos(ang)*24-Math.sin(ang)*lateral,sy=player.y+Math.sin(ang)*24+Math.cos(ang)*lateral;
             bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*920,vy:Math.sin(ang)*920,life:0,maxLife:1.08,damage:600,pierce:true,pierceWalls:true,breakWallsInstantly:true,ownerId:player.id,super:true,hitIds:{},hitboxMod:1.25,hyperVisual:isHypercharged,teetherReturns:isHypercharged});
         },shot*(isHypercharged?18:65));
+    } else if (selectedBrawler === 'drainbow') {
+        castDrainbowSuper(player, isHypercharged, wm.x, wm.y);
+        updateSuperButton();
+        return;
+            } else if (selectedBrawler === 'trampaheal') {
+        castTrampahealSuper(player, isHypercharged, wm.x, wm.y);
+        updateSuperButton();
+        return;
+    } else 
+      // Trampaheal Jump & Air-Steering Simulation
+      for (const e of [player, ...aliveBots]) {
+          if (!e || e.hp <= 0) continue;
+          ensureTrampahealState(e);
+
+          // 1. Main Attack Targeted Jump Arc
+          if (e.trampahealIsJumping) {
+              const p = Math.min(1, (now - e.trampahealJumpStartAt) / (e.trampahealJumpDuration || 450));
+              e.x = e.trampahealJumpStartX + (e.trampahealJumpTargetX - e.trampahealJumpStartX) * p;
+              e.y = e.trampahealJumpStartY + (e.trampahealJumpTargetY - e.trampahealJumpStartY) * p;
+              e.z = Math.sin(p * Math.PI) * 45;
+
+              if (p >= 1) {
+                  // Landed!
+                  e.x = e.trampahealJumpTargetX;
+                  e.y = e.trampahealJumpTargetY;
+                  e.z = 0;
+                  e.trampahealIsJumping = false;
+                  e.isFlying = false;
+                  e.isAirborneUntil = 0;
+
+                  const landRadius = 65;
+                  const candidates = e.id === player.id ? aliveBots : [player, ...aliveBots];
+                  const allies = e.id === player.id ? [player, ...aliveBots.filter(b => areAlliedEntities(player, b))] : [e, ...aliveBots.filter(b => areAlliedEntities(e, b))];
+
+                  // Damage enemies in landing radius
+                  for (const target of candidates) {
+                      if (!target || target.hp <= 0 || target.id === e.id || target.isFlying) continue;
+                      if (areAlliedEntities(e, target)) continue;
+                      if (Math.hypot(target.x - e.x, target.y - e.y) <= landRadius + (target.radius || 16)) {
+                          checkHit(target, { ownerBrawler: 'trampaheal', damage: 1200, pierce: true, ownerId: e.id, hitIds: {} }, -1);
+                      }
+                  }
+
+                  // Heal allies in landing radius
+                  for (const ally of allies) {
+                      if (!ally || ally.hp <= 0) continue;
+                      if (Math.hypot(ally.x - e.x, ally.y - e.y) <= landRadius + (ally.radius || 16)) {
+                          doHeal(ally, 1500);
+                          spawnFloatingText(ally.x, ally.y - 25, '+1500 JUMP HEAL', '#2ed573');
+                      }
+                  }
+
+                  // SP1: Soft Landing (25% speed boost for 2s + 500 shield)
+                  if (e.trampahealHasSp1) {
+                      e.shield = Math.min(6000, (e.shield || 0) + 500);
+                      e.speedUntil = Math.max(e.speedUntil || 0, now + 2000);
+                      spawnFloatingText(e.x, e.y - 38, '🛡️ SOFT LANDING (+500 SHIELD)', '#00f5d4');
+                  }
+
+                  // Lingering Healing Aura (1.0s base / 2.0s SP2)
+                  const auraDur = e.trampahealHasSp2 ? 2000 : 1000;
+                  const auraTickHeal = e.trampahealHasSp2 ? 450 : 300;
+                  trampaHealAuras.push({
+                      x: e.x,
+                      y: e.y,
+                      radius: landRadius,
+                      ownerId: e.id,
+                      until: now + auraDur,
+                      healTick: auraTickHeal,
+                      lastTickAt: 0
+                  });
+
+                  explosions.push({
+                      x: e.x,
+                      y: e.y,
+                      radius: landRadius + 15,
+                      life: 0,
+                      maxLife: 0.25,
+                      color: 'rgba(16, 172, 132, 0.85)'
+                  });
+              }
+          }
+
+          // 2. Trampoline Air-Steering Bounce
+          if (e.trampaAirSteerUntil && now < e.trampaAirSteerUntil) {
+              const airP = Math.min(1, (now - e.trampaAirSteerStartAt) / 850);
+              e.z = Math.sin(airP * Math.PI) * 65;
+          } else if (e.trampaAirSteerUntil && now >= e.trampaAirSteerUntil) {
+              e.trampaAirSteerUntil = 0;
+              e.isFlying = false;
+              e.isAirborneUntil = 0;
+              e.z = 0;
+              explosions.push({
+                  x: e.x,
+                  y: e.y,
+                  radius: 45,
+                  life: 0,
+                  maxLife: 0.20,
+                  color: 'rgba(46, 213, 115, 0.75)'
+              });
+          }
+      }
+
+      // Trampoline Structure Updates & Interaction Loop
+      for (let tIdx = trampolines.length - 1; tIdx >= 0; tIdx--) {
+          const t = trampolines[tIdx];
+          if (!t || t.hp <= 0) {
+              trampolines.splice(tIdx, 1);
+              continue;
+          }
+
+          const tOwner = getEntityById(t.ownerId);
+
+          for (const e of [player, ...aliveBots]) {
+              if (!e || e.hp <= 0) continue;
+              ensureTrampahealState(e);
+
+              const dist = Math.hypot(e.x - t.x, e.y - t.y);
+
+              // Ally / Self Trampoline Bounce (Airborne Launch + 1200 HP Heal)
+              if (!e.trampahealIsJumping && (e.trampaAirSteerUntil || 0) <= now) {
+                  const isAlly = (tOwner && areAlliedEntities(tOwner, e)) || e.id === t.ownerId;
+                  if (isAlly && dist <= t.radius + 4) {
+                      // Bounce!
+                      doHeal(e, 1200);
+                      spawnFloatingText(e.x, e.y - 30, '+1200 BOUNCE HEAL', '#2ed573');
+                      e.trampaAirSteerUntil = now + 850;
+                      e.trampaAirSteerStartAt = now;
+                      e.isAirborneUntil = now + 850;
+                      e.isFlying = true;
+
+                      // SP1 Soft Landing check
+                      const hasSp1 = e.id === player.id ? (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') : (e.selectedStar === 'slow' || e.selectedStar === 'fast' || e.selectedStar === 'sp1');
+                      if (hasSp1) {
+                          e.shield = Math.min(6000, (e.shield || 0) + 500);
+                          e.speedUntil = Math.max(e.speedUntil || 0, now + 2000);
+                      }
+
+                      explosions.push({
+                          x: t.x,
+                          y: t.y,
+                          radius: 55,
+                          life: 0,
+                          maxLife: 0.22,
+                          color: 'rgba(0, 245, 212, 0.85)'
+                      });
+                  }
+              }
+
+              // Hypercharge Trampawind: Wind Blast Defense against approaching enemies
+              if (t.isHyper && e.hp > 0 && e.id !== t.ownerId) {
+                  const isEnemy = !tOwner || !areAlliedEntities(tOwner, e);
+                  if (isEnemy && dist <= 120 && now - (t.lastWindBlastAt || 0) >= 1200) {
+                      t.lastWindBlastAt = now;
+                      const blastAng = Math.atan2(e.y - t.y, e.x - t.x);
+                      e.x = clamp(e.x + Math.cos(blastAng) * 140, e.radius, WORLD_W - e.radius);
+                      e.y = clamp(e.y + Math.sin(blastAng) * 140, e.radius, WORLD_H - e.radius);
+                      spawnFloatingText(e.x, e.y - 35, '💨 TRAMPAWIND BLAST!', '#00f5d4');
+                      explosions.push({
+                          x: t.x,
+                          y: t.y,
+                          radius: 125,
+                          life: 0,
+                          maxLife: 0.30,
+                          color: 'rgba(0, 245, 212, 0.75)'
+                      });
+                  }
+              }
+          }
+      }
+
+      // Lingering Healing Auras Update
+      for (let aIdx = trampaHealAuras.length - 1; aIdx >= 0; aIdx--) {
+          const aura = trampaHealAuras[aIdx];
+          if (!aura || now >= aura.until) {
+              trampaHealAuras.splice(aIdx, 1);
+              continue;
+          }
+          if (now - (aura.lastTickAt || 0) >= 500) {
+              aura.lastTickAt = now;
+              const aOwner = getEntityById(aura.ownerId);
+              const allies = aOwner ? (aOwner.id === player.id ? [player, ...aliveBots.filter(b => areAlliedEntities(player, b))] : [aOwner, ...aliveBots.filter(b => areAlliedEntities(aOwner, b))]) : [player];
+              for (const ally of allies) {
+                  if (Math.hypot(ally.x - aura.x, ally.y - aura.y) <= aura.radius + (ally.radius || 16)) {
+                      doHeal(ally, aura.healTick || 300);
+                      spawnFloatingText(ally.x, ally.y - 20, `+${aura.healTick || 300}`, '#2ed573');
+                  }
+              }
+          }
+      }
+
+      if (selectedBrawler === 'axeywaxy') {
+        castAxeyWaxySuper(player, isHypercharged, wm.x, wm.y);
+        updateSuperButton();
+        return;
+    } else if (selectedBrawler === 'draflygon') {
+        castDraflygonSuper(player, isHypercharged, wm.x, wm.y);
+        updateSuperButton();
+        return;
+    } else if (selectedBrawler === 'kage') {
+        castKageSuper(player, isHypercharged, wm.x, wm.y);
+        updateSuperButton();
+        return;
     } else if (selectedBrawler === 'outlit') {
         for(let s=-0.08;s<=0.08;s+=0.16){
           const a = ang + s;
@@ -21580,6 +22777,46 @@
       bot.jackTradeJackpotArmed=true;spawnFloatingText(bot.x,bot.y-34,'JACKPOT READY','#ffd85c');
     } else if (bot.brawler === 'jacktrade' && g === 'g2') {
       bot.jackTradeSafeBetArmed=true;spawnFloatingText(bot.x,bot.y-34,'SAFE BET READY','#7ef4ff');
+    } else if (bot.brawler === 'draflygon' && g === 'g1') {
+      const dashDist = 380;
+      const ex = clamp(bot.x + Math.cos(ang) * dashDist, bot.radius, WORLD_W - bot.radius);
+      const ey = clamp(bot.y + Math.sin(ang) * dashDist, bot.radius, WORLD_H - bot.radius);
+      for (let s = 0; s <= 6; s++) {
+          const t = s / 6;
+          const fx = bot.x + (ex - bot.x) * t;
+          const fy = bot.y + (ey - bot.y) * t;
+          spawnDraflygonFireZone(bot.id, fx, fy, 40, 3000, 200, false);
+      }
+      bot.x = ex;
+      bot.y = ey;
+      bot.speedBoostUntil = Math.max(bot.speedBoostUntil || 0, now + 2000);
+      bot.speedBoostMult = 1.25;
+      explosions.push({ x: ex, y: ey, radius: 55, life: 0, maxLife: 0.25, color: 'rgba(255, 123, 0, 0.85)' });
+      spawnFloatingText(bot.x, bot.y - 34, 'THERMAL UPDRAFT!', '#ff7b00');
+    } else if (bot.brawler === 'draflygon' && g === 'g2') {
+      bot.draflygonG2Armed = true;
+      spawnFloatingText(bot.x, bot.y - 34, 'SCORCHED EARTH ARMED', '#ff3860');
+    } else if (bot.brawler === 'drainbow' && g === 'g1') {
+      const cos = Math.cos(ang), sin = Math.sin(ang);
+      const perpCos = -sin, perpSin = cos;
+      const halfW = 90, dist = 520;
+      const sx = bot.x, sy = bot.y;
+      const ex = sx + cos * dist, ey = sy + sin * dist;
+      drainbowPrismBarriers.push({
+          x1: sx + perpCos * halfW, y1: sy + perpSin * halfW,
+          x2: ex + perpCos * halfW, y2: ey + perpSin * halfW,
+          until: now + 3500, ownerId: bot.id
+      });
+      drainbowPrismBarriers.push({
+          x1: sx - perpCos * halfW, y1: sy - perpSin * halfW,
+          x2: ex - perpCos * halfW, y2: ey - perpSin * halfW,
+          until: now + 3500, ownerId: bot.id
+      });
+      explosions.push({ x: sx, y: sy, radius: 55, life: 0, maxLife: 0.25, color: 'rgba(0, 240, 255, 0.85)' });
+      spawnFloatingText(bot.x, bot.y - 34, 'PRISM BARRIERS!', '#00f0ff');
+    } else if (bot.brawler === 'drainbow' && g === 'g2') {
+      bot.drainbowG2Armed = true;
+      spawnFloatingText(bot.x, bot.y - 34, 'OVERCLOCK ARMED', '#ff007f');
     } else if (bot.brawler === 'portalo' && g === 'g1') {
       const targetDistance = target ? Math.hypot(target.x-bot.x,target.y-bot.y) : 0;
       let aimX = target ? target.x : bot.x + Math.cos(ang) * 280;
@@ -22541,13 +23778,38 @@
 
   signatureBtn?.addEventListener('click', () => activateSignatureAbility(player));
 
-  gadgetBtn.addEventListener('click', ()=>{
-    const prog = getSelectedProgress();
-        if (!prog.gadgetUnlocked && !isTraining) return;
-    
+  gadgetBtn.addEventListener('click', () => {
     const now = performance.now();
     const curBrawler = selectedBrawler;
     const curGadget = selectedGadget;
+
+    // Instant Kage G1 Swap (Priority check before any cooldown block)
+    if (curBrawler === 'kage' && curGadget === 'g1' && player.kageHologram && now < player.kageHologram.until) {
+        const destX = player.kageHologram.x;
+        const destY = player.kageHologram.y;
+        if (player.kageHologram.sp2) {
+            for (let a = 0; a < 4; a++) {
+                const aAng = a * (Math.PI / 2);
+                bullets.push({
+                    ownerBrawler: 'kage', isKageShard: true, x: destX, y: destY,
+                    vx: Math.cos(aAng) * 580, vy: Math.sin(aAng) * 580, life: 0, maxLife: 0.45,
+                    damage: 380, pierce: true, ownerId: player.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: isHypercharged
+                });
+            }
+        }
+        explosions.push({ x: player.x, y: player.y, radius: 45, life: 0, maxLife: 0.2, color: 'rgba(203, 213, 225, 0.7)' });
+        player.x = destX;
+        player.y = destY;
+        explosions.push({ x: destX, y: destY, radius: 55, life: 0, maxLife: 0.25, color: 'rgba(255, 255, 255, 0.85)' });
+        player.kageHologram = null;
+        player.kageHologramUntil = 0;
+        gadgetArmed = false;
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        spawnFloatingText(player.x, player.y - 40, 'SHADOW SWAP!', '#ffffff');
+        updateGadgetButton();
+        return;
+    }
     absorbLegacyPlayerGadgetCooldownWrite(curGadget, now);
     if(now < getPlayerGadgetCooldownUntil(curGadget, now)) return; // still cooling
     if(curBrawler==='bouncin_balls')addSpecialQuestProgress('bouncin_balls',curGadget==='g1'?'use_g1':'use_g2',1);
@@ -22558,7 +23820,104 @@
       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();return;
     }
     
-    if (curBrawler === 'awakenator' && curGadget === 'g1') {
+    if (curBrawler === 'draflygon' && curGadget === 'g1') {
+      // G1: Thermal Updraft (Dash forward + fire trail + speed burst)
+      const ang = Math.atan2(gadgetWorld.y - player.y, gadgetWorld.x - player.x);
+      const dashDist = 380;
+      const ex = clamp(player.x + Math.cos(ang) * dashDist, player.radius, WORLD_W - player.radius);
+      const ey = clamp(player.y + Math.sin(ang) * dashDist, player.radius, WORLD_H - player.radius);
+      const steps = 6;
+      for (let s = 0; s <= steps; s++) {
+          const t = s / steps;
+          const fx = player.x + (ex - player.x) * t;
+          const fy = player.y + (ey - player.y) * t;
+          spawnDraflygonFireZone(player.id, fx, fy, 40, 3000, 200, false);
+      }
+      player.x = ex;
+      player.y = ey;
+      player.speedBoostUntil = Math.max(player.speedBoostUntil || 0, now + 2000);
+      player.speedBoostMult = 1.25;
+      explosions.push({ x: ex, y: ey, radius: 55, life: 0, maxLife: 0.25, color: 'rgba(255, 123, 0, 0.85)' });
+      spawnFloatingText(player.x, player.y - 36, 'THERMAL UPDRAFT!', '#ff7b00');
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+      setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+      updateGadgetButton();
+      return;
+    } else if (curBrawler === 'draflygon' && curGadget === 'g2') {
+      // G2: Scorched Earth (Next main attack fire pool expands 3x)
+      player.draflygonG2Armed = true;
+      gadgetArmed = true;
+      spawnFloatingText(player.x, player.y - 36, 'SCORCHED EARTH ARMED', '#ff3860');
+      updateGadgetButton();
+      return;
+    }
+    
+    if (curBrawler === 'drainbow' && curGadget === 'g1') {
+      // G1: Prism Barrier (Spawn 2 projectile-blocking neon guard rails along facing direction)
+      const ang = Math.atan2(gadgetWorld.y - player.y, gadgetWorld.x - player.x);
+      const cos = Math.cos(ang);
+      const sin = Math.sin(ang);
+      const perpCos = -sin;
+      const perpSin = cos;
+      const halfW = 90;
+      const dist = 520;
+      const sx = player.x;
+      const sy = player.y;
+      const ex = sx + cos * dist;
+      const ey = sy + sin * dist;
+
+      // Rail 1 (Left Edge)
+      drainbowPrismBarriers.push({
+          x1: sx + perpCos * halfW, y1: sy + perpSin * halfW,
+          x2: ex + perpCos * halfW, y2: ey + perpSin * halfW,
+          until: now + 3500, ownerId: player.id
+      });
+      // Rail 2 (Right Edge)
+      drainbowPrismBarriers.push({
+          x1: sx - perpCos * halfW, y1: sy - perpSin * halfW,
+          x2: ex - perpCos * halfW, y2: ey - perpSin * halfW,
+          until: now + 3500, ownerId: player.id
+      });
+      explosions.push({ x: sx, y: sy, radius: 55, life: 0, maxLife: 0.25, color: 'rgba(0, 240, 255, 0.85)' });
+      spawnFloatingText(player.x, player.y - 36, 'PRISM BARRIERS!', '#00f0ff');
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+      setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+      updateGadgetButton();
+      return;
+    } else if (curBrawler === 'drainbow' && curGadget === 'g2') {
+      // G2: Overclock Paint (Next main attack covers double width & lasts 8s)
+      player.drainbowG2Armed = true;
+      gadgetArmed = true;
+      spawnFloatingText(player.x, player.y - 36, 'OVERCLOCK ARMED', '#ff007f');
+      updateGadgetButton();
+      return;
+    } else if (curBrawler === 'kage' && curGadget === 'g1') {
+        player.kageG1Armed = true;
+        gadgetArmed = true;
+        spawnFloatingText(player.x, player.y - 36, 'HOLOGRAM ARMED', '#ffffff');
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'kage' && curGadget === 'g2') {
+      const p11Stats = getScaledStats('kage', getSelectedBrawlerLevel());
+      const dmg = Math.round(p11Stats.dmg * 0.75);
+      for (let d = 0; d < 8; d++) {
+        const dirAng = d * (Math.PI / 4);
+        for (let s = -1; s <= 1; s++) {
+          const a = dirAng + s * 0.07;
+          bullets.push({
+            ownerBrawler: 'kage', isKageShuriken: true, x: player.x, y: player.y,
+            vx: Math.cos(a) * 608, vy: Math.sin(a) * 608, life: 0, maxLife: 0.65,
+            startX: player.x, startY: player.y, damage: dmg, minDamage: dmg, maxDamage: dmg,
+            pierce: false, ownerId: player.id, hitIds: {}, hitboxMod: 1.35, hyperVisual: isHypercharged
+          });
+        }
+      }
+      explosions.push({ x: player.x, y: player.y, radius: 70, life: 0, maxLife: 0.25, color: 'rgba(226, 232, 240, 0.8)' });
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+      spawnFloatingText(player.x, player.y - 42, 'OMNI SHURIKEN!', '#ffffff');
+      updateGadgetButton();
+      return;
+    } else if (curBrawler === 'awakenator' && curGadget === 'g1') {
       if(player.awakenatorLucidEchoArmed)return;
       player.awakenatorLucidEchoArmed=true;gadgetArmed=true;spawnFloatingText(player.x,player.y-34,'LUCID ECHO READY','#b8a5ff');updateGadgetButton();
     } else if (curBrawler === 'awakenator' && curGadget === 'g2') {
@@ -23398,7 +24757,11 @@
     const activeCdUntil = getPlayerGadgetCooldownUntil(selectedGadget, now);
     gadgetCooldownUntil = activeCdUntil;
         if(!unlocked){ gadgetBtn.textContent = 'Tool: Locked'; gadgetBtn.disabled = true; }
-    else if(gadgetArmed){ gadgetBtn.textContent = 'Tool: Armed'; gadgetBtn.disabled = false; }
+    else if (selectedBrawler === 'kage' && selectedGadget === 'g1' && player.kageHologram && now < player.kageHologram.until) {
+        const rem = Math.max(0, (player.kageHologram.until - now) / 1000).toFixed(1);
+        gadgetBtn.textContent = `Tool: SWAP (${rem}s)`;
+        gadgetBtn.disabled = false;
+    } else if(gadgetArmed){ gadgetBtn.textContent = 'Tool: Armed'; gadgetBtn.disabled = false; }
     else if(healingRingActive){ gadgetBtn.textContent = 'Tool: Active'; gadgetBtn.disabled = true; }
     else if(activeCdUntil && now < activeCdUntil){ const s = Math.max(0, Math.ceil((activeCdUntil - now)/1000)); gadgetBtn.textContent = `Tool: CD ${s}s`; gadgetBtn.disabled = true; }
     else { gadgetBtn.textContent = 'Tool: Ready'; gadgetBtn.disabled = false; }
@@ -28951,6 +30314,57 @@
   function checkHit(target, b, i){
         // If target has temporary invulnerability (e.g., overlord transform), ignore the hit
         if (target && target.invulnerableUntil && target.invulnerableUntil > performance.now()) return false;
+
+        // AxeyWaxy Super Damage Reduction Shield & HC 4000 HP Heal Trigger
+        if (target && (target.axeyWaxySuperUntil || 0) > performance.now()) {
+            ensureAxeyWaxyState(target);
+            const hasSp2 = target.id === player.id ? (selectedStar === 'long' || selectedStar === 'sp2') : (target.selectedStar === 'long' || target.selectedStar === 'sp2');
+            const reduction = hasSp2 ? 0.55 : 0.40;
+            b.damage = Math.round((b.damage || 0) * (1 - reduction));
+            
+            // Hypercharge Death-Defying Heal: restore 4000 HP if dropping below 1000 HP
+            if (target.axeyWaxySuperHyper && !target.axeyWaxyHcHealTriggered) {
+                if ((target.hp - (b.damage || 0)) < 1000 && target.hp > 0) {
+                    target.axeyWaxyHcHealTriggered = true;
+                    target.hp = Math.min(target.maxHp, target.hp + 4000);
+                    spawnFloatingText(target.x, target.y - 48, '+4000 JUGGERNAUT HEAL!', '#2ed573');
+                    explosions.push({
+                        x: target.x,
+                        y: target.y,
+                        radius: 80,
+                        life: 0,
+                        maxLife: 0.35,
+                        color: 'rgba(46, 213, 115, 0.95)'
+                    });
+                }
+            }
+        }
+
+        // Draflygon flight untargetability by ground melee / standard projectiles
+        if (target && (target.draflygonFlyingUntil || 0) > performance.now() && !b.super && !b.pierceWalls) {
+            return false;
+        }
+        // Draflygon SP1: Kinetic Scale Hexagon Shield & Projectile Detection Barrier
+        if (target && (target.draflygonSp1BarrierUntil || 0) > performance.now()) {
+            // Hexagon Barrier is active! Absorbs 70% of incoming damage during the window
+            const shieldGained = Math.round((b.damage || 0) * 0.70);
+            target.shield = Math.min(6000, (target.shield || 0) + shieldGained);
+            spawnFloatingText(target.x, target.y - 38, '🛡️ DEFLECTED!', '#00f5d4');
+            explosions.push({ x: target.x, y: target.y, radius: 36, life: 0, maxLife: 0.16, color: 'rgba(0, 245, 212, 0.85)' });
+            return true;
+        }
+        if (target && target.draflygonSp1ShieldCharged && (b && (b.damage || 0) > 0)) {
+            target.draflygonSp1ShieldCharged = false;
+            target.draflygonSp1HitCounter = 0;
+            const isProjectile = !!(b && (b.isBullet || b.vx !== undefined || b.isDraflygonConeFlame || b.ownerBrawler || b.isBoomArang || b.isEchoRingProj || (typeof i === 'number' && i >= 0)));
+            // When damage is received, detect if it's a projectile: open a 1.2s barrier window so all subsequent projectiles in that burst are absorbed!
+            target.draflygonSp1BarrierUntil = performance.now() + (isProjectile ? 1200 : 350);
+            const shieldGained = Math.round((b.damage || 0) * 0.70); // Converts 70% of damage into shield
+            target.shield = Math.min(6000, (target.shield || 0) + shieldGained);
+            spawnFloatingText(target.x, target.y - 38, isProjectile ? '🛡️ HEXAGON BARRIER (1.2s PROJECTILE ABSORB)!' : '+' + shieldGained + ' KINETIC SHIELD!', '#2ed573');
+            explosions.push({ x: target.x, y: target.y, radius: 52, life: 0, maxLife: 0.25, color: 'rgba(46, 213, 115, 0.92)' });
+            return true;
+        }
         if (target?.isGhoulClone) { target.hp=0; explosions.push({x:target.x,y:target.y,radius:46,life:0,maxLife:.28,color:'rgba(157,102,220,.62)',fxKind:'ghoulClone'}); return true; }
         if (isArenaForgeMode && target?.isArenaForgeCore && !isArenaForgeCoreVulnerable(target.team)) {
             if (performance.now() >= (target.forgeShieldTextAt || 0)) {
@@ -29087,6 +30501,22 @@
         if (owner && owner.id === player.id && selectedStar === 'slow') target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + 1200);
         explosions.push({x:target.x,y:target.y,radius:46,life:0,maxLife:0.28,color:b.hyperVisual?'#d66cff':'#79f7ff'});
     }
+    if (b.isDrainbowSuperRoller && target && owner && !areAlliedEntities(owner, target)) {
+        const hitNow = performance.now();
+        target.isAirborneUntil = Math.max(target.isAirborneUntil || 0, hitNow + 750);
+        target.z = 18;
+        applyStatusEffect(target, 'slow', 1500);
+        spawnFloatingText(target.x, target.y - 45, 'KNOCKUP!', '#00f0ff');
+    }
+    if (b.isDraflygonFlame && owner && b.hasSp1) {
+        ensureDraflygonState(owner);
+        owner.draflygonSp1HitCounter = (owner.draflygonSp1HitCounter || 0) + 1;
+        if (owner.draflygonSp1HitCounter >= 5) {
+            owner.draflygonSp1HitCounter = 0;
+            owner.draflygonSp1ShieldCharged = true;
+            spawnFloatingText(owner.x, owner.y - 36, '🛡️ KINETIC SCALE READY!', '#2ed573');
+        }
+    }
     if (b.isAngelLight) applyStatusEffect(target, 'slow', 500);
     if ((b.isIceCreamScoop || b.isIceCreamCone) && owner) applyIceCreamFreeze(owner,target,b.iceCreamFreezeAmount ?? (b.hyperVisual?34:25));
     if (b.isAdlofCommand) {
@@ -29122,6 +30552,25 @@
     }
     let mult = 1.0 + ((owner ? owner.powerCubes : 0) || 0) * 0.1;
     let dealtDamage = b.damage * mult;
+    // Draflygon SP2: Afterburn Guard (-30% damage taken for 5s after landing)
+    if (target && (target.draflygonLandingShieldUntil || 0) > performance.now()) {
+        dealtDamage *= 0.70;
+    }
+    if (b.isKageShuriken && b.startX != null) {
+        const distTraveled = Math.hypot(target.x - b.startX, target.y - b.startY);
+        const distRatio = Math.min(1, Math.max(0, distTraveled / 580));
+        const rawDmg = Math.round((b.minDamage || 250) + ((b.maxDamage || 600) - (b.minDamage || 250)) * distRatio);
+        dealtDamage = rawDmg * mult;
+        if (b.hasSp1 && b.activationId && owner) {
+            owner.kageVolleyHitCounts = owner.kageVolleyHitCounts || {};
+            owner.kageVolleyHitCounts[b.activationId] = (owner.kageVolleyHitCounts[b.activationId] || 0) + 1;
+            if (owner.kageVolleyHitCounts[b.activationId] >= 4) {
+                owner.speedBoostUntil = Math.max(owner.speedBoostUntil || 0, performance.now() + 2000);
+                owner.speedBoostMult = 1.25;
+                spawnFloatingText(owner.x, owner.y - 36, 'SHADOW AGILITY!', '#38bdf8');
+            }
+        }
+    }
     if (b.isDarkenerCloud && b.darkenerSlowSuffocation) dealtDamage *= Math.max(0, Number(b.darkenerTickDamageMult) || 1);
     if (b.isArenaForgeTowerShell && owner) {
         const repeatHit = owner.forgeLastShellTargetId === target.id;
@@ -29169,6 +30618,16 @@
         if (b.demonBarbed) { applyStatusEffect(target,'slow',1500); if(owner) doHeal(owner,900); }
     }
     const sourceBrawlerId = b.ownerBrawler || ownerBaseBrawler || 'outlit';
+    
+    if (b.isKageGiantStar && b.superActivationId && owner) {
+        owner.kageSuperHitCounts = owner.kageSuperHitCounts || {};
+        const prevHits = owner.kageSuperHitCounts[b.superActivationId] || 0;
+        owner.kageSuperHitCounts[b.superActivationId] = prevHits + 1;
+        if (prevHits > 0) {
+            dealtDamage *= 0.50; // Subsequent giant star hits deal 50%
+        }
+    }
+
     if (sourceBrawlerId === 'scuba_diver' && (target.scubaMarkedUntil || 0) > performance.now()) {
         dealtDamage *= 1.18;
     }
@@ -29232,6 +30691,46 @@
         spawnFloatingText(target.x, target.y - 32, charges > 1 ? 'DOUBLE MARK!' : 'MARKED!', '#55e6ff');
     }
     if (b.isScubaSubBubble) resolveScubaDiverSubBubble(b, true);
+    if (b.isKageShuriken && b.explosiveCross) {
+        for (let a = 0; a < 4; a++) {
+            const ang = a * (Math.PI / 2);
+            bullets.push({
+                ownerBrawler: 'kage', isKageShard: true, x: b.x, y: b.y,
+                vx: Math.cos(ang) * 540, vy: Math.sin(ang) * 540, life: 0, maxLife: 0.35,
+                damage: 380, pierce: false, ownerId: b.ownerId, hitIds: { [target.id]: true }, hitboxMod: 1.25, hyperVisual: !!b.hyperVisual
+            });
+        }
+        explosions.push({ x: b.x, y: b.y, radius: 48, life: 0, maxLife: 0.22, color: 'rgba(226, 232, 240, 0.8)' });
+        b.explosiveCross = false;
+    }
+    if (b.isKageGiantStar) {
+        b.kageExploded = true;
+        const shardDmg = b.shardDamage || 400;
+        const excludedIds = { [target.id]: true };
+        for (let a = 0; a < 4; a++) {
+            const ang = a * (Math.PI / 2);
+            bullets.push({
+                ownerBrawler: 'kage', isKageShard: true, x: b.x, y: b.y,
+                vx: Math.cos(ang) * 580, vy: Math.sin(ang) * 580, life: 0, maxLife: 0.45,
+                damage: shardDmg, pierce: false, ownerId: b.ownerId, hitIds: Object.assign({}, excludedIds), hitboxMod: 1.2, hyperVisual: !!b.hyperVisual
+            });
+        }
+        if (b.isHyperSuper) {
+            setTimeout(() => {
+                for (let a = 0; a < 4; a++) {
+                    const ang = a * (Math.PI / 2) + (Math.PI / 4);
+                    bullets.push({
+                        ownerBrawler: 'kage', isKageShard: true, x: b.x, y: b.y,
+                        vx: Math.cos(ang) * 580, vy: Math.sin(ang) * 580, life: 0, maxLife: 0.45,
+                        damage: shardDmg, pierce: false, ownerId: b.ownerId, hitIds: Object.assign({}, excludedIds), hitboxMod: 1.2, hyperVisual: true
+                    });
+                }
+            }, 80);
+        }
+        explosions.push({ x: b.x, y: b.y, radius: 75, life: 0, maxLife: 0.28, color: b.hyperVisual ? 'rgba(192, 132, 252, 0.9)' : 'rgba(226, 232, 240, 0.85)' });
+        b.isKageGiantStar = false;
+    }
+
 
     if (b.isSteamerSteam) {
         const nowHit = performance.now();
@@ -31919,6 +33418,25 @@
         }
     }
 
+    // Draflygon Super Flight Lifecycle
+    for (const e of [player, ...aliveBots]) {
+        if (e.draflygonFlyingUntil && now < e.draflygonFlyingUntil) {
+            e.isFlying = true;
+            e.z = 40 + Math.sin(now / 110) * 6;
+        } else if (e.draflygonFlyingUntil && now >= e.draflygonFlyingUntil) {
+            e.draflygonFlyingUntil = 0;
+            e.draflygonFlightHyper = false;
+            e.isFlying = false;
+            e.z = 0;
+            const hasSp2 = e.id === player.id ? (selectedStar === 'long' || selectedStar === 'sp2') : (e.selectedStar === 'long' || e.selectedStar === 'sp2');
+            if (hasSp2) {
+                e.draflygonLandingShieldUntil = now + 5000;
+                spawnFloatingText(e.x, e.y - 36, 'AFTERBURN GUARD (-30%)', '#2ed573');
+            }
+            explosions.push({ x: e.x, y: e.y, radius: 50, life: 0, maxLife: 0.25, color: 'rgba(46, 213, 115, 0.85)' });
+        }
+    }
+
     // bowlin_rida Super Logic
     for (const e of [player, ...aliveBots]) {
         if (e.ridaSuperUntil && now < e.ridaSuperUntil) {
@@ -32552,6 +34070,13 @@
     if (selectedBrawler === 'overlord' && (player.overlordStage || 0) >= 1) activeSpeed *= 1.2;
     if (selectedBrawler === 'teether' && now < (player.teetherSpeedUntil || 0)) activeSpeed *= 1.20;
       if (selectedBrawler === 'fuel' && now < (player.fuelSpeedUntil || 0)) activeSpeed *= 1.15;
+    if (selectedBrawler === 'axeywaxy' && now < (player.axeyWaxySuperUntil || 0)) {
+        const hyper = !!player.axeyWaxySuperHyper;
+        const hasSp2 = (selectedStar === 'long' || selectedStar === 'sp2');
+        let speedMult = hyper ? 1.60 : 1.40;
+        if (hasSp2) speedMult += 0.15;
+        activeSpeed *= speedMult;
+    }
       if (selectedBrawler === 'warrior' && now < (player.warriorStandUntil || 0) && now >= (player.warriorBattleRushUntil || 0)) {
           activeSpeed *= player.warriorStandHyper ? 0.75 : 0.35;
       }
@@ -32623,6 +34148,85 @@
       if (hitWall && selectedBrawler === 'bowlin_rida') { player.ridaSpeedMult = 1.0; player.ridaFirstBounceBoostReady = true; }
       
       // Jetpack flight is resolved here so both players and bots use the same arc.
+      
+      // AxeyWaxy Heavy Heft charge management
+      if (selectedBrawler === 'axeywaxy') {
+          ensureAxeyWaxyState(player);
+          const hasSp1 = (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1');
+          const requiredTime = hasSp1 ? 420 : 700;
+          if (ammo >= maxAmmo && !isHypercharged) {
+              if (!player.axeyWaxyFullAmmoSince) player.axeyWaxyFullAmmoSince = now;
+              if (now - player.axeyWaxyFullAmmoSince >= requiredTime) {
+                  if (!player.axeyWaxyHeftReady) {
+                      player.axeyWaxyHeftReady = true;
+                      spawnFloatingText(player.x, player.y - 35, '🪓 HEFT READY!', '#ff9f43');
+                  }
+              }
+          } else {
+              player.axeyWaxyFullAmmoSince = 0;
+              player.axeyWaxyHeftReady = false;
+          }
+      }
+
+      // AxeyWaxy Super Whirlwind Chopper tick damage & slow aura
+      for (const e of [player, ...aliveBots]) {
+          if (!e || e.hp <= 0) continue;
+          const isAxey = (e.id === player.id && selectedBrawler === 'axeywaxy') || e.brawler === 'axeywaxy';
+          if (!isAxey) continue;
+          ensureAxeyWaxyState(e);
+          if (e.axeyWaxySuperUntil && now < e.axeyWaxySuperUntil) {
+              const hyper = !!e.axeyWaxySuperHyper;
+              // Full CC Immunity during Hypercharge
+              if (hyper) {
+                  e.stunUntil = 0;
+                  e.slowUntil = 0;
+                  e.rooted = false;
+              }
+              const spinRadius = hyper ? 280 : 200;
+              const tickDamage = hyper ? 150 : 250;
+              const candidates = e.id === player.id ? aliveBots : [player, ...aliveBots];
+
+              // Apply 35% slow aura to nearby enemies
+              for (const target of candidates) {
+                  if (!target || target.hp <= 0 || target.id === e.id || target.isFlying) continue;
+                  if (areAlliedEntities(e, target)) continue;
+                  const dist = Math.hypot(target.x - e.x, target.y - e.y);
+                  if (dist <= spinRadius + (target.radius || 16)) {
+                      applyStatusEffect(target, 'slow', 450);
+                  }
+              }
+
+              // Spin tick damage every 400ms
+              if (now - (e.axeyWaxyLastSpinTickAt || 0) >= 200) {
+                  e.axeyWaxyLastSpinTickAt = now;
+                  for (const target of candidates) {
+                      if (!target || target.hp <= 0 || target.id === e.id || target.isFlying) continue;
+                      if (areAlliedEntities(e, target)) continue;
+                      const dist = Math.hypot(target.x - e.x, target.y - e.y);
+                      if (dist <= spinRadius + (target.radius || 16)) {
+                          checkHit(target, {
+                              ownerBrawler: 'axeywaxy',
+                              damage: tickDamage,
+                              pierce: true,
+                              ownerId: e.id,
+                              hitIds: {},
+                              super: true,
+                              hyperVisual: hyper
+                          }, -1);
+                          explosions.push({
+                              x: target.x + (Math.random() - 0.5) * 20,
+                              y: target.y + (Math.random() - 0.5) * 20,
+                              radius: 24,
+                              life: 0,
+                              maxLife: 0.16,
+                              color: hyper ? 'rgba(255, 60, 110, 0.75)' : 'rgba(231, 76, 60, 0.75)'
+                          });
+                      }
+                  }
+              }
+          }
+      }
+
       updateJetpackFlight(player, now);
       for (const flyingBot of aliveBots) if (flyingBot.brawler === 'jetpack') updateJetpackFlight(flyingBot, now);
 
@@ -32743,6 +34347,8 @@
 
         updateRocketeerEffects(now);
         updateMinigunninMutationZones(now);
+    updateDrainbowGround(now, dt);
+    updateDraflygonFireZones(now, dt);
         updateDuckHealOrbs(now, dt);
         updateIceCreamEffects(now, dt);
         updateFastpassAndFreestyle(now, dt);
@@ -33306,8 +34912,177 @@
           b.vx += (sDx/sLen) * 900 * dt; b.vy += (sDy/sLen) * 900 * dt;
         }
       }
-      if (b.xrayHoming || b.isHomerProjectile) {
+      // AxeyWaxy Main Attack: Animated Sweeping Axe Cleave (deals damage dynamically as the blade sweeps across)
+      if (b.isAxeyWaxyCleave) {
+          const owner = getEntityById(b.ownerId);
+          if (owner) {
+              b.x = owner.x;
+              b.y = owner.y;
+          }
+          const swingProg = Math.min(1, b.life / (b.maxLife || 0.36));
+          b.currentSwingAngle = b.swingAngle + (b.targetSwingAngle - b.swingAngle) * swingProg;
+
+          // Check sweep hit with enemies in arc as the axe blade physically reaches them
           const candidates = b.ownerId === player.id ? aliveBots : [player, ...aliveBots];
+          for (const target of candidates) {
+              if (!target || target.hp <= 0 || target.id === b.ownerId || target.isFlying) continue;
+              if (owner && areAlliedEntities(owner, target)) continue;
+              if (b.hitIds && b.hitIds[target.id]) continue;
+
+              const td = Math.hypot(target.x - b.x, target.y - b.y);
+              if (td <= (b.range || 220) + (target.radius || 16)) {
+                  const tAng = Math.atan2(target.y - b.y, target.x - b.x);
+                  let angleDiff = tAng - b.swingAngle;
+                  while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                  while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+                  let currentSwingOffset = b.currentSwingAngle - b.swingAngle;
+                  while (currentSwingOffset < -Math.PI) currentSwingOffset += Math.PI * 2;
+                  while (currentSwingOffset > Math.PI) currentSwingOffset -= Math.PI * 2;
+
+                  // Hit target as blade sweeps past or touches target (lead buffer 0.35 rad)
+                  if (angleDiff >= -0.25 && angleDiff <= currentSwingOffset + 0.35) {
+                      b.hitIds[target.id] = true;
+                      checkHit(target, b, -1);
+                      if (b.knockbackDist > 0) {
+                          const kAng = Math.atan2(target.y - b.y, target.x - b.x);
+                          target.x = clamp(target.x + Math.cos(kAng) * b.knockbackDist, target.radius, WORLD_W - target.radius);
+                          target.y = clamp(target.y + Math.sin(kAng) * b.knockbackDist, target.radius, WORLD_H - target.radius);
+                          spawnFloatingText(target.x, target.y - 35, 'HEAVY KNOCKBACK!', '#ff9f43');
+                      }
+                      explosions.push({
+                          x: target.x,
+                          y: target.y,
+                          radius: 34,
+                          life: 0,
+                          maxLife: 0.18,
+                          color: b.hyperVisual ? 'rgba(255, 60, 110, 0.85)' : 'rgba(231, 76, 60, 0.85)'
+                      });
+                  }
+              }
+          }
+      }
+
+      // AxeyWaxy G1: Returning Hatchet
+      if (b.isAxeyWaxyHatchet) {
+          const owner = getEntityById(b.ownerId);
+          if (b.life >= (b.maxLife * 0.5) && !b.returning) {
+              b.returning = true;
+              b.hitIds = {}; // Reset hitIds for return flight
+          }
+          if (b.returning && owner) {
+              const toOwnerAng = Math.atan2(owner.y - b.y, owner.x - b.x);
+              b.vx = Math.cos(toOwnerAng) * 920;
+              b.vy = Math.sin(toOwnerAng) * 920;
+              if (Math.hypot(owner.x - b.x, owner.y - b.y) < 32) {
+                  b.life = b.maxLife; // Reached owner
+              }
+          }
+          const candidates = b.ownerId === player.id ? aliveBots : [player, ...aliveBots];
+          for (const target of candidates) {
+              if (!target || target.hp <= 0 || target.id === b.ownerId || target.isFlying) continue;
+              if (owner && areAlliedEntities(owner, target)) continue;
+              if (b.hitIds && b.hitIds[target.id]) continue;
+              const d = Math.hypot(target.x - b.x, target.y - b.y);
+              if (d <= (target.radius || 16) + 18) {
+                  b.hitIds[target.id] = true;
+                  checkHit(target, b, -1);
+                  if (b.returning && owner) {
+                      // Pull enemy slightly along return path
+                      const pullAng = Math.atan2(owner.y - target.y, owner.x - target.x);
+                      target.x = clamp(target.x + Math.cos(pullAng) * 55, target.radius, WORLD_W - target.radius);
+                      target.y = clamp(target.y + Math.sin(pullAng) * 55, target.radius, WORLD_H - target.radius);
+                  }
+                  explosions.push({
+                      x: target.x,
+                      y: target.y,
+                      radius: 26,
+                      life: 0,
+                      maxLife: 0.15,
+                      color: 'rgba(255, 159, 67, 0.85)'
+                  });
+              }
+          }
+      }
+
+      // ── Draflygon aerial drop: impacts and triggers 8 outward cone flames (NO fire zone) ──
+      if (b.isDraflygonAerialDrop && b.life >= b.maxLife && !b.aerialDropDetonated) {
+          b.aerialDropDetonated = true;
+          const dropX = b.targetX, dropY = b.targetY;
+          explosions.push({
+              x: dropX,
+              y: dropY,
+              radius: 46,
+              life: 0,
+              maxLife: 0.20,
+              color: b.hyperVisual ? 'rgba(255, 60, 110, 0.95)' : 'rgba(255, 123, 0, 0.95)'
+          });
+          AOEDamage(dropX, dropY, 46, b.damage || (b.hyperVisual ? 220 : 150), b.ownerId, true);
+
+          // 8 outward cone flames dealing 400 damage each (speed 400, pierce 1 target, curving in HC)
+          const coneDamage = b.hyperVisual ? 500 : 400;
+          const burstHitMap = {}; // Shared hit map for this drop
+          for (let i = 0; i < 8; i++) {
+              const coneAngle = (i * Math.PI / 4);
+              bullets.push({
+                  ownerBrawler: 'draflygon',
+                  isDraflygonConeFlame: true,
+                  super: true,
+                  burstHitMap: burstHitMap,
+                  x: dropX,
+                  y: dropY,
+                  vx: Math.cos(coneAngle) * 400,
+                  vy: Math.sin(coneAngle) * 400,
+                  coneAngle: coneAngle,
+                  curveSpeed: b.hyperVisual ? 4.5 : 0,
+                  life: 0,
+                  maxLife: b.hyperVisual ? 0.72 : 0.58,
+                  damage: coneDamage,
+                  pierce: false, // Pierce exactly 1 target
+                  ownerId: b.ownerId,
+                  hitIds: {},
+                  hyperVisual: b.hyperVisual,
+                  hasSp1: b.hasSp1
+              });
+          }
+      }
+      if (b.isDraflygonConeFlame) {
+          if (b.hyperVisual && b.curveSpeed) {
+              // Hypercharge: cone flames curve in a circular vortex spiral while flying
+              const currentSpeed = Math.hypot(b.vx, b.vy) || 400;
+              b.coneAngle = (b.coneAngle !== undefined ? b.coneAngle : Math.atan2(b.vy, b.vx)) + b.curveSpeed * dt;
+              b.vx = Math.cos(b.coneAngle) * currentSpeed;
+              b.vy = Math.sin(b.coneAngle) * currentSpeed;
+          }
+          const coneCandidates = b.ownerId === player.id ? aliveBots : [player, ...aliveBots];
+          const coneOwner = getEntityById(b.ownerId);
+          for (const target of coneCandidates) {
+              if (!target || target.hp <= 0 || target.id === b.ownerId || target.isFlying) continue;
+              if (coneOwner && areAlliedEntities(coneOwner, target)) continue;
+              if (b.hitIds && b.hitIds[target.id]) continue;
+              const d = Math.hypot(target.x - b.x, target.y - b.y);
+              if (d <= (target.radius || 16) + 16) {
+                  if (b.burstHitMap && b.burstHitMap[target.id]) {
+                      // Already took damage from this bomb drop's flames: do NOT damage again and do NOT kill this flame!
+                      // Let this flame keep flying outward to other enemies!
+                      continue;
+                  }
+                  if (b.burstHitMap) b.burstHitMap[target.id] = true;
+                  b.hitIds[target.id] = true;
+                  checkHit(target, b, -1);
+                  b.life = b.maxLife; // This specific flame consumed on hitting this enemy (Super flames do NOT charge SP1 or Super)
+                  explosions.push({
+                      x: target.x,
+                      y: target.y,
+                      radius: 20,
+                      life: 0,
+                      maxLife: 0.14,
+                      color: b.hyperVisual ? 'rgba(255,60,110,0.85)' : 'rgba(255,123,0,0.85)'
+                  });
+              }
+          }
+      }
+      if (b.xrayHoming || b.isHomerProjectile) {
           const homingPct=b.isHomerProjectile?clamp(b.homerHomingPct||.10,.10,1):clamp(b.homingStrength||.70,.1,1);
           let target=null, best=b.isHomerProjectile?720:330;
           const projectileOwner=getEntityById(b.ownerId);
@@ -33323,6 +35098,38 @@
           }
       }
       b.life += dt;
+      // ── Draflygon flame lash: spawn fire pool when reaching end of flight ──
+      if (b.isDraflygonFlame && b.life >= (b.maxLife - dt * 1.5) && !b.fireZoneSpawned) {
+          b.fireZoneSpawned = true;
+          spawnDraflygonFireZone(b.ownerId, b.x, b.y, b.poolRadius || 36, b.poolDur || 3500, 160, b.hyperVisual);
+          if (b.hyperVisual) {
+              explosions.push({
+                  x: b.x,
+                  y: b.y,
+                  radius: 110,
+                  life: 0,
+                  maxLife: 0.3,
+                  color: 'rgba(255, 60, 110, 0.85)',
+                  legendary: true
+              });
+              AOEDamage(b.x, b.y, 110, 600, b.ownerId, false);
+          }
+      }
+      // ── Drainbow roller: stamp tiles as it flies ──
+      if (b.isDrainbowRoller && b.roadHalfW) {
+          const t = b.maxLife > 0 ? Math.min(1, b.life / b.maxLife) : 1;
+          drainbowPaintTile(
+              b.x, b.y,
+              b.roadHalfW,
+              t,
+              b.ownerId,
+              !!b.hyperVisual,
+              false,
+              !!b.roadHasSp1,
+              !!b.roadHasSp2,
+              b.roadDur || 5000
+          );
+      }
       if (b.minigunninMutationExplosive && !b.minigunninMutationZonePlaced && b.minigunninMutationZoneStage < 2) {
           const zoneProgress = b.minigunninMutationZoneStage === 0 ? 0.12 : 0.50;
           if (b.life >= Math.max(0.01,b.maxLife||0.8) * zoneProgress) {
@@ -33502,7 +35309,47 @@
                 explosions.push({x:b.x,y:b.y,radius,life:0,maxLife:.3,color:b.hyperVisual?'rgba(220,80,255,.74)':'rgba(255,176,46,.72)',fxKind:'boomNite'});
                 bullets.splice(i,1);i--;continue;
             }
-            if (b.isClusterBomb) {
+            
+        // Kage Giant Star Explosion on range expiry (if not already exploded on impact)
+        if (b.isKageGiantStar && !b.kageExploded) {
+            b.kageExploded = true;
+            const shardDmg = b.shardDamage || 400;
+            for (let a = 0; a < 4; a++) {
+                const ang = a * (Math.PI / 2);
+                bullets.push({
+                    ownerBrawler: 'kage', isKageShard: true, x: b.x, y: b.y,
+                    vx: Math.cos(ang) * 580, vy: Math.sin(ang) * 580, life: 0, maxLife: 0.45,
+                    damage: shardDmg, pierce: false, ownerId: b.ownerId, hitIds: {}, hitboxMod: 1.2, hyperVisual: !!b.hyperVisual
+                });
+            }
+            if (b.isHyperSuper) {
+                setTimeout(() => {
+                    for (let a = 0; a < 4; a++) {
+                        const ang = a * (Math.PI / 2) + (Math.PI / 4);
+                        bullets.push({
+                            ownerBrawler: 'kage', isKageShard: true, x: b.x, y: b.y,
+                            vx: Math.cos(ang) * 580, vy: Math.sin(ang) * 580, life: 0, maxLife: 0.45,
+                            damage: shardDmg, pierce: false, ownerId: b.ownerId, hitIds: {}, hitboxMod: 1.2, hyperVisual: true
+                        });
+                    }
+                }, 80);
+            }
+            explosions.push({ x: b.x, y: b.y, radius: 75, life: 0, maxLife: 0.28, color: b.hyperVisual ? 'rgba(192, 132, 252, 0.9)' : 'rgba(226, 232, 240, 0.85)' });
+        }
+        // Kage Full-Ammo Cross Shuriken Explosion
+        if (b.isKageShuriken && b.explosiveCross) {
+            for (let a = 0; a < 4; a++) {
+                const ang = a * (Math.PI / 2);
+                bullets.push({
+                    ownerBrawler: 'kage', isKageShard: true, x: b.x, y: b.y,
+                    vx: Math.cos(ang) * 540, vy: Math.sin(ang) * 540, life: 0, maxLife: 0.35,
+                    damage: 380, pierce: false, ownerId: b.ownerId, hitIds: {}, hitboxMod: 1.25, hyperVisual: !!b.hyperVisual
+                });
+            }
+            explosions.push({ x: b.x, y: b.y, radius: 48, life: 0, maxLife: 0.22, color: 'rgba(226, 232, 240, 0.8)' });
+        }
+
+        if (b.isClusterBomb) {
                 const owner=getEntityById(b.ownerId),travel=clamp((b.life||0)/Math.max(.01,b.maxLife||1),0,1),heavy=b.clusterHeavy?1.18:1;
                 AOEDamage(b.x,b.y,44,(b.damage||1050)*heavy*(.8+travel*.4),b.ownerId,false);
                 explosions.push({x:b.x,y:b.y,radius:44,life:0,maxLife:.28,color:b.hyperVisual?'rgba(213,82,255,.72)':'rgba(255,154,93,.72)',fxKind:'clusterPop'});
@@ -33714,6 +35561,34 @@
               i--;
               continue;
           }
+      }
+
+      // Drainbow G1 Prism Barriers: block enemy projectiles
+      if (drainbowPrismBarriers.length > 0 && b.ownerId !== undefined && (b.damage || 0) > 0 && !b.pierceWalls && !b.isDrainbowRoller) {
+          let blockedByBarrier = false;
+          const prevX = b.x - b.vx * dt;
+          const prevY = b.y - b.vy * dt;
+          for (const barrier of drainbowPrismBarriers) {
+              if (now >= barrier.until) continue;
+              const barrierOwner = getEntityById(barrier.ownerId);
+              const bulletOwner = getEntityById(b.ownerId);
+              // Allies can shoot freely through friendly prism barriers
+              if (barrierOwner && bulletOwner && areAlliedEntities(barrierOwner, bulletOwner)) continue;
+              if (barrier.ownerId === b.ownerId) continue;
+
+              const hit = distToSegment(b.x, b.y, barrier.x1, barrier.y1, barrier.x2, barrier.y2) <= 24 ||
+                          lineSegmentsIntersect(prevX, prevY, b.x, b.y, barrier.x1, barrier.y1, barrier.x2, barrier.y2);
+
+              if (hit) {
+                  blockedByBarrier = true;
+                  explosions.push({ x: b.x, y: b.y, radius: 30, life: 0, maxLife: 0.22, color: 'rgba(0, 240, 255, 0.90)', legendary: true, fxKind: 'prismBarrierBlock' });
+                  spawnFloatingText(b.x, b.y - 20, 'BLOCKED!', '#00f0ff');
+                  bullets.splice(i, 1);
+                  i--;
+                  break;
+              }
+          }
+          if (blockedByBarrier) continue;
       }
       
       // Outlit range is governed by each projectile's maxLife. The old global
@@ -33946,6 +35821,12 @@
       // Upiedown's large pie is also a true lob. It cannot collide with a unit
       // while airborne; its endpoint explosion handles the impact damage.
       if (b.isUpiedownCorePie) continue;
+      // Draflygon aerial drop is an airborne drop: it detonates upon landing to trigger AOE impact and 8 outward flames
+            if (b.isAxeyWaxyCleave) continue;
+      if (b.isAxeyWaxyHatchet) continue;
+      if (b.isDraflygonAerialDrop) continue;
+      // Draflygon cone flames are handled by their dedicated multi-hit/burstHitMap logic
+      if (b.isDraflygonConeFlame) continue;
       
       // VS Healing Pods
       for(let j=healingPods.length-1; j>=0; j--){
@@ -34649,8 +36530,8 @@
        if(player.reloadDebuffUntil && now < player.reloadDebuffUntil) currentReloadTime *= 1.4;
        if(player.trinketHyperReloadUntil && now < player.trinketHyperReloadUntil) currentReloadTime /= 1.10;
        if(player.trinketComebackUntil && now < player.trinketComebackUntil) currentReloadTime /= 1.10;
-       if (selectedBrawler === 'minigunnin') {
-           if (now - lastShot > 1000) currentReloadTime = 30; // Fast reload out of combat
+       if (selectedBrawler === 'minigunnin' ) {
+           if (now - lastShot > (selectedBrawler === 'minigunnin' ? 1000 : 500)) currentReloadTime = (selectedBrawler === 'minigunnin' ? 30 : 25); // Fast reload out of combat
            else currentReloadTime = 999999; // Don't reload while firing recently
        } else if (selectedBrawler === 'beam') {
            const isStunned = now < (player.stunUntil || 0);
@@ -35779,6 +37660,92 @@
       ctx.stroke(); ctx.setLineDash([]);
     }
     const fighterId=isPlayer?selectedBrawler:entity.brawler;
+        if ((entity.brawler === 'axeywaxy' || (isPlayer && selectedBrawler === 'axeywaxy')) && (entity.axeyWaxySuperUntil || 0) > now) {
+        const hyper = !!entity.axeyWaxySuperHyper;
+        const slowRadius = hyper ? 280 : 200; // Outer slowing zone
+        const axeRadius = hyper ? 140 : 110;  // Inner spinning axe radius (smaller than slow zone)
+        
+        // Continuous smooth high-speed spin animation
+        const spinAngle = (now * 0.018) % (Math.PI * 2);
+
+        ctx.save();
+        ctx.translate(entity.x, entity.y);
+
+        // 1. Outer Slowing Wind Vortex Area
+        const vortexGrad = ctx.createRadialGradient(0, 0, 30, 0, 0, slowRadius);
+        vortexGrad.addColorStop(0, hyper ? 'rgba(255, 60, 110, 0.18)' : 'rgba(231, 76, 60, 0.15)');
+        vortexGrad.addColorStop(0.7, hyper ? 'rgba(155, 89, 182, 0.12)' : 'rgba(255, 159, 67, 0.10)');
+        vortexGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = vortexGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, slowRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Outer slow boundary ring
+        ctx.strokeStyle = hyper ? 'rgba(255, 56, 96, 0.65)' : 'rgba(255, 159, 67, 0.60)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([12, 8]);
+        ctx.beginPath();
+        ctx.arc(0, 0, slowRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 2. Inner Spinning Double-Axe Visual (rotating at axeRadius to match 400ms tick rate)
+        ctx.save();
+        ctx.rotate(spinAngle);
+
+        // Glowing circular blade slice ring at axeRadius
+        ctx.strokeStyle = hyper ? '#ff3860' : '#ff9f43';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, axeRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 2 Full Double-Axes spinning opposite each other
+        for (let side = 0; side < 2; side++) {
+            ctx.save();
+            ctx.rotate(side * Math.PI);
+
+            // Axe handle shaft from player to blade
+            ctx.fillStyle = '#795548';
+            ctx.fillRect(0, -3, axeRadius * 0.85, 6);
+
+            // Double axe head at tip
+            ctx.translate(axeRadius * 0.90, 0);
+            ctx.fillStyle = hyper ? '#ff6b8b' : '#ffd32a';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+
+            // Upper blade crescent
+            ctx.beginPath();
+            ctx.arc(0, -14, 15, Math.PI * 0.15, Math.PI * 1.25);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Lower blade crescent
+            ctx.beginPath();
+            ctx.arc(0, 14, 15, -Math.PI * 1.25, -Math.PI * 0.15);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+        ctx.restore();
+
+        ctx.restore();
+    }
+    if ((entity.brawler === 'draflygon' || (isPlayer && selectedBrawler === 'draflygon'))) {
+        const hasSp1 = isPlayer ? (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') : (entity.selectedStar === 'slow' || entity.selectedStar === 'fast' || entity.selectedStar === 'sp1');
+        if (hasSp1) {
+            const isCharged = entity.draflygonSp1ShieldCharged;
+            const isBarrier = (entity.draflygonSp1BarrierUntil || 0) > now;
+            if (isCharged || isBarrier) {
+                drawHexagonShield(ctx, entity.x, entity.y, (entity.radius || 16) + 14, isBarrier);
+            }
+        }
+    }
     if(fighterId==='echo'){
       ctx.save();
       const orbit=now/620;
@@ -36436,44 +38403,8 @@
         if (!isWorldVisualVisible(zone.x + zone.w / 2, zone.y + zone.h / 2, Math.max(zone.w, zone.h) / 2 + 40)) continue;
         const grad = ctx.createLinearGradient(zone.x, zone.y, zone.x, zone.y + zone.h);
         grad.addColorStop(0, 'rgba(96, 194, 255, 0.34)');
-        grad.addColorStop(1, 'rgba(44, 112, 194, 0.46)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(zone.x, zone.y, zone.w, zone.h);
-        ctx.strokeStyle = 'rgba(176, 232, 255, 0.38)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(zone.x + 0.5, zone.y + 0.5, zone.w - 1, zone.h - 1);
-    }
-
-    for (const zone of bushZones) {
-        if (!isWorldVisualVisible(zone.x + zone.w / 2, zone.y + zone.h / 2, Math.max(zone.w, zone.h) / 2 + 40)) continue;
-        ctx.fillStyle = 'rgba(46, 131, 66, 0.35)';
-        ctx.fillRect(zone.x, zone.y, zone.w, zone.h);
-        ctx.strokeStyle = 'rgba(135, 227, 158, 0.38)';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(zone.x + 0.5, zone.y + 0.5, zone.w - 1, zone.h - 1);
-        ctx.strokeStyle = 'rgba(160, 247, 176, 0.20)';
-        ctx.lineWidth = 1;
-        for (let y = zone.y + 8; y < zone.y + zone.h; y += 14) {
-            ctx.beginPath();
-            ctx.moveTo(zone.x + 6, y);
-            ctx.lineTo(zone.x + zone.w - 6, y);
-            ctx.stroke();
-        }
-    }
-
-    if (isArenaForgeMode) {
-        for (const pad of arenaForgeJumpPads) {
-            const pulse = 0.82 + Math.sin(performance.now() / 150) * 0.12;
-            ctx.save();
-            ctx.translate(pad.x, pad.y);
-            ctx.scale(pulse, pulse);
-            ctx.fillStyle = 'rgba(79, 224, 255, 0.18)';
-            ctx.strokeStyle = '#7cecff';
-            ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(0, 0, pad.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(-11, 7); ctx.lineTo(0, -10); ctx.lineTo(11, 7); ctx.stroke();
-            ctx.restore();
-        }
         for (const energy of arenaForgeSouls) {
             const pulse = 1 + Math.sin(performance.now() / 110 + energy.x) * 0.15;
             ctx.save(); ctx.translate(energy.x, energy.y); ctx.rotate(performance.now() / 650);
@@ -36501,6 +38432,157 @@
             ctx.strokeRect(tile.x - tile.size * 0.5, tile.y - tile.size * 0.5 - lift, tile.size, tile.size);
         }
 
+    
+    // Ground Layer: Render Draflygon Fire Zones
+    if (draflygonFireZones.length > 0) {
+        const now = performance.now();
+        for (const zone of draflygonFireZones) {
+            if (now >= zone.until) continue;
+            const remaining = zone.until - now;
+            const alpha = Math.min(1, remaining / 500) * 0.75;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+
+            const grad = ctx.createRadialGradient(zone.x, zone.y, 4, zone.x, zone.y, zone.radius);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.3, zone.isHyper ? '#ff3860' : '#ffaa00');
+            grad.addColorStop(0.75, zone.isHyper ? '#7928ca' : '#ff4d00');
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = zone.isHyper ? '#ff3860' : '#ffaa00';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    // Ground Layer: Render Drainbow Paint Tiles — grid aligned 100x100, zero overlap stacking
+    if (drainbowPaintTiles.size > 0) {
+        const now = performance.now();
+        const tileW = 100;
+        const minCamX = camX - tileW;
+        const maxCamX = camX + canvas.width + tileW;
+        const minCamY = camY - tileW;
+        const maxCamY = camY + canvas.height + tileW;
+
+        ctx.save();
+        for (const [key, tile] of drainbowPaintTiles) {
+            if (now >= tile.until) continue;
+            const comma = key.indexOf(',');
+            const tx = parseInt(key.substring(0, comma), 10);
+            const ty = parseInt(key.substring(comma + 1), 10);
+            const wx = tx * tileW;
+            const wy = ty * tileW;
+
+            // Viewport culling
+            if (wx + tileW < minCamX || wx > maxCamX || wy + tileW < minCamY || wy > maxCamY) continue;
+
+            const remaining = tile.until - now;
+            const alpha = Math.min(1, remaining / 550) * (tile.hyper ? 0.88 : (tile.isHighway ? 0.84 : 0.78));
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+
+            // Rainbow hue progression based on tile.rainbowT
+            if (tile.hyper) {
+                const grad = ctx.createLinearGradient(wx, wy, wx + tileW, wy + tileW);
+                grad.addColorStop(0.00, '#a855f7');
+                grad.addColorStop(0.50, '#e879f9');
+                grad.addColorStop(1.00, '#00f0ff');
+                ctx.fillStyle = grad;
+                ctx.fillRect(wx, wy, tileW, tileW);
+
+                ctx.strokeStyle = '#f43f5e';
+                ctx.lineWidth = 2.5;
+                ctx.shadowColor = '#d946ef';
+                ctx.shadowBlur = 12;
+                ctx.strokeRect(wx + 1, wy + 1, tileW - 2, tileW - 2);
+            } else {
+                const rainbowPalette = [
+                    '#ff2a6d', '#ff6b35', '#ffd166', '#06d6a0', '#118ab2', '#9b5de5'
+                ];
+                const palIndex = Math.floor((tile.rainbowT || 0) * (rainbowPalette.length - 1));
+                const c1 = rainbowPalette[Math.max(0, Math.min(rainbowPalette.length - 1, palIndex))];
+                const c2 = rainbowPalette[Math.max(0, Math.min(rainbowPalette.length - 1, palIndex + 1))];
+
+                const grad = ctx.createLinearGradient(wx, wy, wx + tileW, wy + tileW);
+                grad.addColorStop(0.0, c1);
+                grad.addColorStop(1.0, c2);
+                ctx.fillStyle = grad;
+                ctx.fillRect(wx, wy, tileW, tileW);
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(wx + 0.5, wy + 0.5, tileW - 1, tileW - 1);
+            }
+
+            // High-tech internal circuit detail
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(wx + 8, wy + 8); ctx.lineTo(wx + tileW - 8, wy + tileW - 8);
+            ctx.moveTo(wx + tileW - 8, wy + 8); ctx.lineTo(wx + 8, wy + tileW - 8);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+        ctx.restore();
+    }
+
+    // Render Drainbow Prism Barriers (Ground Layer)
+    if (drainbowPrismBarriers.length > 0) {
+        const now = performance.now();
+        for (const barrier of drainbowPrismBarriers) {
+            if (now >= barrier.until) continue;
+            const remaining = barrier.until - now;
+            const alpha = Math.min(1, remaining / 400);
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+
+            // Outer neon cyan aura
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
+            ctx.lineWidth = 12;
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 18;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(barrier.x1, barrier.y1);
+            ctx.lineTo(barrier.x2, barrier.y2);
+            ctx.stroke();
+
+            // Main prismatic barrier line
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+
+            // Bright laser core
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // Glowing end caps / energy nodes
+            for (const [nx, ny] of [[barrier.x1, barrier.y1], [barrier.x2, barrier.y2]]) {
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(nx, ny, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#00f0ff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(nx, ny, 10, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+    }
+
     const aliveBots = bots.filter(t=>t.hp>0);
     // bots
     for(const t of aliveBots){
@@ -36508,6 +38590,30 @@
             const liftAmt = (t.hyperoriginLiftUntil && performance.now() < t.hyperoriginLiftUntil) ? (18 + Math.sin(performance.now() / 70) * 3) : 0;
             const drawY = t.y - (t.z || 0) - liftAmt;
       const isInvis = t.invisUntil && performance.now() < t.invisUntil;
+      const brawlerKind = t.brawler || (t.id === player.id ? selectedBrawler : null);
+      if (brawlerKind === 'draflygon' && (t.draflygonFlyingUntil || 0) > performance.now()) {
+          // Render animated dragon wings & flame exhaust
+          const wingFlap = Math.sin(performance.now() / 60) * 16;
+          ctx.save();
+          ctx.fillStyle = t.draflygonFlightHyper ? '#ff3860' : '#2ed573';
+          ctx.shadowColor = t.draflygonFlightHyper ? '#ff3860' : '#2ed573';
+          ctx.shadowBlur = 12;
+          // Left wing
+          ctx.beginPath();
+          ctx.moveTo(t.x - 8, drawY);
+          ctx.lineTo(t.x - 36, drawY - 20 - wingFlap);
+          ctx.lineTo(t.x - 18, drawY + 10);
+          ctx.closePath();
+          ctx.fill();
+          // Right wing
+          ctx.beginPath();
+          ctx.moveTo(t.x + 8, drawY);
+          ctx.lineTo(t.x + 36, drawY - 20 - wingFlap);
+          ctx.lineTo(t.x + 18, drawY + 10);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+      }
       if (isInvis) ctx.globalAlpha = 0.25;
         const bushHidden = isEntityInsideBush(t);
         if (!isInvis && bushHidden) ctx.globalAlpha = 0.4;
@@ -37275,6 +39381,7 @@
         ctx.arc(player.x, drawY - player.radius - 10, 5, 0, Math.PI*2); ctx.fill();
       }
       
+
       if(player.ridaSpeedMult && player.ridaSpeedMult > 1.2 && !player.isFlying){
         ctx.beginPath(); ctx.fillStyle = isHypercharged ? 'rgba(238, 0, 255, 0.4)' : 'rgba(255, 60, 0, 0.4)';
         ctx.arc(player.x, drawY, player.radius + (player.ridaSpeedMult - 1) * 8, 0, Math.PI*2); ctx.fill();
@@ -37403,19 +39510,26 @@
           ctx.textAlign = 'center';
           ctx.fillText('FLOSS', player.x, drawY - 23);
           ctx.textAlign = 'left';
-      } else if (selectedBrawler === 'minigunnin' || selectedBrawler === 'steamer' || selectedBrawler === 'beam') {
+      } else if (selectedBrawler === 'minigunnin' || selectedBrawler === 'steamer' || selectedBrawler === 'beam' ) {
           ctx.fillStyle = 'rgba(0,0,0,0.5)';
           ctx.fillRect(player.x - 24, drawY - 20, 48, 4);
           let barColor = '#f4a261';
           if (selectedBrawler === 'steamer') barColor = '#7fd3ff';
-          else if (selectedBrawler === 'beam') {
+                    else if (selectedBrawler === 'beam') {
               const isSuperGolden = performance.now() < (player.beamSuperGoldenUntil || 0);
               barColor = isSuperGolden ? '#ffd700' : (isHypercharged ? '#a800ff' : '#00ffff');
           }
           ctx.fillStyle = barColor;
-          ctx.fillRect(player.x - 24, drawY - 20, 48 * (ammo/maxAmmo), 4);
+          ctx.fillRect(player.x - 24, drawY - 20, 48 * Math.min(1, Math.max(0, ammo / maxAmmo)), 4);
+      } else if (selectedBrawler === 'draflygon' && (player.draflygonFlyingUntil || 0) > performance.now()) {
+          const flightAmmo = player.draflygonFlightAmmo || 0;
+          const flightMax = player.draflygonFlightHyper ? DRAFLYGON_FLIGHT_AMMO_MAX_HYPER : DRAFLYGON_FLIGHT_AMMO_MAX;
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(player.x - 24, drawY - 20, 48, 4);
+          ctx.fillStyle = player.draflygonFlightHyper ? '#ff3860' : '#2ed573';
+          ctx.fillRect(player.x - 24, drawY - 20, 48 * Math.min(1, Math.max(0, flightAmmo / flightMax)), 4);
       } else {
-          for(let i=0; i<maxAmmo; i++){
+           for(let i=0; i<maxAmmo; i++){
               let ammoColor = '#f4a261';
               if (selectedBrawler === 'unopcoloco' && (unopcolocoCycle === 0 || unopcolocoG1Armed)) {
                   ammoColor = '#ff4d4d'; // Red for Scarf
@@ -37491,6 +39605,34 @@
 
       // Unified combat-state chips for better readability across all entities.
       drawEntityStatusChips(player, player.x, drawY - (player.shield > 0 ? 80 : 58), true);
+      
+      if (selectedBrawler === 'draflygon') {
+          const hasSp1 = (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1');
+          if (hasSp1) {
+              const hits = player.draflygonSp1HitCounter || 0;
+              const isReady = player.draflygonSp1ShieldCharged;
+              const isBarrier = (player.draflygonSp1BarrierUntil || 0) > performance.now();
+              // Position properly above shield and HP bars to prevent overlap
+              const meterY = drawY - (player.shield > 0 ? 76 : 54);
+              ctx.save();
+              ctx.fillStyle = 'rgba(2, 14, 20, 0.88)';
+              ctx.beginPath();
+              ctx.roundRect(player.x - 26, meterY - 7, 52, 10, 3);
+              ctx.fill();
+              ctx.strokeStyle = isReady ? '#2ed573' : (isBarrier ? '#00f5d4' : '#1b8a4c');
+              ctx.lineWidth = 1.2;
+              ctx.stroke();
+              for (let s = 0; s < 5; s++) {
+                  ctx.fillStyle = (isReady || isBarrier || s < hits) ? (isBarrier ? '#00f5d4' : '#2ed573') : 'rgba(255,255,255,0.15)';
+                  ctx.fillRect(player.x - 24 + s * 10, meterY - 5, 8, 6);
+              }
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 7px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(isBarrier ? 'BARRIER ACTIVE' : (isReady ? 'SHIELD READY' : `SCALE ${hits}/5`), player.x, meterY - 9);
+              ctx.restore();
+          }
+      }
       
       if (selectedBrawler === 'hunter' && ammo >= maxAmmo && player.hunterFullAmmoSince) {
           const fullTime = performance.now() - player.hunterFullAmmoSince;
@@ -37569,7 +39711,117 @@
           ctx.restore();
       }
 
-      if (selectedBrawler === 'minigunnin' && player.minibrickkinSuperUntil && performance.now() < player.minibrickkinSuperUntil) {
+      
+    // Render Kage Holograms & Max Range Indicators
+    if (player.kageHologram && performance.now() < player.kageHologram.until) {
+        const holo = player.kageHologram;
+        const now = performance.now();
+        const remSec = Math.max(0, (holo.until - now) / 1000).toFixed(1);
+        const progressPct = Math.max(0, Math.min(1, (holo.until - now) / (holo.totalDur || 1800)));
+        const spin = (now / 70) * Math.PI;
+
+        ctx.save();
+
+        // 1. Tether line from Player to Decoy
+        ctx.strokeStyle = 'rgba(226, 232, 240, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.moveTo(player.x, player.y);
+        ctx.lineTo(holo.x, holo.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 2. Max Attack Range footprint indicator
+        if (holo.endX != null && holo.endY != null) {
+            ctx.strokeStyle = 'rgba(203, 213, 225, 0.35)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(holo.originX || holo.x, holo.originY || holo.y);
+            ctx.lineTo(holo.endX, holo.endY);
+            ctx.stroke();
+            // Max range crosshairs
+            ctx.strokeStyle = 'rgba(248, 250, 252, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(holo.endX, holo.endY, 12, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('MAX RANGE', holo.endX, holo.endY - 16);
+        }
+
+        // 3. Radial Countdown Progress Ring at Hologram Base
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(holo.x, holo.y, 26, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = progressPct > 0.3 ? '#f8fafc' : '#ef4444';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(holo.x, holo.y, 26, -Math.PI / 2, -Math.PI / 2 + progressPct * Math.PI * 2);
+        ctx.stroke();
+
+        // 4. Shadow Decoy Body & Rotating Ring
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(holo.x, holo.y, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 4-star mini emblem inside
+        ctx.save();
+        ctx.translate(holo.x, holo.y);
+        ctx.rotate(spin);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        for (let pt = 0; pt < 4; pt++) {
+            const a1 = pt * (Math.PI / 2);
+            const a2 = a1 + (Math.PI / 4);
+            ctx.lineTo(Math.cos(a1) * 11, Math.sin(a1) * 11);
+            ctx.lineTo(Math.cos(a2) * 4, Math.sin(a2) * 4);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // 5. Text Badge with Countdown
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`SWAP [${remSec}s]`, holo.x, holo.y - 32);
+
+        ctx.restore();
+    } else if (player.kageHologram && performance.now() >= player.kageHologram.until) {
+        const expNow = performance.now();
+        if (player.kageHologram.sp2) {
+            for (let a = 0; a < 4; a++) {
+                const ang = a * (Math.PI / 2);
+                bullets.push({
+                    ownerBrawler: 'kage', isKageShard: true, x: player.kageHologram.x, y: player.kageHologram.y,
+                    vx: Math.cos(ang) * 580, vy: Math.sin(ang) * 580, life: 0, maxLife: 0.45,
+                    damage: 380, pierce: true, ownerId: player.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: isHypercharged
+                });
+            }
+            explosions.push({ x: player.kageHologram.x, y: player.kageHologram.y, radius: 45, life: 0, maxLife: 0.2, color: 'rgba(226, 232, 240, 0.75)' });
+        }
+        player.kageHologram = null;
+        player.kageHologramUntil = 0;
+        gadgetArmed = false;
+        gadgetCooldownUntil = expNow + GADGET_COOLDOWN_MS;
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, 'g1');
+        updateGadgetButton();
+    }
+
+    
+    
+
+    if (selectedBrawler === 'minigunnin' && player.minibrickkinSuperUntil && performance.now() < player.minibrickkinSuperUntil) {
           const remaining = player.minibrickkinSuperUntil - performance.now();
           const maxDur = player.isHypercharged ? 8000 : 6000;
           const pct = Math.max(0, Math.min(1, remaining / maxDur));
@@ -37804,6 +40056,568 @@
           }
           ctx.restore();
       }
+      
+      
+                  if (selectedBrawler === 'trampaheal' && !aimingSuper) {
+          ctx.save();
+          const g1Armed = gadgetArmed && selectedGadget === 'g1';
+          const maxRange = g1Armed ? 330 : 220;
+          const landRadius = 65;
+
+          const dist = Math.hypot(targetX - player.x, targetY - player.y);
+          let landX = targetX;
+          let landY = targetY;
+          if (dist > maxRange) {
+              landX = player.x + Math.cos(ang) * maxRange;
+              landY = player.y + Math.sin(ang) * maxRange;
+          }
+          landX = clamp(landX, player.radius, WORLD_W - player.radius);
+          landY = clamp(landY, player.radius, WORLD_H - player.radius);
+
+          // Tether line from player to target landing circle
+          ctx.strokeStyle = '#10ac84';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(player.x, player.y);
+          ctx.lineTo(landX, landY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Landing Impact Circle
+          ctx.fillStyle = 'rgba(16, 172, 132, 0.22)';
+          ctx.strokeStyle = '#10ac84';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(landX, landY, landRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('🤸 BOUNCY LEAP (1200 DMG / 1500 HEAL)', landX, landY - landRadius - 8);
+          ctx.restore();
+      }
+      if (selectedBrawler === 'trampaheal' && aimingSuper) {
+          ctx.save();
+          const maxDist = 620;
+          const dist = Math.hypot(targetX - player.x, targetY - player.y);
+          let deployX = targetX;
+          let deployY = targetY;
+          if (dist > maxDist) {
+              deployX = player.x + Math.cos(ang) * maxDist;
+              deployY = player.y + Math.sin(ang) * maxDist;
+          }
+          deployX = clamp(deployX, 40, WORLD_W - 40);
+          deployY = clamp(deployY, 40, WORLD_H - 40);
+
+          // Deploy line
+          ctx.strokeStyle = isHypercharged ? '#00f5d4' : '#10ac84';
+          ctx.lineWidth = 4;
+          ctx.setLineDash([10, 6]);
+          ctx.beginPath();
+          ctx.moveTo(player.x, player.y);
+          ctx.lineTo(deployX, deployY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Trampoline Placement Circle
+          ctx.fillStyle = isHypercharged ? 'rgba(0, 245, 212, 0.25)' : 'rgba(16, 172, 132, 0.25)';
+          ctx.strokeStyle = isHypercharged ? '#00f5d4' : '#10ac84';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.arc(deployX, deployY, 36, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(isHypercharged ? '⚡ TRAMPAWIND (6500 HP + WIND BLAST) ⚡' : '🤸 MEGA TRAMPOLINE (5000 HP + HIGH BOUNCE) 🤸', deployX, deployY - 48);
+          ctx.restore();
+      }
+
+      if (selectedBrawler === 'axeywaxy' && !aimingSuper && !(player.axeyWaxySuperUntil > performance.now())) {
+          ctx.save();
+          const isHeft = player.axeyWaxyHeftReady || isHypercharged;
+          const range = isHypercharged ? 250 : 220;
+          const g1Armed = gadgetArmed && selectedGadget === 'g1';
+          const g2Armed = gadgetArmed && selectedGadget === 'g2';
+
+          if (g1Armed) {
+              // G1: Hatchet Toss line
+              const endX = player.x + Math.cos(ang) * 580;
+              const endY = player.y + Math.sin(ang) * 580;
+              ctx.strokeStyle = '#ff9f43';
+              ctx.lineWidth = 4;
+              ctx.setLineDash([10, 6]);
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.lineTo(endX, endY);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.fillStyle = '#ff9f43';
+              ctx.font = '900 11px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('🪓 HATCHET TOSS (PIERCING / RETURNING)', endX, endY - 14);
+          } else if (g2Armed) {
+              // G2: Timber Stomp cone
+              ctx.fillStyle = 'rgba(230, 126, 34, 0.22)';
+              ctx.strokeStyle = '#e67e22';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.arc(player.x, player.y, 165, ang - 0.55, ang + 0.55);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+              ctx.fillStyle = '#ffffff';
+              ctx.font = '900 11px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('🌲 TIMBER STOMP (1.2s ROOT)', player.x + Math.cos(ang) * 110, player.y + Math.sin(ang) * 110);
+          } else {
+              // Main Attack Cleave Arc: perfectly bounded 230-deg sweeping sector with left & right rays
+              ctx.fillStyle = isHypercharged ? 'rgba(255, 60, 110, 0.18)' : (isHeft ? 'rgba(255, 159, 67, 0.20)' : 'rgba(231, 76, 60, 0.15)');
+              ctx.strokeStyle = isHypercharged ? '#ff3860' : (isHeft ? '#ff9f43' : '#e74c3c');
+              ctx.lineWidth = isHeft ? 4 : 2.5;
+              
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.lineTo(player.x + Math.cos(ang - 2.0) * range, player.y + Math.sin(ang - 2.0) * range);
+              ctx.arc(player.x, player.y, range, ang - 2.0, ang + 2.0, false);
+              ctx.lineTo(player.x, player.y);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+
+              // Center aim guide ray
+              ctx.lineWidth = 1.5;
+              ctx.strokeStyle = isHypercharged ? 'rgba(255, 100, 140, 0.65)' : 'rgba(255, 200, 100, 0.55)';
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.lineTo(player.x + Math.cos(ang) * range, player.y + Math.sin(ang) * range);
+              ctx.stroke();
+
+              // Heft Indicator in Telegraph
+              if (isHeft) {
+                  ctx.fillStyle = '#ffd32a';
+                  ctx.font = '900 11px sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.fillText('💥 HEFT KNOCKBACK SWING 💥', player.x + Math.cos(ang) * (range * 0.65), player.y + Math.sin(ang) * (range * 0.65));
+              }
+          }
+          ctx.restore();
+      }
+      if (selectedBrawler === 'axeywaxy' && aimingSuper) {
+          ctx.save();
+          const spinRadius = isHypercharged ? 280 : 200;
+          ctx.fillStyle = isHypercharged ? 'rgba(255, 60, 110, 0.22)' : 'rgba(231, 76, 60, 0.18)';
+          ctx.strokeStyle = isHypercharged ? '#ff3860' : '#ff9f43';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, spinRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 13px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(isHypercharged ? '⚡ FURIOUS JUGGERNAUT (6.0s WHIRLWIND + CC IMMUNITY) ⚡' : '🪓 WHIRLWIND CHOPPER (6.0s SPIN + 40% SPEED & SLOW) 🪓', player.x, player.y - spinRadius - 14);
+          ctx.restore();
+      }
+
+      if (selectedBrawler === 'draflygon' && !aimingSuper) {
+          const isFlying = (player.draflygonFlyingUntil || 0) > performance.now();
+          if (isFlying) {
+              const bombHyper = !!player.draflygonFlightHyper;
+              const maxHCAimRange = 240;
+              const r = 50; // Bomb explosion impact radius
+              let dropX = player.x, dropY = player.y;
+              ctx.save();
+
+              if (bombHyper) {
+                  // Draw max aim range boundary for Hypercharge flight
+                  ctx.strokeStyle = 'rgba(255, 60, 110, 0.28)';
+                  ctx.lineWidth = 1.5;
+                  ctx.setLineDash([8, 6]);
+                  ctx.beginPath();
+                  ctx.arc(player.x, player.y, maxHCAimRange, 0, Math.PI * 2);
+                  ctx.stroke();
+                  ctx.setLineDash([]);
+
+                  // Clamp aim position within maxHCAimRange
+                  const aimDist = Math.min(maxHCAimRange, Math.hypot(wm.y - player.y, wm.x - player.x) || 80);
+                  dropX = clamp(player.x + Math.cos(ang) * aimDist, 40, WORLD_W - 40);
+                  dropY = clamp(player.y + Math.sin(ang) * aimDist, 40, WORLD_H - 40);
+
+                  // Aim tether line from Draflygon to drop target
+                  ctx.strokeStyle = 'rgba(255, 60, 110, 0.65)';
+                  ctx.lineWidth = 2;
+                  ctx.setLineDash([6, 4]);
+                  ctx.beginPath();
+                  ctx.moveTo(player.x, player.y);
+                  ctx.lineTo(dropX, dropY);
+                  ctx.stroke();
+                  ctx.setLineDash([]);
+              }
+
+              // Impact target zone circle
+              ctx.fillStyle = bombHyper ? 'rgba(255, 60, 110, 0.16)' : 'rgba(46, 213, 115, 0.14)';
+              ctx.strokeStyle = bombHyper ? '#ff3860' : '#2ed573';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.arc(dropX, dropY, r, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+
+              // Draw 8 outward cone flame burst arrows from the impact center (360 degrees)
+              for (let i = 0; i < 8; i++) {
+                  const arrowAngle = (i * Math.PI / 4);
+                  const startDist = 12;
+                  const endDist = r + 24;
+                  const sx = dropX + Math.cos(arrowAngle) * startDist;
+                  const sy = dropY + Math.sin(arrowAngle) * startDist;
+                  const ex = dropX + Math.cos(arrowAngle) * endDist;
+                  const ey = dropY + Math.sin(arrowAngle) * endDist;
+                  ctx.strokeStyle = bombHyper ? '#ff85a2' : '#ffbe76';
+                  ctx.lineWidth = 2;
+                  ctx.beginPath();
+                  ctx.moveTo(sx, sy);
+                  ctx.lineTo(ex, ey);
+                  ctx.stroke();
+                  const headLen = 6;
+                  ctx.beginPath();
+                  ctx.moveTo(ex, ey);
+                  ctx.lineTo(ex - Math.cos(arrowAngle - 0.45) * headLen, ey - Math.sin(arrowAngle - 0.45) * headLen);
+                  ctx.moveTo(ex, ey);
+                  ctx.lineTo(ex - Math.cos(arrowAngle + 0.45) * headLen, ey - Math.sin(arrowAngle + 0.45) * headLen);
+                  ctx.stroke();
+              }
+              ctx.restore();
+          } else {
+              // Ground Main Attack: Twin Draconic Flame Lash Arcs
+              const range = isHypercharged ? 440 : 360;
+              const isG2 = !!player.draflygonG2Armed;
+              ctx.save();
+              ctx.lineCap = 'round';
+              const spreadOffset = 0.11;
+              for (const offset of [-spreadOffset, spreadOffset]) {
+                  const arcAngle = ang + offset;
+                  const endX = player.x + Math.cos(arcAngle) * range;
+                  const endY = player.y + Math.sin(arcAngle) * range;
+                  ctx.strokeStyle = isHypercharged ? 'rgba(255, 60, 110, 0.85)' : 'rgba(255, 123, 0, 0.85)';
+                  ctx.lineWidth = 4;
+                  ctx.beginPath();
+                  ctx.moveTo(player.x, player.y);
+                  ctx.lineTo(endX, endY);
+                  ctx.stroke();
+              }
+              ctx.fillStyle = isHypercharged ? 'rgba(255, 60, 110, 0.14)' : 'rgba(255, 123, 0, 0.12)';
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.arc(player.x, player.y, range, ang - 0.16, ang + 0.16);
+              ctx.closePath();
+              ctx.fill();
+              if (isG2) {
+                  const tipX = player.x + Math.cos(ang) * range;
+                  const tipY = player.y + Math.sin(ang) * range;
+                  ctx.strokeStyle = '#ff3860';
+                  ctx.lineWidth = 2.5;
+                  ctx.setLineDash([5, 4]);
+                  ctx.beginPath();
+                  ctx.arc(tipX, tipY, 80, 0, Math.PI * 2);
+                  ctx.stroke();
+                  ctx.setLineDash([]);
+                  ctx.fillStyle = '#ffffff';
+                  ctx.font = '900 11px sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.fillText('⚡ SCORCHED EARTH ⚡', tipX, tipY - 86);
+              }
+              ctx.restore();
+          }
+      }
+      if (selectedBrawler === 'draflygon' && aimingSuper) {
+          ctx.save();
+          ctx.fillStyle = isHypercharged ? 'rgba(255, 60, 110, 0.22)' : 'rgba(46, 213, 115, 0.18)';
+          ctx.strokeStyle = isHypercharged ? '#ff3860' : '#2ed573';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, 220, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 13px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.shadowColor = '#000000';
+          ctx.shadowBlur = 8;
+          ctx.fillText(isHypercharged ? '🔥 FLAME OF FURY (7s FLIGHT + OMNI BOMBS) 🔥' : '🐲 RIDE THE FLY (5s FLIGHT & IMPACT BOMBS) 🐲', player.x, player.y - 40);
+          ctx.restore();
+      }
+      if (selectedBrawler === 'duck' && !aimingSuper) {
+          ctx.save();
+          const range = 520;
+          const spread = 0.22;
+          const g1Armed = gadgetArmed && selectedGadget === 'g1';
+          const g2Armed = gadgetArmed && selectedGadget === 'g2';
+          if (g1Armed) {
+              const endX = player.x + Math.cos(ang) * range;
+              const endY = player.y + Math.sin(ang) * range;
+              ctx.strokeStyle = '#ffd45e';
+              ctx.lineWidth = 5;
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.lineTo(endX, endY);
+              ctx.stroke();
+              ctx.fillStyle = 'rgba(255, 212, 94, 0.25)';
+              ctx.beginPath();
+              ctx.arc(endX, endY, 68, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+              ctx.fillStyle = '#ffffff';
+              ctx.font = '900 11px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('🚀 MEGA QUACK MISSILE 🚀', endX, endY - 74);
+          } else if (g2Armed) {
+              ctx.strokeStyle = '#ffd45e';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.arc(player.x, player.y, 140, 0, Math.PI * 2);
+              ctx.stroke();
+              const dashX = player.x + Math.cos(ang) * 220;
+              const dashY = player.y + Math.sin(ang) * 220;
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.lineTo(dashX, dashY);
+              ctx.stroke();
+              ctx.fillStyle = '#ffffff';
+              ctx.font = '900 11px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('🪶 FEATHER FLURRY DASH 🪶', player.x, player.y - 150);
+          } else {
+              ctx.fillStyle = isHypercharged ? 'rgba(255, 120, 240, 0.15)' : 'rgba(255, 212, 94, 0.14)';
+              ctx.strokeStyle = isHypercharged ? '#ff78f0' : '#ffd45e';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.arc(player.x, player.y, range, ang - spread, ang + spread);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+              ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.lineTo(player.x + Math.cos(ang) * range, player.y + Math.sin(ang) * range);
+              ctx.stroke();
+          }
+          ctx.restore();
+      }
+      if (selectedBrawler === 'duck' && aimingSuper) {
+          ctx.save();
+          const stampedeRange = 720;
+          const stampedeWidth = 120;
+          const endX = player.x + Math.cos(ang) * stampedeRange;
+          const endY = player.y + Math.sin(ang) * stampedeRange;
+          const perpCos = -Math.sin(ang) * (stampedeWidth / 2);
+          const perpSin = Math.cos(ang) * (stampedeWidth / 2);
+          ctx.fillStyle = isHypercharged ? 'rgba(255, 120, 240, 0.20)' : 'rgba(255, 212, 94, 0.18)';
+          ctx.strokeStyle = isHypercharged ? '#ff78f0' : '#ffd45e';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(player.x + perpCos, player.y + perpSin);
+          ctx.lineTo(endX + perpCos, endY + perpSin);
+          ctx.lineTo(endX - perpCos, endY - perpSin);
+          ctx.lineTo(player.x - perpCos, player.y - perpSin);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 13px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('🦆 DUCK SWARM STAMPEDE 🦆', (player.x + endX) / 2, (player.y + endY) / 2 - 20);
+          ctx.restore();
+      }
+      if (selectedBrawler === 'drainbow' && !aimingSuper) {
+          const range = isHypercharged ? Math.round(600 * 1.30) : 600;
+          const width = player.drainbowG2Armed ? 300 : (isHypercharged ? 220 : 180);
+          const endX = player.x + Math.cos(ang) * range;
+          const endY = player.y + Math.sin(ang) * range;
+          const perpCos = -Math.sin(ang);
+          const perpSin = Math.cos(ang);
+          const halfW = width / 2;
+
+          ctx.save();
+          // Paint corridor fill
+          ctx.beginPath();
+          ctx.moveTo(player.x + perpCos * halfW, player.y + perpSin * halfW);
+          ctx.lineTo(endX + perpCos * halfW, endY + perpSin * halfW);
+          ctx.lineTo(endX - perpCos * halfW, endY - perpSin * halfW);
+          ctx.lineTo(player.x - perpCos * halfW, player.y - perpSin * halfW);
+          ctx.closePath();
+          ctx.fillStyle = isHypercharged ? 'rgba(192, 132, 252, 0.22)' : 'rgba(0, 240, 255, 0.16)';
+          ctx.fill();
+          ctx.strokeStyle = isHypercharged ? '#e879f9' : '#00f0ff';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          // Grid tile markers along trajectory
+          const steps = Math.floor(range / 100);
+          ctx.strokeStyle = isHypercharged ? 'rgba(232, 121, 249, 0.5)' : 'rgba(255, 255, 255, 0.4)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([6, 6]);
+          for (let s = 1; s <= steps; s++) {
+              const d = s * 100;
+              const px = player.x + Math.cos(ang) * d;
+              const py = player.y + Math.sin(ang) * d;
+              ctx.beginPath();
+              ctx.moveTo(px + perpCos * halfW, py + perpSin * halfW);
+              ctx.lineTo(px - perpCos * halfW, py - perpSin * halfW);
+              ctx.stroke();
+          }
+          ctx.setLineDash([]);
+
+          // Animated roller aiming head at end of corridor
+          const rollerHeadR = width * 0.18;
+          ctx.fillStyle = isHypercharged ? '#d946ef' : '#00f0ff';
+          ctx.shadowColor = isHypercharged ? '#e879f9' : '#00f0ff';
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(endX, endY, Math.min(26, rollerHeadR), 0, Math.PI * 2);
+          ctx.fill();
+
+          if (player.drainbowG2Armed) {
+              ctx.fillStyle = '#ff007f';
+              ctx.font = '900 13px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('⚡ OVERCLOCK PAINT (WIDE) ⚡', (player.x + endX) / 2, (player.y + endY) / 2 - 14);
+          }
+          ctx.restore();
+      }
+      if (selectedBrawler === 'drainbow' && aimingSuper) {
+          const range = 700;
+          const width = isHypercharged ? 400 : 300;
+          const endX = player.x + Math.cos(ang) * range;
+          const endY = player.y + Math.sin(ang) * range;
+          const perpCos = -Math.sin(ang);
+          const perpSin = Math.cos(ang);
+          const halfW = width / 2;
+
+          ctx.save();
+          // Highway fill & glowing outline
+          ctx.beginPath();
+          ctx.moveTo(player.x + perpCos * halfW, player.y + perpSin * halfW);
+          ctx.lineTo(endX + perpCos * halfW, endY + perpSin * halfW);
+          ctx.lineTo(endX - perpCos * halfW, endY - perpSin * halfW);
+          ctx.lineTo(player.x - perpCos * halfW, player.y - perpSin * halfW);
+          ctx.closePath();
+          ctx.fillStyle = isHypercharged ? 'rgba(217, 70, 239, 0.26)' : 'rgba(255, 0, 127, 0.20)';
+          ctx.fill();
+
+          ctx.strokeStyle = isHypercharged ? '#d946ef' : '#ff007f';
+          ctx.lineWidth = 4;
+          ctx.shadowColor = isHypercharged ? '#e879f9' : '#ff007f';
+          ctx.shadowBlur = 16;
+          ctx.stroke();
+
+          // Animated highway chevrons & grid lines
+          const steps = Math.floor(range / 100);
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 6]);
+          for (let s = 1; s <= steps; s++) {
+              const d = s * 100;
+              const px = player.x + Math.cos(ang) * d;
+              const py = player.y + Math.sin(ang) * d;
+              ctx.beginPath();
+              ctx.moveTo(px + perpCos * halfW, py + perpSin * halfW);
+              ctx.lineTo(px - perpCos * halfW, py - perpSin * halfW);
+              ctx.stroke();
+          }
+          ctx.setLineDash([]);
+
+          // Knockup / Hyper banner
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.shadowColor = '#000000';
+          ctx.shadowBlur = 8;
+          ctx.fillText(isHypercharged ? '⚡ HYPER HIGHWAY: PRISMATIC OVERDRIVE ⚡' : '🌈 RAINBOW HIGHWAY (KNOCKUP + TILE PAINT) 🌈', (player.x + endX) / 2, (player.y + endY) / 2);
+          ctx.restore();
+      }
+
+      if (selectedBrawler === 'kage' && !aimingSuper) {
+          const range = 580;
+          const coneSpread = 0.44;
+          const fullAmmo = (ammo >= (maxAmmo - 0.05)) || isHypercharged;
+          ctx.save();
+          ctx.fillStyle = isHypercharged ? 'rgba(192, 132, 252, 0.14)' : 'rgba(255, 255, 255, 0.06)';
+          ctx.strokeStyle = isHypercharged ? '#c084fc' : 'rgba(226, 232, 240, 0.85)';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(player.x, player.y);
+          ctx.arc(player.x, player.y, range, ang - coneSpread / 2, ang + coneSpread / 2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // 6 gap-filling lanes
+          const slotAngles = [
+              ang - 0.20, ang - 0.04, ang + 0.12,
+              ang + 0.20, ang + 0.04, ang - 0.12
+          ];
+          for (let s = 0; s < 6; s++) {
+              const sAng = slotAngles[s];
+              const endX = player.x + Math.cos(sAng) * range;
+              const endY = player.y + Math.sin(sAng) * range;
+              const isFinalTwo = (s >= 4);
+              ctx.strokeStyle = isHypercharged ? (isFinalTwo && fullAmmo ? '#ffffff' : '#c084fc') : (isFinalTwo && fullAmmo ? '#ffffff' : 'rgba(203, 213, 225, 0.65)');
+              ctx.lineWidth = (isFinalTwo && fullAmmo) ? 2 : 1;
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.lineTo(endX, endY);
+              ctx.stroke();
+              if (isFinalTwo && fullAmmo) {
+                  ctx.fillStyle = isHypercharged ? '#c084fc' : '#ffffff';
+                  ctx.font = '900 13px sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.fillText('+', endX, endY - 8);
+              }
+          }
+          ctx.restore();
+      }
+      if (selectedBrawler === 'kage' && aimingSuper) {
+          const range = 680;
+          const spread = 0.18;
+          const count = isHypercharged ? 4 : 2;
+          ctx.save();
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = isHypercharged ? '#c084fc' : 'rgba(241, 245, 249, 0.9)';
+          ctx.lineWidth = 3.5;
+          ctx.setLineDash([12, 8]);
+          for (let i = 0; i < count; i++) {
+              const sAng = count === 2 ? (ang + (i === 0 ? -spread : spread)) : (ang + (i - 1.5) * spread);
+              const endX = player.x + Math.cos(sAng) * range;
+              const endY = player.y + Math.sin(sAng) * range;
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.lineTo(endX, endY);
+              ctx.stroke();
+              ctx.fillStyle = isHypercharged ? 'rgba(192, 132, 252, 0.25)' : 'rgba(255, 255, 255, 0.15)';
+              ctx.beginPath();
+              ctx.arc(endX, endY, 28, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = isHypercharged ? '#c084fc' : '#f8fafc';
+              ctx.font = '900 15px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('✦ + ✦', endX, endY - 8);
+          }
+          ctx.setLineDash([]);
+          ctx.restore();
+      }
+
       if (selectedBrawler === 'fuser' && !aimingSuper) {
           const hyper=!!isHypercharged;
           const reversed=!!player.fuserReverseArmed;
@@ -39075,7 +41889,6 @@
             ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(wm.x, wm.y); ctx.stroke();
             }
           }
-        }
       }
     }
 
@@ -41132,6 +43945,278 @@
           ctx.restore();
           continue;
       }
+      
+      
+      else if (b.ownerBrawler === 'axeywaxy' && b.isAxeyWaxyCleave) {
+          // Animated sweeping axe cleave visual
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const currentAng = b.currentSwingAngle !== undefined ? b.currentSwingAngle : b.aimAngle;
+          const range = b.range || 220;
+
+          // Glowing sweeping blade crescent trail
+          ctx.strokeStyle = b.hyperVisual ? 'rgba(255, 60, 110, 0.85)' : (b.isHeft ? 'rgba(255, 159, 67, 0.95)' : 'rgba(231, 76, 60, 0.85)');
+          ctx.lineWidth = b.isHeft ? 8 : 5;
+          ctx.beginPath();
+          ctx.arc(0, 0, range * 0.92, b.swingAngle, currentAng);
+          ctx.stroke();
+
+          // Animated Double-Axe Head rotating along swing
+          ctx.rotate(currentAng);
+          ctx.shadowColor = b.hyperVisual ? '#ff3860' : (b.isHeft ? '#ff9f43' : '#e74c3c');
+          ctx.shadowBlur = b.isHeft ? 16 : 8;
+
+          // Axe shaft
+          ctx.fillStyle = '#795548';
+          ctx.fillRect(15, -3, range * 0.75, 6);
+
+          // Double Axe Blades at tip
+          ctx.fillStyle = b.hyperVisual ? '#ff6b8b' : (b.isHeft ? '#ffd32a' : '#d2dae2');
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+
+          // Upper blade crescent
+          ctx.beginPath();
+          ctx.arc(range * 0.82, -18, 18, Math.PI * 0.2, Math.PI * 1.2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Lower blade crescent
+          ctx.beginPath();
+          ctx.arc(range * 0.82, 18, 18, -Math.PI * 1.2, -Math.PI * 0.2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'axeywaxy' && b.isAxeyWaxyHatchet) {
+          // Spinning throwing hatchet
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const spin = (performance.now() * 0.015) % (Math.PI * 2);
+          ctx.rotate(spin);
+          ctx.shadowColor = '#ff9f43';
+          ctx.shadowBlur = 12;
+
+          ctx.fillStyle = '#8d6e63';
+          ctx.fillRect(-4, -14, 8, 28);
+
+          ctx.fillStyle = '#ffd32a';
+          ctx.beginPath();
+          ctx.arc(6, -8, 14, -Math.PI * 0.5, Math.PI * 0.5);
+          ctx.fill();
+
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'draflygon' && b.isDraflygonAerialDrop) {
+          // Falling dragon fireball from skies to drop target
+          const progress = Math.min(1, b.life / (b.maxLife || 0.16));
+          const dropZ = 36 * (1 - progress);
+          ctx.save();
+          // Ground target shadow
+          ctx.fillStyle = 'rgba(0,0,0,0.35)';
+          ctx.beginPath();
+          ctx.ellipse(b.targetX, b.targetY, 16 * (1 - progress * 0.3), 9 * (1 - progress * 0.3), 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Dropping fireball
+          ctx.translate(b.x, b.y - dropZ);
+          ctx.shadowColor = b.hyperVisual ? '#ff3860' : '#ff7b00';
+          ctx.shadowBlur = 16;
+          const fireGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 16);
+          fireGrad.addColorStop(0, '#ffffff');
+          fireGrad.addColorStop(0.35, b.hyperVisual ? '#ff3860' : '#ffaa00');
+          fireGrad.addColorStop(0.8, b.hyperVisual ? '#9b5de5' : '#ff4d00');
+          fireGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = fireGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, 16, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'draflygon' && b.isDraflygonConeFlame) {
+          // High-velocity piercing cone flame traveling outward
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const coneAng = b.coneAngle !== undefined ? b.coneAngle : Math.atan2(b.vy, b.vx);
+          ctx.rotate(coneAng);
+          ctx.shadowColor = b.hyperVisual ? '#ff3860' : '#ff9800';
+          ctx.shadowBlur = 12;
+          const flameGrad = ctx.createLinearGradient(-12, 0, 22, 0);
+          flameGrad.addColorStop(0, 'rgba(0,0,0,0)');
+          flameGrad.addColorStop(0.3, b.hyperVisual ? '#ff3860' : '#ff5722');
+          flameGrad.addColorStop(0.7, '#ffeb3b');
+          flameGrad.addColorStop(1, '#ffffff');
+          ctx.fillStyle = flameGrad;
+          ctx.beginPath();
+          ctx.moveTo(-12, -7);
+          ctx.lineTo(22, 0);
+          ctx.lineTo(-12, 7);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'draflygon' && b.isDraflygonFlame) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const ang = Math.atan2(b.vy, b.vx);
+          ctx.rotate(ang);
+
+          // Slim draconic flame lash
+          const grad = ctx.createLinearGradient(-15, 0, 25, 0);
+          grad.addColorStop(0, '#ffffff');
+          grad.addColorStop(0.3, b.hyperVisual ? '#ff3860' : '#ffaa00');
+          grad.addColorStop(0.7, b.hyperVisual ? '#9b5de5' : '#ff4d00');
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+          ctx.fillStyle = grad;
+          ctx.shadowColor = b.hyperVisual ? '#ff3860' : '#ff7b00';
+          ctx.shadowBlur = 14;
+          ctx.beginPath();
+          ctx.moveTo(-15, -6);
+          ctx.lineTo(25, 0);
+          ctx.lineTo(-15, 6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'draflygon' && b.isDraflygonAerialBomb) {
+          const r = b.currentRadius || 8;
+          const progress = Math.min(1, b.life / (b.maxLife || 0.28));
+          const alpha = Math.max(0, 1 - progress * 0.8);
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.shadowColor = b.hyperVisual ? '#ff3860' : '#ffaa00';
+          ctx.shadowBlur = 12;
+          // Outer flame ring
+          ctx.strokeStyle = b.hyperVisual ? '#ff3860' : '#ff7b00';
+          ctx.lineWidth = Math.max(2, 8 - progress * 5);
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, Math.max(1, r), 0, Math.PI * 2);
+          ctx.stroke();
+          // White-hot inner ring
+          ctx.globalAlpha = alpha * 0.55;
+          ctx.strokeStyle = '#fff8e1';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, Math.max(1, r * 0.5), 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'drainbow' && b.isDrainbowRoller) {
+          const spin = (performance.now() / 45) * Math.PI;
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(spin);
+          const rad = (b.roadWidth ? Math.min(36, b.roadWidth * 0.16) : 24);
+          
+          // Spinning Prismatic Energy Crest & Roller Drum
+          ctx.shadowColor = b.hyperVisual ? '#c084fc' : '#00f0ff';
+          ctx.shadowBlur = 16;
+          const rollerGrad = ctx.createRadialGradient(0, 0, 3, 0, 0, rad);
+          rollerGrad.addColorStop(0, '#ffffff');
+          rollerGrad.addColorStop(0.35, b.hyperVisual ? '#e879f9' : '#00f0ff');
+          rollerGrad.addColorStop(0.75, b.hyperVisual ? '#a855f7' : '#ff007f');
+          rollerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = rollerGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, rad, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 4-blade neon crest
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(-rad, 0); ctx.lineTo(rad, 0);
+          ctx.moveTo(0, -rad); ctx.lineTo(0, rad);
+          ctx.stroke();
+
+          // Outer roller spin ring
+          ctx.strokeStyle = b.hyperVisual ? '#f43f5e' : '#ffd166';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, rad * 0.75, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.restore();
+          continue;
+      }
+
+      else if (b.ownerBrawler === 'kage') {
+          const spin = (performance.now() / 55) * Math.PI;
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(spin);
+          if (b.isKageGiantStar) {
+              const size = 19;
+              ctx.fillStyle = b.hyperVisual ? '#c084fc' : '#0f172a'; // Obsidian charcoal base
+              ctx.shadowColor = b.hyperVisual ? '#e9d5ff' : 'rgba(148, 163, 184, 0.6)';
+              ctx.shadowBlur = b.hyperVisual ? 14 : 6;
+              ctx.beginPath();
+              for (let pt = 0; pt < 4; pt++) {
+                  const a1 = pt * (Math.PI / 2);
+                  const a2 = a1 + (Math.PI / 4);
+                  ctx.lineTo(Math.cos(a1) * size, Math.sin(a1) * size);
+                  ctx.lineTo(Math.cos(a2) * (size * 0.38), Math.sin(a2) * (size * 0.38));
+              }
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = b.hyperVisual ? '#ffffff' : '#f8fafc'; // Sharp silver edge
+              ctx.lineWidth = 1.8;
+              ctx.stroke();
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+              ctx.fill();
+          } else if (b.isKageShard) {
+              const size = 7.5;
+              ctx.fillStyle = b.hyperVisual ? '#e9d5ff' : '#f1f5f9';
+              ctx.shadowColor = b.hyperVisual ? '#c084fc' : '#64748b';
+              ctx.shadowBlur = 5;
+              ctx.beginPath();
+              for (let pt = 0; pt < 4; pt++) {
+                  const a1 = pt * (Math.PI / 2);
+                  const a2 = a1 + (Math.PI / 4);
+                  ctx.lineTo(Math.cos(a1) * size, Math.sin(a1) * size);
+                  ctx.lineTo(Math.cos(a2) * (size * 0.32), Math.sin(a2) * (size * 0.32));
+              }
+              ctx.closePath();
+              ctx.fill();
+          } else {
+              // Regular Ninja Star: Charcoal Obsidian Body with Razor Silver Edge & White Core
+              const size = 10;
+              ctx.fillStyle = b.hyperVisual ? '#c084fc' : '#1e293b';
+              ctx.shadowColor = b.hyperVisual ? '#c084fc' : 'rgba(148, 163, 184, 0.5)';
+              ctx.shadowBlur = b.hyperVisual ? 8 : 4;
+              ctx.beginPath();
+              for (let pt = 0; pt < 4; pt++) {
+                  const a1 = pt * (Math.PI / 2);
+                  const a2 = a1 + (Math.PI / 4);
+                  ctx.lineTo(Math.cos(a1) * size, Math.sin(a1) * size);
+                  ctx.lineTo(Math.cos(a2) * (size * 0.35), Math.sin(a2) * (size * 0.35));
+              }
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = b.hyperVisual ? '#ffffff' : '#f8fafc';
+              ctx.lineWidth = 1.2;
+              ctx.stroke();
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+              ctx.fill();
+          }
+          ctx.restore();
+          continue;
+      }
+
       else if (b.ownerBrawler === 'minigunnin') {
           if (b.minigunninMutationExplosive) {
               const angle=Math.atan2(b.vy||0,b.vx||1);
@@ -43931,6 +47016,7 @@
     }
   }
 
+  }
   let last = performance.now();
   let lastPresentedFrame = 0;
   let runtimeLoopCrashed = false;

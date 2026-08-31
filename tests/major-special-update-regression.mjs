@@ -21,20 +21,20 @@ assert.match(game,/special: createSpecialBreakthroughView/,'Special Breakthrough
 assert.match(game,/makeTab\('special', `✨ Unleash Potential/,'Unleash Potential is a real Quest tab');
 assert.match(game,/function getSpecialClaimableCount\(\)/,'Quest badges use the implemented Special claim-count helper');
 assert.match(game,/UNLEASH_POTENTIAL_DURATION_MS = 7 \* 24 \* 60 \* 60 \* 1000/,'Unleash Potential lasts seven days');
-assert.match(game,/UNLEASH_POTENTIAL_FIGHTERS = Object\.freeze\(\['minigunnin','classy','splitter'\]\)/,'Only the three newest Specials are unlocked by Unleash Potential');
+assert.match(game,/UNLEASH_POTENTIAL_FIGHTERS = Object\.freeze\(Object\.keys\(SPECIAL_ABILITY_DEFS\)\)/,'Every registered Special is obtainable through Unleash Potential');
 assert.doesNotMatch(game,/minigunnin: \[[\s\S]{0,600}kind:'play_match'/,'Minigunnin Unleash Potential quests use combat objectives instead of match chores');
 assert.doesNotMatch(game,/classy: \[[\s\S]{0,600}kind:'play_match'/,'Classy Unleash Potential quests use combat objectives instead of match chores');
 assert.doesNotMatch(game,/splitter: \[[\s\S]{0,600}kind:'play_match'/,'Splitter Unleash Potential quests use combat objectives instead of match chores');
 assert.match(game,/addSpecialQuestProgress\('minigunnin','use_super',1\)/,'Minigunnin Fortress deployments progress Unleash Potential');
 assert.match(game,/addSpecialQuestProgress\('classy','main_attack',1\)/,'Classy Note Bursts progress Unleash Potential');
-assert.match(game,/ownerBaseBrawler === 'splitter'[\s\S]{0,100}addSpecialQuestProgress\('splitter','main_hit',1\)/,'Splitter fragment hits progress Unleash Potential');
+assert.match(game,/getSpecialAbilityDef\(ownerBaseBrawler\)[\s\S]{0,220}addSpecialQuestProgress\(ownerBaseBrawler,'main_hit',1\)/,'Main hits generically progress the matching Special quest path');
 assert.match(game,/completed:false,rewardClaimed:false/,'Special quests separate completion from reward claims');
 assert.match(game,/if\(!def\|\|!quest\|\|[\s\S]{0,180}!entry\?\.completed\|\|entry\.rewardClaimed\)return false/,'Special quest rewards can only be claimed once');
 assert.match(game,/function addSpecialQuestProgress[\s\S]{0,420}isTraining \|\| isTutorialMode/,'Training and tutorial activity cannot progress Special quests');
 assert.match(game,/const completedMatchFighter = selectedBrawler/,'Match end captures the Fighter who actually played');
 assert.match(game,/addSpecialQuestProgress\(completedMatchFighter, 'play_match', 1\)/,'Play-match progress is awarded from the actual match-end flow');
 assert.match(game,/changed && kind === 'play_match'[\s\S]{0,180}saveProgress\(\)/,'Special Play Match progress saves immediately at match completion');
-assert.match(game,/UNLEASH_POTENTIAL_EVENT_ID = 'unleash-potential-2026-08-v2'/,'Existing players receive the repaired seven-day Unleash Potential window without losing quest entries');
+assert.match(game,/UNLEASH_POTENTIAL_EVENT_ID = 'unleash-potential-2026-08-all-specials-v3'/,'Existing players receive the all-Special seven-day quest window without losing persistent ability data');
 assert.doesNotMatch(game,/startBtn\.addEventListener[\s\S]{0,300}addSpecialQuestProgress\([^)]*'play_match'/,'Pressing Start does not progress Special play-match quests');
 
 // Launch Specials.
@@ -67,7 +67,7 @@ assert.match(game,/const signatureWallTravelGain=signatureCollector\?baseTravel\
 assert.match(game,/if\(signatureCollector\)[\s\S]{0,100}distLeft\+=signatureWallTravelGain/,'Signature aim telegraph previews its additive wall range gain');
 assert.match(game,/function lockMainAttackSequence\(owner, durationMs,[\s\S]{0,500}owner\.mainAttackSequenceUntil=/,'Scheduled volleys use a centralized attack-sequence lock');
 assert.match(game,/if\(now < \(fromEntity\.mainAttackSequenceUntil\|\|0\)\)return;/,'A new ammo attack cannot begin during the current launch sequence');
-assert.match(game,/brawler === 'fuser'[\s\S]{0,260}lockMainAttackSequence\(fromEntity,7\*delay,now\)/,'Fuser cannot overlap eight-round bursts');
+assert.match(game,/brawler === 'fuser'[\s\S]{0,520}lockMainAttackSequence\(fromEntity,7\*delay,now\)/,'Fuser cannot overlap eight-round bursts');
 assert.match(game,/lockMainAttackSequence\(fromEntity,\(balls-1\)\*88,now\)/,'Bouncin Balls cannot overlap multi-ball volleys');
 assert.match(game,/progress\.selectedGadget=selectedGadget[\s\S]{0,220}saveProgress\(\)/,'Changing gadgets persists the selected slot');
 assert.match(game,/if\(b\.echoInstinctVisual\)/,'Echo Instinct projectile has dedicated visible VFX');
@@ -113,6 +113,26 @@ assert.match(game,/splitPlan:\s*\[2,2,2,2\][\s\S]{0,100}generationCaps:\s*\[2,4,
 assert.match(game,/directions\s*=\s*isHyper\s*\?\s*\[angle, angle \+ Math\.PI \* 2 \/ 3, angle - Math\.PI \* 2 \/ 3\]/,'Hyper Splitter fires the Super tree in three directions');
 assert.match(game,/else if \(b\.ownerBrawler === 'splitter'\)[\s\S]{0,900}splitterInstinctVisual/,'Splitter projectiles have dedicated lightweight visuals');
 assert.match(game,/INSTINCT - 1 > 5 > 2 READY/,'Splitter HUD communicates the current Instinct pattern');
+
+// Peter Pickle Instinct and Evil Doctor Mutation.
+assert.match(game,/peter_pickle:[\s\S]{0,200}type: 'instinct'[\s\S]{0,200}Pickle Proliferation/,'Peter Pickle has a personalized Instinct');
+assert.match(game,/instinctEligible=isSpecialAbilityAvailableForEntity\(fromEntity,'peter_pickle'\)&&sizeMult>2/,'Peter Instinct arms only above 2x attack size');
+assert.match(game,/b\.peterPickleInstinctEligible[\s\S]{0,160}spawnPeterPickleMinion\(owner, target\.x, target\.y/,'An eligible real hit hatches a living pickle at impact');
+assert.match(game,/evil_doctor:[\s\S]{0,200}type: 'mutation'[\s\S]{0,200}Double Trouble/,'Evil Doctor has the Double Trouble Mutation');
+assert.match(game,/evilDoctorMutationAttackCount >= EVIL_DOCTOR_MUTATION_SETUP_ATTACKS[\s\S]{0,420}return true/,'The attack after three setup syringes is empowered');
+assert.match(game,/600 \* \(b\.evilDoctorDoubleTrouble \? 2 : 1\)/,'Double Trouble doubles syringe poison damage');
+assert.match(game,/function applyEvilDoctorDoubleTroubleHeal[\s\S]{0,900}grantShield\(entity, overflow/,'Double Trouble converts excess healing into real shield HP');
+
+// Fuser Live Fuse repair and Fusebox Override Signature.
+assert.match(game,/fuser:[\s\S]{0,200}type: 'signature'[\s\S]{0,200}Fusebox Override/,'Fuser has a registered Signature and quest path');
+assert.match(game,/function triggerFuserLiveFuseExplosion[\s\S]{0,500}AOEDamage/,'Live Fuse has an explicit endpoint explosion');
+assert.match(game,/if \(b\.isFuserBullet && b\.fuserLiveFuse && !b\.super\)[\s\S]{0,150}triggerFuserLiveFuseExplosion/,'Live Fuse triggers only from main-bullet maximum-range expiry');
+assert.match(game,/fuserLiveFuse:liveFuse&&!curved/,'Curved Gadget shots stay distinct from Live Fuse straight-shot explosions');
+assert.match(game,/fuserCurved:curved[\s\S]{0,240}fuserCurveCycles:signatureWiggle\?1\.55:\.55/,'Crossed Wires curves normally and uses a stronger Signature swiggle');
+assert.match(game,/player\.fuserSignatureArmed = false;[\s\S]{0,100}player\.fuserStoredAmmo = 0/,'Fuser Signature state resets safely between matches');
+assert.match(game,/player\.fuserStoreFourthOnReload = true[\s\S]{0,180}4TH AMMO ON NEXT RELOAD/,'Signature Spare Magazine arms the stored fourth-ammo reward');
+assert.match(game,/selectedBrawler === 'fuser' && player\.fuserStoreFourthOnReload[\s\S]{0,260}player\.fuserStoredAmmo = 1/,'The next real reload creates exactly one stored fourth ammo');
+assert.match(game,/useFuserStoredAmmo[\s\S]{0,1000}player\.fuserStoredAmmo = Math\.max/,'Stored Fuser ammo is consumed once without removing normal ammo');
 
 // Controls and Training.
 assert.match(html,/id="signature"[\s\S]{0,120}Signature \(R\)/,'Desktop Signature button exposes its R binding');

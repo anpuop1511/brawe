@@ -17,7 +17,8 @@ for (const target of [5, 10, 20, 35, 50, 75, 100]) {
   assert.match(game, new RegExp(`id:'hyper_charge_${String(target).padStart(2, '0')}'.*?target:${target}`));
 }
 assert.match(game, /addEventQuestProgress\('activate_hypers'\)/, 'player Hyper activations progress the pack');
-assert.match(game, /className = 'charged-quest-packs'/, 'Charged packs have a dedicated grouped layout');
+assert.doesNotMatch(game, /makeTab\('limited'/, 'Charged packs are no longer exposed as a live tab');
+assert.match(game, /className = 'charged-quest-packs'/, 'Retired rendering code remains harmless for old save compatibility');
 assert.match(game, /A limited event expires once/, 'expired event progress is not silently reset');
 
 console.log('Charged quest pack regression checks passed.');

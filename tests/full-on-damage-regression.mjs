@@ -16,7 +16,7 @@ assert.match(game,/recordFullOnDamageToTarget\(dw,wallDamage\)[\s\S]{0,100}dw\.h
 assert.match(game,/const fullOnDamageEarned=commitFullOnDamageMatch\(\)/,'The full match ledger commits once at match end');
 assert.match(game,/hasHandledGameOver = false;[\s\S]{0,100}resetFullOnDamageMatchLedger\(\)/,'Each newly launched match receives a fresh damage ledger');
 assert.match(game,/addFullOnDamageMatchDamage\(total\)/,'Committed match damage advances the persistent event');
-assert.match(game,/makeTab\('damage', `💥 Full On Damage/,'Full On Damage replaces Snapper Journey in the Quest UI');
+assert.match(game,/makeTab\('damage', `💥 Full On Damage/,'Full On Damage remains available beside the new Gold Event');
 assert.match(game,/Everyone in your matches contributes—including every bot/,'Daily UI explains shared bot contribution');
 
 console.log('Full On Damage regression checks passed.');

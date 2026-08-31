@@ -26,7 +26,7 @@ assert.match(game, /botWallBreakTargetHitId = getDestructibleWallHitId\(blocker\
 assert.match(game, /botDirectedWallBreak[\s\S]{0,240}b\.damage \* mult \* 0\.45/, 'Directed bot wall shots can break the obstruction');
 
 assert.match(game, /function applyProjectileEndpointVaultDamage/, 'Projectile endpoints can damage vaults');
-assert.match(game, /if \(dw\.isVault\)[\s\S]{0,520}registerBrickVaultWallDamage/, 'Direct projectiles can damage vaults');
+assert.match(game, /if \(dw\.isVault\)[\s\S]{0,720}registerBrickVaultWallDamage/, 'Direct projectiles can damage vaults');
 assert.match(game, /function applyNonProjectileStructureDamage[\s\S]{0,1200}applyHeaterBoxDamage\(owner, wall, damage\)/, 'Non-projectile attacks have one shared power-box and vault damage path');
 assert.match(game, /function AOEDamage[\s\S]{0,6200}applyNonProjectileStructureDamage\(owner, x, y, radius, wallDamage\)/, 'AOE and melee attacks share vault damage handling');
 assert.match(game, /function resolveGhoulHaunt[\s\S]{0,3600}applyNonProjectileStructureDamage\(owner,handX,handY,46,structureDamage/, 'Ghoul hands damage power boxes and enemy vaults through the shared structure path');
