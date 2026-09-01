@@ -40098,10 +40098,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = '#ffffff';
-          ctx.font = '900 11px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('🤸 BOUNCY LEAP (1200 DMG / 1500 HEAL)', landX, landY - landRadius - 8);
+          
           ctx.restore();
       }
       if (selectedBrawler === 'trampaheal' && aimingSuper) {
@@ -40136,10 +40133,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = '#ffffff';
-          ctx.font = '900 12px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(isHypercharged ? '⚡ TRAMPAWIND (6500 HP + WIND BLAST) ⚡' : '🤸 MEGA TRAMPOLINE (5000 HP + HIGH BOUNCE) 🤸', deployX, deployY - 48);
+          
           ctx.restore();
       }
       if (selectedBrawler === 'axeywaxy' && !aimingSuper && !(player.axeyWaxySuperUntil > performance.now())) {
@@ -40161,10 +40155,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               ctx.lineTo(endX, endY);
               ctx.stroke();
               ctx.setLineDash([]);
-              ctx.fillStyle = '#ff9f43';
-              ctx.font = '900 11px sans-serif';
-              ctx.textAlign = 'center';
-              ctx.fillText('🪓 HATCHET TOSS (PIERCING / RETURNING)', endX, endY - 14);
+              
           } else if (g2Armed) {
               // G2: Timber Stomp cone
               ctx.fillStyle = 'rgba(230, 126, 34, 0.22)';
@@ -40176,10 +40167,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               ctx.closePath();
               ctx.fill();
               ctx.stroke();
-              ctx.fillStyle = '#ffffff';
-              ctx.font = '900 11px sans-serif';
-              ctx.textAlign = 'center';
-              ctx.fillText('🌲 TIMBER STOMP (1.2s ROOT)', player.x + Math.cos(ang) * 110, player.y + Math.sin(ang) * 110);
+              
           } else {
               // Main Attack Cleave Arc: perfectly bounded 230-deg sweeping sector with left & right rays
               ctx.fillStyle = isHypercharged ? 'rgba(255, 60, 110, 0.18)' : (isHeft ? 'rgba(255, 159, 67, 0.20)' : 'rgba(231, 76, 60, 0.15)');
@@ -40203,13 +40191,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               ctx.lineTo(player.x + Math.cos(ang) * range, player.y + Math.sin(ang) * range);
               ctx.stroke();
 
-              // Heft Indicator in Telegraph
-              if (isHeft) {
-                  ctx.fillStyle = '#ffd32a';
-                  ctx.font = '900 11px sans-serif';
-                  ctx.textAlign = 'center';
-                  ctx.fillText('💥 HEFT KNOCKBACK SWING 💥', player.x + Math.cos(ang) * (range * 0.65), player.y + Math.sin(ang) * (range * 0.65));
-              }
+              
           }
           ctx.restore();
       }
@@ -40224,10 +40206,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = '#ffffff';
-          ctx.font = '900 13px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(isHypercharged ? '⚡ FURIOUS JUGGERNAUT (6.0s WHIRLWIND + CC IMMUNITY) ⚡' : '🪓 WHIRLWIND CHOPPER (6.0s SPIN + 40% SPEED & SLOW) 🪓', player.x, player.y - spinRadius - 14);
+          
           ctx.restore();
       }
 
