@@ -21479,6 +21479,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     const mult = (selectedStar === 'long') ? 1.38 : 1.0;
     const combatBrawler = getCombatBrawler(player, false);
 
+    if (combatBrawler === 'trampaheal') { castTrampahealSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'awakenator') { castAwakenatorSuper(player,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'darkener') { castDarkagon(player,wm.x,wm.y,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'ghoul') { castGhoulSuper(player,!!isHypercharged); updateSuperButton(); return; }
@@ -23181,6 +23183,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     const isHyper = bot.isHypercharged;
         const botCombatBrawler = getCombatBrawler(bot, true);
     const now = performance.now();
+    if (botCombatBrawler === 'trampaheal') { castTrampahealSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'awakenator') { castAwakenatorSuper(bot,isHyper); return; }
     const dx = targetX - bot.x; const dy = targetY - bot.y; const ang = Math.atan2(dy, dx);
 
@@ -34356,6 +34360,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         updateGhoulSystems(now, dt);
         updateDarkenerSystems(now, dt);
         updateJackTradeSystems(now, dt);
+        updateTrampahealSystems(now, dt);
 
         for (let i=chickpigEggZones.length-1;i>=0;i--) {
             const zone=chickpigEggZones[i];
