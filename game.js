@@ -21055,6 +21055,193 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         spawnFloatingText(deployX, deployY - 45, hyper ? '⚡ TRAMPAWIND (6500 HP)!' : '🤸 MEGA TRAMPOLINE (5000 HP)!', hyper ? '#00f5d4' : '#10ac84');
     }
 
+    
+    function updateTrampahealSystems(now, dt) {
+        // Trampaheal Jump & Air-Steering Simulation
+        for (const e of [player, ...aliveBots]) {
+            if (!e || e.hp <= 0) continue;
+            ensureTrampahealState(e);
+
+            // 1. Main Attack Targeted Jump Arc
+            if (e.trampahealIsJumping) {
+                const dur = e.trampahealJumpDuration || 450;
+                const p = Math.min(1, (now - e.trampahealJumpStartAt) / dur);
+                e.x = e.trampahealJumpStartX + (e.trampahealJumpTargetX - e.trampahealJumpStartX) * p;
+                e.y = e.trampahealJumpStartY + (e.trampahealJumpTargetY - e.trampahealJumpStartY) * p;
+                e.z = Math.sin(p * Math.PI) * 55;
+                e.isFlying = true;
+                e.isAirborneUntil = now + 100;
+
+                if (p >= 1) {
+                    // Landed!
+                    e.x = e.trampahealJumpTargetX;
+                    e.y = e.trampahealJumpTargetY;
+                    e.z = 0;
+                    e.trampahealIsJumping = false;
+                    e.isFlying = false;
+                    e.isAirborneUntil = 0;
+
+                    const landRadius = 65;
+                    const candidates = e.id === player.id ? aliveBots : [player, ...aliveBots];
+                    const allies = e.id === player.id ? [player, ...aliveBots.filter(b => areAlliedEntities(player, b))] : [e, ...aliveBots.filter(b => areAlliedEntities(e, b))];
+
+                    // Damage enemies in landing radius
+                    for (const target of candidates) {
+                        if (!target || target.hp <= 0 || target.id === e.id || target.isFlying) continue;
+                        if (areAlliedEntities(e, target)) continue;
+                        if (Math.hypot(target.x - e.x, target.y - e.y) <= landRadius + (target.radius || 16)) {
+                            checkHit(target, { ownerBrawler: 'trampaheal', damage: 1200, pierce: true, ownerId: e.id, hitIds: {} }, -1);
+                        }
+                    }
+
+                    // Heal allies in landing radius
+                    for (const ally of allies) {
+                        if (!ally || ally.hp <= 0) continue;
+                        if (Math.hypot(ally.x - e.x, ally.y - e.y) <= landRadius + (ally.radius || 16)) {
+                            doHeal(ally, 1500);
+                            spawnFloatingText(ally.x, ally.y - 25, '+1500 JUMP HEAL', '#2ed573');
+                        }
+                    }
+
+                    // SP1: Soft Landing (25% speed boost for 2s + 500 shield)
+                    if (e.trampahealHasSp1) {
+                        e.shield = Math.min(6000, (e.shield || 0) + 500);
+                        e.speedUntil = Math.max(e.speedUntil || 0, now + 2000);
+                        spawnFloatingText(e.x, e.y - 38, '🛡️ SOFT LANDING (+500 SHIELD)', '#00f5d4');
+                    }
+
+                    // Lingering Healing Aura (1.0s base / 2.0s SP2)
+                    const auraDur = e.trampahealHasSp2 ? 2000 : 1000;
+                    const auraTickHeal = e.trampahealHasSp2 ? 450 : 300;
+                    trampaHealAuras.push({
+                        x: e.x,
+                        y: e.y,
+                        radius: landRadius,
+                        ownerId: e.id,
+                        until: now + auraDur,
+                        healTick: auraTickHeal,
+                        lastTickAt: 0
+                    });
+
+                    explosions.push({
+                        x: e.x,
+                        y: e.y,
+                        radius: landRadius + 15,
+                        life: 0,
+                        maxLife: 0.25,
+                        color: 'rgba(16, 172, 132, 0.85)'
+                    });
+                }
+            }
+
+            // 2. Trampoline Air-Steering Bounce
+            if (e.trampaAirSteerUntil && now < e.trampaAirSteerUntil) {
+                const airP = Math.min(1, (now - e.trampaAirSteerStartAt) / 850);
+                e.z = Math.sin(airP * Math.PI) * 65;
+                e.isFlying = true;
+            } else if (e.trampaAirSteerUntil && now >= e.trampaAirSteerUntil) {
+                e.trampaAirSteerUntil = 0;
+                e.isFlying = false;
+                e.isAirborneUntil = 0;
+                e.z = 0;
+                explosions.push({
+                    x: e.x,
+                    y: e.y,
+                    radius: 45,
+                    life: 0,
+                    maxLife: 0.20,
+                    color: 'rgba(46, 213, 115, 0.75)'
+                });
+            }
+        }
+
+        // Trampoline Structure Updates & Interaction Loop
+        for (let tIdx = trampolines.length - 1; tIdx >= 0; tIdx--) {
+            const t = trampolines[tIdx];
+            if (!t || t.hp <= 0) {
+                trampolines.splice(tIdx, 1);
+                continue;
+            }
+
+            const tOwner = getEntityById(t.ownerId);
+
+            for (const e of [player, ...aliveBots]) {
+                if (!e || e.hp <= 0) continue;
+                ensureTrampahealState(e);
+
+                const dist = Math.hypot(e.x - t.x, e.y - t.y);
+
+                // Ally / Self Trampoline Bounce (Airborne Launch + 1200 HP Heal)
+                if (!e.trampahealIsJumping && (e.trampaAirSteerUntil || 0) <= now) {
+                    const isAlly = (tOwner && areAlliedEntities(tOwner, e)) || e.id === t.ownerId;
+                    if (isAlly && dist <= t.radius + 6) {
+                        doHeal(e, 1200);
+                        spawnFloatingText(e.x, e.y - 30, '+1200 BOUNCE HEAL', '#2ed573');
+                        e.trampaAirSteerUntil = now + 850;
+                        e.trampaAirSteerStartAt = now;
+                        e.isAirborneUntil = now + 850;
+                        e.isFlying = true;
+
+                        const hasSp1 = e.id === player.id ? (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') : (e.selectedStar === 'slow' || e.selectedStar === 'fast' || e.selectedStar === 'sp1');
+                        if (hasSp1) {
+                            e.shield = Math.min(6000, (e.shield || 0) + 500);
+                            e.speedUntil = Math.max(e.speedUntil || 0, now + 2000);
+                        }
+
+                        explosions.push({
+                            x: t.x,
+                            y: t.y,
+                            radius: 55,
+                            life: 0,
+                            maxLife: 0.22,
+                            color: 'rgba(0, 245, 212, 0.85)'
+                        });
+                    }
+                }
+
+                // Hypercharge Trampawind: Wind Blast Defense against approaching enemies
+                if (t.isHyper && e.hp > 0 && e.id !== t.ownerId) {
+                    const isEnemy = !tOwner || !areAlliedEntities(tOwner, e);
+                    if (isEnemy && dist <= 120 && now - (t.lastWindBlastAt || 0) >= 1200) {
+                        t.lastWindBlastAt = now;
+                        const blastAng = Math.atan2(e.y - t.y, e.x - t.x);
+                        e.x = clamp(e.x + Math.cos(blastAng) * 140, e.radius, WORLD_W - e.radius);
+                        e.y = clamp(e.y + Math.sin(blastAng) * 140, e.radius, WORLD_H - e.radius);
+                        spawnFloatingText(e.x, e.y - 35, '💨 TRAMPAWIND BLAST!', '#00f5d4');
+                        explosions.push({
+                            x: t.x,
+                            y: t.y,
+                            radius: 125,
+                            life: 0,
+                            maxLife: 0.30,
+                            color: 'rgba(0, 245, 212, 0.75)'
+                        });
+                    }
+                }
+            }
+        }
+
+        // Lingering Healing Auras Update
+        for (let aIdx = trampaHealAuras.length - 1; aIdx >= 0; aIdx--) {
+            const aura = trampaHealAuras[aIdx];
+            if (!aura || now >= aura.until) {
+                trampaHealAuras.splice(aIdx, 1);
+                continue;
+            }
+            if (now - (aura.lastTickAt || 0) >= 500) {
+                aura.lastTickAt = now;
+                const aOwner = getEntityById(aura.ownerId);
+                const allies = aOwner ? (aOwner.id === player.id ? [player, ...aliveBots.filter(b => areAlliedEntities(player, b))] : [aOwner, ...aliveBots.filter(b => areAlliedEntities(aOwner, b))]) : [player];
+                for (const ally of allies) {
+                    if (Math.hypot(ally.x - aura.x, ally.y - aura.y) <= aura.radius + (ally.radius || 16)) {
+                        doHeal(ally, aura.healTick || 300);
+                        spawnFloatingText(ally.x, ally.y - 20, `+${aura.healTick || 300}`, '#2ed573');
+                    }
+                }
+            }
+        }
+    }
+
     function ensureAxeyWaxyState(entity) {
         if (!entity) return;
         if (typeof entity.axeyWaxyFullAmmoSince !== 'number') entity.axeyWaxyFullAmmoSince = 0;
