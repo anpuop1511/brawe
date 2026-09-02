@@ -211,6 +211,29 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             #mobileActionButtons { bottom:calc(max(10px,env(safe-area-inset-bottom)) + 102px); }
             .mobile-action-btn { width:48px;height:48px;font-size:19px; }
         }
+        #mobileControlsRoot{z-index:120;font-family:'Outfit','Trebuchet MS',sans-serif}
+        .mobile-stick{width:clamp(116px,18vw,148px);height:clamp(116px,18vw,148px);border:3px solid rgba(218,242,255,.72);background:radial-gradient(circle,rgba(63,116,174,.35) 0 42%,rgba(8,23,47,.66) 44% 68%,rgba(71,148,219,.26) 70%);box-shadow:inset 0 0 0 7px rgba(2,10,25,.3),0 8px 28px rgba(0,0,0,.34);opacity:.92}
+        .mobile-stick::before{content:'';position:absolute;inset:18%;border:1px dashed rgba(213,241,255,.32);border-radius:50%}
+        .mobile-stick::after{position:absolute;left:50%;bottom:-19px;transform:translateX(-50%);color:#d9eeff;font:900 9px/1 monospace;letter-spacing:.14em;text-shadow:0 2px 5px #000;white-space:nowrap}
+        #mobileMoveStick::after{content:'MOVE'}
+        #mobileAimStick::after{content:'AIM + FIRE';color:#ffd1b5}
+        #mobileAimStick{border-color:rgba(255,154,91,.82);background:radial-gradient(circle,rgba(219,81,49,.34) 0 42%,rgba(40,12,18,.66) 44% 68%,rgba(255,112,65,.25) 70%)}
+        .mobile-stick-knob{left:50%;top:50%;transform:translate(-50%,-50%);width:44%;height:44%;background:radial-gradient(circle at 36% 30%,#f7fdff,rgba(96,174,238,.9) 35%,rgba(22,74,134,.96));border:3px solid #e9f8ff;box-shadow:0 5px 12px #0008,0 0 16px rgba(102,204,255,.45);will-change:left,top}
+        #mobileAimStick .mobile-stick-knob{background:radial-gradient(circle at 36% 30%,#fff7eb,#ff9b5f 38%,#b72d3c);border-color:#fff0df;box-shadow:0 5px 12px #0008,0 0 18px rgba(255,100,66,.55)}
+        #mobileMoveStick{left:max(18px,env(safe-area-inset-left));bottom:max(24px,calc(env(safe-area-inset-bottom) + 8px))}
+        #mobileAimStick{right:max(20px,env(safe-area-inset-right));bottom:max(24px,calc(env(safe-area-inset-bottom) + 8px))}
+        #mobileActionButtons{right:max(22px,env(safe-area-inset-right));bottom:calc(max(24px,env(safe-area-inset-bottom)) + clamp(130px,18vw,158px));display:grid;grid-template-columns:repeat(2,58px);gap:10px;align-items:end}
+        .mobile-action-btn{position:relative;isolation:isolate;width:58px;height:58px;display:grid;place-items:center;padding:0;border:3px solid rgba(179,202,232,.7);background:conic-gradient(var(--action-color,#52c9ff) var(--mobile-charge,0deg),rgba(15,30,57,.94) 0);color:#fff;font-size:22px;font-weight:1000;box-shadow:0 5px 0 rgba(2,9,22,.8),0 10px 22px rgba(0,0,0,.35);opacity:.62;transition:transform .08s ease,opacity .12s ease,filter .12s ease}
+        .mobile-action-btn::before{content:'';position:absolute;inset:5px;border-radius:50%;z-index:0;pointer-events:none;background:radial-gradient(circle at 38% 28%,rgba(255,255,255,.34),var(--action-inner,#17345d) 48%,#071225)}
+        .mobile-action-btn{line-height:1}.mobile-action-btn::after{z-index:2}.mobile-action-btn:not(:empty){text-shadow:0 2px 4px #000}
+        .mobile-action-btn::after{content:attr(data-label);position:absolute;left:50%;bottom:-15px;transform:translateX(-50%);color:#c8d9ef;font:900 7px/1 monospace;letter-spacing:.08em;white-space:nowrap;text-shadow:0 2px 4px #000}
+        .mobile-action-btn--gadget{--action-color:#55e599;--action-inner:#17644d}.mobile-action-btn--signature{--action-color:#ffd34f;--action-inner:#765b10}.mobile-action-btn--super{--action-color:#ffcf4b;--action-inner:#76510d}.mobile-action-btn--hyper{--action-color:#dc69ff;--action-inner:#592176}
+        .mobile-action-btn.is-ready,.mobile-action-btn.is-armed,.mobile-action-btn.is-active{opacity:1;filter:saturate(1.18);border-color:#fff;box-shadow:0 5px 0 rgba(2,9,22,.82),0 0 18px var(--action-color)}
+        .mobile-action-btn:disabled{opacity:.38;filter:grayscale(.45);pointer-events:none}.mobile-action-btn:active{transform:translateY(3px) scale(.95);box-shadow:0 2px 0 rgba(2,9,22,.8)}
+        #mobileFullscreenBtn{top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:42px;height:42px;border:2px solid rgba(158,221,255,.6);border-radius:50%;background:rgba(5,15,32,.72);font-size:20px;box-shadow:0 5px 16px #0007}
+        #mobileLandscapeHint{top:max(10px,env(safe-area-inset-top));padding:7px 12px;border-color:rgba(255,196,93,.5);background:rgba(17,20,31,.85);color:#ffe0a3}
+        @media (orientation:portrait) and (max-width:760px){.mobile-stick{width:112px;height:112px}#mobileMoveStick,#mobileAimStick{bottom:max(26px,calc(env(safe-area-inset-bottom) + 10px))}#mobileActionButtons{right:max(14px,env(safe-area-inset-right));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 118px);grid-template-columns:repeat(2,52px);gap:8px}.mobile-action-btn{width:52px;height:52px;font-size:19px}}
+        @media (orientation:landscape) and (max-height:540px){.mobile-stick{width:118px;height:118px}#mobileMoveStick{left:max(24px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom))}#mobileAimStick{right:max(26px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom))}#mobileActionButtons{right:calc(max(26px,env(safe-area-inset-right)) + 124px);bottom:max(26px,env(safe-area-inset-bottom));grid-template-columns:repeat(2,52px)}.mobile-action-btn{width:52px;height:52px;font-size:19px}#mobileLandscapeHint{display:none}}
         `;
         document.head.appendChild(styleSheet);
 
@@ -1897,6 +1920,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       aimHeld: false,
       releaseShotTimer: 0
   };
+  let gadgetTouchBtn = null;
+  let superTouchBtn = null;
+  let hyperTouchBtn = null;
   let signatureTouchBtn = null;
   let mobileControlsRoot = null;
   let mobileControlsLastVisible = null;
@@ -1907,10 +1933,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   function isTouchInputEnvironment() {
       return (navigator.maxTouchPoints || 0) > 0
           || window.matchMedia?.('(pointer: coarse)').matches
+          || window.matchMedia?.('(max-width: 920px)').matches
           || ('ontouchstart' in window);
   }
   function updateMobileControlsVisibility() {
       if (!mobileInput.enabled || !mobileControlsRoot) return;
+      syncMobileActionButtons();
       const onHome = homeScreen && homeScreen.style.display !== 'none';
       const shouldShow = playing && !onHome;
       if (mobileControlsLastVisible === shouldShow) return;
@@ -1924,17 +1952,39 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           releaseSuper();
       }
   }
+  function syncMobileActionButtons() {
+      if (!mobileControlsRoot) return;
+      if (gadgetTouchBtn) {
+          const gadgetReady = !gadgetBtn.disabled;
+          gadgetTouchBtn.disabled = !gadgetReady;
+          gadgetTouchBtn.classList.toggle('is-ready', gadgetReady);
+          gadgetTouchBtn.classList.toggle('is-armed', !!gadgetArmed);
+      }
+      if (superTouchBtn) {
+          const charge = Math.max(0, Math.min(100, Number(superCharge) || 0));
+          superTouchBtn.style.setProperty('--mobile-charge', `${charge * 3.6}deg`);
+          superTouchBtn.disabled = !!superBtn.disabled;
+          superTouchBtn.classList.toggle('is-ready', charge >= 100 && !superBtn.disabled);
+      }
+      if (hyperTouchBtn) {
+          const charge = Math.max(0, Math.min(100, Number(hyperChargeCharge) || 0));
+          hyperTouchBtn.style.setProperty('--mobile-charge', `${charge * 3.6}deg`);
+          hyperTouchBtn.disabled = !!hyperBtn.disabled;
+          hyperTouchBtn.classList.toggle('is-ready', charge >= 100 || !!isHypercharged);
+          hyperTouchBtn.classList.toggle('is-active', !!isHypercharged);
+      }
+  }
   function bindVirtualStick(stickEl, knobEl, onMove, onEnd) {
       let activePointerId = null;
-      const radius = 48;
       function reset() {
           activePointerId = null;
-          knobEl.style.left = '37px';
-          knobEl.style.top = '37px';
+          knobEl.style.left = '50%';
+          knobEl.style.top = '50%';
           if (onEnd) onEnd();
       }
       function moveWithPointer(clientX, clientY) {
           const rect = stickEl.getBoundingClientRect();
+          const radius = Math.max(30, rect.width * .36);
           const cx = rect.left + rect.width * 0.5;
           const cy = rect.top + rect.height * 0.5;
           let dx = clientX - cx;
@@ -1944,8 +1994,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               dx = (dx / dist) * radius;
               dy = (dy / dist) * radius;
           }
-          knobEl.style.left = `${37 + dx}px`;
-          knobEl.style.top = `${37 + dy}px`;
+          knobEl.style.left = `${rect.width * .5 + dx}px`;
+          knobEl.style.top = `${rect.height * .5 + dy}px`;
           onMove(dx / radius, dy / radius);
       }
       stickEl.addEventListener('pointerdown', (event) => {
@@ -1977,35 +2027,43 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       const moveStick = document.createElement('div');
       moveStick.id = 'mobileMoveStick';
       moveStick.className = 'mobile-stick';
+      moveStick.setAttribute('role', 'application');
+      moveStick.setAttribute('aria-label', 'Move fighter');
       const moveKnob = document.createElement('div');
       moveKnob.className = 'mobile-stick-knob';
       moveStick.appendChild(moveKnob);
       const aimStick = document.createElement('div');
       aimStick.id = 'mobileAimStick';
       aimStick.className = 'mobile-stick';
+      aimStick.setAttribute('role', 'application');
+      aimStick.setAttribute('aria-label', 'Aim and fire main attack');
       const aimKnob = document.createElement('div');
       aimKnob.className = 'mobile-stick-knob';
       aimStick.appendChild(aimKnob);
       const actionButtons = document.createElement('div');
       actionButtons.id = 'mobileActionButtons';
-      const gadgetTouchBtn = document.createElement('button');
-      gadgetTouchBtn.className = 'mobile-action-btn';
+      gadgetTouchBtn = document.createElement('button');
+      gadgetTouchBtn.className = 'mobile-action-btn mobile-action-btn--gadget';
       gadgetTouchBtn.textContent = '⚙';
+      gadgetTouchBtn.dataset.label = 'TOOL';
       gadgetTouchBtn.title = 'Tool';
       gadgetTouchBtn.setAttribute('aria-label', 'Use Tool');
-      const superTouchBtn = document.createElement('button');
-      superTouchBtn.className = 'mobile-action-btn';
+      superTouchBtn = document.createElement('button');
+      superTouchBtn.className = 'mobile-action-btn mobile-action-btn--super';
       superTouchBtn.textContent = '★';
+      superTouchBtn.dataset.label = 'SUPER';
       superTouchBtn.title = 'Power Move';
       superTouchBtn.setAttribute('aria-label', 'Aim Power Move');
-      const hyperTouchBtn = document.createElement('button');
-      hyperTouchBtn.className = 'mobile-action-btn';
+      hyperTouchBtn = document.createElement('button');
+      hyperTouchBtn.className = 'mobile-action-btn mobile-action-btn--hyper';
       hyperTouchBtn.textContent = '⚡';
+      hyperTouchBtn.dataset.label = 'HYPER';
       hyperTouchBtn.title = 'Core Surge';
       hyperTouchBtn.setAttribute('aria-label', 'Activate Core Surge');
       signatureTouchBtn = document.createElement('button');
-      signatureTouchBtn.className = 'mobile-action-btn';
+      signatureTouchBtn.className = 'mobile-action-btn mobile-action-btn--signature';
       signatureTouchBtn.textContent = 'SIG';
+      signatureTouchBtn.dataset.label = 'SPECIAL';
       signatureTouchBtn.title = 'Signature';
       signatureTouchBtn.style.display = 'none';
       signatureTouchBtn.style.background = 'linear-gradient(135deg,#ffd34f,#fff2a6)';
@@ -2057,10 +2115,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       });
       gadgetTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
+          navigator.vibrate?.(18);
           gadgetBtn.click();
       });
       signatureTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
+          navigator.vibrate?.(18);
           activateSignatureAbility(player);
       });
       superTouchBtn.addEventListener('pointerdown', (e) => {
@@ -2091,6 +2151,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       superTouchBtn.addEventListener('lostpointercapture', () => { if (aimingSuper && superAimCancelState.source === 'mobile') cancelSuperAim(); });
       hyperTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
+          navigator.vibrate?.(22);
           activateHypercharge();
       });
   }
@@ -26447,7 +26508,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   function setSuperAimCancelVisual(cancelled) {
       superAimCancelState.cancel = !!cancelled;
       superBtn.classList.toggle('super-aim-cancel', !!cancelled);
-      const mobileButton = document.querySelector('#mobileActionButtons button[aria-label="Aim Super"]');
+      const mobileButton = document.querySelector('#mobileActionButtons button[aria-label="Aim Power Move"]');
       if (mobileButton) { mobileButton.classList.toggle('super-aim-cancel', !!cancelled); mobileButton.textContent = cancelled ? '×' : '★'; }
   }
   function cancelSuperAim() {

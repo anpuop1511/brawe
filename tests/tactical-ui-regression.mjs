@@ -8,7 +8,7 @@ const css=fs.readFileSync(new URL('../tactical-ui.css',import.meta.url),'utf8');
 for(const id of ['homeCollectionNav','homeEventsNav','homeShopNav','homeMobileFighters','homeMobileEvents','homeMobileShop','homeMobileMore']){
   assert.match(html,new RegExp(`id="${id}"`),`${id} remains available in the redesigned shell`);
 }
-assert.match(html,/tactical-ui\.css\?v=20260901-forge-respawn-results1/,'final tactical stylesheet loads after the legacy stylesheet');
+assert.match(html,/tactical-ui\.css\?v=20260902-mobile-v3-controls1/,'final tactical stylesheet loads after the legacy stylesheet');
 assert.match(game,/data-fighter-test-coins[\s\S]{0,1800}testCoinClicks<10[\s\S]{0,200}playerData\.souls=\(playerData\.souls\|\|0\)\+1000000/,'Fighters wallet exposes the ten-click testing Soul grant');
 assert.match(html,/id="homeProgressDock"[\s\S]{0,220}id="homeQuickActions"/,'progression shortcuts live in the clean progression dock');
 assert.match(game,/shopBtn\.id = 'gemShopBtn'/,'the redesigned Shop navigation targets the real shop action');
