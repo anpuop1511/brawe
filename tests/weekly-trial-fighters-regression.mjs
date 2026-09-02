@@ -16,12 +16,12 @@ assert.match(game,/isTraining \|\| isWeeklyTrialBrawler\(brawlerId\)/,'Core Surg
 assert.match(game,/if \(isWeeklyTrialBrawler\(fighterId\)\) return true/,'available Specials work during trial matches');
 assert.match(game,/!isBrawlerUnlocked\(selectedBrawler\) && !isWeeklyTrialBrawler\(selectedBrawler\)/,'selection normalization preserves locked weekly guests');
 assert.match(game,/weeklyTrials: playerData\.weeklyTrials/,'weekly picks and trial loadouts persist in the normal save');
-assert.match(game,/className = 'weekly-trial-panel'/,'fighter screen renders the weekly trial circuit');
+assert.match(game,/className\s*=\s*'weekly-trial-panel'/,'fighter screen renders the weekly trial circuit');
 assert.match(game,/WEEKLY TRIAL FIGHTER[\s\S]{0,260}COMPLETE KIT ACCESS/,'fighter detail makes temporary access obvious');
 assert.match(css,/\.weekly-trial-panel\{[\s\S]{0,220}grid-template-columns/,'weekly circuit has a deliberate desktop layout');
 assert.match(tactical,/Fighter HQ v3[^\n]+game-first roster/,'the final stylesheet uses the game-first Fighter HQ composition');
 assert.match(tactical,/grid-template-columns:minmax\(540px,2fr\) minmax\(310px,\.82fr\)/,'desktop Fighter HQ uses a dedicated roster and hero stage');
 assert.match(game,/brawler-browser__selected-actions[\s\S]{0,220}EDIT LOADOUT[\s\S]{0,160}USE FIGHTER/,'the selected fighter stage exposes the two primary actions');
-assert.match(html,/bootstrap\.js\?v=20260825-contractbarfix1/,'release token refreshes the runtime');
+assert.match(html,/bootstrap\.js\?v=20260901-forge-respawn-results1/,'release token refreshes the runtime');
 
 console.log('BRAWE weekly Trial Fighters and Fighter HQ regression checks passed.');

@@ -22,7 +22,7 @@ if (legacyCanvas) legacyCanvas.style.display = 'block';
 if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
-const RELEASE_TOKEN = '20260825-contractbarfix1';
+const RELEASE_TOKEN = '20260901-forge-respawn-results1';
 
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {
