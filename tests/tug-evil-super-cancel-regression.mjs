@@ -22,7 +22,8 @@ assert.ok(!cancelBody.includes('clearJackTradePreparedOutcomes'), 'cancel must p
 has("k === 'escape' && aimingSuper");
 has('e.button === 2 && aimingSuper');
 has('superAimCancelState.leftDeadZone');
-has('releaseSuper(!superAimCancelState.leftDeadZone || superAimCancelState.cancel)');
+has('const shouldCancel = superAimCancelState.leftDeadZone && superAimCancelState.cancel;');
+has('releaseSuper(shouldCancel)');
 has("pointercancel', (e) => { e.preventDefault(); cancelSuperAim(); }");
 
 // Tug Zone exact movement and one-time event architecture.

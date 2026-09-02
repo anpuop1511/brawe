@@ -2144,7 +2144,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       });
       const releaseSuperTouch = (e) => {
           e.preventDefault();
-          releaseSuper(!superAimCancelState.leftDeadZone || superAimCancelState.cancel);
+          // A tap quick-casts toward the current aim direction (and lets
+          // self-centered Supers such as Cursed Storm fire naturally).
+          // Cancellation only happens after dragging out to aim and then
+          // deliberately returning to the button's dead-zone.
+          const shouldCancel = superAimCancelState.leftDeadZone && superAimCancelState.cancel;
+          releaseSuper(shouldCancel);
       };
       superTouchBtn.addEventListener('pointerup', releaseSuperTouch);
       superTouchBtn.addEventListener('pointercancel', (e) => { e.preventDefault(); cancelSuperAim(); });
