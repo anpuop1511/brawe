@@ -8,3 +8,5 @@ coverage/
 android/.gradle/
 android/.idea/
 android/app/build/
+outputs/
+__pycache__/

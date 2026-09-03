@@ -22,7 +22,7 @@ if (legacyCanvas) legacyCanvas.style.display = 'block';
 if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
-const RELEASE_TOKEN = '20260902-mobile-v3-controls2';
+const RELEASE_TOKEN = '20260903-schoolclassy1';
 
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {

@@ -239,6 +239,18 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     function getScaledStats(brawlerId, levelOverride) {
         const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
+        if (brawlerId === 'sir_cheeseburger') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(7800 * scale), dmg: Math.round(1650 * scale), speed: 270 };
+        }
+        if (brawlerId === 'anti_royal') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(7600 * scale), dmg: Math.round(1550 * scale), speed: 255 };
+        }
+        if (brawlerId === 'king') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(7600 * scale), dmg: Math.round(1650 * scale), speed: 255 };
+        }
         if (brawlerId === 'cursed') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6800 * scale), dmg: Math.round(1500 * scale), speed: 260 };
@@ -445,7 +457,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         { label: 'Brick Master II', color: '#ff7d7d' },
         { label: 'Brick Master III', color: '#ff7d7d' },
         { label: 'Brick Master IV', color: '#ff7d7d' },
-        { label: 'Brick Master V', color: '#ff7d7d' }
+        { label: 'Brick Master V', color: '#ff7d7d' },
+        { label: 'Brick Grandmaster', color: '#00f5d4' }
     ];
     const RANKED_POINTS_PER_DIVISION = 100;
     const RANKED_GOLD_MIN_DIVISION_INDEX = 7;
@@ -464,6 +477,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             nextLabel: next ? next.label : null,
             nextThreshold: next ? (idx + 1) * RANKED_POINTS_PER_DIVISION : null
         };
+    }
+
+    function getRankedDivisionFloor(points) {
+        if (points >= 1800) return 1800;
+        if (points >= 1300) return 1300;
+        if (points >= 1000) return 1000;
+        if (points >= 700) return 700;
+        if (points >= 300) return 300;
+        return 0;
     }
 
     function isRankedGoldOrHigher(pointsRaw) {
@@ -917,11 +939,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             chip.style.display = 'flex';
             chip.style.justifyContent = 'space-between';
             chip.style.alignItems = 'center';
-            
+
             const label = document.createElement('span');
             label.innerHTML = `<b>${milestone.threshold}</b><br/>${milestone.reward}`;
             label.style.flex = '1';
-            
+
             if (isClaimed) {
                 label.innerHTML = `<b>${milestone.threshold}</b><br/>✓ Claimed`;
             } else if (milestone.earned) {
@@ -1845,6 +1867,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     player.jackTradeSafeBetArmed = false;
     player.jackTradeRushUntil = 0;
     player.jackTradeLuckyUntil = 0;
+    player.kingSiegeRoundArmed = false;
+    player.kingPiercingReadyAt = performance.now() + 5000;
+    player.kingRecoilRemaining = 0;
+    player.kingRecoilAngle = 0;
+    player.antiRoyalMortarRounds = 0;
+    player.antiRoyalGoldHits = 0;
+    player.antiRoyalBlockReadyAt = 0;
+    player.antiRoyalCounterfeitUntil = 0;
     player.freestyleSetlistStage = 0;
     player.freestyleSetlistHitMask = 0;
     player.freestyleSetlistFailed = false;
@@ -2197,6 +2227,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   const darkenerClouds = [];
   const cursedStorms = [];
   const cursedHyperClouds = [];
+  const antiRoyalMortarShells = [];
+  const antiRoyalMortarZones = [];
   const darkagons = [];
   const jackTradeVolleys = [];
   const jackTradeThrownEffects = [];
@@ -2390,7 +2422,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const ARENA_FORGE_UPGRADE_MAX = 3;
         const ARENA_FORGE_AUTO_UPGRADE_MS = 30000;
         const ARENA_FORGE_MAX_BONUS_LEVELS = 12;
-        const ARENA_FORGE_BLUEPRINT_LEVELS = [4, 8, 12];
+        const ARENA_FORGE_BLUEPRINT_LEVELS = [2, 4, 6, 8, 10, 12];
         const ARENA_FORGE_LEVEL_HP_PCT = 0.05;
         const ARENA_FORGE_LEVEL_DAMAGE_PCT = 0.05;
         const ARENA_FORGE_CAMPS_OPEN_SECONDS = 45;
@@ -2542,10 +2574,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             beam: 0.97,
             paradox: 0.95,
             sera_eclipse: 0.95,
-            boom_arang: 1.0
+            boom_arang: 1.0,
+            sir_cheeseburger: 1.0
         },
         reloadMsByBrawler: {
             warrior: 1650,
+            sir_cheeseburger: 1300,
             outlit: 1060,
             echo: 1600,
             cheseypuff: 1100,
@@ -2593,6 +2627,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             ,predator: 1500
         },
         fireDelayMsByBrawler: {
+            sir_cheeseburger: 220,
             warrior: 260,
             outlit: 200,
             cheseypuff: 260,
@@ -2687,13 +2722,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     function isEntityRooted(entity, now) {
         return !!(entity && !isEntityCcImmune(entity, now) && entity.rootUntil && now < entity.rootUntil);
     }
-    function applyStatusEffect(entity, effect, durationMs) {
+    function applyStatusEffect(entity, effect, durationMs, sourceEntity = null) {
         if (!entity || durationMs <= 0) return;
         if (isEntityCcImmune(entity)) return;
         const until = performance.now() + durationMs;
         if (effect === 'slow') entity.slowUntil = Math.max(entity.slowUntil || 0, until);
         if (effect === 'stun') entity.stunUntil = Math.max(entity.stunUntil || 0, until);
         if (effect === 'root') entity.rootUntil = Math.max(entity.rootUntil || 0, until);
+        if (isRankedMatch && activeRankedModifier === 'crowd_uncontrol' && sourceEntity && sourceEntity !== entity && !sourceEntity._ccReflecting) {
+            sourceEntity._ccReflecting = true;
+            applyStatusEffect(sourceEntity, effect, durationMs);
+            spawnFloatingText(sourceEntity.x, sourceEntity.y - 36, '🌀 CC REFLECTED!', '#ee5253');
+            sourceEntity._ccReflecting = false;
+        }
     }
     function applyAngelAllyHit(projectile, target, owner) {
         if (!projectile?.isAngelLight || !target || !owner || !areAlliedEntities(owner,target)) return false;
@@ -2762,7 +2803,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed'
+        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -2869,7 +2910,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             ramage: 'Epic',
             upgradart: 'Mythic',
             cinderion: 'Exotic',
-            cursed: 'Exotic'
+            cursed: 'Exotic',
+            king: 'Legendary',
+            anti_royal: 'Exotic',
+            sir_cheeseburger: 'Epic'
         };
         let brawlerSortMode = localStorage.getItem('brawl_arena_brawler_sort') || 'rarity-desc';
 
@@ -2914,6 +2958,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             playerData.unlockedBrawlers.upgradart = true;
             playerData.unlockedBrawlers.cinderion = true;
             playerData.unlockedBrawlers.cursed = true;
+            playerData.unlockedBrawlers.king = true;
+            playerData.unlockedBrawlers.anti_royal = true;
+            playerData.unlockedBrawlers.sir_cheeseburger = true;
         }
 
         function isFavoriteBrawler(id) {
@@ -3260,6 +3307,22 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     // Skin Database with Sets
     const skinsDatabase = {
+        'ranked-rocketeer': {
+            id: 'ranked-rocketeer',
+            name: 'Ranked Rocketeer',
+            brawler: 'rocketeer',
+            rarity: 'legendary',
+            set: 'Esports Championship',
+            price: 0,
+            currency: 'ranked_pass',
+            description: 'Elite competitive armor forged from carbon alloy, featuring a holographic gold visor, neon cyan rocket thrusters, and electric shockwave warheads.',
+            _displayColor: '#ffd166',
+            icon: '🚀',
+            attackEffect: { type: 'rankedRocket', color: '#ffd166', glow: true, trailColor: '#00f5d4' },
+            superEffect: { type: 'rankedAirstrike', color: '#00f5d4', glow: true, trailColor: '#ffd166' },
+            spawnEffect: { type: 'rankedSpawn', color: '#ffd166', glow: true },
+            takedownEffect: { type: 'rankedTakedown', color: '#00f5d4', glow: true }
+        },
         'soda-pop-echo': {
             id: 'soda-pop-echo',
             name: 'Soda Pop Echo',
@@ -3418,6 +3481,24 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             takedownEffect: { type: 'wildwestShowdown', color: '#ffd700', glow: true },
             isAlwaysAvailable: true
         },
+        'back-to-school-classy': {
+            id: 'back-to-school-classy',
+            name: 'Back to School Classy',
+            brawler: 'classy',
+            rarity: 'legendary',
+            set: 'First Bell Legends',
+            price: 79,
+            currency: 'gems',
+            icon: '🎓',
+            description: 'Classy becomes the loudest student on campus, firing neon report cards from a golden pencil and deploying a living locker-speaker. Includes custom fighter, attack, Super, Hyper, spawn, takedown, and defeat visuals.',
+            _displayColor: '#4f8cff',
+            attackEffect: { type: 'honorRollNote', color: '#55dfff', glow: true, trailColor: '#ffe36e' },
+            superEffect: { type: 'lockerSpeaker', color: '#9b72ff', glow: true, trailColor: '#55dfff' },
+            spawnEffect: { type: 'schoolBellSpawn', color: '#ffe36e', glow: true },
+            takedownEffect: { type: 'perfectGrade', color: '#55dfff', glow: true },
+            deathEffect: { type: 'dismissalBell', color: '#9b72ff', glow: true },
+            isAlwaysAvailable: true
+        },
         'icy-zapper-miser': {
             id: 'icy-zapper-miser',
             name: 'Icy Zapper Miser',
@@ -3512,7 +3593,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (skin.brawler && projectileBrawler && projectileBrawler !== skin.brawler) return false;
 
         // Don't override special visual flags that have dedicated render blocks
-        if (b.isMagenyMagnet || b.isTrappedInMagenyVortex || b.isOrboSuper || b.isOrboMain || b.isHomerProjectile || b.isRocketeerMain || b.isRocketeerMini) return false;
+        if (b.isMagenyMagnet || b.isTrappedInMagenyVortex || b.isOrboSuper || b.isOrboMain || b.isHomerProjectile || b.isRocketeerMain || b.isRocketeerMini || b.isClassyNote) return false;
 
         const color = effect.color || skin._displayColor || '#00d2d3';
         const radius = Math.max(4, (b.hitboxMod || 1) * (b.radius || 6));
@@ -5341,6 +5422,51 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
 
     const brawlerData = {
+      'sir_cheeseburger': {
+          name: 'Sir Cheeseburger',
+          role: 'Tank',
+          desc: 'A noble knight fortified in cheddar armor. Wields a close-quarters cheese broadsword and holds his blade to his chest to block incoming projectiles while stacking lethal slash damage.',
+          color: '#ffb830',
+          attack: 'Cheese Blade Slice',
+          attackDesc: 'Swings a sharp cheese broadsword down in an ultra-narrow 1.5-tile vertical slice dealing 1650 damage. Consecutive hits ramp up bonus damage.',
+          super: 'Knight\'s Chest Guard',
+          superDesc: 'Places his broadsword against his chest for 6.5s, reducing incoming projectile damage by 50%. Each sword hit landed during the stance grants +3% attack damage, stacking up to +20% max.',
+          hyper: 'Royal Cheeseburger: Chest Guard grants 85% damage reduction against ALL damage sources (decreases by 5% per hit taken down to a 60% floor). Main attack stack cap increases to +38% and gains +1 tile attack range with golden shockwaves. +25% damage, +25% speed, +15% shield.',
+          g1: 'Burger Dash (Instantly lunge 3 tiles forward, slicing all enemies in the path for base sword damage)',
+          g2: 'Cheddar Slam (Slam shield and weapon into the ground, dealing 1000 area damage, knocking enemies back, and slowing them by 30% for 1.5s)',
+          sp1: 'Tempered Cheddar (While Super is active, blocked projectiles restore 150 HP and grant 15% faster reload)',
+          sp2: 'Melted Resolve (Upon reaching maximum attack damage boost (+20%), Sir Cheeseburger gains +20% movement speed and sword strikes heal for 30% of damage dealt)'
+      },
+      'anti_royal': {
+          name: 'Anti-Royal',
+          role: 'Controller / Specialist',
+          desc: 'A pirate rebel who blocks precision shots, banks Mortar Rounds with golden pouches, then cashes them out as area denial.',
+          color: '#d7a62a',
+          attack: 'Pouch of Gold',
+          attackDesc: 'Throw a 1550-damage gold pouch. A successful enemy hit banks 1 Mortar Round in a separate 8-round bar. The banked round costs no extra ammo.',
+          super: 'Mortar and the Pirate Ship!',
+          superDesc: 'Deploy a 5000 HP mortar. Banked rounds become a rapid spread-out opening barrage that cannot stack on one exact spot; once spent, the mortar remains active and fires every 1.3 seconds. Impacts leave damaging goldfire for 1.2 seconds.',
+          hyper: 'Golden Rebellion: the frontal blocker converts 200% of the absorbed projectile damage into shield. Every banked Mortar Round creates two offset impacts. +20% damage, +15% speed, +10% shield.',
+          g1: 'Counterfeit (Instantly restore Royal Blockade and remove its movement penalty for 3 seconds)',
+          g2: 'Emergency Funding (Lose 1200 HP and immediately bank 3 Mortar Rounds)',
+          sp1: 'Mortar Shield (The deployed mortar blocks one incoming projectile every 3 seconds, including multi-shot projectiles and Princess arrows)',
+          sp2: 'Compound Interest (Every third successful Pouch of Gold banks 2 Mortar Rounds instead of 1)'
+      },
+      'king': {
+          name: 'The King',
+          role: 'Controller / Support',
+          desc: 'A royal commander who chooses whether to empower his own cannon or build a deadly Princess battery.',
+          color: '#f6c84a',
+          attack: 'Royal Cannon',
+          attackDesc: 'Fires a heavy cannonball and smoothly recoils backward by 1 tile. Every fifth cannon pierces with Piercing Decree equipped.',
+          super: 'Princess Tower',
+          superDesc: 'Places a Princess with 3500 HP. She fires a 250-damage arrow every 0.5s. King may command at most 2 Princesses.',
+          hyper: 'Royal Family: Royal Cannon smoothly knocks enemies back. Princess Tower summons both Princesses side by side; every arrow they land adds 10 damage to that Princess, up to +550. +25% damage, +15% speed, +10% shield.',
+          g1: 'Royal Rage (All active Princesses become enraged and fire twice as fast for 3 seconds)',
+          g2: 'Siege Order (The next Royal Cannon destroys walls)',
+          sp1: 'Burning Tribute (Each Princess loads a burning arrow every 5 seconds)',
+          sp2: 'Piercing Decree (Every 5 seconds, King loads a Royal Cannon that pierces enemies)'
+      },
       'cursed': {
           name: 'Cursed',
           role: 'Controller',
@@ -5723,18 +5849,21 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
         boomer:'Artillery', cluster:'Artillery', evil_doctor:'Artillery', fightnfire:'Artillery', rocketeer:'Artillery', skeleflying:'Artillery', splitter:'Artillery', trapper:'Artillery', upiedown:'Artillery',
         amplifier:'Support', angel:'Support', echo:'Support', fastpass:'Support', freestyle:'Support', hope:'Support', relay:'Support', trampaheal:'Support', sera_eclipse:'Support',
-        adlof:'Controller', awakenator:'Controller', cursed:'Controller', daggershard:'Controller', darkener:'Controller', decayer:'Controller', forest:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller', mageny:'Controller',
+        adlof:'Controller', awakenator:'Controller', cursed:'Controller', king:'Controller', anti_royal:'Controller', daggershard:'Controller', darkener:'Controller', decayer:'Controller', forest:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller', mageny:'Controller',
         beam:'Damage Dealer', fuser:'Damage Dealer', heater_miser:'Damage Dealer', jacktrade:'Damage Dealer', minigunnin:'Damage Dealer', money_and_tax:'Damage Dealer', outlit:'Damage Dealer', steamer:'Damage Dealer', axeywaxy:'Damage Dealer', upgradart:'Damage Dealer',
         bouncin_balls:'Skirmisher', chickpig:'Skirmisher', classy:'Skirmisher', copyphase:'Skirmisher', goonbob:'Skirmisher', hoop:'Skirmisher', hyperorigin:'Skirmisher', robber:'Skirmisher', cinderion:'Controller'
     };
     for (const [id, role] of Object.entries(PRIMARY_ROLE_BY_BRAWLER)) if (brawlerData[id]) brawlerData[id].role = role;
     const brawlerPortraitIcons = {
+        sir_cheeseburger: '🛡️',
+        anti_royal: '🏴‍☠️',
         cursed: '🧿',
+        king: '👑',
         awakenator: '\u{1F9E0}',
         darkener: '\u{1F311}',
         jacktrade: '\u{1F0CF}',
@@ -5822,20 +5951,26 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return brawlerPortraitIcons[brawlerId] || '⭐';
     }
 
-    const CUSTOM_BRAWLER_PORTRAITS = Object.freeze(['evil_doctor', 'bouncin_balls', 'minigunnin', 'mageny', 'trampaheal', 'ramage', 'upgradart']);
+    const CUSTOM_BRAWLER_PORTRAITS = Object.freeze(['evil_doctor', 'bouncin_balls', 'minigunnin', 'mageny', 'trampaheal', 'ramage', 'upgradart', 'rocketeer', 'sir_cheeseburger']);
     function hasCustomBrawlerPortrait(brawlerId) {
-        return CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId);
+        return CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId) || (brawlerId === 'classy' && getActiveSkinForBrawler('classy')?.id === 'back-to-school-classy');
     }
     function getBrawlerPortraitMarkup(brawlerId) {
         if (!hasCustomBrawlerPortrait(brawlerId)) return getBrawlerPortraitIcon(brawlerId);
+        const isRankedRocketeer = brawlerId === 'rocketeer' && getActiveSkinForBrawler('rocketeer')?.id === 'ranked-rocketeer';
         const art = {
+            sir_cheeseburger: `<circle cx="50" cy="50" r="34" fill="#2b2d42" stroke="#ffb830" stroke-width="4"/><path d="M22 36Q50 14 78 36L72 74Q50 86 28 74Z" fill="#3d405b" stroke="#f4a261" stroke-width="2.5"/><path d="M24 35Q50 16 76 35L74 46Q50 36 26 46Z" fill="#e07a5f"/><circle cx="38" cy="28" r="1.5" fill="#ffffff"/><circle cx="50" cy="24" r="1.5" fill="#ffffff"/><circle cx="62" cy="28" r="1.5" fill="#ffffff"/><circle cx="44" cy="34" r="1.5" fill="#ffffff"/><circle cx="56" cy="34" r="1.5" fill="#ffffff"/><rect x="28" y="44" width="44" height="7" rx="2" fill="#ffb830" stroke="#d48b00" stroke-width="1.5"/><rect x="32" y="54" width="36" height="5" rx="2" fill="#1b1d2b"/><line x1="42" y1="54" x2="42" y2="59" stroke="#3d405b" stroke-width="2"/><line x1="50" y1="54" x2="50" y2="59" stroke="#3d405b" stroke-width="2"/><line x1="58" y1="54" x2="58" y2="59" stroke="#3d405b" stroke-width="2"/><path d="M14 48L24 44L24 64L14 60Z" fill="#f4a261" stroke="#ffb830" stroke-width="1.5"/><path d="M86 48L76 44L76 64L86 60Z" fill="#f4a261" stroke="#ffb830" stroke-width="1.5"/><path d="M72 16L82 6L86 10L76 20Z" fill="#ffb830" stroke="#ffffff" stroke-width="1.5"/><polygon points="76,20 70,26 74,30 80,24" fill="#3d405b"/><polygon points="78,10 88,20 74,34 64,24" fill="none"/>`,
             evil_doctor: `<circle cx="50" cy="47" r="30" fill="#183c38" stroke="#51ffad" stroke-width="4"/><path d="M24 37Q50 10 76 37L70 48H30Z" fill="#e8fff7"/><path d="M43 24h14v8H43zM46 21h8v14h-8z" fill="#ff4f74"/><circle cx="39" cy="49" r="6" fill="#87ffcf"/><circle cx="61" cy="49" r="6" fill="#87ffcf"/><path d="M36 65Q50 75 64 65" fill="none" stroke="#b7ffe1" stroke-width="5"/><path d="M19 71Q50 57 81 71L88 96H12Z" fill="#522c75" stroke="#9d68db" stroke-width="3"/><path d="M47 73h6v18h-6zM41 79h18v6H41z" fill="#54ffac"/>`,
             bouncin_balls: `<circle cx="50" cy="50" r="35" fill="#127bd1" stroke="#7df2ff" stroke-width="4"/><path d="M22 44Q50 15 78 44M22 56Q50 85 78 56M50 15v70" fill="none" stroke="#e7fbff" stroke-width="5"/><circle cx="39" cy="45" r="4" fill="#071b37"/><circle cx="61" cy="45" r="4" fill="#071b37"/><path d="M38 63Q50 70 62 63" fill="none" stroke="#071b37" stroke-width="4"/>`,
             minigunnin: `<path d="M22 31Q50 8 78 31L73 82Q50 96 27 82Z" fill="#24354c" stroke="#ff8b5e" stroke-width="4"/><path d="M18 34h64l-8-15H26Z" fill="#ff6948"/><circle cx="38" cy="49" r="6" fill="#ffe16b"/><circle cx="62" cy="49" r="6" fill="#ffe16b"/><path d="M34 68h32" stroke="#d7e4f5" stroke-width="7"/><path d="M17 72h18v11H17zM65 72h18v11H65z" fill="#71849d" stroke="#b9c8dc" stroke-width="2"/>`,
             trampaheal: `<circle cx="50" cy="50" r="34" fill="#0c4a3b" stroke="#2ed573" stroke-width="4"/><circle cx="50" cy="50" r="26" fill="#1dd1a1"/><path d="M28 50h44M50 28v44M35 35l30 30M35 65l30-30" stroke="#ffffff" stroke-width="2.5"/><circle cx="50" cy="50" r="16" fill="#10ac84" stroke="#ffffff" stroke-width="2"/><circle cx="43" cy="47" r="3" fill="#ffffff"/><circle cx="57" cy="47" r="3" fill="#ffffff"/><path d="M44 55q6 5 12 0" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="18" r="7" fill="#ffeaa7" stroke="#2ed573" stroke-width="2"/>`,
             mageny: `<circle cx="50" cy="48" r="34" fill="#153b72" stroke="#43efff" stroke-width="4"/><path d="M25 31v27q0 22 25 22t25-22V31H61v27q0 9-11 9t-11-9V31Z" fill="#dfeaff"/><path d="M25 31h14v15H25z" fill="#ff4f66"/><path d="M61 31h14v15H61z" fill="#48e8ff"/><circle cx="43" cy="48" r="4" fill="#07162a"/><circle cx="57" cy="48" r="4" fill="#07162a"/><path d="M44 59h12" stroke="#07162a" stroke-width="4"/><path d="M18 78Q50 65 82 78L88 96H12Z" fill="#122a55" stroke="#38e9ff" stroke-width="3"/>`,
             ramage: `<circle cx="50" cy="50" r="34" fill="#2c0b0e" stroke="#e74c3c" stroke-width="4"/><path d="M16 35 C8 15, 30 10, 36 28 C30 22, 18 25, 22 38 Z" fill="#f39c12" stroke="#d35400" stroke-width="2"/><path d="M84 35 C92 15, 70 10, 64 28 C70 22, 82 25, 78 38 Z" fill="#f39c12" stroke="#d35400" stroke-width="2"/><path d="M28 32 Q50 18 72 32 L76 68 Q50 82 24 68 Z" fill="#1c0d0f" stroke="#c0392b" stroke-width="3"/><path d="M30 46 L70 46 L65 58 L35 58 Z" fill="#e74c3c"/><circle cx="40" cy="52" r="3" fill="#ffeaa7"/><circle cx="60" cy="52" r="3" fill="#ffeaa7"/><path d="M42 66 L50 74 L58 66" fill="none" stroke="#f39c12" stroke-width="3" stroke-linecap="round"/>`,
-            upgradart: `<circle cx="50" cy="50" r="34" fill="#0b2416" stroke="#00ff88" stroke-width="4"/><circle cx="50" cy="50" r="24" fill="#123d24" stroke="#a855f7" stroke-width="2"/><path d="M22 50h56M50 22v56" stroke="#00ff88" stroke-width="2"/><circle cx="50" cy="50" r="14" fill="#0b2416" stroke="#00e5ff" stroke-width="2"/><polygon points="50,26 56,44 74,50 56,56 50,74 44,56 26,50 44,44" fill="#00ff88"/><circle cx="50" cy="50" r="4" fill="#a855f7"/>`
+            upgradart: `<circle cx="50" cy="50" r="34" fill="#0b2416" stroke="#00ff88" stroke-width="4"/><circle cx="50" cy="50" r="24" fill="#123d24" stroke="#a855f7" stroke-width="2"/><path d="M22 50h56M50 22v56" stroke="#00ff88" stroke-width="2"/><circle cx="50" cy="50" r="14" fill="#0b2416" stroke="#00e5ff" stroke-width="2"/><polygon points="50,26 56,44 74,50 56,56 50,74 44,56 26,50 44,44" fill="#00ff88"/><circle cx="50" cy="50" r="4" fill="#a855f7"/>`,
+            classy: `<path d="M18 43Q50 11 82 43L76 87Q50 99 24 87Z" fill="#17366d" stroke="#55dfff" stroke-width="4"/><path d="M17 34L50 13L83 34L50 48Z" fill="#315fc9" stroke="#ffe36e" stroke-width="3"/><path d="M50 13v35M82 34v20" stroke="#ffe36e" stroke-width="3"/><circle cx="38" cy="56" r="6" fill="#eef8ff"/><circle cx="62" cy="56" r="6" fill="#eef8ff"/><circle cx="38" cy="57" r="3" fill="#13254c"/><circle cx="62" cy="57" r="3" fill="#13254c"/><path d="M38 72Q50 82 62 72" fill="none" stroke="#ffe36e" stroke-width="4"/><path d="M16 88Q50 70 84 88L91 100H9Z" fill="#4f8cff" stroke="#9b72ff" stroke-width="3"/><path d="M47 80h6v15h-6zM40 85h20v5H40z" fill="#ffe36e"/>`,
+            rocketeer: isRankedRocketeer 
+                ? `<circle cx="50" cy="50" r="34" fill="#0f172a" stroke="#ffd166" stroke-width="4"/><path d="M22 45L50 14L78 45L70 84H30Z" fill="#1e293b" stroke="#00f5d4" stroke-width="3"/><path d="M26 44h48v16H26z" fill="#00f5d4" stroke="#ffffff" stroke-width="1.5"/><line x1="26" y1="52" x2="74" y2="52" stroke="#ffffff" stroke-width="2"/><circle cx="16" cy="38" r="8" fill="#ffd166" stroke="#ffffff" stroke-width="1.5"/><circle cx="84" cy="38" r="8" fill="#ffd166" stroke="#ffffff" stroke-width="1.5"/><polygon points="50,6 54,16 65,16 56,22 60,32 50,26 40,32 44,22 35,16 46,16" fill="#ffd166"/>`
+                : `<circle cx="50" cy="50" r="34" fill="#2d1c0d" stroke="#ff9f43" stroke-width="4"/><path d="M25 40Q50 16 75 40L72 82H28Z" fill="#6c3e1b" stroke="#d4a373" stroke-width="3"/><circle cx="38" cy="46" r="9" fill="#ffd166" stroke="#2d1c0d" stroke-width="3"/><circle cx="62" cy="46" r="9" fill="#ffd166" stroke="#2d1c0d" stroke-width="3"/><path d="M22 72Q50 86 78 72L84 88H16Z" fill="#f8f9fa" stroke="#ced4da" stroke-width="2"/><rect x="74" y="24" width="16" height="34" rx="4" fill="#2d5a27" stroke="#1b3817" stroke-width="2"/>`
         }[brawlerId];
         const className = brawlerId === 'bouncin_balls' ? 'bouncin-portrait' : `${brawlerId.replaceAll('_','-')}-portrait`;
         return `<svg class="fighter-portrait-art ${className}" viewBox="0 0 100 100" aria-hidden="true">${art}</svg>`;
@@ -6496,7 +6631,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       malakor: { g1: 14000, g2: 15000 },
       teether: { g1: 12000, g2: 15000 },
       fuel: { g1: 12000, g2: 14000 },
-      xray: { g1: 13000, g2: 15000 }
+      xray: { g1: 13000, g2: 15000 },
+      king: { g1: 14000, g2: 12000 },
+      anti_royal: { g1: 13000, g2: 15000 },
+      sir_cheeseburger: { g1: 13000, g2: 14000 }
   };
   function normalizeGadgetSlot(slot) {
       return slot === 'g2' ? 'g2' : 'g1';
@@ -6794,9 +6932,185 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     let isMirrorMode = false;
     let isRankedMatch = false;
     let rankedTeammatePicks = [];
-    let rankedBans = { player: null, enemy: null };
+    let rankedBans = { player: [], enemy: [] };
     let rankedDraftSummary = '';
-    const RANKED_TEAM_MODE_POOL = ['construction', 'damage_filler', 'knock_donate', 'brick_vault', 'trio'];
+    const RANKED_TEAM_MODE_POOL = ['construction', 'objective', 'arena_forge', 'trio', 'brick_vault', 'knock_donate'];
+
+    const RANKED_MODIFIERS = {
+        'classic': {
+            id: 'classic',
+            name: 'Classic',
+            desc: 'Standard competitive battle rules. Pure brawler skills, no mutators.',
+            icon: '⚔️',
+            color: '#90b4ce'
+        },
+        'colossus_friend': {
+            id: 'colossus_friend',
+            name: 'Colossus Big Friend',
+            desc: 'Every brawler shares the Max HP of the highest-HP brawler in the match + everyone spawns with a 4,000 HP bonus shield!',
+            icon: '🛡️',
+            color: '#ff9f43'
+        },
+        'crowd_uncontrol': {
+            id: 'crowd_uncontrol',
+            name: 'Crowd Uncontrol',
+            desc: 'Applying any stun, slow, freeze, or knockback applies the exact same crowd control back to yourself!',
+            icon: '🌀',
+            color: '#ee5253'
+        },
+        'hyper_overdrive': {
+            id: 'hyper_overdrive',
+            name: 'Hypercharge Overdrive',
+            desc: 'Passive continuous Hypercharge energy generation (+4%/sec) for frequent hypercharge engagements!',
+            icon: '🔥',
+            color: '#e056fd'
+        },
+        'quickfire': {
+            id: 'quickfire',
+            name: 'Quickfire',
+            desc: 'Landing any main attack hit refunds 10% of your maximum ammo immediately.',
+            icon: '⚡',
+            color: '#0abde3'
+        },
+        'timed_detonation': {
+            id: 'timed_detonation',
+            name: 'Timed Detonation',
+            desc: 'Arena obstacles, walls, and grass steadily explode and clear out from the center over time.',
+            icon: '💣',
+            color: '#ff6b6b'
+        },
+        'super_surge': {
+            id: 'super_surge',
+            name: 'Super Surge',
+            desc: 'Continuous passive Super generation (+5%/sec) and +40% bonus Super charge gained on hit.',
+            icon: '✨',
+            color: '#feca57'
+        }
+    };
+    let activeRankedModifier = 'classic';
+    let activeColossusMaxHp = null;
+    let timedDetonationTimer = 0;
+
+    const RANKED_PASS_TIERS = 50;
+    const RANKED_PASS_XP_PER_TIER = 200;
+    const RANKED_PASS_REWARDS = [
+        { tier: 1, type: 'coins', amount: 250, label: '250 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 2, type: 'souls', amount: 30, label: '30 Souls', icon: '🔮', rarity: 'common' },
+        { tier: 3, type: 'gems', amount: 5, label: '5 Gems', icon: '💎', rarity: 'rare' },
+        { tier: 4, type: 'tapper', amount: 1, label: 'Tapper Upper', icon: '📦', rarity: 'rare' },
+        { tier: 5, type: 'coins', amount: 350, label: '350 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 6, type: 'drop', dropRarity: 'rare', label: 'Rare Starr Drop', icon: '⭐', rarity: 'rare' },
+        { tier: 7, type: 'title', titleId: 'Brick Scout', label: 'Title: "Brick Scout"', icon: '🏷️', rarity: 'rare' },
+        { tier: 8, type: 'souls', amount: 40, label: '40 Souls', icon: '🔮', rarity: 'common' },
+        { tier: 9, type: 'coins', amount: 450, label: '450 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 10, type: 'tapper', amount: 1, label: 'Tapper Upper', icon: '📦', rarity: 'rare' },
+        { tier: 11, type: 'gems', amount: 8, label: '8 Gems', icon: '💎', rarity: 'rare' },
+        { tier: 12, type: 'coins', amount: 500, label: '500 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 13, type: 'souls', amount: 50, label: '50 Souls', icon: '🔮', rarity: 'common' },
+        { tier: 14, type: 'drop', dropRarity: 'super-rare', label: 'Super Rare Starr Drop', icon: '⭐', rarity: 'super-rare' },
+        { tier: 15, type: 'frame', frameId: 'ranked_cyber', label: 'Ranked Cyber Frame', icon: '🖼️', rarity: 'epic' },
+        { tier: 16, type: 'coins', amount: 600, label: '600 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 17, type: 'tapper', amount: 1, label: 'Tapper Upper', icon: '📦', rarity: 'rare' },
+        { tier: 18, type: 'souls', amount: 60, label: '60 Souls', icon: '🔮', rarity: 'common' },
+        { tier: 19, type: 'gems', amount: 10, label: '10 Gems', icon: '💎', rarity: 'epic' },
+        { tier: 20, type: 'drop', dropRarity: 'epic', label: 'Epic Starr Drop', icon: '⭐', rarity: 'epic' },
+        { tier: 21, type: 'title', titleId: 'Point Vanguard', label: 'Title: "Point Vanguard"', icon: '🏷️', rarity: 'epic' },
+        { tier: 22, type: 'coins', amount: 750, label: '750 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 23, type: 'souls', amount: 75, label: '75 Souls', icon: '🔮', rarity: 'common' },
+        { tier: 24, type: 'tapper', amount: 2, label: '2x Tapper Upper', icon: '📦', rarity: 'epic' },
+        { tier: 25, type: 'drop', dropRarity: 'epic', label: 'Epic Starr Drop', icon: '⭐', rarity: 'epic' },
+        { tier: 26, type: 'coins', amount: 850, label: '850 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 27, type: 'gems', amount: 12, label: '12 Gems', icon: '💎', rarity: 'epic' },
+        { tier: 28, type: 'souls', amount: 80, label: '80 Souls', icon: '🔮', rarity: 'common' },
+        { tier: 29, type: 'tapper', amount: 2, label: '2x Tapper Upper', icon: '📦', rarity: 'epic' },
+        { tier: 30, type: 'frame', frameId: 'ranked_gold_crest', label: 'Golden Division Frame', icon: '🖼️', rarity: 'epic' },
+        { tier: 31, type: 'coins', amount: 950, label: '950 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 32, type: 'souls', amount: 90, label: '90 Souls', icon: '🔮', rarity: 'common' },
+        { tier: 33, type: 'drop', dropRarity: 'mythic', label: 'Mythic Starr Drop', icon: '⭐', rarity: 'mythic' },
+        { tier: 34, type: 'gems', amount: 15, label: '15 Gems', icon: '💎', rarity: 'epic' },
+        { tier: 35, type: 'title', titleId: 'Apex Striker', label: 'Title: "Apex Striker"', icon: '🏷️', rarity: 'mythic' },
+        { tier: 36, type: 'coins', amount: 1100, label: '1,100 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 37, type: 'tapper', amount: 2, label: '2x Tapper Upper', icon: '📦', rarity: 'epic' },
+        { tier: 38, type: 'souls', amount: 100, label: '100 Souls', icon: '🔮', rarity: 'epic' },
+        { tier: 39, type: 'drop', dropRarity: 'mythic', label: 'Mythic Starr Drop', icon: '⭐', rarity: 'mythic' },
+        { tier: 40, type: 'frame', frameId: 'ranked_fume_master', label: 'Master Fume Crest Frame', icon: '🖼️', rarity: 'mythic' },
+        { tier: 41, type: 'coins', amount: 1300, label: '1,300 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 42, type: 'gems', amount: 20, label: '20 Gems', icon: '💎', rarity: 'mythic' },
+        { tier: 43, type: 'souls', amount: 120, label: '120 Souls', icon: '🔮', rarity: 'epic' },
+        { tier: 44, type: 'tapper', amount: 3, label: '3x Tapper Upper', icon: '📦', rarity: 'mythic' },
+        { tier: 45, type: 'title', titleId: 'Grandmaster', label: 'Title: "Grandmaster"', icon: '🏷️', rarity: 'legendary' },
+        { tier: 46, type: 'coins', amount: 1600, label: '1,600 Coins', icon: '🪙', rarity: 'common' },
+        { tier: 47, type: 'drop', dropRarity: 'legendary', label: 'Legendary Starr Drop', icon: '⭐', rarity: 'legendary' },
+        { tier: 48, type: 'gems', amount: 30, label: '30 Gems', icon: '💎', rarity: 'legendary' },
+        { tier: 49, type: 'tapper', amount: 5, label: '5x Mega Tapper Pack', icon: '📦', rarity: 'legendary' },
+        { tier: 50, type: 'skin', skinId: 'ranked-rocketeer', brawler: 'rocketeer', label: 'Ranked Rocketeer Skin', icon: '🚀', rarity: 'legendary' }
+    ];
+
+    function ensureRankedSeasonState() {
+        if (!playerData.ranked || typeof playerData.ranked !== 'object') {
+            playerData.ranked = { points: 0, rewardsClaimed: [] };
+        }
+        playerData.ranked.points = Math.max(0, Math.floor(playerData.ranked.points || 0));
+        if (playerData.ranked.highPoints == null) playerData.ranked.highPoints = playerData.ranked.points;
+        playerData.ranked.highPoints = Math.max(playerData.ranked.highPoints, playerData.ranked.points);
+        if (playerData.ranked.passXp == null) playerData.ranked.passXp = 0;
+        if (!Array.isArray(playerData.ranked.passClaimed)) playerData.ranked.passClaimed = [];
+        if (!Array.isArray(playerData.ranked.rewardsClaimed)) playerData.ranked.rewardsClaimed = [];
+        if (playerData.ranked.winStreak == null) playerData.ranked.winStreak = 0;
+        if (playerData.ranked.seasonId == null) playerData.ranked.seasonId = 1;
+        if (!playerData.ownedSkins) playerData.ownedSkins = {};
+        if (!playerData.selectedSkins) playerData.selectedSkins = {};
+    }
+
+    function getRankedPassProgress() {
+        ensureRankedSeasonState();
+        const xp = Math.max(0, Math.floor(playerData.ranked.passXp || 0));
+        const unlockedTiers = Math.min(RANKED_PASS_TIERS, Math.floor(xp / RANKED_PASS_XP_PER_TIER));
+        const currentTierXp = xp % RANKED_PASS_XP_PER_TIER;
+        return {
+            xp,
+            unlockedTiers,
+            currentTierXp,
+            xpPerTier: RANKED_PASS_XP_PER_TIER,
+            claimed: playerData.ranked.passClaimed || []
+        };
+    }
+
+    function claimRankedPassTier(tierIndex) {
+        ensureRankedSeasonState();
+        const progress = getRankedPassProgress();
+        const reward = RANKED_PASS_REWARDS[tierIndex];
+        if (!reward || tierIndex >= progress.unlockedTiers || progress.claimed.includes(tierIndex)) return false;
+
+        playerData.ranked.passClaimed.push(tierIndex);
+
+        if (reward.type === 'coins') {
+            playerData.coins = (playerData.coins || 0) + (reward.amount || 0);
+        } else if (reward.type === 'souls') {
+            playerData.souls = (playerData.souls || 0) + (reward.amount || 0);
+        } else if (reward.type === 'gems') {
+            playerData.gems = (playerData.gems || 0) + (reward.amount || 0);
+        } else if (reward.type === 'tapper') {
+            playerData.tappers = (playerData.tappers || 0) + (reward.amount || 1);
+        } else if (reward.type === 'title') {
+            if (!Array.isArray(playerData.unlockedTitles)) playerData.unlockedTitles = [];
+            if (!playerData.unlockedTitles.includes(reward.titleId)) playerData.unlockedTitles.push(reward.titleId);
+        } else if (reward.type === 'frame') {
+            if (!Array.isArray(playerData.unlockedFrames)) playerData.unlockedFrames = [];
+            if (!playerData.unlockedFrames.includes(reward.frameId)) playerData.unlockedFrames.push(reward.frameId);
+        } else if (reward.type === 'skin') {
+            if (!playerData.ownedSkins) playerData.ownedSkins = {};
+            playerData.ownedSkins[reward.skinId] = true;
+            if (!playerData.selectedSkins) playerData.selectedSkins = {};
+            playerData.selectedSkins[reward.brawler] = reward.skinId;
+        } else if (reward.type === 'drop') {
+            if (typeof openStarrDropModal === 'function') {
+                try { openStarrDropModal(reward.dropRarity || 'rare'); } catch (e) { /* ignore */ }
+            }
+        }
+        saveProgress();
+        return true;
+    }
         let showdownMode = 'solo';
     const MODE_MODIFIER_ROTATE_MS = 20 * 60 * 1000;
     const SHOWDOWN_MODE_MODIFIER_POOLS = {
@@ -7052,6 +7366,49 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     const SPLITTER_POWERED_ROUND2_SCORE_MULT = 2.4;
     const SPLITTER_POWERED_BRAWLER = 'splitter';
     let constructionWinnerTeam = null;
+    let brickMine = { x: 1200, y: 900, nextSpawnTime: 0, spawnedTotal: 0, maxBricks: 29 };
+    let groundBricks = [];
+    let brickCountdownTeam = null;
+    let brickCountdownTimer = 15.0;
+    let objectiveZones = [];
+    let objectiveScores = { player: 0, enemy: 0 };
+    let timedDetonationStage = 0;
+
+    function triggerTimedDetonationWave() {
+        if (!isRankedMatch || activeRankedModifier !== 'timed_detonation' || !playing || gameOver) return;
+        timedDetonationStage = (timedDetonationStage || 0) + 1;
+        const blastRadius = Math.min(Math.max(WORLD_W, WORLD_H) * 0.48, 280 + timedDetonationStage * 160);
+        const centerX = WORLD_W * 0.5, centerY = WORLD_H * 0.5;
+        explosions.push({
+            x: centerX,
+            y: centerY,
+            radius: blastRadius,
+            life: 0,
+            maxLife: 0.55,
+            color: 'rgba(255, 107, 107, 0.75)',
+            legendary: true
+        });
+        spawnFloatingText(centerX, centerY - 45, `💣 DETONATION WAVE (RADIUS ${Math.round(blastRadius)})!`, '#ff6b6b');
+        for (let i = destructibleWalls.length - 1; i >= 0; i--) {
+            const w = destructibleWalls[i];
+            if (!w) continue;
+            const wx = w.x + (w.w || 0) / 2, wy = w.y + (w.h || 0) / 2;
+            if (Math.hypot(wx - centerX, wy - centerY) <= blastRadius) destructibleWalls.splice(i, 1);
+        }
+        for (let i = cubes.length - 1; i >= 0; i--) {
+            const c = cubes[i];
+            if (!c) continue;
+            const cx = c.x + (c.w || 0) / 2, cy = c.y + (c.h || 0) / 2;
+            if (Math.hypot(cx - centerX, cy - centerY) <= blastRadius) cubes.splice(i, 1);
+        }
+        for (let i = grassZones.length - 1; i >= 0; i--) {
+            const g = grassZones[i];
+            if (!g) continue;
+            const gx = g.x + (g.w || 0) / 2, gy = g.y + (g.h || 0) / 2;
+            if (Math.hypot(gx - centerX, gy - centerY) <= blastRadius) grassZones.splice(i, 1);
+        }
+    }
+
     let constructionPaths = {
         player: null,
         enemy: null
@@ -7090,6 +7447,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     let arenaForgeTimer = 0;
     let arenaForgeSoulBank = { player: 0, enemy: 0 };
     let arenaForgeSouls = [];
+    let arenaForgeFlamePuddles = [];
     let arenaForgeNextSoulAt = 0;
     let arenaForgeWaveIndex = 0;
     let arenaForgePanel = null;
@@ -9265,7 +9623,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           totalCoins += superCoins;
           totalGems += gems;
           totalSouls += souls;
-          
+
           const pity = grantTapperBonusWithPity('super');
           if (pity) pityBonusTexts.push(pity.text);
       }
@@ -11709,82 +12067,130 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return (wet / total) <= 0.25;
     }
 
-    function chooseObjectiveZonePosition() {
-        const r = BALANCE_PROFILE.objectiveMode.zoneRadius;
-        const candidates = [
-            { x: WORLD_W * 0.5, y: WORLD_H * 0.5 },
-            { x: WORLD_W * 0.5, y: WORLD_H * 0.36 },
-            { x: WORLD_W * 0.5, y: WORLD_H * 0.64 },
-            { x: WORLD_W * 0.36, y: WORLD_H * 0.5 },
-            { x: WORLD_W * 0.64, y: WORLD_H * 0.5 },
-            { x: WORLD_W * 0.33, y: WORLD_H * 0.33 },
-            { x: WORLD_W * 0.67, y: WORLD_H * 0.67 },
-            { x: WORLD_W * 0.67, y: WORLD_H * 0.33 },
-            { x: WORLD_W * 0.33, y: WORLD_H * 0.67 }
+    function initObjectiveModeState() {
+        const rMid = 180, rSide = 165;
+        const leftDry = findNearestDrySpot(WORLD_W * 0.28, WORLD_H * 0.5, 16);
+        const midDry = findNearestDrySpot(WORLD_W * 0.5, WORLD_H * 0.5, 16);
+        const rightDry = findNearestDrySpot(WORLD_W * 0.72, WORLD_H * 0.5, 16);
+        objectiveZones = [
+            { id: 'left', name: 'Left Zone', x: leftDry.x, y: leftDry.y, r: rSide, controllingTeam: null, playerIn: 0, enemyIn: 0 },
+            { id: 'mid', name: 'Center Zone', x: midDry.x, y: midDry.y, r: rMid, controllingTeam: null, playerIn: 0, enemyIn: 0 },
+            { id: 'right', name: 'Right Zone', x: rightDry.x, y: rightDry.y, r: rSide, controllingTeam: null, playerIn: 0, enemyIn: 0 }
         ];
-        const start = getActiveShowdownMapIndex() % candidates.length;
-        for (let i = 0; i < candidates.length; i++) {
-            const c = candidates[(start + i) % candidates.length];
-            const dry = findNearestDrySpot(c.x, c.y, 16);
-            if (isObjectiveZonePlayable(dry.x, dry.y, r)) {
-                return { x: dry.x, y: dry.y, r };
-            }
-        }
-        const fallback = findNearestDrySpot(WORLD_W * 0.5, WORLD_H * 0.5, 16);
-        return { x: fallback.x, y: fallback.y, r };
+        objectiveZone = { x: midDry.x, y: midDry.y, r: rMid };
+        objectiveScores = { player: 0, enemy: 0 };
+        objectiveControl = 0;
+        objectiveTimer = 0;
+        objectiveWon = false;
+    }
+
+    function getObjectiveSpawnPoint(team, slot = 0, teamSize = 3) {
+        const spread = Math.max(1, teamSize - 1);
+        const offset = (slot - spread * 0.5) * 85;
+        const px = clamp(WORLD_W * 0.5 + offset, 80, WORLD_W - 80);
+        const py = team === 'player' ? WORLD_H * 0.85 : WORLD_H * 0.15;
+        return findNearestDrySpot(px, py, 16);
+    }
+
+    function chooseObjectiveZonePosition() {
+        initObjectiveModeState();
+        return objectiveZone || { x: WORLD_W * 0.5, y: WORLD_H * 0.5, r: 180 };
     }
 
     function getConstructionOpposingTeam(team) {
         return team === 'player' ? 'enemy' : 'player';
     }
 
-    function buildConstructionPath(start, control, end) {
-        return {
-            start: findNearestDrySpot(start.x, start.y, 16),
-            control: findNearestDrySpot(control.x, control.y, 16),
-            end: findNearestDrySpot(end.x, end.y, 16)
-        };
-    }
-
-    function initConstructionModeState() {
-        constructionWinnerTeam = null;
-        constructionPaths.player = buildConstructionPath(
-            { x: WORLD_W * 0.2, y: WORLD_H * 0.78 },
-            { x: WORLD_W * 0.5, y: WORLD_H * 0.56 },
-            { x: WORLD_W * 0.8, y: WORLD_H * 0.28 }
-        );
-        constructionPaths.enemy = buildConstructionPath(
-            { x: WORLD_W * 0.8, y: WORLD_H * 0.22 },
-            { x: WORLD_W * 0.5, y: WORLD_H * 0.44 },
-            { x: WORLD_W * 0.2, y: WORLD_H * 0.72 }
-        );
-        constructionCarts.player = { progress: 0, siteTimer: 0, siteDamage: 0 };
-        constructionCarts.enemy = { progress: 0, siteTimer: 0, siteDamage: 0 };
-    }
-
-    function getPointOnConstructionPath(path, t) {
-        const u = 1 - t;
-        return {
-            x: (u * u * path.start.x) + (2 * u * t * path.control.x) + (t * t * path.end.x),
-            y: (u * u * path.start.y) + (2 * u * t * path.control.y) + (t * t * path.end.y)
-        };
+    function ensureConstructionPaths() {
+        if (!constructionPaths || !constructionPaths.player || !constructionPaths.enemy) {
+            constructionPaths = {
+                player: {
+                    start: { x: WORLD_W * 0.2, y: WORLD_H * 0.8 },
+                    control: { x: WORLD_W * 0.35, y: WORLD_H * 0.5 },
+                    end: { x: WORLD_W * 0.8, y: WORLD_H * 0.2 }
+                },
+                enemy: {
+                    start: { x: WORLD_W * 0.8, y: WORLD_H * 0.2 },
+                    control: { x: WORLD_W * 0.65, y: WORLD_H * 0.5 },
+                    end: { x: WORLD_W * 0.2, y: WORLD_H * 0.8 }
+                }
+            };
+        }
+        return constructionPaths;
     }
 
     function getConstructionCartPosition(team) {
-        const path = constructionPaths[team];
-        const cart = constructionCarts[team];
-        if (!path || !cart) return null;
+        const paths = ensureConstructionPaths();
+        const path = paths ? paths[team] : null;
+        if (!path || !path.start || !path.control || !path.end) {
+            return { x: WORLD_W * 0.5, y: WORLD_H * 0.5 };
+        }
+        const cart = (constructionCarts && constructionCarts[team]) ? constructionCarts[team] : { progress: 0 };
         const t = clamp((cart.progress || 0) / 100, 0, 1);
-        return getPointOnConstructionPath(path, t);
+        const invT = 1 - t;
+        const x = invT * invT * path.start.x + 2 * invT * t * path.control.x + t * t * path.end.x;
+        const y = invT * invT * path.start.y + 2 * invT * t * path.control.y + t * t * path.end.y;
+        return { x, y };
+    }
+
+    function initConstructionModeState() {
+        ensureConstructionPaths();
+        constructionCarts = {
+            player: { progress: 0, siteTimer: 0, siteDamage: 0 },
+            enemy: { progress: 0, siteTimer: 0, siteDamage: 0 }
+        };
+        const minePos = findNearestDrySpot(WORLD_W * 0.5, WORLD_H * 0.5, 24);
+        brickMine = {
+            x: minePos.x,
+            y: minePos.y,
+            nextSpawnTime: performance.now() + 2000,
+            spawnedTotal: 0,
+            maxBricks: 29
+        };
+        groundBricks = [];
+        constructionWinnerTeam = null;
+        brickCountdownTeam = null;
+        brickCountdownTimer = 15.0;
+        player.carriedBricks = 0;
+        if (Array.isArray(bots)) {
+            bots.forEach(b => { if (b) b.carriedBricks = 0; });
+        }
+    }
+
+    function spawnGroundBrick(x, y, vx = 0, vy = 0) {
+        groundBricks.push({
+            id: nextId++,
+            x: clamp(x, 40, WORLD_W - 40),
+            y: clamp(y, 40, WORLD_H - 40),
+            vx,
+            vy,
+            spawnedAt: performance.now(),
+            bounceY: 0
+        });
+    }
+
+    function dropCarriedBricks(entity) {
+        if (!entity || !entity.carriedBricks || entity.carriedBricks <= 0) return;
+        const count = entity.carriedBricks;
+        entity.carriedBricks = 0;
+        for (let i = 0; i < count; i++) {
+            const ang = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+            const dist = 30 + Math.random() * 55;
+            spawnGroundBrick(
+                entity.x + Math.cos(ang) * dist,
+                entity.y + Math.sin(ang) * dist,
+                Math.cos(ang) * 45,
+                Math.sin(ang) * 45
+            );
+        }
+        spawnFloatingText(entity.x, entity.y - 38, `💎 DROPPED ${count} BRICKS!`, '#ff6b6b');
     }
 
     function getConstructionSpawnPoint(team, slot = 0, teamSize = 3) {
-        const path = constructionPaths[team] || constructionPaths.player;
-        const base = path ? path.start : { x: WORLD_W * 0.5, y: WORLD_H * 0.5 };
         const spread = Math.max(1, teamSize - 1);
-        const offset = (slot - spread * 0.5) * 55;
-        const px = clamp(base.x + offset, 60, WORLD_W - 60);
-        const py = clamp(base.y + ((team === 'player') ? 80 : -80), 60, WORLD_H - 60);
+        const offset = (slot - spread * 0.5) * 85;
+        const px = clamp(WORLD_W * 0.5 + offset, 80, WORLD_W - 80);
+        const py = team === 'player' ? WORLD_H * 0.85 : WORLD_H * 0.15;
         return findNearestDrySpot(px, py, 16);
     }
 
@@ -12206,6 +12612,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         entity.malakorHellTickAt = 0;
         entity.ghoulAimSessionActive=false;entity.ghoulAimInvisibleUntil=0;entity.ghoulSuperUntil=0;entity.ghoulDarknessUntil=0;
         entity.cursedMarkedFateArmed=false;entity.cursedForcedAttack=false;entity.cursedStormUntil=0;entity.cursedFxUntil=0;
+        entity.antiRoyalMortarRounds=0;entity.antiRoyalGoldHits=0;entity.antiRoyalBlockReadyAt=0;entity.antiRoyalCounterfeitUntil=0;
         entity.jackTradeStage=1;entity.jackTradeHotStreak=0;entity.jackTradeJackpotArmed=false;entity.jackTradeSafeBetArmed=false;entity.jackTradeRushUntil=0;entity.jackTradeLuckyUntil=0;entity.jackTradeRegenRemaining=0;entity.jackTradeRegenFxUntil=0;entity.jackTradePreparedOutcomes=[];entity.jackTradeLoadedDiceCount=0;entity.jackTradeLoadedDiceReady=false;entity.jackTradeRoyalSuits=0;entity.jackTradeTowerOutcomesSeen=[];
         entity.cinderionOrbitFlames=[];entity.cinderionDoubleKindlingArmed=false;entity.cinderionSuperActive=false;
         clearPoisonState(entity);
@@ -12224,6 +12631,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         darkagons.length = 0;
         cursedStorms.length = 0;
         cursedHyperClouds.length = 0;
+        antiRoyalMortarShells.length = 0;
+        antiRoyalMortarZones.length = 0;
         jackTradeVolleys.length = 0;
         jackTradeThrownEffects.length = 0;
         jackTradeZones.length = 0;
@@ -12487,6 +12896,20 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         { id: 'vampiric_edge', name: 'Vampiric Core', icon: '🩸', desc: 'Attacks siphon life: heals you for 18% of damage dealt (30% vs brawlers).' },
         { id: 'command_beacon', name: 'Warlord Aura', icon: '🚩', desc: 'Friendly minions and teammates near you move 20% faster and deal +18% damage.' },
         { id: 'core_detonator', name: 'Blast Chassis', icon: '💥', desc: 'Dropping below 35% HP detonates an EMP shockwave that stuns and knocks back enemies.' },
+        { id: 'static_armor', name: 'Static Conduit', icon: '🛡️', desc: 'Taking damage discharges chain lightning into nearby enemies (600 dmg, 1.5s cooldown).' },
+        { id: 'freeze_rounds', name: 'Cryo Infusion', icon: '❄️', desc: 'Attacks slow enemy movement speed by 25% for 1.8 seconds.' },
+        { id: 'flame_treads', name: 'Scorched Earth', icon: '🔥', desc: 'Leaves burning plasma trails behind you that deal 350 damage/sec to enemies.' },
+        { id: 'bounty_magnet', name: 'Flux Magnet', icon: '🧲', desc: '3.5x Energy pickup radius, and collecting Energy instantly heals 500 HP.' },
+        { id: 'minion_commander', name: 'Automaton Swarm', icon: '🤖', desc: 'Eliminating an enemy brawler or camp spawns a bonus combat minion in your nearest lane.' },
+        { id: 'orbital_strike', name: 'Siege Mortar', icon: '🛰️', desc: 'Every 12s, calls down an orbital artillery shell onto the nearest enemy structure/camp for 2200 dmg.' },
+        { id: 'adrenaline_rush', name: 'Berserker Drive', icon: '💢', desc: 'When below 50% HP, gain +25% attack speed and +15% movement speed.' },
+        { id: 'reactive_barrier', name: 'Aegis Projector', icon: '💠', desc: 'Gain a 1500 HP overshield after avoiding damage for 4 seconds.' },
+        { id: 'heavy_artillery', name: 'Heavy Artillery', icon: '🎯', desc: '+25% projectile flight speed and +20% maximum projectile range.' },
+        { id: 'chain_reaction', name: 'Cluster Munitions', icon: '💣', desc: 'Defeated enemies detonate in a fiery explosion dealing 900 area damage.' },
+        { id: 'phase_stride', name: 'Phase Drive', icon: '🌀', desc: 'Activating Super grants 2 seconds of stealth, ghosting, and +30% movement speed.' },
+        { id: 'executioner_lens', name: 'Executioner Visor', icon: '👁️', desc: 'Deal +35% bonus damage against enemies below 40% health.' },
+        { id: 'nanite_injector', name: 'Nanite Rebirth', icon: '🧪', desc: 'Continuously regenerate 3% maximum HP every second.' },
+        { id: 'brawler_bounty', name: 'Headhunter Protocol', icon: '🎖️', desc: 'Defeating enemy brawlers awards +50 bonus XP to your whole team and drops 2 Energy gems.' },
     ];
 
     function getArenaForgeCombatants(team = null, livingOnly = false) {
@@ -12534,6 +12957,32 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         entity.arenaForgeReloadMult = 1;
         entity.arenaForgeSiegeMult = 1;
         entity.arenaForgeEnergyCarryBonus = 0;
+        entity.arenaForgeHyperDynamo = false;
+        entity.arenaForgeVampiric = false;
+        entity.arenaForgeCommandBeacon = false;
+        entity.arenaForgeBlastChassis = false;
+        entity.arenaForgeStaticArmor = false;
+        entity.arenaForgeFreezeRounds = false;
+        entity.arenaForgeFlameTreads = false;
+        entity.arenaForgeBountyMagnet = false;
+        entity.arenaForgeMinionCommander = false;
+        entity.arenaForgeOrbitalStrike = false;
+        entity.arenaForgeAdrenalineRush = false;
+        entity.arenaForgeReactiveBarrier = false;
+        entity.arenaForgeHeavyArtillery = false;
+        entity.arenaForgeChainReaction = false;
+        entity.arenaForgePhaseStride = false;
+        entity.arenaForgeExecutioner = false;
+        entity.arenaForgeNaniteInjector = false;
+        entity.arenaForgeHeadhunter = false;
+        entity.arenaForgeLastBlastAt = 0;
+        entity.arenaForgeLastStaticShockAt = 0;
+        entity.arenaForgeLastOrbitalAt = 0;
+        entity.arenaForgeLastFlameStepAt = 0;
+        entity.arenaForgeLastDamagedAt = 0;
+        entity.arenaForgeBeaconUntil = 0;
+        entity.arenaForgePhaseSpeedUntil = 0;
+        entity.arenaForgeSlowUntil = 0;
     }
 
     function initializeArenaForgeCombatants() {
@@ -12556,8 +13005,218 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         else if (blueprintId === 'vampiric_edge') entity.arenaForgeVampiric = true;
         else if (blueprintId === 'command_beacon') entity.arenaForgeCommandBeacon = true;
         else if (blueprintId === 'core_detonator') entity.arenaForgeBlastChassis = true;
+        else if (blueprintId === 'static_armor') entity.arenaForgeStaticArmor = true;
+        else if (blueprintId === 'freeze_rounds') entity.arenaForgeFreezeRounds = true;
+        else if (blueprintId === 'flame_treads') entity.arenaForgeFlameTreads = true;
+        else if (blueprintId === 'bounty_magnet') entity.arenaForgeBountyMagnet = true;
+        else if (blueprintId === 'minion_commander') entity.arenaForgeMinionCommander = true;
+        else if (blueprintId === 'orbital_strike') {
+            entity.arenaForgeOrbitalStrike = true;
+            entity.arenaForgeLastOrbitalAt = performance.now();
+        } else if (blueprintId === 'adrenaline_rush') entity.arenaForgeAdrenalineRush = true;
+        else if (blueprintId === 'reactive_barrier') {
+            entity.arenaForgeReactiveBarrier = true;
+            grantShield(entity, 1500, 1500);
+        } else if (blueprintId === 'heavy_artillery') entity.arenaForgeHeavyArtillery = true;
+        else if (blueprintId === 'chain_reaction') entity.arenaForgeChainReaction = true;
+        else if (blueprintId === 'phase_stride') entity.arenaForgePhaseStride = true;
+        else if (blueprintId === 'executioner_lens') entity.arenaForgeExecutioner = true;
+        else if (blueprintId === 'nanite_injector') entity.arenaForgeNaniteInjector = true;
+        else if (blueprintId === 'brawler_bounty') entity.arenaForgeHeadhunter = true;
         spawnFloatingText(entity.x, entity.y - 46, blueprint.name.toUpperCase(), entity.team === 'player' ? '#7fffd4' : '#ff9b9b');
         return true;
+    }
+
+    function applyArenaForgeProjectileBlueprint(b) {
+        if (!isArenaForgeMode || !b || b.arenaForgeBlueprintApplied) return;
+        b.arenaForgeBlueprintApplied = true;
+        const owner = getEntityById(b.ownerId);
+        if (owner?.arenaForgeHeavyArtillery) {
+            b.vx = (b.vx || 0) * 1.25;
+            b.vy = (b.vy || 0) * 1.25;
+            b.maxLife = (b.maxLife || 1) * 1.20;
+        }
+    }
+
+    function handleArenaForgeCombatHit(owner, target, dealtDamage, rawDmg, b) {
+        if (!isArenaForgeMode) return;
+        const now = performance.now();
+        if (owner && dealtDamage > 0 && owner.arenaForgeVampiric) {
+            const isBrawler = target && !target.isStructure && !target.isArenaForgeMinion && !target.isArenaForgeCamp && !target.isArenaForgeColossus;
+            const siphon = dealtDamage * (isBrawler ? 0.30 : 0.18);
+            owner.hp = Math.min(owner.maxHp, owner.hp + siphon);
+            spawnFloatingText(owner.x, owner.y - 28, `+${Math.round(siphon)} HP`, '#7fffd4');
+        }
+        if (owner?.arenaForgeFreezeRounds && rawDmg > 0 && target) {
+            target.arenaForgeSlowUntil = Math.max(target.arenaForgeSlowUntil || 0, now + 1800);
+            target.arenaForgeSlowMult = 0.75;
+        }
+        if (target && target.hp > 0) {
+            target.arenaForgeLastDamagedAt = now;
+        }
+        if (target?.arenaForgeStaticArmor && rawDmg > 0 && target.hp > 0) {
+            if (now - (target.arenaForgeLastStaticShockAt || 0) >= 1500) {
+                target.arenaForgeLastStaticShockAt = now;
+                const shockTargets = (target.team === 'player'
+                    ? bots.filter(e => e && e.team !== 'player' && e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 180)
+                    : [player, ...bots.filter(e => e && e.team === 'player' && e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 180)]
+                ).filter(e => e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 180);
+                for (const st of shockTargets.slice(0, 3)) {
+                    st.hp -= 600;
+                    st.lastDamagerId = target.id;
+                    st.lastDamagerTeam = target.team;
+                    showDamageNumber(st.x, st.y - 15, 600, '#6ee7ff');
+                    explosions.push({ x: st.x, y: st.y, radius: 45, life: 0, maxLife: 0.25, color: '#6ee7ff' });
+                    if (st.hp <= 0) handleArenaForgeDeath(st);
+                }
+            }
+        }
+        if (target?.arenaForgeBlastChassis && target.hp > 0 && target.hp <= target.maxHp * 0.35) {
+            if (now - (target.arenaForgeLastBlastAt || 0) >= 20000) {
+                target.arenaForgeLastBlastAt = now;
+                explosions.push({ x: target.x, y: target.y, radius: 140, life: 0, maxLife: 0.45, color: '#ffcc00', legendary: true });
+                spawnFloatingText(target.x, target.y - 50, 'EMP DETONATION!', '#ffe66d');
+                const blastTargets = (target.team === 'player'
+                    ? bots.filter(e => e && e.team !== 'player' && e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 140)
+                    : [player, ...bots.filter(e => e && e.team === 'player' && e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 140)]
+                ).filter(e => e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 140);
+                for (const bt of blastTargets) {
+                    bt.stunUntil = Math.max(bt.stunUntil || 0, now + 1200);
+                    const ang = Math.atan2(bt.y - target.y, bt.x - target.x);
+                    bt.vx = (bt.vx || 0) + Math.cos(ang) * 12;
+                    bt.vy = (bt.vy || 0) + Math.sin(ang) * 12;
+                    bt.hp -= 800;
+                    bt.lastDamagerId = target.id;
+                    bt.lastDamagerTeam = target.team;
+                    showDamageNumber(bt.x, bt.y - 15, 800, '#ffe66d');
+                    if (bt.hp <= 0) handleArenaForgeDeath(bt);
+                }
+            }
+        }
+    }
+
+    function updateArenaForgeBlueprintCombatantEffects(dt, now) {
+        if (!isArenaForgeMode || gameOver) return;
+        const combatants = getArenaForgeCombatants(null, true);
+
+        // 1. Flux Magnet gem pull
+        for (const entity of combatants) {
+            if (entity.arenaForgeBountyMagnet) {
+                for (const soul of arenaForgeSouls) {
+                    const d = Math.hypot(soul.x - entity.x, soul.y - entity.y);
+                    if (d <= 175 && d > 1) {
+                        const pullSpd = 360 * dt;
+                        soul.x += ((entity.x - soul.x) / d) * pullSpd;
+                        soul.y += ((entity.y - soul.y) / d) * pullSpd;
+                    }
+                }
+            }
+        }
+
+        // 2. Warlord Aura (command_beacon)
+        for (const entity of combatants) {
+            if (entity.arenaForgeCommandBeacon) {
+                const allies = (entity.team === 'player'
+                    ? [player, ...bots.filter(e => e && e.team === 'player' && e.hp > 0)]
+                    : bots.filter(e => e && e.team === 'enemy' && e.hp > 0)
+                );
+                for (const ally of allies) {
+                    if (ally.hp > 0 && Math.hypot(ally.x - entity.x, ally.y - entity.y) <= 240) {
+                        ally.arenaForgeBeaconUntil = now + 400;
+                    }
+                }
+            }
+        }
+
+        // 3. Nanite Rebirth (nanite_injector)
+        for (const entity of combatants) {
+            if (entity.arenaForgeNaniteInjector && entity.hp > 0 && entity.hp < entity.maxHp) {
+                entity.hp = Math.min(entity.maxHp, entity.hp + entity.maxHp * 0.03 * dt);
+            }
+        }
+
+        // 4. Aegis Projector (reactive_barrier)
+        for (const entity of combatants) {
+            if (entity.arenaForgeReactiveBarrier && entity.hp > 0) {
+                if (now - (entity.arenaForgeLastDamagedAt || 0) >= 4000) {
+                    if ((entity.shield || 0) < 1500) {
+                        grantShield(entity, 1500, 1500);
+                    }
+                }
+            }
+        }
+
+        // 5. Scorched Earth (flame_treads)
+        for (const entity of combatants) {
+            if (entity.arenaForgeFlameTreads && entity.hp > 0) {
+                const spd = Math.hypot(entity.vx || 0, entity.vy || 0);
+                if ((spd > 2 || entity.isMoving) && now - (entity.arenaForgeLastFlameStepAt || 0) >= 220) {
+                    entity.arenaForgeLastFlameStepAt = now;
+                    arenaForgeFlamePuddles.push({
+                        x: entity.x,
+                        y: entity.y,
+                        radius: 26,
+                        team: entity.team,
+                        expiresAt: now + 2500,
+                        ownerId: entity.id
+                    });
+                }
+            }
+        }
+
+        // Update Flame Puddles
+        for (let i = arenaForgeFlamePuddles.length - 1; i >= 0; i--) {
+            const puddle = arenaForgeFlamePuddles[i];
+            if (now > puddle.expiresAt) {
+                arenaForgeFlamePuddles.splice(i, 1);
+                continue;
+            }
+            const enemies = (puddle.team === 'player'
+                ? bots.filter(e => e && e.team !== 'player' && e.hp > 0)
+                : [player, ...bots.filter(e => e && e.team === 'player' && e.hp > 0)]
+            );
+            for (const enemy of enemies) {
+                if (enemy.hp > 0 && Math.hypot(enemy.x - puddle.x, enemy.y - puddle.y) <= puddle.radius + (enemy.radius || 14)) {
+                    const dmg = 350 * dt;
+                    enemy.hp -= dmg;
+                    enemy.lastDamagerId = puddle.ownerId;
+                    enemy.lastDamagerTeam = puddle.team;
+                    if (enemy.hp <= 0) handleArenaForgeDeath(enemy);
+                }
+            }
+        }
+
+        // 6. Siege Mortar (orbital_strike)
+        for (const entity of combatants) {
+            if (entity.arenaForgeOrbitalStrike && entity.hp > 0) {
+                if (now - (entity.arenaForgeLastOrbitalAt || 0) >= 12000) {
+                    entity.arenaForgeLastOrbitalAt = now;
+                    const candidates = bots.filter(e => e && e.hp > 0 && (
+                        (e.isArenaForgeStructure && e.team !== entity.team) ||
+                        e.isArenaForgeCamp ||
+                        (e.isArenaForgeColossus && e.team !== entity.team)
+                    ));
+                    if (candidates.length) {
+                        let closest = candidates[0];
+                        let minDist = Math.hypot(closest.x - entity.x, closest.y - entity.y);
+                        for (let k = 1; k < candidates.length; k++) {
+                            const d = Math.hypot(candidates[k].x - entity.x, candidates[k].y - entity.y);
+                            if (d < minDist) {
+                                minDist = d;
+                                closest = candidates[k];
+                            }
+                        }
+                        closest.hp -= 2200;
+                        closest.lastDamagerId = entity.id;
+                        closest.lastDamagerTeam = entity.team;
+                        explosions.push({ x: closest.x, y: closest.y, radius: 95, life: 0, maxLife: 0.5, color: '#ff3366', legendary: true });
+                        showDamageNumber(closest.x, closest.y - 40, 2200, '#ff3366');
+                        spawnFloatingText(closest.x, closest.y - 70, 'SIEGE MORTAR! 2200', '#ff5577');
+                        if (closest.hp <= 0) handleArenaForgeDeath(closest);
+                    }
+                }
+            }
+        }
     }
 
     function closeArenaForgeBlueprintDraft() {
@@ -12865,6 +13524,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         arenaForgeTimer = 0;
         arenaForgeSoulBank = { player: 0, enemy: 0 };
         arenaForgeSouls = [];
+        arenaForgeFlamePuddles = [];
         arenaForgeUpgrades = {
             player: { fortify: 0, minions: 0, respawn: 0, damage: 0, project_left: 0, project_center: 0, project_right: 0 },
             enemy: { fortify: 0, minions: 0, respawn: 0, damage: 0, project_left: 0, project_center: 0, project_right: 0 },
@@ -13038,8 +13698,22 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
         if (scoringTeam) {
             awardArenaForgeTeamXp(scoringTeam, entity.x, entity.y, entity.isArenaForgeMinion ? 18 : 65);
+            const killer = getEntityById(entity.lastDamagerId);
+            if (killer?.arenaForgeChainReaction) {
+                explosions.push({ x: entity.x, y: entity.y, radius: 85, life: 0, maxLife: 0.35, color: '#ff6622', legendary: false });
+                const blastTargets = (killer.team === 'player'
+                    ? bots.filter(e => e && e.team !== 'player' && e.hp > 0 && Math.hypot(e.x - entity.x, e.y - entity.y) <= 85)
+                    : [player, ...bots.filter(e => e && e.team === 'player' && e.hp > 0 && Math.hypot(e.x - entity.x, e.y - entity.y) <= 85)]
+                ).filter(e => e.hp > 0 && Math.hypot(e.x - entity.x, e.y - entity.y) <= 85);
+                for (const t of blastTargets) {
+                    t.hp -= 900;
+                    t.lastDamagerId = killer.id;
+                    t.lastDamagerTeam = killer.team;
+                    showDamageNumber(t.x, t.y - 15, 900, '#ff6622');
+                    if (t.hp <= 0) handleArenaForgeDeath(t);
+                }
+            }
             if (!entity.isArenaForgeMinion && !entity.isStructure && !entity.isArenaForgeCamp) {
-                const killer = getEntityById(entity.lastDamagerId);
                 if (killer) {
                     if (killer.arenaForgeHyperDynamo) {
                         if (killer.id === player.id) {
@@ -13049,6 +13723,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                             killer.superCharge = clamp((killer.superCharge || 0) + 35, 0, 100);
                         }
                         spawnFloatingText(killer.x, killer.y - 36, '+35% SUPER CHARGE!', '#ffe66d');
+                    }
+                    if (killer.arenaForgeHeadhunter) {
+                        awardArenaForgeTeamXp(scoringTeam, killer.x, killer.y, 50);
+                        spawnArenaForgeEnergy(entity.x - 18, entity.y, 1);
+                        spawnArenaForgeEnergy(entity.x + 18, entity.y, 1);
+                        spawnFloatingText(killer.x, killer.y - 50, 'HEADHUNTER +50 XP & 2 GEMS!', '#ffcf66');
+                    }
+                    if (killer.arenaForgeMinionCommander) {
+                        const laneIndex = entity.x < WORLD_W * 0.35 ? 0 : (entity.x > WORLD_W * 0.65 ? 2 : 1);
+                        const extraMinion = spawnArenaForgeMinion(killer.team, laneIndex, true);
+                        if (extraMinion) {
+                            spawnFloatingText(extraMinion.x, extraMinion.y - 36, 'SWARM MINION DEPLOYED!', killer.team === 'player' ? '#7fffd4' : '#ff9b9b');
+                        }
                     }
                     killer.arenaForgeStreak = (killer.arenaForgeStreak || 0) + 1;
                     const streak = killer.arenaForgeStreak;
@@ -13412,10 +14099,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             updateArenaForgeTowerArmor(structure);
         }
 
+        updateArenaForgeBlueprintCombatantEffects(dt, now);
         const collectors = getArenaForgeCombatants(null, true);
         for (let i = arenaForgeSouls.length - 1; i >= 0; i--) {
             const pickup = arenaForgeSouls[i];
-            const collector = collectors.find((entity) => entity.hp > 0 && Math.hypot(entity.x - pickup.x, entity.y - pickup.y) <= (entity.radius || 14) + 18);
+            const collector = collectors.find((entity) => entity.hp > 0 && Math.hypot(entity.x - pickup.x, entity.y - pickup.y) <= (entity.radius || 14) + (entity.arenaForgeBountyMagnet ? 45 : 18));
             if (!collector) continue;
             const team = collector.id === player.id ? 'player' : (collector.team === 'player' ? 'player' : 'enemy');
             collector.arenaForgeEnergy = 0;
@@ -13423,6 +14111,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             collector.arenaForgeEnergyHpBonus = Math.max(0, collector.arenaForgeEnergyHpBonus || 0) + 50 * pickup.value;
             refreshArenaForgeLevelStats(collector, true);
             grantArenaForgeXp(collector, pickup.value * 6);
+            if (collector.arenaForgeBountyMagnet) {
+                collector.hp = Math.min(collector.maxHp, collector.hp + 500 * pickup.value);
+            }
             if ((collector.arenaForgeBlueprints || []).includes('battery_pack')) grantShield(collector, 1200, 5000);
             spawnFloatingText(collector.x, collector.y - 26, `+${pickup.value} ENERGY  +${50 * pickup.value} MAX HP`, '#ffe66d');
             arenaForgeSouls.splice(i, 1);
@@ -13693,7 +14384,20 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
 
     function getBotControlAnchor(bot, context) {
-        const zone = objectiveZone || { x: WORLD_W * 0.5, y: WORLD_H * 0.5, r: 240 };
+        let zone = objectiveZone || { x: WORLD_W * 0.5, y: WORLD_H * 0.5, r: 240 };
+        if (isObjectiveMode && Array.isArray(objectiveZones) && objectiveZones.length > 0) {
+            const slot = context.slot || 0;
+            const preferredZoneId = slot % 3 === 0 ? 'mid' : (slot % 3 === 1 ? 'left' : 'right');
+            let targetZone = objectiveZones.find(z => z.id === preferredZoneId) || objectiveZones[0];
+            // If preferred zone is already controlled by this bot's team, rotate to an uncontested or enemy zone
+            if (targetZone.controllingTeam === context.team) {
+                const contestedZone = objectiveZones.find(z => z.controllingTeam !== context.team);
+                if (contestedZone) targetZone = contestedZone;
+            }
+            zone = targetZone;
+        } else if (isTugZoneMode && tugZone) {
+            zone = tugZone;
+        }
         const homeAngle = context.team === 'player' ? Math.PI * 0.5 : -Math.PI * 0.5;
         const side = context.slot % 2 === 0 ? -1 : 1;
         if (context.tank || context.controller) {
@@ -14130,8 +14834,23 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const distance = Math.hypot(target.x - bot.x, target.y - bot.y);
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
-        const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - objectiveZone.x, target.y - objectiveZone.y) < (objectiveZone.r || 240) + 80;
+        const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
         const objectiveTarget = target.isVault || target.isArenaForgeStructure;
+        
+        // Mode-specific strategic super triggers
+        if (isMarkedMayhemMode && markedMayhemMarkedIds[target.id === player.id ? 'player' : (target.team === 'player' ? 'player' : 'enemy')] === target.id && distance < 800) {
+            return true; // Execute enemy VIP!
+        }
+        if (isDamageFillerMode && distance < 750) {
+            return true; // Maximize DPS in damage race!
+        }
+        if (isConstructionMode && ((target.carriedBricks || 0) >= 5 || brickCountdownTeam === (target.team === 'player' ? 'player' : 'enemy')) && distance < 780) {
+            return true; // Eliminate gem carrier!
+        }
+        if (isMirrorMode && targetHpPct < 0.55 && distance < 750) {
+            return true; // Mirror execute!
+        }
+
         if (bot.brawler === 'portalo') {
             return distance < 760 && (objectiveFight || objectiveTarget || clustered >= 2 || targetHpPct < .42 || context.hpPct < .32);
         }
@@ -14905,16 +15624,18 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             }
         }
 
-                if (isConstructionMode) {
+                if (isConstructionMode || isObjectiveMode) {
                         const allyChoices = getBotBrawlerPool({ exclude: [selectedBrawler] });
                         for (let i = 1; i < 3; i++) {
                                 const allyBrawler = (isRankedMatch && rankedTeammatePicks[i - 1])
                                     ? rankedTeammatePicks[i - 1]
                                     : (allyChoices[Math.floor(Math.random() * allyChoices.length)] || 'outlit');
-                                const allyLevel = getBotLevelNearPlayer();
+                                const allyLevel = isRankedMatch ? 11 : getBotLevelNearPlayer();
                                 const allyTier = getHPTier(allyBrawler, allyLevel);
                                 const allyUnlocks = getUnlocksForLevel(allyLevel);
-                                const allySpawn = getConstructionSpawnPoint('player', i, 3);
+                                const allySpawn = isConstructionMode
+                                    ? getConstructionSpawnPoint('player', i, 3)
+                                    : getObjectiveSpawnPoint('player', i, 3);
                                 bots.push({
                                         id: nextId++, x: allySpawn.x, y: allySpawn.y, z: 0, vx: 0, vy: 0,
                                         hp: allyTier.hp, maxHp: allyTier.hp,
@@ -14953,6 +15674,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 let enemyCount = MAX_BOTS;
                 if (isImpossibleMode) enemyCount = 1;
                 else if (isConstructionMode) enemyCount = 3;
+                else if (isObjectiveMode) enemyCount = 3;
                 else if (isPowerGodsMode) enemyCount = 9;
                 else if (isMirrorMode) enemyCount = MIRROR_TEAM_SIZE;
                 else if (isDamageFillerMode) enemyCount = damageFillerTeamSize;
@@ -14963,7 +15685,6 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 else if (isKnockDonateMode) enemyCount = KNOCK_DONATE_TEAM_SIZE;
                 else if (isTrioShowdownMode) enemyCount = 42;
                 else if (isDuoShowdown) enemyCount = 48;
-                else if (isObjectiveMode) enemyCount = 8;
                 else if (!isBossFight && !isSoloTrial) enemyCount = 49;
         const showdownEnemyTeamAnchors = new Map();
         for(let i=0;i<enemyCount;i++){
@@ -14974,6 +15695,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 by = 170;
             } else if (isConstructionMode) {
                 const enemySpawn = getConstructionSpawnPoint('enemy', i, enemyCount);
+                bx = enemySpawn.x;
+                by = enemySpawn.y;
+            } else if (isObjectiveMode) {
+                const enemySpawn = getObjectiveSpawnPoint('enemy', i, enemyCount);
                 bx = enemySpawn.x;
                 by = enemySpawn.y;
             } else if (isMirrorMode) {
@@ -15021,17 +15746,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         ? selectedBrawler
         : (isMirrorMode
         ? mirrorModeBrawler
-        : (isSplitterPoweredMode ? SPLITTER_POWERED_BRAWLER : brawlerPool[Math.floor(Math.random() * brawlerPool.length)]));
-                const botTeamId = isImpossibleMode
+        : (isSplitterPoweredMode
+            ? SPLITTER_POWERED_BRAWLER
+            : ((isRankedMatch && rankedEnemyPicks[i])
+                ? rankedEnemyPicks[i]
+                : brawlerPool[Math.floor(Math.random() * brawlerPool.length)])));
+                const botTeamId = (isImpossibleMode || isConstructionMode || isObjectiveMode || isMirrorMode || isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode)
                     ? 'enemy'
-                    : (isConstructionMode
-                    ? 'enemy'
-                    : (isMirrorMode
-                        ? 'enemy'
-                        : ((isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode)
-                            ? 'enemy'
-                            : (isTrioShowdownMode ? `enemy_${Math.floor(i / 3)}` : (isDuoShowdown ? `enemy_${Math.floor(i / 2)}` : `enemy_${i}`)))));
-    const botLevel = (isMirrorMode || isSplitterPoweredMode || isImpossibleMode) ? 11 : getBotLevelNearPlayer();
+                    : (isTrioShowdownMode ? `enemy_${Math.floor(i / 3)}` : (isDuoShowdown ? `enemy_${Math.floor(i / 2)}` : `enemy_${i}`));
+    const botLevel = (isMirrorMode || isSplitterPoweredMode || isImpossibleMode || isRankedMatch) ? 11 : getBotLevelNearPlayer();
     const tier = getHPTier(brawler, botLevel);
     const unlocks = getUnlocksForLevel(botLevel);
       bots.push({
@@ -15505,7 +16228,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             ? BALANCE_PROFILE.reloadMsByBrawler[brawler]
             : 1740 * 1.15;
         if (brawler === 'fastpass') base = 1550;
+        else if (brawler === 'anti_royal') base = 1800;
         else if (brawler === 'cursed') base = 1750;
+        else if (brawler === 'king') base = 1750;
         else if (brawler === 'freestyle') base = 1650;
         else if (brawler === 'portalo') base = 1700;
         else if (brawler === 'ghoul') base = 1700;
@@ -15516,9 +16241,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         else if (brawler === 'ramage') base = 1200;
         else if (brawler === 'upgradart') base = 1350;
         else if (brawler === 'cinderion') base = 1800;
+        else if (brawler === 'sir_cheeseburger') base = 1300;
         else if (brawler === 'angel') base = 1700;
         else if (brawler === 'demon') base = 1800;
         if (brawler === 'warrior' && performance.now() < (player.warriorStandUntil || 0)) base /= 2.50;
+        if (brawler === 'sir_cheeseburger' && performance.now() < (player.sirCheddarReloadBuffUntil || 0)) base /= 1.15;
         if (brawler === 'upiedown' && performance.now() < (player.upiedownReloadBuffUntil || 0)) base *= 0.85;
         if (brawler === 'jacktrade' && performance.now() < (player.jackTradeRushUntil || 0)) base /= 3;
         if (brawler === 'jacktrade' && isSlopSushiMode) {
@@ -15546,7 +16273,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       adlof:6, daggershard:10, decayer:6, fuel:6, ice_cream:6, paradox:6, peter_pickle:6, scuba_diver:5, screener:6, tempo_maker:14, unstable:5, witch:7,
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
-      portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7
+      portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, sir_cheeseburger:4
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -15739,6 +16466,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       const brawler = source?.ownerBrawler || owner.currentMainAttackBrawler || owner.brawler || (owner.id === player.id ? selectedBrawler : 'outlit');
       let gain = (100 / getSuperChargeHitsForBrawler(brawler)) * getAttackChargeMultiplier(owner);
       if (isArenaForgeMode && owner.arenaForgeHyperDynamo) gain *= 1.35;
+      if (isRankedMatch && activeRankedModifier === 'super_surge') gain *= 1.4;
+      if (isRankedMatch && activeRankedModifier === 'quickfire') {
+           if (owner.id === player.id) {
+               ammo = Math.min(maxAmmo, ammo + maxAmmo * 0.1);
+               updateAmmoUI();
+           } else {
+               owner.ammo = Math.min(owner.maxAmmo || 3, (owner.ammo || 0) + (owner.maxAmmo || 3) * 0.1);
+           }
+      }
       // Four-card volleys connect often, so JackTrade builds Hypercharge 30%
       // slower without changing his normal Super charge rate.
       // Classy's seven-note volleys each count as real projectile hits. Keep
@@ -15791,7 +16527,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   }
 
   function startDuelsRound() {
-    bullets.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
+    bullets.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     minigunninMutationFireZones.length = 0;
@@ -16152,6 +16888,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if (cheeseActive) {
           const hyper = entity.id === player.id ? isHypercharged : !!entity.isHypercharged;
           pct = Math.max(pct, hyper ? 0.50 : 0.30);
+      }
+      if ((entity.sirChestGuardUntil || 0) > now) {
+          pct = Math.max(pct, entity.sirChestGuardDr || (entity.sirChestGuardHyper ? 0.85 : 0.50));
       }
       if (isSlopSushiMode) pct = Math.max(pct, getEntitySlopEffectTotal(entity, 'damageReductionPct'));
       return Math.max(0, Math.min(0.90, pct));
@@ -16855,13 +17594,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           mult *= 1 + getEntitySlopEffectTotal(entity, 'damagePct');
           if (entity.hp <= entity.maxHp * 0.35) mult *= 1 + getEntitySlopEffectTotal(entity, 'lowHpDamagePct');
       }
-      if (isArenaForgeMode && entity.team && arenaForgeUpgrades[entity.team]) {
-          mult *= 1 + (arenaForgeUpgrades[entity.team].damage || 0) * 0.06;
-          mult *= 1 + (entity.arenaForgeBonusLevel || 0) * ARENA_FORGE_LEVEL_DAMAGE_PCT;
-          mult *= entity.arenaForgeBlueprintDamageMult || 1;
-          mult *= entity.arenaForgeMinionDamageMult || 1;
-          if ((arenaForgeTeamBuffs[entity.team]?.arsenalUntil || 0) > now) mult *= 1.15;
-      }
+        if (isArenaForgeMode && entity.team && arenaForgeUpgrades[entity.team]) {
+            mult *= 1 + (arenaForgeUpgrades[entity.team].damage || 0) * 0.06;
+            mult *= 1 + (entity.arenaForgeBonusLevel || 0) * ARENA_FORGE_LEVEL_DAMAGE_PCT;
+            mult *= entity.arenaForgeBlueprintDamageMult || 1;
+            mult *= entity.arenaForgeMinionDamageMult || 1;
+            if ((entity.arenaForgeBeaconUntil || 0) > now) mult *= 1.18;
+            if ((arenaForgeTeamBuffs[entity.team]?.arsenalUntil || 0) > now) mult *= 1.15;
+        }
       if (hasTrinket(entity, 'last_stand') && entity.hp < entity.maxHp * .50) mult *= 1.15;
       if (hasTrinket(entity, 'first_strike') && entity.trinketFirstStrikeReady) mult *= 1.10;
       return mult;
@@ -18488,8 +19228,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   }
 
     function spawnRocketeerFireZone(ownerId, x, y, durationMs=2200, damage=180, radius=62, hyper=false) {
-        rocketeerFireZones.push({ ownerId, x, y, radius, damage, until:performance.now()+durationMs, nextTickAt:0, hyper:!!hyper });
-        explosions.push({x,y,radius:radius*.7,life:0,maxLife:.24,color:hyper?'rgba(198,63,255,.68)':'rgba(255,105,28,.65)'});
+        const owner = getEntityById(ownerId);
+        const skinId = (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
+        rocketeerFireZones.push({ ownerId, x, y, radius, damage, until:performance.now()+durationMs, nextTickAt:0, hyper:!!hyper, skinId });
+        if (skinId === 'ranked-rocketeer') {
+            explosions.push({x,y,radius:radius*0.85,life:0,maxLife:.26,color:'#00f5d4',skinId:'ranked-rocketeer',fxKind:'rankedRocketeerBurst',legendary:true});
+        } else {
+            explosions.push({x,y,radius:radius*.7,life:0,maxLife:.24,color:hyper?'rgba(198,63,255,.68)':'rgba(255,105,28,.65)'});
+        }
     }
     function spawnMinigunninMutationFireZone(ownerId, x, y, placement='end') {
         // Twenty rounds may land rapidly. A hard cap and simple geometry keep
@@ -18526,6 +19272,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         projectile.rocketeerSplitDone = true;
         if (projectile.rocketeerNoSplit) return;
         const owner=getEntityById(projectile.ownerId);
+        const skinId = projectile.skinId || (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
         const star=getOwnerStarChoice(owner);
         const baseAng=Math.atan2(projectile.vy,projectile.vx);
         const count=Math.max(3,(projectile.rocketeerMiniCount||3)+(isSlopSushiMode?getEntitySlopEffectTotal(owner,'rocketeerExtraMinis'):0));
@@ -18535,17 +19282,22 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const lane=count===1?0:(n/(count-1)-.5);
             const a=baseAng+lane*(count>3?.36:.21);
             const rangeMult=1+(isSlopSushiMode?getEntitySlopEffectTotal(owner,'sushiAttackRangePct'):0);
-            bullets.push({ownerBrawler:'rocketeer',isRocketeerMini:true,x:projectile.x+Math.cos(baseAng)*34,y:projectile.y+Math.sin(baseAng)*34,
+            bullets.push({ownerBrawler:'rocketeer',isRocketeerMini:true,skinId,x:projectile.x+Math.cos(baseAng)*34,y:projectile.y+Math.sin(baseAng)*34,
                 vx:Math.cos(a)*780,vy:Math.sin(a)*780,life:0,maxLife:.62*rangeMult,damage:miniDamage,pierce:false,ownerId:projectile.ownerId,
                 hitIds:{...(projectile.hitIds||{})},hitboxMod:.82,hyperVisual:!!projectile.hyperVisual});
         }
-        explosions.push({x:projectile.x,y:projectile.y,radius:46,life:0,maxLife:.2,color:projectile.hyperVisual?'#d96cff':'#ff7b2f',legendary:true});
+        if (skinId === 'ranked-rocketeer') {
+            explosions.push({x:projectile.x,y:projectile.y,radius:58,life:0,maxLife:.22,color:'#ffd166',skinId:'ranked-rocketeer',fxKind:'rankedRocketeerBurst',legendary:true});
+        } else {
+            explosions.push({x:projectile.x,y:projectile.y,radius:46,life:0,maxLife:.2,color:projectile.hyperVisual?'#d96cff':'#ff7b2f',legendary:true});
+        }
     }
 
     function launchRocketeerMain(owner, angle, hyper, damageMult=1, options={}) {
         const damage=Math.round(2067*damageMult);
         const lateral=options.lateral||0,forward=options.forward||0,perp=angle+Math.PI/2;
-        bullets.push({ownerBrawler:'rocketeer',isRocketeerMain:true,rocketeerBaseDamage:damage,
+        const skinId = (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
+        bullets.push({ownerBrawler:'rocketeer',isRocketeerMain:true,skinId,rocketeerBaseDamage:damage,
             rocketeerMiniCount:owner.rocketeerClusterArmed?5:3,
             x:owner.x+Math.cos(angle)*(owner.radius+10+forward)+Math.cos(perp)*lateral,
             y:owner.y+Math.sin(angle)*(owner.radius+10+forward)+Math.sin(perp)*lateral,
@@ -18558,6 +19310,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const owner=getEntityById(strike.ownerId);
         if(!owner)return;
         const star=getOwnerStarChoice(owner);
+        const skinId = strike.skinId || (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
         const targets=[player,...bots];
         if(star==='long'){
             for(const target of targets){
@@ -18577,19 +19330,24 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const radial=Math.max(8,isSlopSushiMode?getEntitySlopEffectTotal(owner,'rocketeerHyperRadial'):0);
             for(let n=0;n<radial;n++){
                 const a=n*Math.PI*2/radial;
-                bullets.push({ownerBrawler:'rocketeer',isRocketeerMini:true,rocketeerNoFire:true,x:strike.x+Math.cos(a)*12,y:strike.y+Math.sin(a)*12,vx:Math.cos(a)*740,vy:Math.sin(a)*740,life:0,maxLife:.486,damage:260,pierce:false,ownerId:strike.ownerId,hitIds:{},hitboxMod:.9,hyperVisual:true});
+                bullets.push({ownerBrawler:'rocketeer',isRocketeerMini:true,skinId,rocketeerNoFire:true,x:strike.x+Math.cos(a)*12,y:strike.y+Math.sin(a)*12,vx:Math.cos(a)*740,vy:Math.sin(a)*740,life:0,maxLife:.486,damage:260,pierce:false,ownerId:strike.ownerId,hitIds:{},hitboxMod:.9,hyperVisual:true});
             }
         }
-        explosions.push({x:strike.x,y:strike.y,radius:118,life:0,maxLife:.35,color:strike.hyper?'rgba(205,73,255,.82)':'rgba(255,112,33,.82)',legendary:true});
+        if (skinId === 'ranked-rocketeer') {
+            explosions.push({x:strike.x,y:strike.y,radius:140,life:0,maxLife:.42,color:'#00f5d4',skinId:'ranked-rocketeer',fxKind:'rankedRocketeerBurst',legendary:true});
+        } else {
+            explosions.push({x:strike.x,y:strike.y,radius:118,life:0,maxLife:.35,color:strike.hyper?'rgba(205,73,255,.82)':'rgba(255,112,33,.82)',legendary:true});
+        }
     }
 
     function castRocketeerSuper(owner, hyper, targetX, targetY) {
         const dx=targetX-owner.x,dy=targetY-owner.y,d=Math.hypot(dx,dy)||1,maxRange=760;
         const cx=owner.x+dx/d*Math.min(d,maxRange),cy=owner.y+dy/d*Math.min(d,maxRange),now=performance.now();
+        const skinId = (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
         const strikeCount=3+(isSlopSushiMode?getEntitySlopEffectTotal(owner,'rocketeerExtraSuperStrikes'):0);
         for(let n=0;n<strikeCount;n++){
             const a=-Math.PI/2+n*Math.PI*2/strikeCount,offset=n===0?0:Math.min(112,62+strikeCount*4);
-            rocketeerAirstrikes.push({ownerId:owner.id,x:clamp(cx+Math.cos(a)*offset,40,WORLD_W-40),y:clamp(cy+Math.sin(a)*offset,40,WORLD_H-40),landAt:now+800+n*180,hyper:!!hyper});
+            rocketeerAirstrikes.push({ownerId:owner.id,skinId,x:clamp(cx+Math.cos(a)*offset,40,WORLD_W-40),y:clamp(cy+Math.sin(a)*offset,40,WORLD_H-40),landAt:now+800+n*180,hyper:!!hyper});
         }
     }
 
@@ -18619,6 +19377,383 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             }
         }
     }
+
+  const KING_PRINCESS_MAX = 2;
+  const KING_PRINCESS_HP = 3500;
+  const KING_PRINCESS_RANGE = 680;
+  const KING_PRINCESS_DAMAGE = 250;
+  const KING_PRINCESS_FIRE_MS = 500;
+  const KING_HYPER_PRINCESS_DAMAGE_PER_HIT = 10;
+  const KING_HYPER_PRINCESS_DAMAGE_CAP = 550;
+
+  function ensureKingState(entity) {
+      if (!entity) return;
+      if (!Number.isFinite(entity.kingPiercingReadyAt)) entity.kingPiercingReadyAt = performance.now() + 5000;
+      if (!Number.isFinite(entity.kingRecoilRemaining)) entity.kingRecoilRemaining = 0;
+      if (!Number.isFinite(entity.kingRecoilAngle)) entity.kingRecoilAngle = 0;
+      entity.kingSiegeRoundArmed = !!entity.kingSiegeRoundArmed;
+  }
+
+  function getKingPrincesses(owner) {
+      if (!owner) return [];
+      return healingPods.filter(pod => pod.isKingPrincess && pod.ownerId === owner.id && pod.hp > 0);
+  }
+
+  function spawnKingPrincess(owner, x, y, options = {}) {
+      if (!owner) return null;
+      const existing = getKingPrincesses(owner).sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
+      while (existing.length >= KING_PRINCESS_MAX) {
+          const oldest = existing.shift();
+          const index = healingPods.indexOf(oldest);
+          if (index >= 0) healingPods.splice(index, 1);
+      }
+      const spot = findNearestOpenSpot(x, y, 24, 360);
+      const now = performance.now();
+      const princess = {
+          x:spot.x, y:spot.y, hp:KING_PRINCESS_HP, maxHp:KING_PRINCESS_HP, radius:24,
+          healRadius:0, healAmount:0, decayPerSec:0, ownerId:owner.id, ownerTeam:getEntityTeam(owner),
+          lastDecayTick:now, lastHealTick:now, createdAt:now, isKingPrincess:true,
+          kingLastShotAt:now - 300, kingBurnReadyAt:now + 5000, kingTargetId:null,
+          kingHyperTwin:!!options.hyperTwin, kingTwinCastId:options.twinCastId || null,
+          kingPrincessId:`king-princess-${owner.id}-${Math.floor(now)}-${Math.random().toString(36).slice(2,7)}`,
+          kingHitDamageBonus:0,
+          kingEnragedUntil:0
+      };
+      healingPods.push(princess);
+      explosions.push({x:spot.x,y:spot.y,radius:62,life:0,maxLife:.34,color:options.hyperTwin?'rgba(208,92,255,.75)':'rgba(255,210,83,.75)',legendary:true,fxKind:'kingPrincessSpawn'});
+      return princess;
+  }
+
+  function castKingSuper(owner, hyper, targetX, targetY) {
+      if (!owner) return;
+      const angle = Math.atan2(targetY-owner.y,targetX-owner.x);
+      const distance = Math.min(420, Math.max(70, Math.hypot(targetX-owner.x,targetY-owner.y)));
+      const cx = clamp(owner.x + Math.cos(angle)*distance, 28, WORLD_W-28);
+      const cy = clamp(owner.y + Math.sin(angle)*distance, 28, WORLD_H-28);
+      if (hyper) {
+          for (const princess of getKingPrincesses(owner)) {
+              const index=healingPods.indexOf(princess); if(index>=0)healingPods.splice(index,1);
+          }
+          const twinCastId=`king-twins-${owner.id}-${Math.floor(performance.now())}`;
+          const perpendicular=angle+Math.PI/2;
+          spawnKingPrincess(owner,cx+Math.cos(perpendicular)*34,cy+Math.sin(perpendicular)*34,{hyperTwin:true,twinCastId});
+          spawnKingPrincess(owner,cx-Math.cos(perpendicular)*34,cy-Math.sin(perpendicular)*34,{hyperTwin:true,twinCastId});
+          spawnFloatingText(cx,cy-54,'ROYAL FAMILY!','#e887ff');
+      } else {
+          spawnKingPrincess(owner,cx,cy);
+          spawnFloatingText(cx,cy-50,'PRINCESS DEPLOYED!','#ffe47a');
+      }
+  }
+
+  function enrageKingPrincesses(owner) {
+      const princesses=getKingPrincesses(owner);
+      if (!princesses.length) return false;
+      const until=performance.now()+3000;
+      for(const princess of princesses) princess.kingEnragedUntil=Math.max(princess.kingEnragedUntil||0,until);
+      explosions.push({x:owner.x,y:owner.y,radius:92,life:0,maxLife:.32,color:'rgba(255,94,53,.68)',fxKind:'kingEnrage'});
+      spawnFloatingText(owner.x,owner.y-42,'PRINCESSES ENRAGED!','#ff8a55');
+      return true;
+  }
+
+  function updateKingSystems(now, dt) {
+      for (const entity of [player,...bots]) {
+          if (!entity || entity.hp<=0) continue;
+          ensureKingState(entity);
+          if ((entity.kingRecoilRemaining||0)>0) {
+              const step=Math.min(entity.kingRecoilRemaining,210*dt);
+              const nx=entity.x-Math.cos(entity.kingRecoilAngle)*step;
+              const ny=entity.y-Math.sin(entity.kingRecoilAngle)*step;
+              if (canBotMoveToPosition(entity,nx,ny)) { entity.x=nx;entity.y=ny;entity.kingRecoilRemaining-=step; }
+              else entity.kingRecoilRemaining=0;
+          }
+          if ((entity.kingPushUntil||0)>now) {
+              const stepX=(entity.kingPushVX||0)*dt,stepY=(entity.kingPushVY||0)*dt;
+              const nx=entity.x+stepX,ny=entity.y+stepY;
+              if(canBotMoveToPosition(entity,nx,ny)){entity.x=nx;entity.y=ny;}
+              entity.kingPushVX*=Math.pow(.04,dt);entity.kingPushVY*=Math.pow(.04,dt);
+          }
+      }
+      for (const princess of healingPods) {
+          if (!princess.isKingPrincess || princess.hp<=0) continue;
+          const owner=getEntityById(princess.ownerId);
+          if (!owner || owner.hp<=0) continue;
+          let target=null,best=KING_PRINCESS_RANGE;
+          for(const candidate of [player,...bots]){
+              if(!candidate||candidate.hp<=0||candidate.id===owner.id||candidate.isDummy||areAlliedEntities(owner,candidate))continue;
+              const distance=Math.hypot(candidate.x-princess.x,candidate.y-princess.y);
+              if(distance<best){best=distance;target=candidate;}
+          }
+          princess.kingTargetId=target?.id ?? null;
+          if(!target)continue;
+          let interval=KING_PRINCESS_FIRE_MS;
+          if(now<(princess.kingEnragedUntil||0))interval*=.5;
+          if(now-(princess.kingLastShotAt||0)<interval)continue;
+          princess.kingLastShotAt=now;
+          const angle=Math.atan2(target.y-princess.y,target.x-princess.x);
+          const burning=getEntityStarChoice(owner)==='slow'&&now>=(princess.kingBurnReadyAt||0);
+          if(burning)princess.kingBurnReadyAt=now+5000;
+          const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11);
+          bullets.push({ownerBrawler:'king',ownerId:owner.id,isKingPrincessArrow:true,kingBurning:burning,
+              kingPrincessId:princess.kingPrincessId,kingHyperPrincess:princess.kingHyperTwin,
+              x:princess.x+Math.cos(angle)*28,y:princess.y+Math.sin(angle)*28,vx:Math.cos(angle)*690,vy:Math.sin(angle)*690,
+              life:0,maxLife:KING_PRINCESS_RANGE/690,damage:Math.round((KING_PRINCESS_DAMAGE+(princess.kingHitDamageBonus||0))*getLevelDamageScale(level)),pierce:false,super:true,hitIds:{},hitboxMod:1.15,
+              hyperVisual:princess.kingHyperTwin||now<(princess.kingEnragedUntil||0)});
+      }
+  }
+
+  function ensureSirCheeseburgerState(entity) {
+      if (!entity) return;
+      if (!Number.isFinite(entity.sirCheeseDmgBonus)) entity.sirCheeseDmgBonus = 0;
+      if (!Number.isFinite(entity.sirChestGuardUntil)) entity.sirChestGuardUntil = 0;
+      if (!Number.isFinite(entity.sirChestGuardDr)) entity.sirChestGuardDr = 0.50;
+      if (!Number.isFinite(entity.sirCheddarReloadBuffUntil)) entity.sirCheddarReloadBuffUntil = 0;
+  }
+
+  function castSirCheeseburgerSuper(owner, hyper) {
+      if (!owner) return false;
+      ensureSirCheeseburgerState(owner);
+      const now = performance.now();
+      owner.sirChestGuardUntil = now + 6500;
+      owner.sirChestGuardHyper = !!hyper;
+      owner.sirChestGuardDr = hyper ? 0.85 : 0.50;
+      
+      const level = owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || 11);
+      const scale = getLevelDamageScale(level);
+      const shockDmg = Math.round((hyper ? 1800 : 1400) * scale);
+      const shockRadius = hyper ? 190 : 140;
+      
+      const candidates = owner.id === player.id ? aliveBots : [player, ...aliveBots];
+      for (const t of candidates) {
+          if (!t || t.hp <= 0 || t.id === owner.id || t.isFlying) continue;
+          if (areAlliedEntities(owner, t)) continue;
+          const d = Math.hypot(t.x - owner.x, t.y - owner.y);
+          if (d <= shockRadius + (t.radius || 16)) {
+              checkHit(t, { ownerBrawler: 'sir_cheeseburger', damage: shockDmg, pierce: true, super: true, ownerId: owner.id, hitIds: {} }, -1);
+              const kAng = Math.atan2(t.y - owner.y, t.x - owner.x);
+              const kbDist = hyper ? 120 : 80;
+              t.x = clamp(t.x + Math.cos(kAng) * kbDist, t.radius, WORLD_W - t.radius);
+              t.y = clamp(t.y + Math.sin(kAng) * kbDist, t.radius, WORLD_H - t.radius);
+              spawnFloatingText(t.x, t.y - 36, 'CHEDDAR SHOCKWAVE!', hyper ? '#e056fd' : '#ffb830');
+          }
+      }
+      
+      explosions.push({
+          x: owner.x,
+          y: owner.y,
+          radius: shockRadius,
+          life: 0,
+          maxLife: 0.35,
+          color: hyper ? 'rgba(224, 86, 253, 0.85)' : 'rgba(255, 184, 48, 0.85)'
+      });
+      spawnFloatingText(owner.x, owner.y - 42, hyper ? '👑 ROYAL CHEST GUARD (85% DR)!' : '🛡️ CHEST GUARD (50% DR)!', hyper ? '#e056fd' : '#ffb830');
+      return true;
+  }
+
+  function executeBurgerDash(entity, targetX, targetY) {
+      if (!entity) return false;
+      const now = performance.now();
+      const ang = Math.atan2(targetY - entity.y, targetX - entity.x);
+      const dashDist = 180; // 3 tiles (1 tile = 60px)
+      const startX = entity.x;
+      const startY = entity.y;
+      const endX = clamp(startX + Math.cos(ang) * dashDist, entity.radius, WORLD_W - entity.radius);
+      const endY = clamp(startY + Math.sin(ang) * dashDist, entity.radius, WORLD_H - entity.radius);
+      
+      entity.x = endX;
+      entity.y = endY;
+      
+      const level = entity.id === player.id ? getSelectedBrawlerLevel() : (entity.level || 11);
+      const dmg = getScaledStats('sir_cheeseburger', level).dmg;
+      
+      const candidates = entity.id === player.id ? aliveBots : [player, ...aliveBots];
+      for (const t of candidates) {
+          if (!t || t.hp <= 0 || t.id === entity.id || t.isFlying) continue;
+          if (areAlliedEntities(entity, t)) continue;
+          const l2 = (endX - startX) * (endX - startX) + (endY - startY) * (endY - startY);
+          let dist = 0;
+          if (l2 === 0) {
+              dist = Math.hypot(t.x - startX, t.y - startY);
+          } else {
+              let pr = ((t.x - startX) * (endX - startX) + (t.y - startY) * (endY - startY)) / l2;
+              pr = Math.max(0, Math.min(1, pr));
+              dist = Math.hypot(t.x - (startX + pr * (endX - startX)), t.y - (startY + pr * (endY - startY)));
+          }
+          if (dist <= 36 + (t.radius || 16)) {
+              checkHit(t, { ownerBrawler: 'sir_cheeseburger', damage: dmg, pierce: true, ownerId: entity.id, hitIds: {} }, -1);
+              spawnFloatingText(t.x, t.y - 34, 'BURGER DASH SLICE!', '#ffb830');
+          }
+      }
+      
+      explosions.push({
+          x: endX,
+          y: endY,
+          radius: 50,
+          life: 0,
+          maxLife: 0.22,
+          color: 'rgba(255, 184, 48, 0.8)'
+      });
+      spawnFloatingText(entity.x, entity.y - 36, 'BURGER DASH!', '#ffb830');
+      return true;
+  }
+
+  function executeCheddarSlam(entity) {
+      if (!entity) return false;
+      const now = performance.now();
+      const level = entity.id === player.id ? getSelectedBrawlerLevel() : (entity.level || 11);
+      const scale = getLevelDamageScale(level);
+      const dmg = Math.round(1000 * scale);
+      const slamRadius = 130;
+      
+      const candidates = entity.id === player.id ? aliveBots : [player, ...aliveBots];
+      for (const t of candidates) {
+          if (!t || t.hp <= 0 || t.id === entity.id || t.isFlying) continue;
+          if (areAlliedEntities(entity, t)) continue;
+          const d = Math.hypot(t.x - entity.x, t.y - entity.y);
+          if (d <= slamRadius + (t.radius || 16)) {
+              checkHit(t, { ownerBrawler: 'sir_cheeseburger', damage: dmg, pierce: true, ownerId: entity.id, hitIds: {} }, -1);
+              applyStatusEffect(t, 'slow', 1500);
+              const kAng = Math.atan2(t.y - entity.y, t.x - entity.x);
+              const kbDist = 90;
+              t.x = clamp(t.x + Math.cos(kAng) * kbDist, t.radius, WORLD_W - t.radius);
+              t.y = clamp(t.y + Math.sin(kAng) * kbDist, t.radius, WORLD_H - t.radius);
+              spawnFloatingText(t.x, t.y - 35, 'CHEDDAR SLAMMED & SLOWED!', '#e67e22');
+          }
+      }
+      
+      explosions.push({
+          x: entity.x,
+          y: entity.y,
+          radius: slamRadius,
+          life: 0,
+          maxLife: 0.32,
+          color: 'rgba(255, 184, 48, 0.85)'
+      });
+      spawnFloatingText(entity.x, entity.y - 38, 'CHEDDAR SLAM!', '#e67e22');
+      return true;
+  }
+
+  const ANTI_ROYAL_MORTAR_ROUND_CAP = 8;
+  const ANTI_ROYAL_BLOCK_COOLDOWN_MS = 4500;
+  const ANTI_ROYAL_MORTAR_FIRE_MS = 1300;
+  const ANTI_ROYAL_OPENING_BARRAGE_FIRE_MS = 220;
+  const ANTI_ROYAL_MORTAR_RANGE = 760;
+
+  function ensureAntiRoyalState(entity) {
+      if (!entity) return;
+      entity.antiRoyalMortarRounds = clamp(Number(entity.antiRoyalMortarRounds)||0,0,ANTI_ROYAL_MORTAR_ROUND_CAP);
+      entity.antiRoyalGoldHits = Math.max(0,Math.floor(Number(entity.antiRoyalGoldHits)||0));
+      if (!Number.isFinite(entity.antiRoyalBlockReadyAt)) entity.antiRoyalBlockReadyAt = 0;
+      if (!Number.isFinite(entity.antiRoyalCounterfeitUntil)) entity.antiRoyalCounterfeitUntil = 0;
+  }
+
+  function getAntiRoyalMortar(owner) {
+      return owner ? healingPods.find(p=>p.isAntiRoyalMortar&&p.ownerId===owner.id&&p.hp>0) || null : null;
+  }
+
+  function addAntiRoyalMortarRounds(owner, amount, show=true) {
+      if (!owner) return 0;
+      ensureAntiRoyalState(owner);
+      const before=owner.antiRoyalMortarRounds;
+      owner.antiRoyalMortarRounds=clamp(before+Math.max(0,Math.floor(amount||0)),0,ANTI_ROYAL_MORTAR_ROUND_CAP);
+      const gained=owner.antiRoyalMortarRounds-before;
+      if(show&&gained>0)spawnFloatingText(owner.x,owner.y-38,`MORTAR +${gained} · ${owner.antiRoyalMortarRounds}/${ANTI_ROYAL_MORTAR_ROUND_CAP}`,'#ffd65a');
+      return gained;
+  }
+
+  function registerAntiRoyalGoldHit(owner) {
+      if (!owner) return;
+      ensureAntiRoyalState(owner);
+      owner.antiRoyalGoldHits++;
+      const compound=getEntityStarChoice(owner)==='long'&&owner.antiRoyalGoldHits%3===0;
+      addAntiRoyalMortarRounds(owner,compound?2:1,true);
+      if(compound)spawnFloatingText(owner.x,owner.y-54,'COMPOUND INTEREST!','#fff0a0');
+  }
+
+  function castAntiRoyalSuper(owner, hyper, targetX, targetY) {
+      if (!owner) return false;
+      ensureAntiRoyalState(owner);
+      const rounds=Math.floor(owner.antiRoyalMortarRounds||0);
+      for(let i=healingPods.length-1;i>=0;i--)if(healingPods[i].isAntiRoyalMortar&&healingPods[i].ownerId===owner.id)healingPods.splice(i,1);
+      const dx=targetX-owner.x,dy=targetY-owner.y,d=Math.hypot(dx,dy)||1,range=Math.min(430,Math.max(75,d));
+      const spot=findNearestOpenSpot(owner.x+dx/d*range,owner.y+dy/d*range,30,360),now=performance.now();
+      const mortar={isAntiRoyalMortar:true,x:spot.x,y:spot.y,hp:5000,maxHp:5000,radius:30,healRadius:0,healAmount:0,decayPerSec:0,
+          ownerId:owner.id,ownerTeam:getEntityTeam(owner),team:getEntityTeam(owner),createdAt:now,antiRoyalRoundsLeft:rounds,antiRoyalHyper:!!hyper,
+          antiRoyalBarrageTotal:rounds,antiRoyalBarrageIndex:0,antiRoyalNextShotAt:now+500,antiRoyalOpeningBarrage:rounds>0,
+          antiRoyalShieldReadyAt:now,antiRoyalShieldActive:getEntityStarChoice(owner)==='slow'};
+      healingPods.push(mortar);owner.antiRoyalMortarRounds=0;
+      explosions.push({x:spot.x,y:spot.y,radius:78,life:0,maxLife:.38,color:hyper?'rgba(202,83,255,.72)':'rgba(255,195,52,.72)',legendary:true,fxKind:'antiRoyalMortarDeploy'});
+      spawnFloatingText(spot.x,spot.y-52,hyper?`DOUBLE BROADSIDE · ${rounds}`:`MORTAR LOADED · ${rounds}`,hyper?'#e495ff':'#ffd65a');
+      return true;
+  }
+
+  function launchAntiRoyalMortarShell(mortar, target, offset, now) {
+      const owner=getEntityById(mortar.ownerId);if(!owner)return;
+      const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11),scale=getLevelDamageScale(level);
+      const angle=Math.atan2(target.y-mortar.y,target.x-mortar.x),side=offset||0;
+      const tx=clamp(target.x+Math.cos(angle+Math.PI/2)*side,35,WORLD_W-35),ty=clamp(target.y+Math.sin(angle+Math.PI/2)*side,35,WORLD_H-35);
+      antiRoyalMortarShells.push({ownerId:owner.id,x:mortar.x,y:mortar.y,startX:mortar.x,startY:mortar.y,targetX:tx,targetY:ty,
+          launchedAt:now,impactAt:now+720,damage:Math.round(1100*scale),zoneDamage:Math.round(180*scale),hyper:!!mortar.antiRoyalHyper});
+  }
+
+  function updateAntiRoyalSystems(now,dt) {
+      for(const entity of [player,...bots])if(entity&&getEntityBrawlerId(entity)==='anti_royal')ensureAntiRoyalState(entity);
+      for(const mortar of healingPods){
+          if(!mortar.isAntiRoyalMortar||mortar.hp<=0)continue;
+          if(mortar.antiRoyalShieldActive&&now>=mortar.antiRoyalShieldReadyAt)mortar.antiRoyalShieldReady=true;
+          if(now<mortar.antiRoyalNextShotAt)continue;
+          const owner=getEntityById(mortar.ownerId);if(!owner){mortar.hp=0;continue;}
+          let target=null,best=ANTI_ROYAL_MORTAR_RANGE;
+          for(const candidate of [player,...bots]){
+              if(!candidate||candidate.hp<=0||candidate.id===owner.id||candidate.isDummy||areAlliedEntities(owner,candidate))continue;
+              const distance=Math.hypot(candidate.x-mortar.x,candidate.y-mortar.y);if(distance<best){best=distance;target=candidate;}
+          }
+          if(!target){mortar.antiRoyalNextShotAt=now+250;continue;}
+          const barrageShot=mortar.antiRoyalRoundsLeft>0;
+          const barrageOffsets=[-90,90,-55,55,-120,120,-25,25];
+          const barrageOffset=barrageShot?barrageOffsets[(mortar.antiRoyalBarrageIndex||0)%barrageOffsets.length]:0;
+          if(barrageShot)mortar.antiRoyalBarrageIndex=(mortar.antiRoyalBarrageIndex||0)+1;
+          if(barrageShot)mortar.antiRoyalRoundsLeft--;
+          mortar.antiRoyalOpeningBarrage=mortar.antiRoyalRoundsLeft>0;
+          mortar.antiRoyalNextShotAt=now+(mortar.antiRoyalOpeningBarrage?ANTI_ROYAL_OPENING_BARRAGE_FIRE_MS:ANTI_ROYAL_MORTAR_FIRE_MS);
+          launchAntiRoyalMortarShell(mortar,target,barrageOffset+(mortar.antiRoyalHyper?-42:0),now);
+          if(mortar.antiRoyalHyper)launchAntiRoyalMortarShell(mortar,target,barrageOffset+42,now+90);
+      }
+      for(let i=antiRoyalMortarShells.length-1;i>=0;i--){
+          const shell=antiRoyalMortarShells[i],p=clamp((now-shell.launchedAt)/(shell.impactAt-shell.launchedAt),0,1);
+          shell.x=shell.startX+(shell.targetX-shell.startX)*p;shell.y=shell.startY+(shell.targetY-shell.startY)*p-Math.sin(p*Math.PI)*150;
+          if(now<shell.impactAt)continue;
+          AOEDamage(shell.targetX,shell.targetY,74,shell.damage,shell.ownerId,true);
+          antiRoyalMortarZones.push({ownerId:shell.ownerId,x:shell.targetX,y:shell.targetY,radius:70,until:now+1200,nextTickAt:now+350,damage:shell.zoneDamage,hyper:shell.hyper});
+          explosions.push({x:shell.targetX,y:shell.targetY,radius:92,life:0,maxLife:.3,color:shell.hyper?'rgba(208,79,255,.7)':'rgba(255,179,32,.7)',legendary:true,fxKind:'antiRoyalMortarImpact'});
+          antiRoyalMortarShells.splice(i,1);
+      }
+      for(let i=antiRoyalMortarZones.length-1;i>=0;i--){
+          const zone=antiRoyalMortarZones[i];if(now>=zone.until){antiRoyalMortarZones.splice(i,1);continue;}
+          if(now<zone.nextTickAt)continue;zone.nextTickAt=now+350;
+          AOEDamage(zone.x,zone.y,zone.radius,zone.damage,zone.ownerId,true);
+      }
+  }
+
+  function isAntiRoyalSingleProjectile(projectile) {
+      if(!projectile||projectile.super||projectile.pierce||projectile.isKingPrincessArrow||projectile.isAntiRoyalMortarShell)return false;
+      if(!Number.isFinite(projectile.vx)||!Number.isFinite(projectile.vy))return false;
+      const siblings=bullets.filter(other=>other!==projectile&&other.ownerId===projectile.ownerId&&other.ownerBrawler===projectile.ownerBrawler&&Math.abs((other.life||0)-(projectile.life||0))<.065);
+      return siblings.length===0;
+  }
+
+  function tryAntiRoyalBlock(target,projectile,now=performance.now()) {
+      if(!target||getEntityBrawlerId(target)!=='anti_royal'||!isAntiRoyalSingleProjectile(projectile))return false;
+      ensureAntiRoyalState(target);if(now<(target.antiRoyalBlockReadyAt||0))return false;
+      const facing=Number.isFinite(target.visualAimAngle)?target.visualAimAngle:0,incoming=Math.atan2(-(projectile.vy||0),-(projectile.vx||0));
+      let delta=Math.abs(facing-incoming)%(Math.PI*2);if(delta>Math.PI)delta=Math.PI*2-delta;if(delta>Math.PI*55/180)return false;
+      target.antiRoyalBlockReadyAt=now+ANTI_ROYAL_BLOCK_COOLDOWN_MS;
+      const hyper=isEntityHyperchargedNow(target,now);
+      if(hyper)grantShield(target,Math.round((projectile.damage||0)*2));
+      explosions.push({x:target.x+Math.cos(facing)*24,y:target.y+Math.sin(facing)*24,radius:48,life:0,maxLife:.24,color:hyper?'rgba(220,89,255,.82)':'rgba(255,211,74,.8)',fxKind:'antiRoyalBlock'});
+      spawnFloatingText(target.x,target.y-42,hyper?'ABSORBED ×2 SHIELD':'ROYAL BLOCK','#ffe77d');
+      const projectileIndex=bullets.indexOf(projectile);if(projectileIndex>=0)bullets.splice(projectileIndex,1);
+      return true;
+  }
 
   function getDuckStar(owner) {
       return owner?.id === player.id ? selectedStar : (owner?.selectedStar || 'none');
@@ -18891,6 +20026,22 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     target.iceCreamFreeze=Math.min(100,(target.iceCreamFreeze||0)+Math.max(0,amount));
     target.iceCreamFreezeLastHitAt=now;target.iceCreamFreezeDecayDelay=getIceCreamStar(owner)==='long'?3500:2000;target.iceCreamFreezeOwnerId=owner.id;
     spawnFloatingText(target.x,target.y-42,`${Math.round(target.iceCreamFreeze)}% FREEZE`,'#8ee9ff');
+    if (isRankedMatch && activeRankedModifier === 'crowd_uncontrol' && owner && owner !== target && !owner._ccReflecting) {
+        owner._ccReflecting = true;
+        try {
+            owner.iceCreamFreeze = Math.min(100, (owner.iceCreamFreeze || 0) + Math.max(0, amount));
+            owner.iceCreamFreezeLastHitAt = now;
+            spawnFloatingText(owner.x, owner.y - 42, `↩ ${Math.round(owner.iceCreamFreeze)}% FREEZE`, '#ff88ff');
+            if (owner.iceCreamFreeze >= 100) {
+                owner.iceCreamFreeze = 0;
+                owner.stunUntil = Math.max(owner.stunUntil || 0, now + 1000);
+                owner.iceCreamFreezeImmuneUntil = now + 2500;
+                spawnFloatingText(owner.x, owner.y - 50, '↩ FROZEN!', '#ff88ff');
+            }
+        } finally {
+            owner._ccReflecting = false;
+        }
+    }
     if(target.iceCreamFreeze<100)return false;
     target.iceCreamFreeze=0;target.stunUntil=Math.max(target.stunUntil||0,now+1000);target.iceCreamFreezeImmuneUntil=now+2500;
     explosions.push({x:target.x,y:target.y,radius:72,life:0,maxLife:.36,color:'rgba(142,233,255,.82)',legendary:true,fxKind:'iceCreamFreeze'});
@@ -19076,13 +20227,99 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     fromEntity.visualAimAngle = ang;
     fromEntity.visualAttackAt = now;
 
-    // Recovery kits: these brawlers were restored to the roster from backup,
-    // so route them through their own attacks instead of the generic projectile.
+    if (brawler === 'sir_cheeseburger') {
+        ensureSirCheeseburgerState(fromEntity);
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const stats = getScaledStats('sir_cheeseburger', level);
+        const hyper = isEntityHyperchargedNow(fromEntity, now);
+        const comboBonus = fromEntity.sirCheeseDmgBonus || 0;
+        const totalDmg = Math.round(stats.dmg * (1 + comboBonus));
+        const sliceRange = hyper ? 150 : 90;
+        
+        bullets.push({
+            ownerBrawler: 'sir_cheeseburger',
+            isSirCheeseburgerSlice: true,
+            x: fromEntity.x,
+            y: fromEntity.y,
+            aimAngle: ang,
+            range: sliceRange,
+            life: 0,
+            maxLife: 0.18,
+            damage: totalDmg,
+            pierce: true,
+            pierceWalls: false,
+            ownerId: fromEntity.id,
+            hitIds: {},
+            hyperVisual: hyper,
+            sirCheeseBonus: comboBonus
+        });
+        
+        if (hyper) {
+            bullets.push({
+                ownerBrawler: 'sir_cheeseburger',
+                isSirCheeseShockwave: true,
+                x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 12),
+                y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 12),
+                vx: Math.cos(ang) * 820,
+                vy: Math.sin(ang) * 820,
+                life: 0,
+                maxLife: 150 / 820,
+                damage: Math.round(totalDmg * 0.75),
+                pierce: true,
+                pierceWalls: true,
+                ownerId: fromEntity.id,
+                hitIds: {},
+                hitboxMod: 2.2,
+                hyperVisual: true
+            });
+        }
+        
+        explosions.push({
+            x: fromEntity.x + Math.cos(ang) * 35,
+            y: fromEntity.y + Math.sin(ang) * 35,
+            radius: 36,
+            life: 0,
+            maxLife: 0.15,
+            color: hyper ? 'rgba(255, 184, 48, 0.9)' : 'rgba(255, 209, 102, 0.75)'
+        });
+        return;
+    }
     if (brawler === 'awakenator') {
         const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
         const damage = Math.round(950 * getLevelDamageScale(level));
         const hyper = isEntityHyperchargedNow(fromEntity, now);
         bullets.push({ ownerBrawler:'awakenator', isAwakenatorMain:true, awakenatorHyper:hyper, x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7), y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7), vx:Math.cos(ang)*760, vy:Math.sin(ang)*760, life:0, maxLife:1.05, damage, pierce:false, ownerId:fromEntity.id, hitIds:{}, hitboxMod:1.65, hyperVisual:hyper });
+        return;
+    }
+    if (brawler === 'king') {
+        ensureKingState(fromEntity);
+        const level=fromEntity.id===player.id?getSelectedBrawlerLevel():(fromEntity.level||11);
+        const stats=getScaledStats('king',level);
+        const hyper=isEntityHyperchargedNow(fromEntity,now);
+        const siege=!!fromEntity.kingSiegeRoundArmed;
+        const piercing=getEntityStarChoice(fromEntity)==='long'&&now>=(fromEntity.kingPiercingReadyAt||0);
+        if(piercing)fromEntity.kingPiercingReadyAt=now+5000;
+        if(siege){
+            fromEntity.kingSiegeRoundArmed=false;
+            if(!isBot){gadgetArmed=false;gadgetCooldownUntil=now+getGadgetCooldownMsForBrawler('king','g2');setPlayerGadgetCooldownUntil(gadgetCooldownUntil,'g2');updateGadgetButton();}
+        }
+        bullets.push({ownerBrawler:'king',ownerId:fromEntity.id,isKingCannon:true,kingSiegeRound:siege,
+            x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+10),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+10),
+            vx:Math.cos(ang)*740,vy:Math.sin(ang)*740,life:0,maxLife:720/740,damage:stats.dmg,
+            pierce:piercing,pierceWalls:siege,breakWallsInstantly:siege,hitIds:{},hitboxMod:1.8,hyperVisual:hyper});
+        fromEntity.kingRecoilAngle=ang;
+        fromEntity.kingRecoilRemaining=48;
+        explosions.push({x:fromEntity.x-Math.cos(ang)*18,y:fromEntity.y-Math.sin(ang)*18,radius:30,life:0,maxLife:.18,color:siege?'rgba(255,107,64,.72)':'rgba(246,200,74,.62)',fxKind:'kingCannonSmoke'});
+        return;
+    }
+    if (brawler === 'anti_royal') {
+        ensureAntiRoyalState(fromEntity);
+        const level=fromEntity.id===player.id?getSelectedBrawlerLevel():(fromEntity.level||11);
+        const stats=getScaledStats('anti_royal',level),speed=650,range=680;
+        bullets.push({ownerBrawler:'anti_royal',ownerId:fromEntity.id,isAntiRoyalGoldPouch:true,
+            x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+9),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+9),
+            vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:range/speed,damage:stats.dmg,
+            pierce:false,hitIds:{},hitboxMod:1.35,hyperVisual:isEntityHyperchargedNow(fromEntity,now)});
         return;
     }
     if (brawler === 'cursed') {
@@ -23616,6 +24853,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     addEventQuestProgress('perform_supers');
     progressSeasonPassQuest('perform_supers');
     const now = performance.now();
+    if (isArenaForgeMode && player.arenaForgePhaseStride) {
+        player.invisibleUntil = Math.max(player.invisibleUntil || 0, now + 2000);
+        player.arenaForgePhaseSpeedUntil = now + 2000;
+        spawnFloatingText(player.x, player.y - 42, 'PHASE DRIVE!', '#6ee7ff');
+    }
     player.visualSuperAt = now;
     const wm = getMouseWorld();
     const dx = wm.x - player.x;
@@ -23629,6 +24871,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (combatBrawler === 'upgradart') { castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'awakenator') { castAwakenatorSuper(player,!!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'king') { castKingSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'anti_royal') { if(!castAntiRoyalSuper(player,!!isHypercharged,wm.x,wm.y))superCharge=100; updateSuperButton(); return; }
+    if (combatBrawler === 'sir_cheeseburger') { castSirCheeseburgerSuper(player, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'cursed') { castCursedStorm(player,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'darkener') { castDarkagon(player,wm.x,wm.y,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'ghoul') { castGhoulSuper(player,!!isHypercharged); updateSuperButton(); return; }
@@ -24731,6 +25976,21 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       const closeTarget=!!target&&Math.hypot(target.x-bot.x,target.y-bot.y)<=240;
       if(closeTarget&&ready.includes('g2'))g='g2';else if(ready.includes('g1'))g='g1';
     }
+    if (bot.brawler === 'king') {
+      if(getKingPrincesses(bot).length&&ready.includes('g1'))g='g1';else if(ready.includes('g2'))g='g2';
+    }
+    if (bot.brawler === 'anti_royal') {
+      ensureAntiRoyalState(bot);
+      if(now<(bot.antiRoyalBlockReadyAt||0)&&ready.includes('g1'))g='g1';
+      else if((bot.antiRoyalMortarRounds||0)<=5&&bot.hp>1200&&ready.includes('g2'))g='g2';
+    }
+    if (bot.brawler === 'sir_cheeseburger') {
+      const dist = target ? Math.hypot(target.x - bot.x, target.y - bot.y) : 999;
+      if (dist <= 130 && ready.includes('g2')) g = 'g2';
+      else if (dist <= 260 && ready.includes('g1')) g = 'g1';
+      else if (ready.includes('g1')) g = 'g1';
+      else if (ready.includes('g2')) g = 'g2';
+    }
     if (bot.brawler === 'jacktrade') {
       if ((bot.superCharge||0)>=100 && ready.includes('g1')) g='g1';
       else if (getJackTradeStage(bot)===4 && ready.includes('g2')) g='g2';
@@ -24757,6 +26017,20 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       bot.awakenatorLucidEchoArmed=true;spawnFloatingText(bot.x,bot.y-34,'LUCID ECHO','#b8a5ff');
     } else if (bot.brawler === 'awakenator' && g === 'g2') {
       const slept=getAwakenatorSuperTargets(bot)[0];if(slept){slept.awakenatorSleepUntil=Math.max(slept.awakenatorSleepUntil||0,now+1000);spawnFloatingText(slept.x,slept.y-34,'MEMORY LEAK','#b8a5ff');}
+    } else if (bot.brawler === 'king' && g === 'g1') {
+      if(!enrageKingPrincesses(bot))setEntityGadgetCooldownUntil(bot,now,g);
+    } else if (bot.brawler === 'king' && g === 'g2') {
+      bot.kingSiegeRoundArmed=true;bot.gadgetArmed=true;spawnFloatingText(bot.x,bot.y-34,'SIEGE ORDER','#ffcf52');
+    } else if (bot.brawler === 'sir_cheeseburger' && g === 'g1') {
+      const tx = target ? target.x : (bot.x + Math.cos(ang) * 180);
+      const ty = target ? target.y : (bot.y + Math.sin(ang) * 180);
+      executeBurgerDash(bot, tx, ty);
+    } else if (bot.brawler === 'sir_cheeseburger' && g === 'g2') {
+      executeCheddarSlam(bot);
+    } else if (bot.brawler === 'anti_royal' && g === 'g1') {
+      ensureAntiRoyalState(bot);bot.antiRoyalBlockReadyAt=0;bot.antiRoyalCounterfeitUntil=now+3000;spawnFloatingText(bot.x,bot.y-34,'COUNTERFEIT','#ffe071');
+    } else if (bot.brawler === 'anti_royal' && g === 'g2') {
+      ensureAntiRoyalState(bot);if(bot.hp>1200){bot.hp-=1200;addAntiRoyalMortarRounds(bot,3,true);}else setEntityGadgetCooldownUntil(bot,now,g);
     } else if (bot.brawler === 'cursed' && g === 'g1') {
       bot.cursedMarkedFateArmed=true;spawnFloatingText(bot.x,bot.y-34,'MARKED FATE','#e4a4ff');
     } else if (bot.brawler === 'cursed' && g === 'g2') {
@@ -25178,7 +26452,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     // If gadget was armed for a "next shot" type, but the brawler doesn't have one, disarm it.
     // This prevents issues if a brawler is switched mid-game or if logic is missing.
-    if (bot.gadgetArmed && !['orbo', 'homer', 'warrior', 'outlit', 'decayer', 'cheseypuff', 'unopcoloco', 'echo', 'dashaholic', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'tempo_maker', 'copyphase', 'trapper', 'classy', 'heater_miser', 'steamer', 'amplifier', 'skeleflying', 'crystila', 'evil_doctor', 'splitter', 'hoop','swimmer','boomer','daggershard','adlof','cluster','witch','ice_cream','blade_vane','duck','awakenator'].includes(bot.brawler)) {
+    if (bot.gadgetArmed && !['orbo', 'homer', 'warrior', 'outlit', 'decayer', 'cheseypuff', 'unopcoloco', 'echo', 'dashaholic', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'tempo_maker', 'copyphase', 'trapper', 'classy', 'heater_miser', 'steamer', 'amplifier', 'skeleflying', 'crystila', 'evil_doctor', 'splitter', 'hoop','swimmer','boomer','daggershard','adlof','cluster','witch','ice_cream','blade_vane','duck','awakenator','king'].includes(bot.brawler)) {
         bot.gadgetArmed = false;
     }
   }
@@ -25229,6 +26503,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (botCombatBrawler === 'upgradart') { castUpgradartSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'awakenator') { castAwakenatorSuper(bot,isHyper); return; }
+    if (botCombatBrawler === 'king') { castKingSuper(bot,isHyper,targetX,targetY); return; }
+    if (botCombatBrawler === 'anti_royal') { if(!castAntiRoyalSuper(bot,isHyper,targetX,targetY))bot.superCharge=100; return; }
+    if (botCombatBrawler === 'sir_cheeseburger') { castSirCheeseburgerSuper(bot, isHyper); return; }
     const dx = targetX - bot.x; const dy = targetY - bot.y; const ang = Math.atan2(dy, dx);
 
         if (botCombatBrawler === 'cursed') { castCursedStorm(bot,isHyper); return; }
@@ -25866,6 +27143,26 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     const gadgetWorld=getMouseWorld();
     if(activateRecoveryGadget(player,curBrawler,curGadget,gadgetWorld.x,gadgetWorld.y)){
       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();return;
+    }
+
+    if (curBrawler === 'king' && curGadget === 'g1') {
+      if(!enrageKingPrincesses(player)){spawnFloatingText(player.x,player.y-34,'DEPLOY A PRINCESS FIRST','#ffd27a');updateGadgetButton();return;}
+      gadgetCooldownUntil=now+getGadgetCooldownMsForBrawler(curBrawler,curGadget);
+      setPlayerGadgetCooldownUntil(gadgetCooldownUntil,curGadget);updateGadgetButton();return;
+    } else if (curBrawler === 'king' && curGadget === 'g2') {
+      if(player.kingSiegeRoundArmed)return;
+      player.kingSiegeRoundArmed=true;gadgetArmed=true;
+      spawnFloatingText(player.x,player.y-36,'SIEGE ORDER READY','#ffcf52');updateGadgetButton();return;
+    }
+    if (curBrawler === 'anti_royal' && curGadget === 'g1') {
+      ensureAntiRoyalState(player);player.antiRoyalBlockReadyAt=0;player.antiRoyalCounterfeitUntil=now+3000;
+      gadgetCooldownUntil=now+getGadgetCooldownMsForBrawler(curBrawler,curGadget);setPlayerGadgetCooldownUntil(gadgetCooldownUntil,curGadget);
+      spawnFloatingText(player.x,player.y-36,'COUNTERFEIT BLOCKER','#ffe071');updateGadgetButton();return;
+    } else if (curBrawler === 'anti_royal' && curGadget === 'g2') {
+      if(player.hp<=1200){spawnFloatingText(player.x,player.y-34,'NOT ENOUGH HP','#ff846f');return;}
+      player.hp-=1200;addAntiRoyalMortarRounds(player,3,true);
+      gadgetCooldownUntil=now+getGadgetCooldownMsForBrawler(curBrawler,curGadget);setPlayerGadgetCooldownUntil(gadgetCooldownUntil,curGadget);
+      spawnFloatingText(player.x,player.y-36,'EMERGENCY FUNDING','#ffd65a');updateGadgetButton();return;
     }
     
     if (curBrawler === 'cinderion' && curGadget === 'g1') {
@@ -26542,6 +27839,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         spawnFloatingText(player.x, player.y - 36, '☠️ TOXIC CALTROPS!', '#a855f7');
         updateGadgetButton();
+    } else if (curBrawler === 'sir_cheeseburger' && curGadget === 'g1') {
+        const mw = getMouseWorld();
+        executeBurgerDash(player, mw.x, mw.y);
+        gadgetArmed = false;
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+    } else if (curBrawler === 'sir_cheeseburger' && curGadget === 'g2') {
+        executeCheddarSlam(player);
+        gadgetArmed = false;
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
     } else if (curBrawler === 'evil_doctor' && curGadget === 'g1') {
         clearPoisonState(player);
         player.fireUntil = 0;
@@ -26954,7 +28264,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const now = performance.now();
         let desc = '';
 
-        if (selectedBrawler === 'outlit') {
+        if (selectedBrawler === 'king') {
+            desc = (selectedGadget === 'g1') ? 'King G1: Royal Rage (active Princesses fire twice as fast for 3s).' : 'King G2: Siege Order (next Royal Cannon destroys walls).';
+        } else if (selectedBrawler === 'anti_royal') {
+            desc = (selectedGadget === 'g1') ? 'Anti-Royal G1: Counterfeit (restore Royal Blocker and remove its movement penalty for 3s).' : 'Anti-Royal G2: Emergency Funding (lose 1200 HP to bank 3 Mortar rounds).';
+        } else if (selectedBrawler === 'outlit') {
             desc = (selectedGadget === 'g1') ? 'Outlit G1: Piercing pellet boost for next shot.' : 'Outlit G2: Deploys healing pod (3000 HP) heals 600 HP/sec, decays 350 HP/sec.';
         } else if (selectedBrawler === 'echo') {
             desc = (selectedGadget === 'g1') ? 'Echo G1: Enlarges ring shot (lower damage).' : 'Echo G2: Temporary defensive buff.';
@@ -27176,6 +28490,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       ['brick_vault', '🔒', 'Vault Siege 3v3', 'Break the enemy core vault'],
       ['marked_mayhem', 'TR', 'Target Rush', 'Hunt marked targets for bonus points'],
       ['arena_forge', 'AF', 'Arena Forge', '3v3 lanes, minion waves, shared boons and match XP'],
+      ['arena_forge_overclocked', 'AFO', 'Arena Forge: Overclocked', '3v3 instant Hyper attacks, quad boss formation, 4x speed'],
       ['damage_filler', '💥', 'Damage Filler', 'Pure DPS race'],
       ['mirror', '🪞', 'Mirror 5v5', 'One brawler for all'],
       ['power_gods', '⚡', 'Power of the Gods', 'Solo LTM'],
@@ -27183,7 +28498,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       ['impossible', 'AI', 'The Impossible', '1v1 against an adaptive dodger']
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
-  const HOME_PERMANENT_MODE_IDS = ['corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'arena_forge', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
+  const HOME_PERMANENT_MODE_IDS = ['corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
   const WEEKLY_FEATURED_START = new Date(2026, 7, 9, 0, 0, 0).getTime();
@@ -27205,6 +28520,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   const HOME_SHOWDOWN_CHOICE_KEY = 'arenaForgeLastShowdownChoice';
   const HOME_EVENT_REWARDS = {
       arena_forge: { type:'coins', amount:40, label:'+40 Coins' },
+      arena_forge_overclocked: { type:'coins', amount:50, label:'+50 Coins' },
       marked_mayhem: { type:'souls', amount:14, label:'+14 Souls' },
       objective: { type:'coins', amount:30, label:'+30 Coins' },
       brick_vault: { type:'souls', amount:12, label:'+12 Souls' },
@@ -29084,321 +30400,941 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       syncHomeModeCards();
   }
 
-  function clearRankedSessionState() {
-      isRankedMatch = false;
-      rankedTeammatePicks = [];
-      rankedBans = { player: null, enemy: null };
-      rankedDraftSummary = '';
-  }
+    let rankedEnemyPicks = [];
 
-  function openRankedQueueUI() {
-      const rankedPoints = playerData?.ranked?.points || 0;
-      const tierInfo = getRankedTierInfo(rankedPoints);
-      const canBan = isRankedGoldOrHigher(rankedPoints);
-      const modePool = RANKED_TEAM_MODE_POOL.slice();
-      let draftMode = modePool[Math.floor(Math.random() * modePool.length)] || 'construction';
-      let playerBan = null;
-      let aiBan = null;
-      let teammatePicks = [];
-      let playerPick = isBrawlerUnlocked(selectedBrawler) ? selectedBrawler : 'outlit';
+    function clearRankedSessionState() {
+        isRankedMatch = false;
+        rankedTeammatePicks = [];
+        rankedEnemyPicks = [];
+        rankedBans = { player: [], enemy: [] };
+        rankedDraftSummary = '';
+        activeRankedModifier = 'classic';
+        activeColossusMaxHp = null;
+    }
 
-      const overlay = document.createElement('div');
-      overlay.style.position = 'fixed';
-      overlay.style.inset = '0';
-      overlay.style.background = 'rgba(4, 8, 16, 0.92)';
-      overlay.style.zIndex = '2200';
-      overlay.style.display = 'flex';
-      overlay.style.alignItems = 'center';
-      overlay.style.justifyContent = 'center';
+    function tryRankedSkinInTraining(skinId = 'ranked-rocketeer', brawlerId = 'rocketeer') {
+        selectedBrawler = brawlerId;
+        if (!playerData.selectedSkins) playerData.selectedSkins = {};
+        playerData.selectedSkins[brawlerId] = skinId;
+        if (brawlerSelect) brawlerSelect.value = brawlerId;
+        saveProgress();
+        document.querySelectorAll('div').forEach(el => {
+            if (el.style && (el.style.zIndex === '2200' || el.style.zIndex === '2400' || el.style.zIndex === '2500')) {
+                el.remove();
+            }
+        });
+        launchTrainingSandbox();
+    }
 
-      const panel = document.createElement('div');
-      panel.style.width = 'min(920px, calc(100vw - 36px))';
-      panel.style.maxHeight = 'min(760px, calc(100vh - 36px))';
-      panel.style.overflow = 'auto';
-      panel.style.background = 'linear-gradient(170deg, rgba(14,24,46,0.98), rgba(8,13,24,0.98))';
-      panel.style.border = '1px solid rgba(255, 211, 117, 0.35)';
-      panel.style.borderRadius = '16px';
-      panel.style.padding = '18px';
-      panel.style.color = '#e8f4ff';
-      panel.style.fontFamily = 'sans-serif';
+    function openRankedPassUI() {
+        ensureRankedSeasonState();
+        const progress = getRankedPassProgress();
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.background = 'rgba(3, 7, 18, 0.94)';
+        overlay.style.zIndex = '2400';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
 
-      const top = document.createElement('div');
-      top.style.display = 'flex';
-      top.style.justifyContent = 'space-between';
-      top.style.alignItems = 'center';
-      top.style.gap = '12px';
+        const panel = document.createElement('div');
+        panel.style.width = 'min(1000px, calc(100vw - 28px))';
+        panel.style.maxHeight = 'min(820px, calc(100vh - 28px))';
+        panel.style.overflow = 'auto';
+        panel.style.background = 'linear-gradient(175deg, rgba(16,26,50,0.98), rgba(7,11,22,0.98))';
+        panel.style.border = '2px solid rgba(0, 245, 212, 0.45)';
+        panel.style.boxShadow = '0 0 35px rgba(0,245,212,0.18)';
+        panel.style.borderRadius = '18px';
+        panel.style.padding = '20px';
+        panel.style.color = '#e8f4ff';
+        panel.style.fontFamily = 'sans-serif';
 
-      const title = document.createElement('h2');
-      title.textContent = 'RANKED QUEUE';
-      title.style.margin = '0';
-      title.style.color = '#ffd166';
-      top.appendChild(title);
+        const top = document.createElement('div');
+        top.style.display = 'flex';
+        top.style.justifyContent = 'space-between';
+        top.style.alignItems = 'center';
+        top.style.marginBottom = '14px';
 
-      const close = document.createElement('button');
-      close.textContent = 'Close';
-      close.style.border = 'none';
-      close.style.borderRadius = '9px';
-      close.style.padding = '8px 12px';
-      close.style.background = '#2d456c';
-      close.style.color = '#dceeff';
-      close.style.cursor = 'pointer';
-      close.onclick = () => overlay.remove();
-      top.appendChild(close);
-      panel.appendChild(top);
+        const titleBox = document.createElement('div');
+        const title = document.createElement('h2');
+        title.innerHTML = '🏆 SEASONAL RANKED PASS <span style="font-size:14px;color:#00f5d4;font-weight:700;">• 3-MONTH SEASON 1</span>';
+        title.style.margin = '0 0 4px 0';
+        title.style.color = '#ffd166';
+        const sub = document.createElement('div');
+        sub.style.fontSize = '13px';
+        sub.style.color = '#a8c8ef';
+        sub.textContent = `Progress: ${progress.xp} Total Ranked XP • Tier ${progress.unlockedTiers} / ${RANKED_PASS_TIERS} Unlocked (${progress.currentTierXp}/${progress.xpPerTier} XP to next)`;
+        titleBox.appendChild(title);
+        titleBox.appendChild(sub);
+        top.appendChild(titleBox);
 
-      const meta = document.createElement('div');
-      meta.style.margin = '10px 0 16px 0';
-      meta.style.fontSize = '14px';
-      const nextText = tierInfo.nextLabel
-          ? ` • Next: ${tierInfo.nextLabel} at ${tierInfo.nextThreshold} RP`
-          : ' • Max Division';
-      meta.textContent = `${tierInfo.label} • ${tierInfo.points} RP${nextText}`;
-      panel.appendChild(meta);
+        const close = document.createElement('button');
+        close.textContent = 'Close';
+        close.style.border = 'none';
+        close.style.borderRadius = '9px';
+        close.style.padding = '8px 14px';
+        close.style.background = '#2d456c';
+        close.style.color = '#dceeff';
+        close.style.cursor = 'pointer';
+        close.style.fontWeight = 'bold';
+        close.onclick = () => overlay.remove();
+        top.appendChild(close);
+        panel.appendChild(top);
 
-      const modeRow = document.createElement('div');
-      modeRow.style.display = 'flex';
-      modeRow.style.flexDirection = 'column';
-      modeRow.style.alignItems = 'flex-start';
-      modeRow.style.gap = '8px';
-      modeRow.style.flexWrap = 'wrap';
-      modeRow.style.marginBottom = '12px';
-      const modeLabel = document.createElement('div');
-      modeLabel.style.fontWeight = '800';
-      modeLabel.style.color = '#9ee6ff';
-      modeRow.appendChild(modeLabel);
-      const modeHint = document.createElement('div');
-      modeHint.textContent = 'Ranked mode is fully random. All picks play at Power 11.';
-      modeHint.style.fontSize = '12px';
-      modeHint.style.opacity = '0.9';
-      modeHint.style.color = '#a8c8ef';
-      modeRow.appendChild(modeHint);
-      panel.appendChild(modeRow);
+        // Featured Tier 50 Grand Finale Card
+        const grandBanner = document.createElement('div');
+        grandBanner.style.background = 'linear-gradient(135deg, rgba(20,40,75,0.9), rgba(12,20,38,0.95))';
+        grandBanner.style.border = '2px solid #00f5d4';
+        grandBanner.style.borderRadius = '14px';
+        grandBanner.style.padding = '14px 18px';
+        grandBanner.style.marginBottom = '18px';
+        grandBanner.style.display = 'flex';
+        grandBanner.style.justifyContent = 'space-between';
+        grandBanner.style.alignItems = 'center';
+        grandBanner.style.gap = '14px';
+        grandBanner.style.flexWrap = 'wrap';
 
-      const draftBlock = document.createElement('div');
-      draftBlock.style.background = 'rgba(11, 19, 34, 0.9)';
-      draftBlock.style.border = '1px solid rgba(110, 176, 255, 0.35)';
-      draftBlock.style.borderRadius = '12px';
-      draftBlock.style.padding = '12px';
+        const skinInfo = document.createElement('div');
+        skinInfo.innerHTML = '<div style="color:#00f5d4;font-weight:900;font-size:16px;">🚀 TIER 50 GRAND FINALE: RANKED ROCKETEER</div>' +
+            '<div style="font-size:13px;color:#cceeff;margin-top:4px;">Carbon & gold reinforced aerospace armor with glowing cyan thrusters, electric warheads, and hyper-laser airstrike visual effects.</div>';
+        grandBanner.appendChild(skinInfo);
 
-      const banRow = document.createElement('div');
-      banRow.style.display = canBan ? 'flex' : 'none';
-      banRow.style.alignItems = 'center';
-      banRow.style.gap = '8px';
-      banRow.style.flexWrap = 'wrap';
-      banRow.style.marginBottom = '10px';
-      const banLabel = document.createElement('div');
-      banLabel.textContent = 'Ban phase (Gold+):';
-      banLabel.style.fontWeight = '800';
-      banLabel.style.color = '#ffd9a0';
-      const banSelect = document.createElement('select');
-      banSelect.style.padding = '6px 8px';
-      banSelect.style.borderRadius = '8px';
-      banSelect.style.border = '1px solid #476998';
-      banSelect.style.background = '#15243c';
-      banSelect.style.color = '#dceeff';
-      const aiBanText = document.createElement('div');
-      aiBanText.style.color = '#ffb9b9';
-      aiBanText.style.fontWeight = '700';
-      banRow.appendChild(banLabel);
-      banRow.appendChild(banSelect);
-      banRow.appendChild(aiBanText);
-      draftBlock.appendChild(banRow);
+        const tryBtn = document.createElement('button');
+        tryBtn.innerHTML = '🎯 Try in Training';
+        tryBtn.style.border = 'none';
+        tryBtn.style.borderRadius = '10px';
+        tryBtn.style.padding = '10px 16px';
+        tryBtn.style.background = 'linear-gradient(135deg, #00f5d4, #0abde3)';
+        tryBtn.style.color = '#05131d';
+        tryBtn.style.fontWeight = '900';
+        tryBtn.style.fontSize = '14px';
+        tryBtn.style.cursor = 'pointer';
+        tryBtn.style.boxShadow = '0 0 14px rgba(0,245,212,0.4)';
+        tryBtn.onclick = () => {
+            overlay.remove();
+            tryRankedSkinInTraining('ranked-rocketeer', 'rocketeer');
+        };
+        grandBanner.appendChild(tryBtn);
+        panel.appendChild(grandBanner);
 
-      const teamRow = document.createElement('div');
-      teamRow.style.marginBottom = '10px';
-      teamRow.style.color = '#9ef6d6';
-      teamRow.style.fontWeight = '700';
-      draftBlock.appendChild(teamRow);
+        // Track Tiers List
+        const trackTitle = document.createElement('div');
+        trackTitle.textContent = '50-Tier Milestone Rewards Track';
+        trackTitle.style.fontWeight = '900';
+        trackTitle.style.color = '#ffd166';
+        trackTitle.style.marginBottom = '10px';
+        panel.appendChild(trackTitle);
 
-      const pickRow = document.createElement('div');
-      pickRow.style.display = 'flex';
-      pickRow.style.alignItems = 'flex-start';
-      pickRow.style.flexDirection = 'column';
-      pickRow.style.gap = '8px';
-      pickRow.style.flexWrap = 'wrap';
-      const pickLabel = document.createElement('div');
-      pickLabel.textContent = 'Your pick:';
-      pickLabel.style.fontWeight = '800';
-      const pickSearch = document.createElement('input');
-      pickSearch.type = 'search';
-      pickSearch.placeholder = 'Search brawler...';
-      pickSearch.style.width = 'min(360px, 100%)';
-      pickSearch.style.padding = '7px 9px';
-      pickSearch.style.borderRadius = '8px';
-      pickSearch.style.border = '1px solid #476998';
-      pickSearch.style.background = '#15243c';
-      pickSearch.style.color = '#dceeff';
-      const pickSelect = document.createElement('select');
-      pickSelect.size = 10;
-      pickSelect.style.width = 'min(460px, 100%)';
-      pickSelect.style.padding = '6px 8px';
-      pickSelect.style.borderRadius = '8px';
-      pickSelect.style.border = '1px solid #476998';
-      pickSelect.style.background = '#15243c';
-      pickSelect.style.color = '#dceeff';
-      pickRow.appendChild(pickLabel);
-      pickRow.appendChild(pickSearch);
-      pickRow.appendChild(pickSelect);
-      draftBlock.appendChild(pickRow);
-      panel.appendChild(draftBlock);
+        const trackGrid = document.createElement('div');
+        trackGrid.style.display = 'grid';
+        trackGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(180px, 1fr))';
+        trackGrid.style.gap = '8px';
+        trackGrid.style.maxHeight = '440px';
+        trackGrid.style.overflowY = 'auto';
+        trackGrid.style.paddingRight = '6px';
 
-      const ladderTitle = document.createElement('div');
-      ladderTitle.textContent = 'Rank Ladder';
-      ladderTitle.style.margin = '14px 0 8px 0';
-      ladderTitle.style.fontWeight = '900';
-      ladderTitle.style.color = '#cfeef7';
-      panel.appendChild(ladderTitle);
+        RANKED_PASS_REWARDS.forEach((item, idx) => {
+            const isUnlocked = idx < progress.unlockedTiers;
+            const isClaimed = progress.claimed.includes(idx);
+            const card = document.createElement('div');
+            card.style.background = isClaimed
+                ? 'rgba(18, 30, 48, 0.6)'
+                : (isUnlocked ? 'rgba(0, 245, 212, 0.12)' : 'rgba(10, 16, 28, 0.7)');
+            card.style.border = `1px solid ${isClaimed ? '#3b557a' : (isUnlocked ? '#00f5d4' : 'rgba(80,110,150,0.3)')}`;
+            card.style.borderRadius = '10px';
+            card.style.padding = '10px';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.justifyContent = 'space-between';
+            card.style.minHeight = '100px';
 
-      const ladder = document.createElement('div');
-      ladder.style.display = 'grid';
-      ladder.style.gridTemplateColumns = 'repeat(auto-fit, minmax(160px, 1fr))';
-      ladder.style.gap = '6px';
-      RANKED_DIVISIONS.forEach((div, idx) => {
-          const node = document.createElement('div');
-          const active = idx === tierInfo.index;
-          node.textContent = `${div.label} (${idx * RANKED_POINTS_PER_DIVISION}+ RP)`;
-          node.style.padding = '7px 8px';
-          node.style.borderRadius = '8px';
-          node.style.border = `1px solid ${active ? '#5df2c2' : 'rgba(120,155,210,0.35)'}`;
-          node.style.background = active ? 'rgba(93,242,194,0.14)' : 'rgba(15,24,42,0.7)';
-          node.style.color = div.color;
-          node.style.fontSize = '13px';
-          ladder.appendChild(node);
-      });
-      panel.appendChild(ladder);
+            const cardHeader = document.createElement('div');
+            cardHeader.style.display = 'flex';
+            cardHeader.style.justifyContent = 'space-between';
+            cardHeader.style.fontSize = '12px';
+            cardHeader.style.fontWeight = '800';
+            cardHeader.style.color = idx === 49 ? '#00f5d4' : '#ffd166';
+            cardHeader.innerHTML = `<span>Tier ${idx + 1}</span><span>${item.icon || '🎁'}</span>`;
+            card.appendChild(cardHeader);
 
-      const actions = document.createElement('div');
-      actions.style.display = 'flex';
-      actions.style.justifyContent = 'flex-end';
-      actions.style.gap = '8px';
-      actions.style.marginTop = '14px';
-      const queueBtn = document.createElement('button');
-      queueBtn.textContent = 'Queue Ranked Match';
-      queueBtn.style.border = 'none';
-      queueBtn.style.borderRadius = '10px';
-      queueBtn.style.padding = '10px 14px';
-      queueBtn.style.background = '#ffd166';
-      queueBtn.style.color = '#08101d';
-      queueBtn.style.fontWeight = '900';
-      queueBtn.style.cursor = 'pointer';
-      actions.appendChild(queueBtn);
-      panel.appendChild(actions);
+            const cardBody = document.createElement('div');
+            cardBody.style.margin = '6px 0';
+            cardBody.style.fontWeight = '700';
+            cardBody.style.fontSize = '13px';
+            cardBody.style.color = '#fff';
+            cardBody.textContent = item.label;
+            card.appendChild(cardBody);
 
-      const pickRandomUnique = (pool, count, avoid = []) => {
-          const out = [];
-          const blocked = new Set(avoid.filter(Boolean));
-          const candidates = pool.filter((id) => !blocked.has(id));
-          for (let i = candidates.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1));
-              const temp = candidates[i];
-              candidates[i] = candidates[j];
-              candidates[j] = temp;
-          }
-          for (const id of candidates) {
-              if (out.length >= count) break;
-              out.push(id);
-          }
-          return out;
-      };
+            const cardBtn = document.createElement('button');
+            cardBtn.style.border = 'none';
+            cardBtn.style.borderRadius = '7px';
+            cardBtn.style.padding = '5px 8px';
+            cardBtn.style.fontSize = '12px';
+            cardBtn.style.fontWeight = '800';
 
-      const fillSelect = (select, ids, current, withNone = false) => {
-          select.innerHTML = '';
-          if (withNone) {
-              const noneOpt = document.createElement('option');
-              noneOpt.value = '';
-              noneOpt.textContent = 'No ban';
-              select.appendChild(noneOpt);
-          }
-          ids.forEach((id) => {
-              const opt = document.createElement('option');
-              opt.value = id;
-              opt.textContent = brawlerData[id]?.name || id;
-              select.appendChild(opt);
-          });
-          select.value = ids.includes(current) ? current : (withNone ? '' : (ids[0] || ''));
-      };
+            if (isClaimed) {
+                cardBtn.textContent = '✓ Claimed';
+                cardBtn.style.background = '#283c5a';
+                cardBtn.style.color = '#8faed4';
+                cardBtn.disabled = true;
+            } else if (isUnlocked) {
+                cardBtn.textContent = 'CLAIM';
+                cardBtn.style.background = '#00f5d4';
+                cardBtn.style.color = '#05131d';
+                cardBtn.style.cursor = 'pointer';
+                cardBtn.onclick = () => {
+                    if (claimRankedPassTier(idx)) {
+                        overlay.remove();
+                        openRankedPassUI();
+                    }
+                };
+            } else {
+                cardBtn.textContent = `Locked (${(idx + 1) * RANKED_PASS_XP_PER_TIER} XP)`;
+                cardBtn.style.background = 'rgba(255,255,255,0.06)';
+                cardBtn.style.color = '#627c9e';
+                cardBtn.disabled = true;
+            }
+            card.appendChild(cardBtn);
+            trackGrid.appendChild(card);
+        });
 
-      const sortByName = (ids) => ids.slice().sort((a, b) => (brawlerData[a]?.name || a).localeCompare(brawlerData[b]?.name || b));
-      const randomFromPool = (ids) => ids.length ? ids[Math.floor(Math.random() * ids.length)] : null;
-      let currentPickPool = [];
-      let lastDraftKey = '';
+        panel.appendChild(trackGrid);
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+    }
 
-      const renderPickSelect = () => {
-          const query = (pickSearch.value || '').trim().toLowerCase();
-          const filtered = query
-              ? currentPickPool.filter((id) => (brawlerData[id]?.name || id).toLowerCase().includes(query))
-              : currentPickPool.slice();
-          const displayPool = filtered.length ? filtered : currentPickPool;
-          fillSelect(pickSelect, displayPool, playerPick, false);
-          if (!displayPool.includes(playerPick)) playerPick = displayPool[0] || currentPickPool[0] || playerPick;
-          pickSelect.value = playerPick;
-      };
+    function openRankedQueueUI() {
+        ensureRankedSeasonState();
+        const rankedPoints = playerData?.ranked?.points || 0;
+        const tierInfo = getRankedTierInfo(rankedPoints);
+        const modePool = RANKED_TEAM_MODE_POOL.slice();
+        let draftMode = modePool[Math.floor(Math.random() * modePool.length)] || 'construction';
 
-      const refreshDraft = ({ rerollTeammates = false, banChanged = false } = {}) => {
-          if (!modePool.includes(draftMode)) draftMode = modePool[Math.floor(Math.random() * modePool.length)] || 'construction';
-          modeLabel.textContent = `Mode: ${getShowdownModeLabel(draftMode)}`;
-          const unlocked = sortByName(getUnlockedBrawlerPool());
-          if (!unlocked.length) return;
-          if (!unlocked.includes(playerPick)) playerPick = unlocked[0];
+        const modifierKeys = Object.keys(RANKED_MODIFIERS);
+        let draftModifierKey = modifierKeys[Math.floor(Math.random() * modifierKeys.length)] || 'classic';
+        activeRankedModifier = draftModifierKey;
 
-          if (canBan) {
-              fillSelect(banSelect, unlocked, playerBan, true);
-              playerBan = banSelect.value || null;
-              const aiPool = unlocked.filter((id) => id !== playerBan);
-              if (banChanged || !aiPool.includes(aiBan)) aiBan = randomFromPool(aiPool);
-              aiBanText.textContent = aiBan ? `AI ban: ${(brawlerData[aiBan]?.name || aiBan)}` : 'AI ban: none';
-          } else {
-              playerBan = null;
-              aiBan = null;
-          }
+        // Interactive Turn-by-Turn Draft State
+        // Phases:
+        // 0: Player Ban 1
+        // 1: Enemy Ban 1 (AI)
+        // 2: Player Ban 2
+        // 3: Enemy Ban 2 (AI)
+        // 4: Player Pick
+        // 5: Enemy Picks 1 & 2 (AI)
+        // 6: Ally Picks 1 & 2 (AI)
+        // 7: Enemy Counter Pick 3 (AI)
+        // 8: Draft Complete
+        let draftPhase = 0;
+        let playerBan1 = null;
+        let playerBan2 = null;
+        let aiBan1 = null;
+        let aiBan2 = null;
+        let playerPick = null;
+        let teammatePicks = [null, null];
+        let enemyPicks = [null, null, null];
+        let activeSelection = null;
+        let draftSearchQuery = '';
+        let aiTurnTimer = null;
 
-          const banned = new Set([playerBan, aiBan].filter(Boolean));
-          const available = unlocked.filter((id) => !banned.has(id));
-          const draftKey = `${playerBan || ''}|${aiBan || ''}|${draftMode}`;
-          if (rerollTeammates || banChanged || !teammatePicks.length || lastDraftKey !== draftKey || teammatePicks.some((id) => !available.includes(id))) {
-              teammatePicks = pickRandomUnique(available, 2, [playerPick]);
-              lastDraftKey = draftKey;
-          }
-          currentPickPool = available.filter((id) => !teammatePicks.includes(id));
-          if (!currentPickPool.includes(playerPick)) playerPick = currentPickPool[0] || available[0] || 'outlit';
-          renderPickSelect();
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.background = 'rgba(3, 8, 18, 0.96)';
+        overlay.style.zIndex = '2200';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
 
-          const teamNames = teammatePicks.map((id, idx) => `Mate ${idx + 1}: ${(brawlerData[id]?.name || id)}`);
-          teamRow.textContent = teamNames.length ? `Teammate picks: ${teamNames.join('  •  ')}` : 'Teammate picks unavailable.';
-      };
+        const panel = document.createElement('div');
+        panel.style.width = 'min(1060px, calc(100vw - 24px))';
+        panel.style.maxHeight = 'min(860px, calc(100vh - 24px))';
+        panel.style.overflow = 'auto';
+        panel.style.background = 'linear-gradient(175deg, rgba(14,24,46,0.99), rgba(6,11,22,0.99))';
+        panel.style.border = '2px solid rgba(255, 211, 117, 0.45)';
+        panel.style.boxShadow = '0 0 40px rgba(0,0,0,0.85), 0 0 20px rgba(255, 211, 117, 0.15)';
+        panel.style.borderRadius = '16px';
+        panel.style.padding = '18px';
+        panel.style.color = '#e8f4ff';
+        panel.style.fontFamily = 'sans-serif';
 
-      banSelect.onchange = () => {
-          const previousBan = playerBan;
-          playerBan = banSelect.value || null;
-          refreshDraft({ rerollTeammates: previousBan !== playerBan, banChanged: previousBan !== playerBan });
-      };
-      pickSelect.onchange = () => {
-          playerPick = pickSelect.value || playerPick;
-      };
-      pickSearch.oninput = () => {
-          renderPickSelect();
-      };
+        const top = document.createElement('div');
+        top.style.display = 'flex';
+        top.style.justifyContent = 'space-between';
+        top.style.alignItems = 'center';
+        top.style.gap = '12px';
 
-      queueBtn.onclick = () => {
-          if (!playerPick) return;
-          selectedBrawler = playerPick;
-          normalizeSelectedBrawler();
-          saveProgress();
-          rankedTeammatePicks = teammatePicks.slice(0, 2);
-          rankedBans = { player: playerBan, enemy: aiBan };
-          rankedDraftSummary = `${getShowdownModeLabel(draftMode)} | You: ${(brawlerData[selectedBrawler]?.name || selectedBrawler)}`;
-          isRankedMatch = true;
-          showdownMode = draftMode;
-          if (brawlerSelect) brawlerSelect.value = selectedBrawler;
-          updateShowdownModeUI();
-          overlay.remove();
-          launchShowdownMatch();
-      };
+        const titleBox = document.createElement('div');
+        const title = document.createElement('h2');
+        title.textContent = 'COMPETITIVE RANKED CLASH';
+        title.style.margin = '0 0 4px 0';
+        title.style.color = '#ffd166';
+        title.style.fontSize = '20px';
+        const meta = document.createElement('div');
+        meta.style.fontSize = '13px';
+        const floor = getRankedDivisionFloor(rankedPoints);
+        const nextText = tierInfo.nextLabel
+            ? ` • Next: ${tierInfo.nextLabel} at ${tierInfo.nextThreshold} RP`
+            : ' • Grandmaster Max';
+        meta.textContent = `${tierInfo.label} (${tierInfo.points} RP)${nextText} • Division Safety Floor: ${floor} RP`;
+        titleBox.appendChild(title);
+        titleBox.appendChild(meta);
+        top.appendChild(titleBox);
 
-      refreshDraft({ rerollTeammates: true, banChanged: true });
-      overlay.appendChild(panel);
-      document.body.appendChild(overlay);
-  }
+        const topActions = document.createElement('div');
+        topActions.style.display = 'flex';
+        topActions.style.gap = '8px';
+
+        const passBtn = document.createElement('button');
+        passBtn.textContent = '⭐ Ranked Pass (50 Tiers)';
+        passBtn.style.border = 'none';
+        passBtn.style.borderRadius = '9px';
+        passBtn.style.padding = '8px 12px';
+        passBtn.style.background = 'linear-gradient(135deg, #00f5d4, #0abde3)';
+        passBtn.style.color = '#05131d';
+        passBtn.style.fontWeight = '900';
+        passBtn.style.cursor = 'pointer';
+        passBtn.onclick = () => openRankedPassUI();
+        topActions.appendChild(passBtn);
+
+        const close = document.createElement('button');
+        close.textContent = 'Close';
+        close.style.border = 'none';
+        close.style.borderRadius = '9px';
+        close.style.padding = '8px 12px';
+        close.style.background = '#2d456c';
+        close.style.color = '#dceeff';
+        close.style.cursor = 'pointer';
+        close.onclick = () => {
+            if (aiTurnTimer) clearTimeout(aiTurnTimer);
+            overlay.remove();
+        };
+        topActions.appendChild(close);
+        top.appendChild(topActions);
+        panel.appendChild(top);
+
+        // Map & Modifier Banner
+        const banner = document.createElement('div');
+        banner.style.margin = '12px 0';
+        banner.style.padding = '10px 14px';
+        banner.style.background = 'rgba(10, 20, 38, 0.85)';
+        banner.style.border = '1px solid rgba(0, 245, 212, 0.35)';
+        banner.style.borderRadius = '12px';
+        banner.style.display = 'flex';
+        banner.style.justifyContent = 'space-between';
+        banner.style.alignItems = 'center';
+        banner.style.flexWrap = 'wrap';
+        banner.style.gap = '10px';
+
+        const modDef = RANKED_MODIFIERS[draftModifierKey] || RANKED_MODIFIERS.classic;
+        banner.innerHTML = `<div style="font-weight:900;color:#9ee6ff;font-size:14px;">Mode: ${getShowdownModeLabel(draftMode)} 3v3</div>` +
+            `<div style="font-size:13px;color:${modDef.color};font-weight:800;">Modifier: ${modDef.icon} ${modDef.name} — <span style="font-weight:400;color:#d5e5f8;">${modDef.desc}</span></div>`;
+        panel.appendChild(banner);
+
+        // Draft Progress Stepper Bar
+        const stepper = document.createElement('div');
+        stepper.style.display = 'flex';
+        stepper.style.alignItems = 'center';
+        stepper.style.justifyContent = 'space-between';
+        stepper.style.gap = '4px';
+        stepper.style.margin = '10px 0';
+        stepper.style.padding = '8px 12px';
+        stepper.style.background = 'rgba(14, 25, 48, 0.9)';
+        stepper.style.borderRadius = '10px';
+        stepper.style.border = '1px solid rgba(255,255,255,0.08)';
+        panel.appendChild(stepper);
+
+        // Status Callout Box
+        const statusCallout = document.createElement('div');
+        statusCallout.style.padding = '10px 14px';
+        statusCallout.style.borderRadius = '10px';
+        statusCallout.style.marginBottom = '12px';
+        statusCallout.style.fontWeight = '800';
+        statusCallout.style.fontSize = '14px';
+        statusCallout.style.display = 'flex';
+        statusCallout.style.justifyContent = 'space-between';
+        statusCallout.style.alignItems = 'center';
+        panel.appendChild(statusCallout);
+
+        // Main Draft Arena (Left: Blue Team, Center: Bans & Grid, Right: Red Team)
+        const arena = document.createElement('div');
+        arena.style.display = 'grid';
+        arena.style.gridTemplateColumns = '220px 1fr 220px';
+        arena.style.gap = '12px';
+        arena.style.marginBottom = '14px';
+
+        // Blue Team Column
+        const blueCol = document.createElement('div');
+        blueCol.style.background = 'rgba(12, 32, 64, 0.6)';
+        blueCol.style.border = '1px solid rgba(72, 149, 239, 0.6)';
+        blueCol.style.borderRadius = '12px';
+        blueCol.style.padding = '12px';
+        blueCol.style.display = 'flex';
+        blueCol.style.flexDirection = 'column';
+        blueCol.style.gap = '8px';
+        arena.appendChild(blueCol);
+
+        // Center Column (Bans + Search + Brawler Cards Grid + Action Button)
+        const centerCol = document.createElement('div');
+        centerCol.style.background = 'rgba(10, 18, 34, 0.9)';
+        centerCol.style.border = '1px solid rgba(110, 176, 255, 0.3)';
+        centerCol.style.borderRadius = '12px';
+        centerCol.style.padding = '12px';
+        centerCol.style.display = 'flex';
+        centerCol.style.flexDirection = 'column';
+        centerCol.style.gap = '10px';
+        arena.appendChild(centerCol);
+
+        // Red Team Column
+        const redCol = document.createElement('div');
+        redCol.style.background = 'rgba(64, 16, 28, 0.6)';
+        redCol.style.border = '1px solid rgba(247, 37, 133, 0.6)';
+        redCol.style.borderRadius = '12px';
+        redCol.style.padding = '12px';
+        redCol.style.display = 'flex';
+        redCol.style.flexDirection = 'column';
+        redCol.style.gap = '8px';
+        arena.appendChild(redCol);
+
+        panel.appendChild(arena);
+
+        // Rank Ladder Section
+        const ladderTitle = document.createElement('div');
+        ladderTitle.textContent = 'Rank Ladder & Divisions';
+        ladderTitle.style.margin = '10px 0 6px 0';
+        ladderTitle.style.fontWeight = '900';
+        ladderTitle.style.color = '#cfeef7';
+        panel.appendChild(ladderTitle);
+
+        const ladder = document.createElement('div');
+        ladder.style.display = 'grid';
+        ladder.style.gridTemplateColumns = 'repeat(auto-fit, minmax(140px, 1fr))';
+        ladder.style.gap = '6px';
+        RANKED_DIVISIONS.forEach((div, idx) => {
+            const node = document.createElement('div');
+            const active = idx === tierInfo.index;
+            node.textContent = `${div.label} (${idx * RANKED_POINTS_PER_DIVISION}+ RP)`;
+            node.style.padding = '5px 7px';
+            node.style.borderRadius = '7px';
+            node.style.border = `1px solid ${active ? '#00f5d4' : 'rgba(120,155,210,0.3)'}`;
+            node.style.background = active ? 'rgba(0,245,212,0.18)' : 'rgba(15,24,42,0.7)';
+            node.style.color = div.color;
+            node.style.fontSize = '11px';
+            node.style.fontWeight = active ? '900' : '500';
+            ladder.appendChild(node);
+        });
+        panel.appendChild(ladder);
+
+        // Action Bar (Bottom Launch Button)
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.justifyContent = 'space-between';
+        actions.style.alignItems = 'center';
+        actions.style.gap = '10px';
+        actions.style.marginTop = '14px';
+
+        const fastForwardBtn = document.createElement('button');
+        fastForwardBtn.textContent = '⚡ Fast-Forward / Auto-Draft';
+        fastForwardBtn.style.border = '1px solid #00f5d4';
+        fastForwardBtn.style.borderRadius = '9px';
+        fastForwardBtn.style.padding = '9px 15px';
+        fastForwardBtn.style.background = 'rgba(0, 245, 212, 0.12)';
+        fastForwardBtn.style.color = '#00f5d4';
+        fastForwardBtn.style.fontWeight = '800';
+        fastForwardBtn.style.cursor = 'pointer';
+        actions.appendChild(fastForwardBtn);
+
+        const queueBtn = document.createElement('button');
+        queueBtn.textContent = '⚔️ Complete Draft to Battle';
+        queueBtn.style.border = 'none';
+        queueBtn.style.borderRadius = '10px';
+        queueBtn.style.padding = '12px 24px';
+        queueBtn.style.background = 'rgba(255,255,255,0.1)';
+        queueBtn.style.color = '#6a84a6';
+        queueBtn.style.fontWeight = '900';
+        queueBtn.style.fontSize = '15px';
+        queueBtn.style.cursor = 'not-allowed';
+        queueBtn.disabled = true;
+        actions.appendChild(queueBtn);
+        panel.appendChild(actions);
+
+        const sortByName = (ids) => ids.slice().sort((a, b) => (brawlerData[a]?.name || a).localeCompare(brawlerData[b]?.name || b));
+        const allUnlocked = sortByName(getUnlockedBrawlerPool());
+
+        const getAllBanned = () => [playerBan1, playerBan2, aiBan1, aiBan2].filter(Boolean);
+        const getAllPicked = () => [playerPick, ...teammatePicks, ...enemyPicks].filter(Boolean);
+        const isBanned = (id) => getAllBanned().includes(id);
+        const isPicked = (id) => getAllPicked().includes(id);
+
+        const getAvailablePool = () => {
+            const banned = new Set(getAllBanned());
+            const picked = new Set(getAllPicked());
+            return allUnlocked.filter(id => !banned.has(id) && !picked.has(id));
+        };
+
+        const pickRandomFromPool = (pool, count = 1) => {
+            if (!pool.length) return count === 1 ? null : [];
+            const shuffled = pool.slice();
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const temp = shuffled[i];
+                shuffled[i] = shuffled[j];
+                shuffled[j] = temp;
+            }
+            return count === 1 ? shuffled[0] : shuffled.slice(0, count);
+        };
+
+        const executeAiStep = () => {
+            if (draftPhase === 1) {
+                // Enemy Ban 1
+                const pool = allUnlocked.filter(id => !getAllBanned().includes(id));
+                aiBan1 = pickRandomFromPool(pool) || null;
+                draftPhase = 2;
+                renderDraft();
+            } else if (draftPhase === 3) {
+                // Enemy Ban 2
+                const pool = allUnlocked.filter(id => !getAllBanned().includes(id));
+                aiBan2 = pickRandomFromPool(pool) || null;
+                draftPhase = 4;
+                renderDraft();
+            } else if (draftPhase === 5) {
+                // Enemy Picks 1 & 2
+                const pool = getAvailablePool();
+                const enemyChoice = pickRandomFromPool(pool, 2);
+                enemyPicks[0] = enemyChoice[0] || null;
+                enemyPicks[1] = enemyChoice[1] || null;
+                draftPhase = 6;
+                scheduleAiTurn(600);
+                renderDraft();
+            } else if (draftPhase === 6) {
+                // Ally Picks 1 & 2
+                const pool = getAvailablePool();
+                const allyChoice = pickRandomFromPool(pool, 2);
+                teammatePicks[0] = allyChoice[0] || null;
+                teammatePicks[1] = allyChoice[1] || null;
+                draftPhase = 7;
+                scheduleAiTurn(600);
+                renderDraft();
+            } else if (draftPhase === 7) {
+                // Enemy Counter Pick 3
+                const pool = getAvailablePool();
+                enemyPicks[2] = pickRandomFromPool(pool, 1) || null;
+                draftPhase = 8;
+                renderDraft();
+            }
+        };
+
+        const scheduleAiTurn = (delay = 450) => {
+            if (aiTurnTimer) clearTimeout(aiTurnTimer);
+            aiTurnTimer = setTimeout(() => {
+                executeAiStep();
+            }, delay);
+        };
+
+        const autoDraftRemaining = () => {
+            if (aiTurnTimer) clearTimeout(aiTurnTimer);
+            while (draftPhase < 8) {
+                if (draftPhase === 0) {
+                    const pool = allUnlocked.filter(id => !getAllBanned().includes(id));
+                    playerBan1 = activeSelection && pool.includes(activeSelection) ? activeSelection : (pool[0] || null);
+                    draftPhase = 1;
+                } else if (draftPhase === 1) {
+                    const pool = allUnlocked.filter(id => !getAllBanned().includes(id));
+                    aiBan1 = pickRandomFromPool(pool) || null;
+                    draftPhase = 2;
+                } else if (draftPhase === 2) {
+                    const pool = allUnlocked.filter(id => !getAllBanned().includes(id));
+                    playerBan2 = activeSelection && pool.includes(activeSelection) ? activeSelection : (pool[0] || null);
+                    draftPhase = 3;
+                } else if (draftPhase === 3) {
+                    const pool = allUnlocked.filter(id => !getAllBanned().includes(id));
+                    aiBan2 = pickRandomFromPool(pool) || null;
+                    draftPhase = 4;
+                } else if (draftPhase === 4) {
+                    const pool = getAvailablePool();
+                    playerPick = activeSelection && pool.includes(activeSelection) ? activeSelection : (pool.includes(selectedBrawler) ? selectedBrawler : (pool[0] || 'outlit'));
+                    draftPhase = 5;
+                } else if (draftPhase === 5) {
+                    const pool = getAvailablePool();
+                    const choice = pickRandomFromPool(pool, 2);
+                    enemyPicks[0] = choice[0] || null;
+                    enemyPicks[1] = choice[1] || null;
+                    draftPhase = 6;
+                } else if (draftPhase === 6) {
+                    const pool = getAvailablePool();
+                    const choice = pickRandomFromPool(pool, 2);
+                    teammatePicks[0] = choice[0] || null;
+                    teammatePicks[1] = choice[1] || null;
+                    draftPhase = 7;
+                } else if (draftPhase === 7) {
+                    const pool = getAvailablePool();
+                    enemyPicks[2] = pickRandomFromPool(pool, 1) || null;
+                    draftPhase = 8;
+                }
+            }
+            renderDraft();
+        };
+
+        fastForwardBtn.onclick = autoDraftRemaining;
+
+        const renderDraft = () => {
+            // Update Stepper
+            const stepLabels = [
+                '1. Ban 1', '2. Enemy Ban', '3. Ban 2', '4. Enemy Ban',
+                '5. You Pick', '6. Enemy (1-2)', '7. Ally (1-2)', '8. Counter', '9. Ready'
+            ];
+            stepper.innerHTML = '';
+            stepLabels.forEach((lbl, idx) => {
+                const dot = document.createElement('div');
+                dot.style.fontSize = '11px';
+                dot.style.padding = '4px 7px';
+                dot.style.borderRadius = '6px';
+                dot.style.fontWeight = idx === draftPhase ? '900' : '600';
+                if (idx === draftPhase) {
+                    dot.style.background = '#00f5d4';
+                    dot.style.color = '#05131d';
+                    dot.style.boxShadow = '0 0 10px rgba(0,245,212,0.4)';
+                } else if (idx < draftPhase) {
+                    dot.style.background = 'rgba(72,149,239,0.3)';
+                    dot.style.color = '#a5d8ff';
+                } else {
+                    dot.style.background = 'rgba(255,255,255,0.05)';
+                    dot.style.color = '#58708c';
+                }
+                dot.textContent = lbl;
+                stepper.appendChild(dot);
+            });
+
+            // Update Status Callout
+            if (draftPhase === 0) {
+                statusCallout.style.background = 'rgba(255, 159, 67, 0.2)';
+                statusCallout.style.border = '1px solid #ff9f43';
+                statusCallout.style.color = '#ffd166';
+                statusCallout.innerHTML = `<span>🚫 YOUR BAN (1/2): Select a brawler to permanently ban from this match</span><span style="font-size:12px;color:#ffeaa7;">Click a brawler below & Lock In</span>`;
+            } else if (draftPhase === 1) {
+                statusCallout.style.background = 'rgba(247, 37, 133, 0.2)';
+                statusCallout.style.border = '1px solid #f72585';
+                statusCallout.style.color = '#ff99c8';
+                statusCallout.innerHTML = `<span>🤖 ENEMY BANNING (1/2): Enemy Captain is selecting a ban...</span><span style="font-size:12px;">Deciding...</span>`;
+            } else if (draftPhase === 2) {
+                statusCallout.style.background = 'rgba(255, 159, 67, 0.2)';
+                statusCallout.style.border = '1px solid #ff9f43';
+                statusCallout.style.color = '#ffd166';
+                statusCallout.innerHTML = `<span>🚫 YOUR BAN (2/2): Select your second brawler to ban</span><span style="font-size:12px;color:#ffeaa7;">Click a brawler below & Lock In</span>`;
+            } else if (draftPhase === 3) {
+                statusCallout.style.background = 'rgba(247, 37, 133, 0.2)';
+                statusCallout.style.border = '1px solid #f72585';
+                statusCallout.style.color = '#ff99c8';
+                statusCallout.innerHTML = `<span>🤖 ENEMY BANNING (2/2): Enemy Captain is selecting second ban...</span><span style="font-size:12px;">Deciding...</span>`;
+            } else if (draftPhase === 4) {
+                statusCallout.style.background = 'rgba(0, 245, 212, 0.2)';
+                statusCallout.style.border = '1px solid #00f5d4';
+                statusCallout.style.color = '#00f5d4';
+                statusCallout.innerHTML = `<span>🎯 YOUR TURN TO PICK: Select and lock in your brawler (Power 11)</span><span style="font-size:12px;color:#cceeff;">Choose wisely</span>`;
+            } else if (draftPhase === 5) {
+                statusCallout.style.background = 'rgba(247, 37, 133, 0.2)';
+                statusCallout.style.border = '1px solid #f72585';
+                statusCallout.style.color = '#ff99c8';
+                statusCallout.innerHTML = `<span>🤖 ENEMY TEAM DRAFTING: Enemy Bots 1 & 2 are choosing...</span><span style="font-size:12px;">Locking in...</span>`;
+            } else if (draftPhase === 6) {
+                statusCallout.style.background = 'rgba(72, 149, 239, 0.2)';
+                statusCallout.style.border = '1px solid #4895ef';
+                statusCallout.style.color = '#8be9fd';
+                statusCallout.innerHTML = `<span>🤝 ALLY TEAM DRAFTING: Ally Bots 1 & 2 are choosing...</span><span style="font-size:12px;">Locking in...</span>`;
+            } else if (draftPhase === 7) {
+                statusCallout.style.background = 'rgba(247, 37, 133, 0.2)';
+                statusCallout.style.border = '1px solid #f72585';
+                statusCallout.style.color = '#ff99c8';
+                statusCallout.innerHTML = `<span>⚔️ ENEMY COUNTER-PICK: Enemy 3 is picking the final counter...</span><span style="font-size:12px;">Locking in...</span>`;
+            } else {
+                statusCallout.style.background = 'rgba(255, 209, 102, 0.2)';
+                statusCallout.style.border = '1px solid #ffd166';
+                statusCallout.style.color = '#ffd166';
+                statusCallout.innerHTML = `<span>✨ DRAFT COMPLETE! All brawlers locked at Power 11.</span><span style="font-size:13px;font-weight:900;">READY FOR BATTLE!</span>`;
+            }
+
+            // Render Blue Column
+            blueCol.innerHTML = '<div style="font-weight:900;color:#4cc9f0;font-size:13px;margin-bottom:4px;border-bottom:1px solid rgba(76,201,240,0.3);padding-bottom:4px;">🛡️ BLUE TEAM (YOUR SQUAD)</div>';
+            
+            const renderRosterCard = (title, brawlerId, isYou = false, slotState = '') => {
+                const card = document.createElement('div');
+                card.style.background = brawlerId ? 'rgba(0, 245, 212, 0.12)' : 'rgba(0,0,0,0.25)';
+                card.style.border = `1px solid ${brawlerId ? '#00f5d4' : 'rgba(255,255,255,0.1)'}`;
+                card.style.borderRadius = '8px';
+                card.style.padding = '8px';
+                const bName = brawlerId ? (brawlerData[brawlerId]?.name || brawlerId) : (slotState || 'Waiting...');
+                card.innerHTML = `<div style="font-size:10px;font-weight:800;color:${isYou ? '#00f5d4' : '#8be9fd'};">${title}</div>` +
+                    `<div style="font-size:13px;font-weight:900;color:#fff;margin:2px 0;">${bName}</div>` +
+                    `<div style="font-size:10px;color:${brawlerId ? '#9ee6ff' : '#627c9e'};">${brawlerId ? '⚡ Power 11 • Locked' : 'Turn pending'}</div>`;
+                return card;
+            };
+
+            blueCol.appendChild(renderRosterCard('1. CAPTAIN (YOU)', playerPick, true, draftPhase < 4 ? 'Awaiting Pick' : 'Drafting...'));
+            blueCol.appendChild(renderRosterCard('2. ALLY BOT 1', teammatePicks[0], false, draftPhase < 6 ? 'Awaiting Pick' : 'Drafting...'));
+            blueCol.appendChild(renderRosterCard('3. ALLY BOT 2', teammatePicks[1], false, draftPhase < 6 ? 'Awaiting Pick' : 'Drafting...'));
+
+            // Render Red Column
+            redCol.innerHTML = '<div style="font-weight:900;color:#f72585;font-size:13px;margin-bottom:4px;border-bottom:1px solid rgba(247,37,133,0.3);padding-bottom:4px;">⚔️ RED TEAM (ENEMY SQUAD)</div>';
+            
+            const renderEnemyCard = (title, brawlerId, slotState = '') => {
+                const card = document.createElement('div');
+                card.style.background = brawlerId ? 'rgba(247, 37, 133, 0.12)' : 'rgba(0,0,0,0.25)';
+                card.style.border = `1px solid ${brawlerId ? '#f72585' : 'rgba(255,255,255,0.1)'}`;
+                card.style.borderRadius = '8px';
+                card.style.padding = '8px';
+                const bName = brawlerId ? (brawlerData[brawlerId]?.name || brawlerId) : (slotState || 'Waiting...');
+                card.innerHTML = `<div style="font-size:10px;font-weight:800;color:#ff79c6;">${title}</div>` +
+                    `<div style="font-size:13px;font-weight:900;color:#fff;margin:2px 0;">${bName}</div>` +
+                    `<div style="font-size:10px;color:${brawlerId ? '#ffb3d9' : '#627c9e'};">${brawlerId ? '⚡ Power 11 • Locked' : 'Turn pending'}</div>`;
+                return card;
+            };
+
+            redCol.appendChild(renderEnemyCard('1. ENEMY BOT 1', enemyPicks[0], draftPhase < 5 ? 'Awaiting Pick' : 'Drafting...'));
+            redCol.appendChild(renderEnemyCard('2. ENEMY BOT 2', enemyPicks[1], draftPhase < 5 ? 'Awaiting Pick' : 'Drafting...'));
+            redCol.appendChild(renderEnemyCard('3. COUNTER PICK 3', enemyPicks[2], draftPhase < 7 ? 'Awaiting Pick' : 'Drafting...'));
+
+            // Render Center Column (Bans Header + Search + Grid + Action Controls)
+            centerCol.innerHTML = '';
+
+            // Bans Row Bar
+            const bansRow = document.createElement('div');
+            bansRow.style.display = 'flex';
+            bansRow.style.justifyContent = 'space-between';
+            bansRow.style.gap = '8px';
+            bansRow.style.padding = '8px';
+            bansRow.style.background = 'rgba(0,0,0,0.3)';
+            bansRow.style.borderRadius = '8px';
+            bansRow.style.fontSize = '12px';
+
+            const playerBansBox = document.createElement('div');
+            playerBansBox.style.color = '#ffd166';
+            const p1 = playerBan1 ? (brawlerData[playerBan1]?.name || playerBan1) : '—';
+            const p2 = playerBan2 ? (brawlerData[playerBan2]?.name || playerBan2) : '—';
+            playerBansBox.innerHTML = `<strong>Your Bans:</strong> <span style="color:#ff6b6b;">[🚫 ${p1}]</span> <span style="color:#ff6b6b;">[🚫 ${p2}]</span>`;
+            bansRow.appendChild(playerBansBox);
+
+            const enemyBansBox = document.createElement('div');
+            enemyBansBox.style.color = '#ff79c6';
+            const e1 = aiBan1 ? (brawlerData[aiBan1]?.name || aiBan1) : '—';
+            const e2 = aiBan2 ? (brawlerData[aiBan2]?.name || aiBan2) : '—';
+            enemyBansBox.innerHTML = `<strong>Enemy Bans:</strong> <span style="color:#ff6b6b;">[🚫 ${e1}]</span> <span style="color:#ff6b6b;">[🚫 ${e2}]</span>`;
+            bansRow.appendChild(enemyBansBox);
+            centerCol.appendChild(bansRow);
+
+            // Search Bar
+            const searchInput = document.createElement('input');
+            searchInput.type = 'search';
+            searchInput.placeholder = 'Search available brawlers...';
+            searchInput.value = draftSearchQuery;
+            searchInput.style.padding = '7px 10px';
+            searchInput.style.borderRadius = '8px';
+            searchInput.style.border = '1px solid #476998';
+            searchInput.style.background = '#15243c';
+            searchInput.style.color = '#dceeff';
+            searchInput.style.fontSize = '13px';
+            searchInput.oninput = (e) => {
+                draftSearchQuery = e.target.value || '';
+                renderGridOnly();
+            };
+            centerCol.appendChild(searchInput);
+
+            // Brawler Grid Container
+            const gridBox = document.createElement('div');
+            gridBox.style.display = 'grid';
+            gridBox.style.gridTemplateColumns = 'repeat(auto-fill, minmax(130px, 1fr))';
+            gridBox.style.gap = '6px';
+            gridBox.style.maxHeight = '280px';
+            gridBox.style.overflowY = 'auto';
+            gridBox.style.paddingRight = '4px';
+            centerCol.appendChild(gridBox);
+
+            const renderGridOnly = () => {
+                gridBox.innerHTML = '';
+                const query = draftSearchQuery.trim().toLowerCase();
+                const filtered = query
+                    ? allUnlocked.filter(id => (brawlerData[id]?.name || id).toLowerCase().includes(query))
+                    : allUnlocked;
+
+                filtered.forEach(id => {
+                    const bBanned = isBanned(id);
+                    const bPicked = isPicked(id);
+                    const isSelected = activeSelection === id;
+                    const isPlayerChosen = playerPick === id;
+                    const isPlayerBanned = playerBan1 === id || playerBan2 === id;
+
+                    const card = document.createElement('div');
+                    card.style.padding = '7px';
+                    card.style.borderRadius = '8px';
+                    card.style.fontSize = '12px';
+                    card.style.fontWeight = '700';
+                    card.style.textAlign = 'center';
+                    card.style.transition = 'all 0.15s ease';
+
+                    if (bBanned) {
+                        card.style.background = 'rgba(255, 60, 60, 0.08)';
+                        card.style.border = '1px solid rgba(255, 60, 60, 0.3)';
+                        card.style.color = '#8f6565';
+                        card.style.opacity = '0.6';
+                        card.style.cursor = 'not-allowed';
+                        card.innerHTML = `<div>${brawlerData[id]?.name || id}</div><div style="font-size:10px;color:#ff6b6b;">🚫 BANNED</div>`;
+                    } else if (bPicked) {
+                        card.style.background = 'rgba(100, 100, 100, 0.1)';
+                        card.style.border = '1px solid rgba(150, 150, 150, 0.3)';
+                        card.style.color = '#8295a8';
+                        card.style.opacity = '0.65';
+                        card.style.cursor = 'not-allowed';
+                        const pickOwner = isPlayerChosen ? 'YOU' : (teammatePicks.includes(id) ? 'ALLY' : 'ENEMY');
+                        card.innerHTML = `<div>${brawlerData[id]?.name || id}</div><div style="font-size:10px;color:#00f5d4;">🔒 ${pickOwner}</div>`;
+                    } else {
+                        const isSelectableTurn = draftPhase === 0 || draftPhase === 2 || draftPhase === 4;
+                        card.style.background = isSelected ? 'rgba(0, 245, 212, 0.25)' : 'rgba(20, 35, 60, 0.7)';
+                        card.style.border = `1px solid ${isSelected ? '#00f5d4' : 'rgba(100, 150, 220, 0.3)'}`;
+                        card.style.color = isSelected ? '#00f5d4' : '#e8f4ff';
+                        card.style.cursor = isSelectableTurn ? 'pointer' : 'default';
+                        card.innerHTML = `<div>${brawlerData[id]?.name || id}</div><div style="font-size:10px;color:${isSelected ? '#00f5d4' : '#8fa9c4'};">${isSelected ? '✓ SELECTED' : 'Selectable'}</div>`;
+
+                        if (isSelectableTurn) {
+                            card.onclick = () => {
+                                activeSelection = id;
+                                renderGridOnly();
+                                updateActionControls();
+                            };
+                        }
+                    }
+                    gridBox.appendChild(card);
+                });
+            };
+
+            // Action Controls Box
+            const actionControlsBox = document.createElement('div');
+            actionControlsBox.style.display = 'flex';
+            actionControlsBox.style.justifyContent = 'space-between';
+            actionControlsBox.style.alignItems = 'center';
+            actionControlsBox.style.gap = '8px';
+            actionControlsBox.style.marginTop = '4px';
+            centerCol.appendChild(actionControlsBox);
+
+            const updateActionControls = () => {
+                actionControlsBox.innerHTML = '';
+                const selectedName = activeSelection ? (brawlerData[activeSelection]?.name || activeSelection) : 'None';
+
+                const curSelectedText = document.createElement('div');
+                curSelectedText.style.fontSize = '12px';
+                curSelectedText.style.color = '#cceeff';
+                curSelectedText.innerHTML = `Selected: <strong style="color:#00f5d4;">${selectedName}</strong>`;
+                actionControlsBox.appendChild(curSelectedText);
+
+                if (draftPhase === 0 || draftPhase === 2) {
+                    const lockBanBtn = document.createElement('button');
+                    lockBanBtn.textContent = `🚫 LOCK IN BAN ${draftPhase === 0 ? '1' : '2'}`;
+                    lockBanBtn.style.border = 'none';
+                    lockBanBtn.style.borderRadius = '8px';
+                    lockBanBtn.style.padding = '8px 16px';
+                    lockBanBtn.style.fontWeight = '900';
+                    lockBanBtn.style.cursor = activeSelection && !isBanned(activeSelection) ? 'pointer' : 'not-allowed';
+                    lockBanBtn.style.background = activeSelection && !isBanned(activeSelection) ? 'linear-gradient(135deg, #ff6b6b, #ee5253)' : 'rgba(255,255,255,0.1)';
+                    lockBanBtn.style.color = activeSelection && !isBanned(activeSelection) ? '#fff' : '#6a7d94';
+                    lockBanBtn.disabled = !activeSelection || isBanned(activeSelection);
+                    lockBanBtn.onclick = () => {
+                        if (!activeSelection || isBanned(activeSelection)) return;
+                        if (draftPhase === 0) {
+                            playerBan1 = activeSelection;
+                            draftPhase = 1;
+                            activeSelection = null;
+                            scheduleAiTurn(450);
+                        } else if (draftPhase === 2) {
+                            playerBan2 = activeSelection;
+                            draftPhase = 3;
+                            activeSelection = null;
+                            scheduleAiTurn(450);
+                        }
+                        renderDraft();
+                    };
+                    actionControlsBox.appendChild(lockBanBtn);
+                } else if (draftPhase === 4) {
+                    const lockPickBtn = document.createElement('button');
+                    lockPickBtn.textContent = '🎯 LOCK IN YOUR PICK';
+                    lockPickBtn.style.border = 'none';
+                    lockPickBtn.style.borderRadius = '8px';
+                    lockPickBtn.style.padding = '8px 16px';
+                    lockPickBtn.style.fontWeight = '900';
+                    const canPick = activeSelection && !isBanned(activeSelection) && !isPicked(activeSelection);
+                    lockPickBtn.style.cursor = canPick ? 'pointer' : 'not-allowed';
+                    lockPickBtn.style.background = canPick ? 'linear-gradient(135deg, #00f5d4, #0abde3)' : 'rgba(255,255,255,0.1)';
+                    lockPickBtn.style.color = canPick ? '#05131d' : '#6a7d94';
+                    lockPickBtn.disabled = !canPick;
+                    lockPickBtn.onclick = () => {
+                        if (!canPick) return;
+                        playerPick = activeSelection;
+                        draftPhase = 5;
+                        activeSelection = null;
+                        scheduleAiTurn(500);
+                        renderDraft();
+                    };
+                    actionControlsBox.appendChild(lockPickBtn);
+                } else if (draftPhase < 8) {
+                    const waitingBtn = document.createElement('div');
+                    waitingBtn.textContent = '🤖 AI Choosing...';
+                    waitingBtn.style.fontSize = '13px';
+                    waitingBtn.style.color = '#ff99c8';
+                    waitingBtn.style.fontWeight = '800';
+                    actionControlsBox.appendChild(waitingBtn);
+                } else {
+                    const doneText = document.createElement('div');
+                    doneText.textContent = '✓ Draft Finalized';
+                    doneText.style.fontSize = '13px';
+                    doneText.style.color = '#00f5d4';
+                    doneText.style.fontWeight = '900';
+                    actionControlsBox.appendChild(doneText);
+                }
+            };
+
+            renderGridOnly();
+            updateActionControls();
+
+            // Update Launch Button
+            if (draftPhase >= 8 && playerPick) {
+                queueBtn.textContent = `⚔️ Start Ranked Battle (${brawlerData[playerPick]?.name || playerPick})`;
+                queueBtn.style.background = 'linear-gradient(135deg, #ffd166, #ff9f43)';
+                queueBtn.style.color = '#08101d';
+                queueBtn.style.cursor = 'pointer';
+                queueBtn.style.boxShadow = '0 0 20px rgba(255,209,102,0.5)';
+                queueBtn.disabled = false;
+                fastForwardBtn.style.display = 'none';
+            } else {
+                queueBtn.textContent = '⚔️ Complete Draft to Battle';
+                queueBtn.style.background = 'rgba(255,255,255,0.1)';
+                queueBtn.style.color = '#6a84a6';
+                queueBtn.style.cursor = 'not-allowed';
+                queueBtn.style.boxShadow = 'none';
+                queueBtn.disabled = true;
+                fastForwardBtn.style.display = 'inline-block';
+            }
+        };
+
+        queueBtn.onclick = () => {
+            if (draftPhase < 8 || !playerPick) return;
+            if (aiTurnTimer) clearTimeout(aiTurnTimer);
+            selectedBrawler = playerPick;
+            normalizeSelectedBrawler();
+            saveProgress();
+            rankedTeammatePicks = teammatePicks.slice(0, 2);
+            rankedEnemyPicks = enemyPicks.slice(0, 3);
+            rankedBans = { player: [playerBan1, playerBan2].filter(Boolean), enemy: [aiBan1, aiBan2].filter(Boolean) };
+            rankedDraftSummary = `${getShowdownModeLabel(draftMode)} | Mod: ${RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier} | You: ${(brawlerData[selectedBrawler]?.name || selectedBrawler)}`;
+            isRankedMatch = true;
+            showdownMode = draftMode;
+            if (brawlerSelect) brawlerSelect.value = selectedBrawler;
+            updateShowdownModeUI();
+            overlay.remove();
+            launchShowdownMatch();
+        };
+
+        renderDraft();
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+    }
 
   rankedBtn.onclick = openRankedQueueUI;
   setupCompactHomeModeSelector();
@@ -29908,25 +31844,30 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         } else {
             slopSushiActiveCards = [];
         }
-        const spawnPos = isImpossibleMode
-            ? { x: WORLD_W * 0.5, y: WORLD_H - 170 }
-            : (isSoloTdMode
-            ? { x: 1000, y: 1600 }
-            : (isConstructionMode
-                ? getConstructionSpawnPoint('player', 0, 3)
-                : (isMirrorMode
-                    ? getMirrorSpawnPoint('player', 0, MIRROR_TEAM_SIZE)
-                    : ((isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode)
-                        ? (isBrickVaultMode
-                            ? getBrickVaultSpawnPoint('player', 0, BRICK_VAULT_TEAM_SIZE)
-                            : (isArenaForgeMode
-                                ? getArenaForgeSpawnPoint('player', 0, ARENA_FORGE_TEAM_SIZE)
-                                : (isTugZoneMode
-                                    ? getTugZoneSpawnPoint('player', 0)
-                                : (isMarkedMayhemMode
-                                    ? getMarkedMayhemSpawnPoint('player', 0, MARKED_MAYHEM_TEAM_SIZE)
-                                    : getDamageFillerSpawnPoint('player', 0, isDamageFillerMode ? damageFillerTeamSize : 3)))))
-                        : getShowdownSpawnPosition()))));
+        let spawnPos;
+        if (isImpossibleMode) {
+            spawnPos = { x: WORLD_W * 0.5, y: WORLD_H - 170 };
+        } else if (isSoloTdMode) {
+            spawnPos = { x: 1000, y: 1600 };
+        } else if (isConstructionMode) {
+            spawnPos = getConstructionSpawnPoint('player', 0, 3);
+        } else if (isObjectiveMode) {
+            spawnPos = getObjectiveSpawnPoint('player', 0, 3);
+        } else if (isMirrorMode) {
+            spawnPos = getMirrorSpawnPoint('player', 0, MIRROR_TEAM_SIZE);
+        } else if (isBrickVaultMode) {
+            spawnPos = getBrickVaultSpawnPoint('player', 0, BRICK_VAULT_TEAM_SIZE);
+        } else if (isArenaForgeMode) {
+            spawnPos = getArenaForgeSpawnPoint('player', 0, ARENA_FORGE_TEAM_SIZE);
+        } else if (isTugZoneMode) {
+            spawnPos = getTugZoneSpawnPoint('player', 0);
+        } else if (isMarkedMayhemMode) {
+            spawnPos = getMarkedMayhemSpawnPoint('player', 0, MARKED_MAYHEM_TEAM_SIZE);
+        } else if (isDamageFillerMode || isKnockDonateMode) {
+            spawnPos = getDamageFillerSpawnPoint('player', 0, isDamageFillerMode ? damageFillerTeamSize : 3);
+        } else {
+            spawnPos = getShowdownSpawnPosition();
+        }
             player.x = spawnPos.x;
             player.y = spawnPos.y;
       player.team = 'player';
@@ -29947,7 +31888,28 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if (isArenaForgeMode) initArenaForgeModeState();
       if (isMarkedMayhemMode) initMarkedMayhemModeState();
       if (isTugZoneMode) initTugZoneModeState();
+      if (isObjectiveMode) initObjectiveModeState();
       spawnBots();
+      if (isRankedMatch) {
+          timedDetonationStage = 0;
+          window._lastTimedDetonationAt = performance.now();
+          if (activeRankedModifier === 'colossus_friend') {
+              let highestHp = player.maxHp || 4000;
+              for (const b of bots) {
+                  if (b && (b.maxHp || 0) > highestHp) highestHp = b.maxHp;
+              }
+              player.maxHp = highestHp;
+              player.hp = highestHp;
+              grantShield(player, 4000, 4000);
+              for (const b of bots) {
+                  if (b) {
+                      b.maxHp = highestHp;
+                      b.hp = highestHp;
+                      grantShield(b, 4000, 4000);
+                  }
+              }
+          }
+      }
       initCoreBreachIntro();
       initCorruptedShowdown();
       if (isLavaBossEvent) initLavaBossMatch();
@@ -30219,6 +32181,635 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     if(homeActionRow) homeActionRow.appendChild(trainingBtn);
     else if(startBtn) startBtn.parentNode.appendChild(trainingBtn);
 
+  let trainingCaveDeckPanel = null;
+  let trainingAllyAutoDrain = false;
+  let trainingAllyDrainTimer = 0;
+  let trainingGridBotsActiveAI = false;
+  let trainingCaveCustomEnemyId = 'king';
+  let trainingCaveDeckCollapsed = false;
+
+  function closeTrainingCaveUI() {
+      if (trainingCaveDeckPanel && trainingCaveDeckPanel.isConnected) {
+          trainingCaveDeckPanel.remove();
+          trainingCaveDeckPanel = null;
+      }
+      const picker = document.getElementById('tcBrawlerPickerModal');
+      if (picker && picker.isConnected) picker.remove();
+  }
+
+  function exitTrainingModeToHome() {
+      isTraining = false;
+      isTutorialMode = false;
+      playing = false;
+      closeTrainingCaveUI();
+      if (homeScreen) homeScreen.style.display = 'flex';
+      if (brawlerSelect) brawlerSelect.disabled = false;
+      renderHomeBrawlerCard();
+  }
+
+  function switchTrainingBrawler(brawlerId) {
+      if (!allBrawlers.includes(brawlerId) || disabledBrawlers.has(brawlerId)) return;
+      selectedBrawler = brawlerId;
+      normalizeSelectedBrawler();
+      if (brawlerSelect) brawlerSelect.value = selectedBrawler;
+      player.brawler = selectedBrawler;
+      initPlayerHP();
+      player.cinderionOrbitFlames = [];
+      player.cinderionDoubleKindlingArmed = false;
+      player.cinderionSuperActive = false;
+      player.ghoulShadowShield = 0;
+      player.ghoulShadowShieldMax = 0;
+      player.ghoulDarknessCharge = 0;
+      player.copyphaseSlot1 = null;
+      player.copyphaseTransformUntil = 0;
+      player.copyphaseTransformBrawler = null;
+      player.kingArmorUntil = 0;
+      player.shield = 0;
+      player.shieldMax = 0;
+      player.slowUntil = 0;
+      player.stunUntil = 0;
+      player.invisibleUntil = 0;
+      player.isJumping = false;
+      player.isDashing = false;
+      player.isFlying = false;
+      player.z = 0;
+      player.superCharge = 100;
+      player.hyperChargeCharge = 100;
+      superCharge = 100;
+      hyperChargeCharge = 100;
+      syncAbilityInputs();
+      updateGadgetInfo();
+      updateGadgetButton();
+      updateSignatureButton();
+      updateSuperButton();
+      updateHyperButton();
+      renderHomeBrawlerCard();
+      saveProgress();
+      updateTrainingCaveUI();
+      const info = brawlerData[selectedBrawler] || { name: selectedBrawler };
+      spawnFloatingText(player.x, player.y - 48, `SWITCHED TO ${info.name.toUpperCase()}!`, '#5df2c2');
+  }
+
+  function cycleTrainingBrawler(delta) {
+      const list = allBrawlers.filter(b => !disabledBrawlers.has(b));
+      let idx = list.indexOf(selectedBrawler);
+      if (idx === -1) idx = 0;
+      let nextIdx = (idx + delta + list.length) % list.length;
+      switchTrainingBrawler(list[nextIdx]);
+  }
+
+  function openTrainingBrawlerPickerModal() {
+      const existing = document.getElementById('tcBrawlerPickerModal');
+      if (existing) { existing.remove(); return; }
+
+      const overlay = document.createElement('div');
+      overlay.id = 'tcBrawlerPickerModal';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(3,8,18,0.85);backdrop-filter:blur(8px);z-index:2300;display:flex;align-items:center;justify-content:center;padding:16px;font-family:sans-serif;';
+
+      const panel = document.createElement('div');
+      panel.style.cssText = 'width:min(720px,94vw);max-height:85vh;background:linear-gradient(170deg,#0a1628,#050c18);border:2px solid #5df2c2;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,0.7);display:flex;flex-direction:column;overflow:hidden;color:#eaf6ff;';
+
+      const header = document.createElement('div');
+      header.style.cssText = 'padding:14px 18px;border-bottom:1px solid rgba(93,242,194,0.3);display:flex;justify-content:space-between;align-items:center;background:rgba(93,242,194,0.08);';
+      header.innerHTML = '<div style="font-size:17px;font-weight:900;color:#5df2c2;letter-spacing:1px;">⚡ SELECT BRAWLER</div>';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = '✕ CLOSE';
+      closeBtn.style.cssText = 'padding:6px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;font-weight:800;font-size:12px;cursor:pointer;';
+      closeBtn.onclick = () => overlay.remove();
+      header.appendChild(closeBtn);
+      panel.appendChild(header);
+
+      const searchBox = document.createElement('input');
+      searchBox.type = 'text';
+      searchBox.placeholder = '🔍 Search brawlers by name or role...';
+      searchBox.style.cssText = 'margin:12px 16px 6px;padding:10px 14px;background:rgba(2,6,14,0.75);border:1px solid rgba(93,242,194,0.4);border-radius:10px;color:#fff;font-size:13px;outline:none;';
+      panel.appendChild(searchBox);
+
+      const grid = document.createElement('div');
+      grid.style.cssText = 'flex:1;overflow-y:auto;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;';
+
+      function renderList(query = '') {
+          grid.innerHTML = '';
+          const q = query.trim().toLowerCase();
+          const list = allBrawlers.filter(b => !disabledBrawlers.has(b)).filter(b => {
+              const def = brawlerData[b] || { name: b, role: 'Fighter' };
+              return !q || def.name.toLowerCase().includes(q) || (def.role && def.role.toLowerCase().includes(q)) || b.toLowerCase().includes(q);
+          });
+
+          list.forEach(b => {
+              const def = brawlerData[b] || { name: b, role: 'Fighter' };
+              const isCurrent = b === selectedBrawler;
+              const card = document.createElement('button');
+              card.style.cssText = `padding:10px 8px;border-radius:12px;border:2px solid ${isCurrent ? '#5df2c2' : 'rgba(100,160,255,0.25)'};background:${isCurrent ? 'linear-gradient(135deg,rgba(93,242,194,0.28),rgba(10,30,50,0.85))' : 'rgba(12,24,46,0.65)'};color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .15s;`;
+              const icon = getBrawlerPortraitIcon(b) || '⚡';
+              card.innerHTML = `<div style="font-size:26px;">${icon}</div><div style="font-size:12px;font-weight:900;color:${isCurrent ? '#5df2c2' : '#d8ecff'};text-align:center;">${def.name}</div><div style="font-size:10px;color:#8ba3c7;">${def.role || 'Fighter'}</div>`;
+              card.onmouseenter = () => { card.style.borderColor = '#5df2c2'; card.style.transform = 'translateY(-2px)'; };
+              card.onmouseleave = () => { card.style.borderColor = isCurrent ? '#5df2c2' : 'rgba(100,160,255,0.25)'; card.style.transform = 'translateY(0)'; };
+              card.onclick = () => {
+                  overlay.remove();
+                  switchTrainingBrawler(b);
+              };
+              grid.appendChild(card);
+          });
+      }
+
+      searchBox.oninput = () => renderList(searchBox.value);
+      renderList();
+      panel.appendChild(grid);
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+      searchBox.focus();
+  }
+
+  function spawnTraining15BotGrid() {
+      for (let i = bots.length - 1; i >= 0; i--) {
+          if (bots[i].isTrainingGridBot) bots.splice(i, 1);
+      }
+      const startX = 2750;
+      const startY = 2250;
+      const colSpacing = 160;
+      const rowSpacing = 170;
+      const gridBrawlers = [
+          'outlit', 'fuser', 'axeywaxy', 'trampaheal', 'mageny',
+          'cinderion', 'ramage', 'upgradart', 'ghoul', 'portalo',
+          'king', 'cursed', 'darkener', 'awakenator', 'snapper'
+      ];
+      let count = 0;
+      for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 5; c++) {
+              const bx = startX + c * colSpacing;
+              const by = startY + r * rowSpacing;
+              const braw = gridBrawlers[count % gridBrawlers.length];
+              count++;
+              const tier = getHPTier(braw);
+              const gridBot = {
+                  id: nextId++,
+                  x: bx, y: by, baseX: bx, baseY: by, z: 0, vx: 0, vy: 0,
+                  hp: tier.hp || 5000, maxHp: tier.hp || 5000,
+                  shield: 0, shieldMax: 0, shieldDecayTimer: 0, reloadBuffUntil: 0,
+                  radius: 18, speed: 0, slowUntil: 0, brawler: braw,
+                  lastTargetId: null, targetLockUntil: 0, lastShot: 0,
+                  superCharge: 0, hyperChargeCharge: 0, isHypercharged: false,
+                  hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0,
+                  selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0,
+                  ridaHitCooldowns: {}, isFlying: false,
+                  isDummy: !trainingGridBotsActiveAI,
+                  isTrainingBot: true, isTrainingGridBot: true, gridIndex: count,
+                  team: 'enemy'
+              };
+              bots.push(gridBot);
+          }
+      }
+  }
+
+  function resetTraining15BotGrid() {
+      for (const b of bots) {
+          if (b.isTrainingGridBot) {
+              b.hp = b.maxHp;
+              b.x = b.baseX;
+              b.y = b.baseY;
+              b.z = 0;
+              b.vx = 0;
+              b.vy = 0;
+              b.isDead = false;
+              b.isDummy = !trainingGridBotsActiveAI;
+              b.shield = 0;
+          }
+      }
+      spawnFloatingText(3110, 2200, '15-BOT GRID RESET!', '#ffd166');
+      updateTrainingCaveUI();
+  }
+
+  function summonTrainingAlly(brawler = 'outlit', x = null, y = null, startWounded = true) {
+      const allyX = x ?? (player.x - 100 + (Math.random() * 60 - 30));
+      const allyY = y ?? (player.y - 100 + (Math.random() * 60 - 30));
+      const tier = getHPTier(brawler);
+      const maxHp = tier.hp || 6000;
+      const hp = startWounded ? Math.max(1, Math.round(maxHp * 0.25)) : maxHp;
+      const allyBot = {
+          id: nextId++,
+          x: allyX, y: allyY, baseX: allyX, baseY: allyY, z: 0, vx: 0, vy: 0,
+          hp: hp, maxHp: maxHp,
+          shield: 0, shieldMax: 0, shieldDecayTimer: 0, reloadBuffUntil: 0,
+          radius: 18, speed: 0, slowUntil: 0, brawler: brawler,
+          lastTargetId: null, targetLockUntil: 0, lastShot: 0,
+          superCharge: 0, hyperChargeCharge: 0, isHypercharged: false,
+          hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0,
+          selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0,
+          ridaHitCooldowns: {}, isFlying: false, isDummy: true,
+          isTrainingBot: true, isTrainingAlly: true, isTeammate: true,
+          team: 'player'
+      };
+      bots.push(allyBot);
+      spawnFloatingText(allyX, allyY - 32, 'ALLY SUMMONED (HEAL TARGET)!', '#5df2c2');
+      updateTrainingCaveUI();
+      return allyBot;
+  }
+
+  function woundTrainingAllies(pct = 0.25) {
+      let count = 0;
+      for (const b of bots) {
+          if (b.isTrainingAlly && b.hp > 0) {
+              b.hp = Math.max(1, Math.round(b.maxHp * pct));
+              b.shield = 0;
+              spawnFloatingText(b.x, b.y - 20, `${Math.round(pct * 100)}% HP`, '#ff6b81');
+              count++;
+          }
+      }
+      if (count === 0) {
+          summonTrainingAlly('outlit', 650, 1600, true);
+          summonTrainingAlly('fuser', 750, 1600, true);
+          summonTrainingAlly('trampaheal', 700, 1750, true);
+      }
+      updateTrainingCaveUI();
+  }
+
+  function healTrainingAllies() {
+      for (const b of bots) {
+          if (b.isTrainingAlly && b.hp > 0) {
+              b.hp = b.maxHp;
+              spawnFloatingText(b.x, b.y - 20, 'FULL HP', '#5df2c2');
+          }
+      }
+      updateTrainingCaveUI();
+  }
+
+  function clearTrainingAllies() {
+      for (let i = bots.length - 1; i >= 0; i--) {
+          if (bots[i].isTrainingAlly) bots.splice(i, 1);
+      }
+      updateTrainingCaveUI();
+  }
+
+  function spawnTrainingCustomEnemy(brawlerId = trainingCaveCustomEnemyId, activeAI = true) {
+      if (!allBrawlers.includes(brawlerId)) brawlerId = 'king';
+      trainingCaveCustomEnemyId = brawlerId;
+      const spawnX = 3100 + (Math.random() * 80 - 40);
+      const spawnY = 1300 + (Math.random() * 80 - 40);
+      const tier = getHPTier(brawlerId);
+      const maxHp = tier.hp || 7000;
+      const enemyBot = {
+          id: nextId++,
+          x: spawnX, y: spawnY, baseX: spawnX, baseY: spawnY, z: 0, vx: 0, vy: 0,
+          hp: maxHp, maxHp: maxHp,
+          shield: 0, shieldMax: 0, shieldDecayTimer: 0, reloadBuffUntil: 0,
+          radius: 18, speed: activeAI ? 180 : 0, slowUntil: 0, brawler: brawlerId,
+          lastTargetId: null, targetLockUntil: 0, lastShot: 0,
+          superCharge: 0, hyperChargeCharge: 0, isHypercharged: false,
+          hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0,
+          selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0,
+          ridaHitCooldowns: {}, isFlying: false,
+          isDummy: !activeAI,
+          customEnemyMode: activeAI ? 'ai' : 'dummy',
+          isTrainingBot: true, isTrainingCustomEnemy: true,
+          team: 'enemy'
+      };
+      bots.push(enemyBot);
+      const bName = (brawlerData[brawlerId] || { name: brawlerId }).name;
+      spawnFloatingText(spawnX, spawnY - 36, `ENEMY ${bName.toUpperCase()} (${activeAI ? 'AI' : 'DUMMY'}) SPAWNED!`, '#ff4d6d');
+      updateTrainingCaveUI();
+      return enemyBot;
+  }
+
+  function clearTrainingCustomEnemies() {
+      for (let i = bots.length - 1; i >= 0; i--) {
+          if (bots[i].isTrainingCustomEnemy) bots.splice(i, 1);
+      }
+      updateTrainingCaveUI();
+  }
+
+  function initTrainingCaveUI() {
+      closeTrainingCaveUI();
+      if (!isTraining || isTutorialMode) return;
+
+      const deck = document.createElement('div');
+      deck.id = 'training-cave-deck';
+      deck.style.cssText = 'position:fixed;left:14px;top:14px;z-index:2100;width:min(440px,calc(100vw - 28px));max-height:calc(100vh - 28px);background:rgba(4,10,22,0.94);border:2px solid #5df2c2;border-radius:16px;box-shadow:0 14px 40px rgba(0,0,0,0.65);color:#eaf6ff;font-family:sans-serif;padding:10px 12px;backdrop-filter:blur(10px);overflow-y:auto;user-select:none;';
+
+      deck.innerHTML = `
+        <!-- Brawler Navigation Bar with Large Arrow Buttons -->
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(93,242,194,0.25);">
+          <button id="tcPrevBrawlerBtn" style="width:40px;height:40px;border-radius:10px;border:2px solid #5df2c2;background:rgba(93,242,194,0.18);color:#5df2c2;font-size:18px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Previous Brawler">◀</button>
+
+          <button id="tcCurrentBrawlerBtn" style="flex:1;height:40px;border-radius:10px;border:2px solid rgba(93,242,194,0.45);background:linear-gradient(135deg,rgba(93,242,194,0.18),rgba(12,28,52,0.85));color:#fff;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0 12px;" title="Click to Pick Any Brawler">
+            <span id="tcBrawlerLabel" style="display:flex;align-items:center;gap:8px;"><span id="tcBrawlerIcon" style="font-size:18px;">⚡</span> <span id="tcBrawlerName" style="color:#5df2c2;letter-spacing:0.5px;">OUTLIT</span></span>
+            <span style="font-size:10px;color:#8fc8ff;background:rgba(100,180,255,0.18);padding:3px 7px;border-radius:6px;">▾ SWITCH</span>
+          </button>
+
+          <button id="tcNextBrawlerBtn" style="width:40px;height:40px;border-radius:10px;border:2px solid #5df2c2;background:rgba(93,242,194,0.18);color:#5df2c2;font-size:18px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Next Brawler">▶</button>
+
+          <button id="tcToggleDeckBtn" style="width:34px;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);color:#d0e2ff;font-size:14px;cursor:pointer;" title="Minimize / Expand Controls">⚙️</button>
+
+          <button id="tcExitTrainingBtn" style="padding:0 10px;height:40px;border-radius:10px;border:1px solid #ff5c77;background:rgba(255,70,100,0.2);color:#ff8fa3;font-size:11px;font-weight:900;cursor:pointer;" title="Exit Training">🚪 EXIT</button>
+        </div>
+
+        <div id="tcDeckBody" style="display:${trainingCaveDeckCollapsed ? 'none' : 'flex'};flex-direction:column;gap:8px;">
+          <!-- 1. Allies & Healing Toolkit -->
+          <div style="background:rgba(10,24,42,0.7);padding:8px 10px;border-radius:10px;border:1px solid rgba(93,242,194,0.2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;font-weight:900;color:#5df2c2;letter-spacing:0.5px;">🧪 HEALING & ALLIES TEST</span>
+              <span id="tcAllyCountLabel" style="font-size:10px;color:#9bc8e6;">3 Allies</span>
+            </div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <button id="tcSummonAllyBtn" style="flex:1;min-width:70px;padding:6px 8px;border-radius:7px;border:1px solid #5df2c2;background:rgba(93,242,194,0.18);color:#5df2c2;font-size:11px;font-weight:800;cursor:pointer;">+ Ally</button>
+              <button id="tcWoundAllyBtn" style="flex:1;min-width:75px;padding:6px 8px;border-radius:7px;border:1px solid #ff6b81;background:rgba(255,107,129,0.18);color:#ff8fa3;font-size:11px;font-weight:800;cursor:pointer;">💔 25% HP</button>
+              <button id="tcDrainAllyBtn" style="flex:1;min-width:85px;padding:6px 8px;border-radius:7px;border:1px solid #ffd166;background:rgba(255,209,102,0.18);color:#ffd166;font-size:11px;font-weight:800;cursor:pointer;">🩸 Drain: OFF</button>
+              <button id="tcHealAllyBtn" style="flex:1;min-width:70px;padding:6px 8px;border-radius:7px;border:1px solid #00f5d4;background:rgba(0,245,212,0.18);color:#00f5d4;font-size:11px;font-weight:800;cursor:pointer;">💚 Max HP</button>
+              <button id="tcClearAllyBtn" style="padding:6px 8px;border-radius:7px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#b0c6df;font-size:11px;font-weight:800;cursor:pointer;">❌ Clear</button>
+            </div>
+          </div>
+
+          <!-- 2. 15-Bot Practice Grid (Bottom Right) -->
+          <div style="background:rgba(10,24,42,0.7);padding:8px 10px;border-radius:10px;border:1px solid rgba(255,209,102,0.25);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;font-weight:900;color:#ffd166;letter-spacing:0.5px;">⚡ 15-BOT COMBAT GRID (BOTTOM RIGHT)</span>
+              <span style="font-size:10px;color:#ffdf99;">AOE / Piercing</span>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button id="tcResetGridBtn" style="flex:1;padding:6px 10px;border-radius:7px;border:1px solid #ffd166;background:rgba(255,209,102,0.22);color:#ffd166;font-size:11px;font-weight:800;cursor:pointer;">⚡ Reset 15 Bots</button>
+              <button id="tcToggleGridAiBtn" style="flex:1;padding:6px 10px;border-radius:7px;border:1px solid #70a1ff;background:rgba(112,161,255,0.18);color:#70a1ff;font-size:11px;font-weight:800;cursor:pointer;">🤖 Mode: DUMMY</button>
+            </div>
+          </div>
+
+          <!-- 3. Select & Spawn Any Brawler As Enemy -->
+          <div style="background:rgba(10,24,42,0.7);padding:8px 10px;border-radius:10px;border:1px solid rgba(255,77,109,0.3);">
+            <div style="font-size:11px;font-weight:900;color:#ff6b81;letter-spacing:0.5px;margin-bottom:6px;">⚔️ ENEMY DUEL SPAWNER (ALL BRAWLERS)</div>
+            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+              <select id="tcEnemySelect" style="flex:2;min-width:110px;height:30px;background:#051020;border:1px solid rgba(255,107,129,0.4);border-radius:7px;color:#fff;font-size:11px;font-weight:800;padding:0 6px;outline:none;"></select>
+              <button id="tcSpawnEnemyAiBtn" style="flex:1;min-width:68px;padding:6px 8px;border-radius:7px;border:1px solid #ff4d6d;background:rgba(255,77,109,0.25);color:#ff8fa3;font-size:11px;font-weight:800;cursor:pointer;">⚔️ AI</button>
+              <button id="tcSpawnEnemyDummyBtn" style="flex:1;min-width:72px;padding:6px 8px;border-radius:7px;border:1px solid #a29bfe;background:rgba(162,155,254,0.2);color:#dcd6ff;font-size:11px;font-weight:800;cursor:pointer;">🎯 Dummy</button>
+              <button id="tcClearEnemyBtn" style="padding:6px 8px;border-radius:7px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#b0c6df;font-size:11px;font-weight:800;cursor:pointer;">❌ Clear</button>
+            </div>
+          </div>
+
+          <!-- 4. Quick Powers & Teleport -->
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <button id="tcRefillSuperBtn" style="flex:1;min-width:80px;padding:6px 6px;border-radius:7px;border:1px solid #ffe66d;background:rgba(255,230,109,0.15);color:#ffe66d;font-size:10px;font-weight:800;cursor:pointer;">⚡ Super Max</button>
+            <button id="tcRefillHyperBtn" style="flex:1;min-width:80px;padding:6px 6px;border-radius:7px;border:1px solid #ff77e9;background:rgba(255,119,233,0.18);color:#ff77e9;font-size:10px;font-weight:800;cursor:pointer;">🔥 Hyper Max</button>
+            <button id="tcPlayerHealBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #5df2c2;background:rgba(93,242,194,0.15);color:#5df2c2;font-size:10px;font-weight:800;cursor:pointer;">💚 Full HP</button>
+            <button id="tcAddCubesBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #ffd166;background:rgba(255,209,102,0.15);color:#ffd166;font-size:10px;font-weight:800;cursor:pointer;">📦 +5 Cubes</button>
+            <button id="tcTeleportSpawnBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #70a1ff;background:rgba(112,161,255,0.15);color:#70a1ff;font-size:10px;font-weight:800;cursor:pointer;">📍 Center</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(deck);
+      trainingCaveDeckPanel = deck;
+
+      const enemySelect = deck.querySelector('#tcEnemySelect');
+      if (enemySelect) {
+          const sortedBrawlers = allBrawlers.filter(b => !disabledBrawlers.has(b)).slice().sort((a, b) => {
+              const na = (brawlerData[a] || { name: a }).name;
+              const nb = (brawlerData[b] || { name: b }).name;
+              return na.localeCompare(nb);
+          });
+          for (const b of sortedBrawlers) {
+              const opt = document.createElement('option');
+              opt.value = b;
+              const def = brawlerData[b] || { name: b };
+              opt.textContent = `${def.name} (${def.role || 'Fighter'})`;
+              if (b === trainingCaveCustomEnemyId) opt.selected = true;
+              enemySelect.appendChild(opt);
+          }
+          enemySelect.onchange = () => { trainingCaveCustomEnemyId = enemySelect.value; };
+      }
+
+      deck.querySelector('#tcPrevBrawlerBtn').onclick = () => cycleTrainingBrawler(-1);
+      deck.querySelector('#tcNextBrawlerBtn').onclick = () => cycleTrainingBrawler(1);
+      deck.querySelector('#tcCurrentBrawlerBtn').onclick = () => openTrainingBrawlerPickerModal();
+      deck.querySelector('#tcToggleDeckBtn').onclick = () => {
+          trainingCaveDeckCollapsed = !trainingCaveDeckCollapsed;
+          const body = deck.querySelector('#tcDeckBody');
+          if (body) body.style.display = trainingCaveDeckCollapsed ? 'none' : 'flex';
+      };
+      deck.querySelector('#tcExitTrainingBtn').onclick = () => exitTrainingModeToHome();
+
+      deck.querySelector('#tcSummonAllyBtn').onclick = () => summonTrainingAlly('outlit', null, null, true);
+      deck.querySelector('#tcWoundAllyBtn').onclick = () => woundTrainingAllies(0.25);
+      deck.querySelector('#tcDrainAllyBtn').onclick = () => {
+          trainingAllyAutoDrain = !trainingAllyAutoDrain;
+          const btn = deck.querySelector('#tcDrainAllyBtn');
+          if (btn) btn.textContent = trainingAllyAutoDrain ? '🩸 Auto-Drain: ON' : '🩸 Auto-Drain: OFF';
+          spawnFloatingText(player.x, player.y - 30, trainingAllyAutoDrain ? 'ALLY HP AUTO-DRAIN ON' : 'ALLY HP AUTO-DRAIN OFF', '#ffd166');
+      };
+      deck.querySelector('#tcHealAllyBtn').onclick = () => healTrainingAllies();
+      deck.querySelector('#tcClearAllyBtn').onclick = () => clearTrainingAllies();
+
+      deck.querySelector('#tcResetGridBtn').onclick = () => resetTraining15BotGrid();
+      deck.querySelector('#tcToggleGridAiBtn').onclick = () => {
+          trainingGridBotsActiveAI = !trainingGridBotsActiveAI;
+          for (const b of bots) {
+              if (b.isTrainingGridBot) {
+                  b.isDummy = !trainingGridBotsActiveAI;
+                  b.speed = trainingGridBotsActiveAI ? 160 : 0;
+              }
+          }
+          const btn = deck.querySelector('#tcToggleGridAiBtn');
+          if (btn) btn.textContent = trainingGridBotsActiveAI ? '🤖 Mode: ACTIVE AI' : '🤖 Mode: DUMMY';
+          spawnFloatingText(player.x, player.y - 30, trainingGridBotsActiveAI ? 'GRID BOTS: ACTIVE AI' : 'GRID BOTS: STATIONARY DUMMIES', '#70a1ff');
+      };
+
+      deck.querySelector('#tcSpawnEnemyAiBtn').onclick = () => {
+          const bId = enemySelect ? enemySelect.value : trainingCaveCustomEnemyId;
+          spawnTrainingCustomEnemy(bId, true);
+      };
+      deck.querySelector('#tcSpawnEnemyDummyBtn').onclick = () => {
+          const bId = enemySelect ? enemySelect.value : trainingCaveCustomEnemyId;
+          spawnTrainingCustomEnemy(bId, false);
+      };
+      deck.querySelector('#tcClearEnemyBtn').onclick = () => clearTrainingCustomEnemies();
+
+      deck.querySelector('#tcRefillSuperBtn').onclick = () => {
+          superCharge = 100;
+          player.superCharge = 100;
+          updateSuperButton();
+          spawnFloatingText(player.x, player.y - 30, 'SUPER READY (100%)!', '#ffe66d');
+      };
+      deck.querySelector('#tcRefillHyperBtn').onclick = () => {
+          hyperChargeCharge = 100;
+          player.hyperChargeCharge = 100;
+          updateHyperButton();
+          spawnFloatingText(player.x, player.y - 30, 'HYPERCHARGE READY (100%)!', '#ff77e9');
+      };
+      deck.querySelector('#tcPlayerHealBtn').onclick = () => {
+          player.hp = player.maxHp;
+          player.shield = 0;
+          spawnFloatingText(player.x, player.y - 30, 'PLAYER FULL HEALTH!', '#5df2c2');
+      };
+      deck.querySelector('#tcAddCubesBtn').onclick = () => {
+          player.powerCubes = (player.powerCubes || 0) + 5;
+          const tier = getHPTier(selectedBrawler);
+          player.maxHp = Math.round(tier.hp * (1 + player.powerCubes * 0.1));
+          player.hp = player.maxHp;
+          spawnFloatingText(player.x, player.y - 30, `+5 POWER CUBES (TOTAL ${player.powerCubes})!`, '#ffd166');
+      };
+      deck.querySelector('#tcTeleportSpawnBtn').onclick = () => {
+          player.x = 1900;
+          player.y = 1900;
+          player.vx = 0;
+          player.vy = 0;
+          spawnFloatingText(player.x, player.y - 30, 'TELEPORTED TO SPAWN!', '#70a1ff');
+      };
+
+      updateTrainingCaveUI();
+  }
+
+  function updateTrainingCaveUI() {
+      if (!trainingCaveDeckPanel || !trainingCaveDeckPanel.isConnected) return;
+      const def = brawlerData[selectedBrawler] || { name: selectedBrawler, role: 'Fighter' };
+      const iconEl = trainingCaveDeckPanel.querySelector('#tcBrawlerIcon');
+      const nameEl = trainingCaveDeckPanel.querySelector('#tcBrawlerName');
+      if (iconEl) iconEl.textContent = getBrawlerPortraitIcon(selectedBrawler) || '⚡';
+      if (nameEl) nameEl.textContent = `${def.name.toUpperCase()}`;
+
+      const allyCount = bots.filter(b => b.isTrainingAlly && b.hp > 0).length;
+      const countEl = trainingCaveDeckPanel.querySelector('#tcAllyCountLabel');
+      if (countEl) countEl.textContent = `${allyCount} Active ${allyCount === 1 ? 'Ally' : 'Allies'}`;
+  }
+
+  function updateTrainingCaveMode(dt, now) {
+      if (!isTraining || isTutorialMode) return;
+
+      if (trainingAllyAutoDrain) {
+          trainingAllyDrainTimer = (trainingAllyDrainTimer || 0) + dt;
+          if (trainingAllyDrainTimer >= 0.5) {
+              trainingAllyDrainTimer = 0;
+              for (const b of bots) {
+                  if (b.isTrainingAlly && b.hp > 100) {
+                      b.hp = Math.max(100, b.hp - 180);
+                  }
+              }
+          }
+      }
+
+      for (const b of bots) {
+          if (b.isTrainingGridBot && b.hp <= 0) {
+              b.respawnTimer = (b.respawnTimer || 0) + dt;
+              if (b.respawnTimer >= 0.8) {
+                  restoreRespawningEntity(b, { x: b.baseX, y: b.baseY }, false, 0);
+                  b.isDummy = !trainingGridBotsActiveAI;
+                  b.isDead = false;
+                  b.hp = b.maxHp;
+                  b.respawnTimer = 0;
+              }
+          }
+      }
+  }
+
+  function renderTrainingGroundsOverlay() {
+      if (!isTraining || isTutorialMode) return;
+      ctx.save();
+
+      // 1. Center Spawn & Restock Station (1900, 1900)
+      ctx.strokeStyle = 'rgba(93, 242, 194, 0.4)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(1900, 1900, 240, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(93, 242, 194, 0.04)';
+      ctx.fill();
+      ctx.fillStyle = '#5df2c2';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('📍 SPAWN & RESTOCK STATION', 1900, 1680);
+
+      // 2. Healing & Allies Test Ward (Left: 400..1000, 1400..2000)
+      ctx.strokeStyle = 'rgba(0, 245, 212, 0.65)';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = 'rgba(0, 245, 212, 0.05)';
+      ctx.beginPath();
+      ctx.roundRect(400, 1400, 600, 600, 24);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#00f5d4';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('🧪 HEALING & ALLIES TEST WARD', 700, 1440);
+      ctx.fillStyle = '#a0fde7';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Summon allies • Test Trampaheal, Duck swipe, Super heals & Gadgets', 700, 1465);
+
+      ctx.fillStyle = 'rgba(0, 245, 212, 0.25)';
+      ctx.font = '32px sans-serif';
+      ctx.fillText('➕', 450, 1500);
+      ctx.fillText('➕', 950, 1500);
+      ctx.fillText('➕', 450, 1950);
+      ctx.fillText('➕', 950, 1950);
+
+      // 3. 15-Bot Practice Grid (Bottom Right: 2650..3550, 2150..2800)
+      ctx.strokeStyle = 'rgba(255, 209, 102, 0.65)';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = 'rgba(255, 209, 102, 0.04)';
+      ctx.beginPath();
+      ctx.roundRect(2650, 2150, 920, 650, 24);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffd166';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('⚡ 15-BOT COMBAT & MULTIKILL GRID', 3110, 2190);
+      ctx.fillStyle = '#ffeaa7';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Instant Respawn • AOE, Piercing, Bouncing & Chain Super Combos', 3110, 2215);
+
+      const startX = 2750;
+      const startY = 2250;
+      for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 5; c++) {
+              const gx = startX + c * 160;
+              const gy = startY + r * 170;
+              ctx.strokeStyle = 'rgba(255, 209, 102, 0.2)';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.arc(gx, gy, 36, 0, Math.PI * 2);
+              ctx.stroke();
+          }
+      }
+
+      // 4. 1v1 Enemy Duel Arena (Right: 2800..3400, 1000..1600)
+      ctx.strokeStyle = 'rgba(255, 77, 109, 0.65)';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = 'rgba(255, 77, 109, 0.05)';
+      ctx.beginPath();
+      ctx.roundRect(2800, 1000, 600, 600, 24);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ff4d6d';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('⚔️ 1v1 ENEMY DUEL ARENA', 3100, 1040);
+      ctx.fillStyle = '#ffb3c1';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Select any brawler to test AI attack patterns & 1v1 combat', 3100, 1065);
+
+      // 5. Top Real-Time Damage Station (Top: 1500..2300, 250..680)
+      ctx.strokeStyle = 'rgba(93, 242, 194, 0.5)';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = 'rgba(93, 242, 194, 0.04)';
+      ctx.beginPath();
+      ctx.roundRect(1500, 250, 800, 430, 24);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#8fffd7';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('💥 REAL-TIME DAMAGE METER & COLOSSUS DUMMY', 1900, 290);
+      ctx.fillStyle = '#d2fdf0';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('1,000,000 HP DPS Meter Bot (Left) • 10,000,000 HP Colossus (Right)', 1900, 315);
+
+      // 6. Showcase Gallery (Upper-Mid)
+      ctx.strokeStyle = 'rgba(112, 161, 255, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.fillStyle = 'rgba(112, 161, 255, 0.03)';
+      ctx.beginPath();
+      ctx.roundRect(350, 750, 3100, 480, 24);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#70a1ff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText('🎯 ALL-BRAWLERS REFERENCE GALLERY', 1900, 785);
+
+      ctx.restore();
+  }
+
   function launchTrainingSandbox(targetBrawler = selectedBrawler) {
       selectedBrawler = allBrawlers.includes(targetBrawler) ? targetBrawler : 'outlit';
       if (brawlerSelect) brawlerSelect.value = selectedBrawler;
@@ -30252,13 +32843,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
-      if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Training';
-      if(homeScreen) homeScreen.style.display = 'none';
-      if(brawlerSelect) brawlerSelect.disabled = true;
-      const cols = 7;
-      const rows = Math.ceil(allBrawlers.length / cols);
-      WORLD_W = 3600;
-      WORLD_H = Math.max(2600, 1300 + rows * 300);
+      if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Training Grounds';
+      if (homeScreen) homeScreen.style.display = 'none';
+      if (brawlerSelect) brawlerSelect.disabled = true;
+
+      WORLD_W = 3800;
+      WORLD_H = 3000;
       cubes.length = 0;
       powerups.length = 0;
       amplifierToolboxes.length = 0;
@@ -30267,30 +32857,85 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       skelePortals.length = 0;
       waterZones.length = 0;
       destructibleWalls.length = 0;
+      bullets.length = 0;
+      explosions.length = 0;
+
+      // Spawn Power Boxes around central spawn
+      destructibleWalls.push({ x: 1720, y: 1780, w: 50, h: 50, hp: 4000, maxHp: 4000, isBox: true, cubesCount: 2 });
+      destructibleWalls.push({ x: 2080, y: 1780, w: 50, h: 50, hp: 4000, maxHp: 4000, isBox: true, cubesCount: 2 });
+      destructibleWalls.push({ x: 1720, y: 2020, w: 50, h: 50, hp: 4000, maxHp: 4000, isBox: true, cubesCount: 2 });
+      destructibleWalls.push({ x: 2080, y: 2020, w: 50, h: 50, hp: 4000, maxHp: 4000, isBox: true, cubesCount: 2 });
+
       initPlayerHP();
-      player.x = WORLD_W * 0.5;
-      player.y = WORLD_H - 240;
+      player.x = 1900;
+      player.y = 1900;
       player.team = 'player';
+      player.powerCubes = 0;
+      player.superCharge = 100;
+      player.hyperChargeCharge = 100;
+      superCharge = 100;
+      hyperChargeCharge = 100;
+      updateSuperButton();
+      updateHyperButton();
+
       bots.length = 0;
-      bots.push({ id: nextId++, x: WORLD_W * 0.5 - 230, y: 320, baseX:WORLD_W * 0.5 - 230, baseY:320, z:0, vx:0, vy:0, hp: 1000000, maxHp: 1000000, shield:0, shieldMax:0, shieldDecayTimer:0, reloadBuffUntil:0, radius: 35, speed: 0, slowUntil: 0, brawler: 'outlit', lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false, isDummy: true, isTrainingBot: true });
-      bots.push({ id: nextId++, x: WORLD_W * 0.5 + 230, y: 320, baseX:WORLD_W * 0.5 + 230, baseY:320, z:0, vx:0, vy:0, hp: 1000000, maxHp: 1000000, shield:0, shieldMax:0, shieldDecayTimer:0, reloadBuffUntil:0, radius: 40, speed: 0, slowUntil: 0, brawler: 'relay', lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false, isDummy: true, isTrainingBot: true, isDamageMeterBot:true, trainingDamageEvents:[], team:'enemy' });
-      allBrawlers.filter((b) => !disabledBrawlers.has(b)).forEach((b, i) => {
-          const col = i % cols;
-          const row = Math.floor(i / cols);
-          const xPad = 240;
-          const yStart = 680;
-          const bx = xPad + col * ((WORLD_W - xPad * 2) / Math.max(1, cols - 1));
-          const by = yStart + row * 300;
+
+      // Zone 5: Top Heavyweight Damage Meter Bot (1M HP) & Colossus Dummy (10M HP)
+      bots.push({
+          id: nextId++, x: 1750, y: 460, baseX: 1750, baseY: 460, z: 0, vx: 0, vy: 0,
+          hp: 1000000, maxHp: 1000000, shield: 0, shieldMax: 0, shieldDecayTimer: 0, reloadBuffUntil: 0,
+          radius: 38, speed: 0, slowUntil: 0, brawler: 'relay',
+          lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0,
+          isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0,
+          selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {},
+          isFlying: false, isDummy: true, isTrainingBot: true, isDamageMeterBot: true,
+          trainingDamageEvents: [], team: 'enemy'
+      });
+      bots.push({
+          id: nextId++, x: 2050, y: 460, baseX: 2050, baseY: 460, z: 0, vx: 0, vy: 0,
+          hp: 10000000, maxHp: 10000000, shield: 0, shieldMax: 0, shieldDecayTimer: 0, reloadBuffUntil: 0,
+          radius: 46, speed: 0, slowUntil: 0, brawler: 'beast',
+          lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0,
+          isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0,
+          selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {},
+          isFlying: false, isDummy: true, isTrainingBot: true, isColossusBot: true, team: 'enemy'
+      });
+
+      // Zone 2: Healing & Allies Test Ward (Left) -> 3 wounded allies
+      summonTrainingAlly('outlit', 650, 1600, true);
+      summonTrainingAlly('fuser', 750, 1600, true);
+      summonTrainingAlly('trampaheal', 700, 1750, true);
+
+      // Zone 3: 15-Bot Practice Grid (Bottom Right)
+      spawnTraining15BotGrid();
+
+      // Zone 4: 1v1 Enemy Duel Arena (Right) -> Initial Dummy King (non-hostile on spawn)
+      spawnTrainingCustomEnemy('king', false);
+
+      // Zone 6: Brawler Showcase Gallery (Upper Mid)
+      const galleryBrawlers = allBrawlers.filter(b => !disabledBrawlers.has(b));
+      const gCols = 10;
+      galleryBrawlers.forEach((b, i) => {
+          const col = i % gCols;
+          const row = Math.floor(i / gCols);
+          const gx = 450 + col * ((3350 - 450) / (gCols - 1));
+          const gy = 850 + row * 160;
           const tier = getHPTier(b);
           bots.push({
-              id: nextId++, x: bx, y: by, baseX: bx, baseY: by, z:0, vx:0, vy:0,
-              hp: tier.hp, maxHp: tier.hp, powerCubes: 0, isDead: false, shield:0, shieldMax:0, shieldDecayTimer:0, reloadBuffUntil:0,
-              radius: 16, speed: 0, slowUntil: 0, brawler: b, lastTargetId: null, targetLockUntil: 0, lastShot: 0,
-              superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false,
-              gadgetCooldownUntil: 0, selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {},
-              isFlying: false, isDummy: true, isTrainingBot: true, moneyAndTaxMode: 'money', team: 'enemy'
+              id: nextId++, x: gx, y: gy, baseX: gx, baseY: gy, z: 0, vx: 0, vy: 0,
+              hp: tier.hp || 5000, maxHp: tier.hp || 5000, powerCubes: 0, isDead: false,
+              shield: 0, shieldMax: 0, shieldDecayTimer: 0, reloadBuffUntil: 0,
+              radius: 16, speed: 0, slowUntil: 0, brawler: b, lastTargetId: null,
+              targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0,
+              isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false,
+              gadgetCooldownUntil: 0, selectedStar: 'slow', unopcolocoCycle: 0,
+              ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false,
+              isDummy: true, isTrainingBot: true, isGalleryBot: true,
+              moneyAndTaxMode: 'money', team: 'enemy'
           });
       });
+
+      initTrainingCaveUI();
   }
 
   trainingBtn.addEventListener('click', ()=>{
@@ -32716,6 +35361,49 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         // If target has temporary invulnerability (e.g., overlord transform), ignore the hit
         if (target && target.invulnerableUntil && target.invulnerableUntil > performance.now()) return false;
 
+        // Sir Cheeseburger Super Chest Guard Damage Reduction
+        if (target && (target.sirChestGuardUntil || 0) > performance.now()) {
+            ensureSirCheeseburgerState(target);
+            const now = performance.now();
+            const isHyper = !!target.sirChestGuardHyper;
+            const isProjectile = !!(b && (b.isBullet || b.vx !== undefined || b.ownerBrawler || b.isBoomArang || b.isEchoRingProj || (typeof i === 'number' && i >= 0)));
+            
+            let appliesDr = false;
+            let dr = 0;
+            if (isHyper) {
+                appliesDr = true;
+                dr = target.sirChestGuardDr || 0.85;
+                // Decays by 5% per hit taken down to 60% floor
+                target.sirChestGuardDr = Math.max(0.60, dr - 0.05);
+            } else if (isProjectile) {
+                appliesDr = true;
+                dr = 0.50;
+            }
+            
+            if (appliesDr && dr > 0) {
+                b.damage = Math.round((b.damage || 0) * (1 - dr));
+                spawnFloatingText(target.x, target.y - 40, `🛡️ -${Math.round(dr * 100)}% GUARDED!`, isHyper ? '#e056fd' : '#ffb830');
+                explosions.push({
+                    x: target.x,
+                    y: target.y,
+                    radius: 36,
+                    life: 0,
+                    maxLife: 0.18,
+                    color: isHyper ? 'rgba(224, 86, 253, 0.75)' : 'rgba(255, 184, 48, 0.75)'
+                });
+                
+                // SP1: Tempered Cheddar (While Super is active, blocked projectiles restore 150 HP and grant 15% faster reload)
+                const hasSp1 = target.id === player.id 
+                    ? (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1')
+                    : (target.selectedStar === 'slow' || target.selectedStar === 'fast' || target.selectedStar === 'sp1');
+                if (hasSp1 && isProjectile) {
+                    doHeal(target, 150);
+                    target.sirCheddarReloadBuffUntil = now + 6500;
+                    spawnFloatingText(target.x, target.y - 54, '+150 HP & +15% RELOAD!', '#fffa65');
+                }
+            }
+        }
+
         // AxeyWaxy Super Damage Reduction Shield & HC 4000 HP Heal Trigger
         if (target && (target.axeyWaxySuperUntil || 0) > performance.now()) {
             ensureAxeyWaxyState(target);
@@ -32794,6 +35482,50 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     let owner = (b.ownerId === player.id) ? player : bots.find(bt=>bt.id===b.ownerId);
     if(isCoreBreachIntroMode&&coreBreachState?.phase!=='pvp'&&owner&&target&&areAlliedEntities(owner,target))return true;
     const hitNow = performance.now();
+    if (owner && tryAntiRoyalBlock(target,b,hitNow)) return true;
+    if (b.isAntiRoyalGoldPouch && owner && target && !areAlliedEntities(owner,target) &&
+        (target===player||bots.includes(target)) && !target.isDummy && !target.isPowerup && !target.isBox && !b.antiRoyalBanked) {
+        b.antiRoyalBanked=true;
+        registerAntiRoyalGoldHit(owner);
+    }
+    if (b.isKingCannon && b.hyperVisual && owner && target && !areAlliedEntities(owner,target) &&
+        !target.isStructure && !target.isArenaForgeStructure && !target.isVault && !target.isPowerup && !target.isBox && !target.isImmuneToPulls) {
+        const speed=Math.hypot(b.vx||0,b.vy||0)||1;
+        const multiplier=getEntityKnockbackMultiplier(target,hitNow);
+        if(multiplier>0){target.kingPushVX=(b.vx/speed)*390*multiplier;target.kingPushVY=(b.vy/speed)*390*multiplier;target.kingPushUntil=hitNow+360;}
+    }
+    if (b.isKingPrincessArrow && b.kingBurning && owner && target && !areAlliedEntities(owner,target)) {
+        for(let tick=1;tick<=3;tick++)setTimeout(()=>{
+            if(!target||target.hp<=0||!playing)return;
+            checkHit(target,{ownerBrawler:'king',ownerId:owner.id,damage:120,pierce:true,super:true,hitIds:{},isKingBurnTick:true},-1);
+            explosions.push({x:target.x,y:target.y,radius:18,life:0,maxLife:.16,color:'rgba(255,107,42,.64)',fxKind:'kingBurn'});
+        },tick*450);
+    }
+    if (b.isKingPrincessArrow && b.kingHyperPrincess && owner && target && !areAlliedEntities(owner,target) &&
+        (target===player||bots.includes(target)) && !target.isDummy && !target.isPowerup && !target.isBox) {
+        const sourcePrincess=healingPods.find(p=>p.isKingPrincess&&p.kingPrincessId===b.kingPrincessId&&p.hp>0);
+        if(sourcePrincess) sourcePrincess.kingHitDamageBonus=Math.min(KING_HYPER_PRINCESS_DAMAGE_CAP,(sourcePrincess.kingHitDamageBonus||0)+KING_HYPER_PRINCESS_DAMAGE_PER_HIT);
+    }
+    if (owner && (b.isSirCheeseburgerSlice || b.isSirCheeseShockwave) && target && !areAlliedEntities(owner, target) &&
+        (target === player || bots.includes(target)) && !target.isDummy && !target.isPowerup && !target.isBox) {
+        ensureSirCheeseburgerState(owner);
+        const isOwnerHyper = isEntityHyperchargedNow(owner, hitNow);
+        const maxBonus = isOwnerHyper ? 0.38 : 0.20;
+        if ((owner.sirCheeseDmgBonus || 0) < maxBonus) {
+            owner.sirCheeseDmgBonus = Math.min(maxBonus, (owner.sirCheeseDmgBonus || 0) + 0.03);
+            spawnFloatingText(owner.x, owner.y - 32, `+3% COMBO (${Math.round(owner.sirCheeseDmgBonus * 100)}%)`, isOwnerHyper ? '#e056fd' : '#ffb830');
+        }
+        const hasSp2 = owner.id === player.id 
+            ? (selectedStar === 'long' || selectedStar === 'sp2') 
+            : (owner.selectedStar === 'long' || owner.selectedStar === 'sp2');
+        if (hasSp2 && (owner.sirCheeseDmgBonus || 0) >= 0.20) {
+            const healAmt = Math.round((b.damage || 0) * 0.30);
+            if (healAmt > 0) {
+                doHeal(owner, healAmt);
+                spawnFloatingText(owner.x, owner.y - 46, `+${healAmt} LIFESTEAL`, '#2ed573');
+            }
+        }
+    }
     if (b.isCinderionScatterFlame && owner && target && !areAlliedEntities(owner, target)) {
         addCinderionOrbitFlame(owner, hitNow, false);
         if (b.cinderionDoubleKindling) addCinderionOrbitFlame(owner, hitNow, true);
@@ -33115,6 +35847,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     dealtDamage *= getOutgoingDamageMultiplier(owner);
     if (isArenaForgeMode && owner && (target?.isArenaForgeStructure || target?.isArenaForgeCamp || target?.isArenaForgeColossus)) {
         dealtDamage *= owner.arenaForgeSiegeMult || 1;
+    }
+    if (isArenaForgeMode && owner?.arenaForgeExecutioner && target && target.hp <= target.maxHp * 0.40) {
+        dealtDamage *= 1.35;
     }
     if (isSlopSushiMode && b.super) dealtDamage *= 1 + getEntitySlopEffectTotal(owner, 'superDamagePct');
     const executeThreshold = isSlopSushiMode ? getEntitySlopEffectTotal(owner, 'executeThreshold') : 0;
@@ -33568,6 +36303,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
     handleTrinketDamageDealt(owner, target, dealtDamage);
     applyPacketHit(owner,target,dealtDamage,b);
+    if (isArenaForgeMode) handleArenaForgeCombatHit(owner, target, dealtDamage, rawDmg, b);
             if (dealtDamage > 0) {
                 target.lastDamagedAt = performance.now();
                 target.lastDamagerId = b.ownerId;
@@ -34759,44 +37495,100 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
     updateBeastBossEvent(now);
     if (isWarperEvent) updateWarperEvent(now);
+    if (isRankedMatch && playing && !gameOver) {
+        if (activeRankedModifier === 'hyper_overdrive') {
+            if (hyperchargeUnlocked && !isHypercharged && player.hp > 0) {
+                hyperChargeCharge = Math.min(100, hyperChargeCharge + 4.0 * dt);
+            }
+            for (const b of bots) {
+                if (b && b.hp > 0 && b.hyperchargeUnlocked && !b.isHypercharged) {
+                    b.hyperChargeCharge = Math.min(100, (b.hyperChargeCharge || 0) + 4.0 * dt);
+                }
+            }
+        } else if (activeRankedModifier === 'super_surge') {
+            if (player.hp > 0) {
+                superCharge = Math.min(100, superCharge + 5.0 * dt);
+            }
+            for (const b of bots) {
+                if (b && b.hp > 0) {
+                    b.superCharge = Math.min(100, (b.superCharge || 0) + 5.0 * dt);
+                }
+            }
+        } else if (activeRankedModifier === 'timed_detonation') {
+            if (!window._lastTimedDetonationAt) window._lastTimedDetonationAt = now;
+            if (now - window._lastTimedDetonationAt >= 8000) {
+                window._lastTimedDetonationAt = now;
+                triggerTimedDetonationWave();
+            }
+        }
+    }
     const aliveBotsInUpdate = bots.filter(t => t.hp > 0);
     const aliveBots = aliveBotsInUpdate;
 
-    if (isObjectiveMode && !isBossFight && !isSoloTrial && !isDuels) {
+    if (isObjectiveMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         objectiveTimer += dt;
-        objectiveZone.r = BALANCE_PROFILE.objectiveMode.zoneRadius;
-        let friendlyInZone = 0;
-        if (player.hp > 0 && Math.hypot(player.x - objectiveZone.x, player.y - objectiveZone.y) <= objectiveZone.r) {
-            friendlyInZone += 1;
-        }
-        let enemyInZone = 0;
-        for (const b of aliveBotsInUpdate) {
-            if (!b || b.hp <= 0) continue;
-            if (Math.hypot(b.x - objectiveZone.x, b.y - objectiveZone.y) > objectiveZone.r) continue;
-            if (areAlliedEntities(player, b)) friendlyInZone += 1;
-            else enemyInZone += 1;
+        let playerHoldingZones = 0;
+        let enemyHoldingZones = 0;
+
+        if (!Array.isArray(objectiveZones) || objectiveZones.length === 0) {
+            initObjectiveModeState();
         }
 
-        if (friendlyInZone > enemyInZone) {
-            objectiveControl += BALANCE_PROFILE.objectiveMode.capturePerSecond * (friendlyInZone - enemyInZone) * dt;
-        } else if (enemyInZone > friendlyInZone) {
-            objectiveControl -= BALANCE_PROFILE.objectiveMode.decayPerSecond * (enemyInZone - friendlyInZone) * dt;
-        } else {
-            objectiveControl -= BALANCE_PROFILE.objectiveMode.neutralDecayPerSecond * dt;
+        for (const zone of objectiveZones) {
+            let pIn = 0, eIn = 0;
+            if (player.hp > 0 && Math.hypot(player.x - zone.x, player.y - zone.y) <= zone.r) {
+                pIn++;
+            }
+            for (const b of aliveBotsInUpdate) {
+                if (!b || b.hp <= 0) continue;
+                if (Math.hypot(b.x - zone.x, b.y - zone.y) <= zone.r) {
+                    if (areAlliedEntities(player, b) || b.isTeammate || b.team === 'player') pIn++;
+                    else eIn++;
+                }
+            }
+            zone.playerIn = pIn;
+            zone.enemyIn = eIn;
+            if (pIn > 0 && eIn === 0) {
+                zone.controllingTeam = 'player';
+                playerHoldingZones++;
+            } else if (eIn > 0 && pIn === 0) {
+                zone.controllingTeam = 'enemy';
+                enemyHoldingZones++;
+            } else if (pIn > 0 && eIn > 0) {
+                zone.controllingTeam = 'contested';
+            } else {
+                zone.controllingTeam = null;
+            }
         }
-        objectiveControl = clamp(objectiveControl, 0, BALANCE_PROFILE.objectiveMode.winScore);
 
-        if (objectiveControl >= BALANCE_PROFILE.objectiveMode.winScore && !gameOver) {
+        const ptsPerSec = 2.0;
+        if (playerHoldingZones > 0) {
+            objectiveScores.player = clamp((objectiveScores.player || 0) + playerHoldingZones * ptsPerSec * dt, 0, 100);
+        }
+        if (enemyHoldingZones > 0) {
+            objectiveScores.enemy = clamp((objectiveScores.enemy || 0) + enemyHoldingZones * ptsPerSec * dt, 0, 100);
+        }
+        objectiveControl = objectiveScores.player;
+
+        if (objectiveScores.player >= 100 && !gameOver) {
             objectiveWon = true;
             for (const bot of bots) {
                 if (!bot.isTeammate && !areAlliedEntities(player, bot)) bot.hp = 0;
             }
             gameOver = true;
-        }
-
-        if (objectiveTimer >= BALANCE_PROFILE.objectiveMode.matchSeconds && !gameOver) {
+        } else if (objectiveScores.enemy >= 100 && !gameOver) {
             objectiveWon = false;
             player.hp = 0;
+            gameOver = true;
+        } else if (objectiveTimer >= 180 && !gameOver) {
+            objectiveWon = (objectiveScores.player || 0) >= (objectiveScores.enemy || 0);
+            if (objectiveWon) {
+                for (const bot of bots) {
+                    if (!bot.isTeammate && !areAlliedEntities(player, bot)) bot.hp = 0;
+                }
+            } else {
+                player.hp = 0;
+            }
             gameOver = true;
         }
     }
@@ -34810,48 +37602,87 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
 
     if (isConstructionMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
-        const teams = ['player', 'enemy'];
-        for (const team of teams) {
-            const cart = constructionCarts[team];
-            if (!cart) continue;
-            let friendlyInZone = 0;
+        if (!brickMine || typeof brickMine !== 'object') initConstructionModeState();
+        if (brickMine.spawnedTotal < brickMine.maxBricks && now >= brickMine.nextSpawnTime) {
+            brickMine.nextSpawnTime = now + 4000;
+            brickMine.spawnedTotal++;
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 15 + Math.random() * 35;
+            spawnGroundBrick(
+                brickMine.x + Math.cos(angle) * dist,
+                brickMine.y + Math.sin(angle) * dist,
+                Math.cos(angle) * 30,
+                Math.sin(angle) * 30
+            );
+        }
 
-            if (isInConstructionCartZone(player, team)) {
-                if ((player.team || 'player') === team) friendlyInZone += 1;
+        const collectionRadius = 36;
+        const allLiving = [player, ...aliveBotsInUpdate].filter(e => e && e.hp > 0);
+        for (let i = groundBricks.length - 1; i >= 0; i--) {
+            const gb = groundBricks[i];
+            if (!gb) { groundBricks.splice(i, 1); continue; }
+            if (gb.vx || gb.vy) {
+                gb.x += gb.vx * dt;
+                gb.y += gb.vy * dt;
+                gb.vx *= Math.pow(0.1, dt);
+                gb.vy *= Math.pow(0.1, dt);
             }
-
-            for (const b of aliveBotsInUpdate) {
-                if (!b || b.hp <= 0 || !isInConstructionCartZone(b, team)) continue;
-                if ((b.team || 'enemy') === team) friendlyInZone += 1;
-            }
-            if (cart.progress >= 100) {
-                if (cart.siteTimer <= 0) cart.siteTimer = CONSTRUCTION_SITE_HOLD_SECONDS;
-                cart.siteTimer = Math.max(0, cart.siteTimer - dt);
-                if (cart.siteTimer <= 0 && !gameOver) {
-                    constructionWinnerTeam = team;
-                    objectiveWon = team === 'player';
-                    gameOver = true;
-                    if (team === 'player') {
-                        for (const b of bots) {
-                            if ((b.team || 'enemy') !== 'player') b.hp = 0;
-                        }
-                    } else {
-                        player.hp = 0;
-                        for (const b of bots) {
-                            if ((b.team || 'enemy') === 'player') b.hp = 0;
-                        }
-                    }
+            for (const entity of allLiving) {
+                if (Math.hypot(entity.x - gb.x, entity.y - gb.y) <= collectionRadius + (entity.radius || 14)) {
+                    entity.carriedBricks = (entity.carriedBricks || 0) + 1;
+                    groundBricks.splice(i, 1);
+                    spawnFloatingText(entity.x, entity.y - 28, `+1 💎 (${entity.carriedBricks})`, '#67e8f9');
                     break;
                 }
-            } else {
-                const delta = friendlyInZone > 0 ? (friendlyInZone * CONSTRUCTION_CART_PROGRESS_PER_SECOND * dt) : 0;
-                cart.progress = clamp(cart.progress + delta, 0, 100);
-                cart.siteTimer = 0;
-                cart.siteDamage = 0;
             }
+        }
 
-            if (cart.progress < 100) {
-                cart.siteTimer = 0;
+        let playerTeamBricks = player.hp > 0 ? (player.carriedBricks || 0) : 0;
+        let enemyTeamBricks = 0;
+        for (const b of aliveBotsInUpdate) {
+            if (!b || b.hp <= 0) continue;
+            if (areAlliedEntities(player, b) || b.isTeammate || b.team === 'player') {
+                playerTeamBricks += (b.carriedBricks || 0);
+            } else {
+                enemyTeamBricks += (b.carriedBricks || 0);
+            }
+        }
+
+        const WIN_BRICK_THRESHOLD = 10;
+        if (playerTeamBricks >= WIN_BRICK_THRESHOLD && playerTeamBricks > enemyTeamBricks) {
+            if (brickCountdownTeam !== 'player') {
+                brickCountdownTeam = 'player';
+                brickCountdownTimer = 15.0;
+                spawnFloatingText(WORLD_W * 0.5, WORLD_H * 0.45, '💎 BLUE TEAM COUNTDOWN STARTED!', '#38bdf8');
+            } else {
+                brickCountdownTimer = Math.max(0, brickCountdownTimer - dt);
+            }
+        } else if (enemyTeamBricks >= WIN_BRICK_THRESHOLD && enemyTeamBricks > playerTeamBricks) {
+            if (brickCountdownTeam !== 'enemy') {
+                brickCountdownTeam = 'enemy';
+                brickCountdownTimer = 15.0;
+                spawnFloatingText(WORLD_W * 0.5, WORLD_H * 0.45, '💎 RED TEAM COUNTDOWN STARTED!', '#f87171');
+            } else {
+                brickCountdownTimer = Math.max(0, brickCountdownTimer - dt);
+            }
+        } else {
+            if (brickCountdownTeam !== null) {
+                spawnFloatingText(WORLD_W * 0.5, WORLD_H * 0.45, '💎 COUNTDOWN STOPPED!', '#facc15');
+            }
+            brickCountdownTeam = null;
+            brickCountdownTimer = 15.0;
+        }
+
+        if (brickCountdownTimer <= 0 && brickCountdownTeam && !gameOver) {
+            constructionWinnerTeam = brickCountdownTeam;
+            objectiveWon = (brickCountdownTeam === 'player');
+            gameOver = true;
+            if (objectiveWon) {
+                for (const b of bots) {
+                    if (!b.isTeammate && !areAlliedEntities(player, b)) b.hp = 0;
+                }
+            } else {
+                player.hp = 0;
             }
         }
     }
@@ -34957,23 +37788,30 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         superCharge = 100;
         if (!isHypercharged) hyperChargeCharge = 100;
         updateSuperButton(); updateHyperButton();
+        updateTrainingCaveMode(dt, now);
         
         if (player.hp <= 0) {
             player.respawnTimer = (player.respawnTimer || 0) + dt;
-            if (player.respawnTimer >= 1.5) {
-                restoreRespawningEntity(player, { x: 1200, y: 1100 }, true, 1000);
+            if (player.respawnTimer >= 1.0) {
+                restoreRespawningEntity(player, { x: 1900, y: 1900 }, true, 1000);
+                initPlayerHP();
             }
         }
 
         for(const b of bots) {
-            if (b.isDummy && b.hp <= 0) {
+            if (b.isTrainingGridBot) {
+                continue;
+            }
+            if (b.isDummy && b.hp <= 0 && !b.isTrainingAlly) {
                 restoreRespawningEntity(b, { x: b.baseX || b.x, y: b.baseY || b.y }, false, 0);
+                b.hp = b.maxHp;
             }
             if (b.isTrainingBot && b.hp <= 0) {
                 b.respawnTimer = (b.respawnTimer || 0) + dt;
-                if (b.respawnTimer >= 1.5 || Math.hypot(player.x - b.baseX, player.y - b.baseY) > 350) {
+                if (b.respawnTimer >= 1.5 || (b.isGalleryBot && Math.hypot(player.x - b.baseX, player.y - b.baseY) > 350)) {
                     restoreRespawningEntity(b, { x: b.baseX, y: b.baseY }, false, 0);
-                    b.isDummy = true;
+                    b.isDummy = !b.isTrainingCustomEnemy || b.customEnemyMode === 'dummy';
+                    b.hp = b.maxHp;
                     b.minigunAmmo = 100;
                 }
             }
@@ -36116,6 +38954,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           healingPods.splice(i, 1);
           continue;
       }
+      if (pod.isKingPrincess || pod.isAntiRoyalMortar) continue;
       if (pod.isXrayMachine) {
           const podOwner = pod.ownerId === player.id ? player : bots.find(b => b.id === pod.ownerId);
           for (const target of [player, ...bots]) {
@@ -36365,6 +39204,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     let activeSpeed = player.speed * (player.speedMult || 1.0); // Apply Chaird super speed mult
     activeSpeed *= getFastpassSpeedMultiplier(player, now);
+    if(selectedBrawler==='anti_royal'){ensureAntiRoyalState(player);if(now>=(player.antiRoyalBlockReadyAt||0)&&now>=(player.antiRoyalCounterfeitUntil||0))activeSpeed*=.88;}
+    if (selectedBrawler === 'sir_cheeseburger' && (selectedStar === 'long' || selectedStar === 'sp2') && (player.sirCheeseDmgBonus || 0) >= 0.20) activeSpeed *= 1.20;
     if (selectedBrawler === 'cursed' && selectedStar === 'long' && now < (player.cursedStormUntil || 0)) activeSpeed *= 1.15;
     if (selectedBrawler === 'ramage' && (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') && (player.ramageMultiplier || 1) >= 12) activeSpeed *= 1.20;
     if(now<(player.packetDragonUntil||0))activeSpeed*=1.12;
@@ -36700,6 +39541,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         updateGhoulSystems(now, dt);
         updateDarkenerSystems(now, dt);
         updateCursedSystems(now, dt);
+        updateKingSystems(now, dt);
+        updateAntiRoyalSystems(now, dt);
         updateJackTradeSystems(now, dt);
         updateTrampahealSystems(now, dt);
     updateMagenySystems(now, dt);
@@ -37261,6 +40104,45 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           b.vx += (sDx/sLen) * 900 * dt; b.vy += (sDy/sLen) * 900 * dt;
         }
       }
+      // Sir Cheeseburger Main Attack: Ultra-narrow vertical cone slice
+      if (b.isSirCheeseburgerSlice) {
+          const owner = getEntityById(b.ownerId);
+          if (owner) {
+              b.x = owner.x;
+              b.y = owner.y;
+          }
+          const sliceRange = b.range || 90;
+          const aimAngle = b.aimAngle || 0;
+          const candidates = b.ownerId === player.id ? aliveBots : [player, ...aliveBots];
+          for (const target of candidates) {
+              if (!target || target.hp <= 0 || target.id === b.ownerId || target.isFlying) continue;
+              if (owner && areAlliedEntities(owner, target)) continue;
+              if (b.hitIds && b.hitIds[target.id]) continue;
+
+              const td = Math.hypot(target.x - b.x, target.y - b.y);
+              if (td <= sliceRange + (target.radius || 16)) {
+                  const tAng = Math.atan2(target.y - b.y, target.x - b.x);
+                  let angleDiff = tAng - aimAngle;
+                  while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                  while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+                  // Ultra-narrow vertical cone slice (+/- 0.38 rad, approx 43 deg total)
+                  if (Math.abs(angleDiff) <= 0.38) {
+                      b.hitIds[target.id] = true;
+                      checkHit(target, b, -1);
+                      explosions.push({
+                          x: target.x,
+                          y: target.y,
+                          radius: 28,
+                          life: 0,
+                          maxLife: 0.16,
+                          color: b.hyperVisual ? 'rgba(224, 86, 253, 0.85)' : 'rgba(255, 184, 48, 0.85)'
+                      });
+                  }
+              }
+          }
+      }
+
       // AxeyWaxy Main Attack: Animated Sweeping Axe Cleave (deals damage dynamically as the blade sweeps across)
       if (b.isAxeyWaxyCleave) {
           const owner = getEntityById(b.ownerId);
@@ -38271,7 +41153,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       // while airborne; its endpoint explosion handles the impact damage.
       if (b.isUpiedownCorePie) continue;
       // Draflygon aerial drop is an airborne drop: it detonates upon landing to trigger AOE impact and 8 outward flames
-            if (b.isAxeyWaxyCleave) continue;
+      if (b.isSirCheeseburgerSlice) continue;
+      if (b.isAxeyWaxyCleave) continue;
       if (b.isAxeyWaxyHatchet) continue;
       if (b.isDraflygonAerialDrop) continue;
       if (b.isCinderionScatterCore) continue;
@@ -38287,6 +41170,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           const podOwner = getEntityById(pod.ownerId);
           if (projectileOwner && podOwner && areAlliedEntities(projectileOwner, podOwner)) continue;
           if(Math.hypot(b.x - pod.x, b.y - pod.y) < pod.radius + 4){
+              if(pod.isAntiRoyalMortar&&pod.antiRoyalShieldActive&&pod.antiRoyalShieldReady){
+                  pod.antiRoyalShieldReady=false;pod.antiRoyalShieldReadyAt=now+3000;
+                  explosions.push({x:pod.x,y:pod.y,radius:55,life:0,maxLife:.25,color:'rgba(255,219,91,.82)',fxKind:'antiRoyalMortarBlock'});
+                  spawnFloatingText(pod.x,pod.y-48,'MORTAR BLOCKER','#ffe071');
+                  bullets.splice(i,1);consumed=true;break;
+              }
               if (b.minigunninMutationExplosive) ensureMinigunninMutationImpactZone(b);
               recordFullOnDamageToTarget(pod,b.damage);
               pod.hp -= b.damage;
@@ -39087,19 +41976,16 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     for(const t of aliveBots){
       if (isTraining && t.isTrainingBot) {
-          const dist = Math.hypot(player.x - t.baseX, player.y - t.baseY);
-          if (dist > 350) {
+          if (t.isTrainingAlly) {
               t.isDummy = true;
-              t.hp = t.maxHp;
-              t.x = t.baseX; t.y = t.baseY;
-              t.isJumping = false; t.isDashing = false; t.isFlying = false; t.z = 0;
-              t.ridaSuperUntil = 0;
-              t.superCharge = 0;
-              t.hyperChargeCharge = 0;
-              t.isHypercharged = false;
-              t.minigunAmmo = 100;
+          } else if (t.isTrainingGridBot) {
+              t.isDummy = !trainingGridBotsActiveAI;
+          } else if (t.isTrainingCustomEnemy) {
+              t.isDummy = (t.customEnemyMode === 'dummy');
+          } else if (t.isDamageMeterBot || t.isColossusBot || t.isGalleryBot) {
+              t.isDummy = true;
           } else {
-              t.isDummy = false;
+              t.isDummy = true;
           }
       }
 
@@ -39433,30 +42319,145 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               const enemyTeam = getConstructionOpposingTeam(team);
               const ownCart = constructionCarts[team];
               const enemyCart = constructionCarts[enemyTeam];
-              const slotRole = botAi.slot % 3;
-              const finishPush = (ownCart?.progress || 0) >= 86;
-              const emergencyDefense = (enemyCart?.progress || 0) >= 78 || (enemyCart?.progress || 0) > (ownCart?.progress || 0) + 15;
-              const naturalEscort = botAi.tank || botAi.support || slotRole === 0;
-              const focusTeam = finishPush ? team : (emergencyDefense ? enemyTeam : (naturalEscort ? team : enemyTeam));
-              const focusPos = getConstructionCartPosition(focusTeam);
-              if (focusPos) {
-                  let cartEnemy = null;
-                  let cartEnemyScore = Infinity;
-                  for (const enemy of getBotLivingEnemies(t)) {
-                      if (Math.hypot(enemy.x - focusPos.x, enemy.y - focusPos.y) > CONSTRUCTION_CART_ZONE_RADIUS * 1.45) continue;
-                      const score = getBotEnemyScore(t, enemy, botAi, nowTarget);
-                      if (score < cartEnemyScore) { cartEnemyScore = score; cartEnemy = enemy; }
+              const livingEnemies = getBotLivingEnemies(t);
+
+              // 1. High priority: Hunt enemy countdown carrier or enemy holding high bricks
+              const enemyCarrier = livingEnemies.find(e => (e.carriedBricks || 0) >= (brickCountdownTeam === enemyTeam ? 1 : 6));
+              if (enemyCarrier) {
+                  forcedObjectiveTarget = enemyCarrier;
+              } else {
+                  // 2. High priority: If bot itself is carrying high bricks, retreat towards spawn
+                  const myBricks = t.carriedBricks || 0;
+                  const isCarrier = myBricks >= (brickCountdownTeam === team ? 1 : 8);
+                  if (isCarrier) {
+                      const spawnPt = getConstructionSpawnPoint(team, botAi.slot, 3);
+                      forcedObjectiveTarget = { x: spawnPt.x, y: spawnPt.y, id: 'center' };
+                  } else {
+                      // 3. Ground Brick / Gem Collection
+                      let nearestBrick = null;
+                      let nearestBrickDist = 650;
+                      for (const gb of groundBricks) {
+                          if (!gb) continue;
+                          const d = Math.hypot(gb.x - t.x, gb.y - t.y);
+                          if (d < nearestBrickDist) {
+                              nearestBrickDist = d;
+                              nearestBrick = { x: gb.x, y: gb.y, id: 'center' };
+                          }
+                      }
+                      if (nearestBrick && botAi.hpPct > 0.35) {
+                          forcedObjectiveTarget = nearestBrick;
+                      } else if (brickMine && Math.hypot(brickMine.x - t.x, brickMine.y - t.y) > 280 && groundBricks.length === 0) {
+                          const side = botAi.slot % 2 === 0 ? -1 : 1;
+                          forcedObjectiveTarget = { x: brickMine.x + side * 90, y: brickMine.y + (team === 'player' ? 90 : -90), id: 'center' };
+                      } else {
+                          const focusTeam = (enemyCart?.progress || 0) > (ownCart?.progress || 0) + 15 ? enemyTeam : team;
+                          const focusPos = getConstructionCartPosition(focusTeam);
+                          if (focusPos) {
+                              let cartEnemy = null;
+                              let cartEnemyScore = Infinity;
+                              for (const enemy of livingEnemies) {
+                                  if (Math.hypot(enemy.x - focusPos.x, enemy.y - focusPos.y) > CONSTRUCTION_CART_ZONE_RADIUS * 1.45) continue;
+                                  const score = getBotEnemyScore(t, enemy, botAi, nowTarget);
+                                  if (score < cartEnemyScore) { cartEnemyScore = score; cartEnemy = enemy; }
+                              }
+                              if (cartEnemy) forcedObjectiveTarget = cartEnemy;
+                              else {
+                                  const side = botAi.slot % 2 === 0 ? -1 : 1;
+                                  const formationRadius = botAi.ranged ? 105 : botAi.support ? 70 : 35;
+                                  forcedObjectiveTarget = {
+                                      x: focusPos.x + side * formationRadius,
+                                      y: focusPos.y + (team === 'player' ? 1 : -1) * (botAi.ranged ? 65 : 24),
+                                      id: 'cart'
+                                  };
+                              }
+                          }
+                      }
                   }
-                  if (cartEnemy) forcedObjectiveTarget = cartEnemy;
-                  else {
-                      const side = botAi.slot % 2 === 0 ? -1 : 1;
-                      const formationRadius = botAi.ranged ? 105 : botAi.support ? 70 : 35;
-                      forcedObjectiveTarget = {
-                          x: focusPos.x + side * formationRadius,
-                          y: focusPos.y + (team === 'player' ? 1 : -1) * (botAi.ranged ? 65 : 24),
-                          id: 'cart'
-                      };
+              }
+          } else if (isMarkedMayhemMode) {
+              const team = (t.team === 'player') ? 'player' : 'enemy';
+              const enemyTeam = team === 'player' ? 'enemy' : 'player';
+              const enemyMarkedId = markedMayhemMarkedIds[enemyTeam];
+              const allyMarkedId = markedMayhemMarkedIds[team];
+              const livingEnemies = getBotLivingEnemies(t);
+
+              if (t.id === allyMarkedId) {
+                  const nearestAlly = getBotNearestAlly(t, false, botAi.allies);
+                  if (nearestAlly && nearestAlly.distance > 180) {
+                      forcedObjectiveTarget = { x: nearestAlly.ally.x, y: nearestAlly.ally.y, id: 'center' };
                   }
+              } else {
+                  const enemyVip = livingEnemies.find(e => e.id === enemyMarkedId);
+                  const allyVip = botAi.allies.find(a => a.id === allyMarkedId);
+                  let vipThreat = null;
+                  if (allyVip) {
+                      for (const enemy of livingEnemies) {
+                          if (Math.hypot(enemy.x - allyVip.x, enemy.y - allyVip.y) < 420) {
+                              vipThreat = enemy;
+                              break;
+                          }
+                      }
+                  }
+                  if (vipThreat && (botAi.tank || botAi.support || botAi.slot % 2 === 0)) {
+                      forcedObjectiveTarget = vipThreat;
+                  } else if (enemyVip) {
+                      forcedObjectiveTarget = enemyVip;
+                  }
+              }
+          } else if (isDamageFillerMode) {
+              let nearbyCube = null;
+              let nearbyCubeDist = 580;
+              for (const pickup of powerups) {
+                  const d = Math.hypot(pickup.x - t.x, pickup.y - t.y);
+                  if (d < nearbyCubeDist) {
+                      nearbyCubeDist = d;
+                      nearbyCube = { x: pickup.x, y: pickup.y, isPowerup: true, id: null };
+                  }
+              }
+              if (nearbyCube && botAi.hpPct > 0.4) {
+                  forcedObjectiveTarget = nearbyCube;
+              } else {
+                  const livingEnemies = getBotLivingEnemies(t);
+                  let bestEnemy = null;
+                  let bestEnemyScore = Infinity;
+                  for (const enemy of livingEnemies) {
+                      const d = Math.hypot(enemy.x - t.x, enemy.y - t.y);
+                      const hpPct = enemy.hp / Math.max(1, enemy.maxHp || enemy.hp);
+                      const score = d + hpPct * 180;
+                      if (score < bestEnemyScore) {
+                          bestEnemyScore = score;
+                          bestEnemy = enemy;
+                      }
+                  }
+                  if (bestEnemy) forcedObjectiveTarget = bestEnemy;
+              }
+          } else if (isMirrorMode) {
+              const livingEnemies = getBotLivingEnemies(t);
+              let lowHpEnemy = null;
+              let lowestHp = Infinity;
+              for (const enemy of livingEnemies) {
+                  if (enemy.hp < lowestHp) {
+                      lowestHp = enemy.hp;
+                      lowHpEnemy = enemy;
+                  }
+              }
+              if (lowHpEnemy) forcedObjectiveTarget = lowHpEnemy;
+          } else if (isKnockDonateMode) {
+              let nearbyPickup = null;
+              let nearbyPickupDist = 520;
+              for (const pickup of powerups) {
+                  const d = Math.hypot(pickup.x - t.x, pickup.y - t.y);
+                  if (d < nearbyPickupDist) {
+                      nearbyPickupDist = d;
+                      nearbyPickup = { x: pickup.x, y: pickup.y, isPowerup: true, id: null };
+                  }
+              }
+              const livingEnemies = getBotLivingEnemies(t);
+              const lowHpEnemy = livingEnemies.sort((a, b) => (a.hp / (a.maxHp || 1)) - (b.hp / (b.maxHp || 1)))[0];
+              if (nearbyPickup && (t.powerCubes || 0) < 5) {
+                  forcedObjectiveTarget = nearbyPickup;
+              } else if (lowHpEnemy && (lowHpEnemy.hp / Math.max(1, lowHpEnemy.maxHp || lowHpEnemy.hp)) < 0.45) {
+                  forcedObjectiveTarget = lowHpEnemy;
               }
           } else if (isBrickVaultMode) {
               const team = (t.team === 'player') ? 'player' : 'enemy';
@@ -39556,20 +42557,33 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               else if (target && !target.isStructure && currentCombatDist <= 430) forcedObjectiveTarget = target;
               else if (enemyStructure) forcedObjectiveTarget = enemyStructure;
           } else if (isObjectiveMode || isTugZoneMode) {
-              const zoneR = objectiveZone?.r || 240;
+              let currentZone = objectiveZone || { x: WORLD_W * 0.5, y: WORLD_H * 0.5, r: 240 };
+              if (isObjectiveMode && Array.isArray(objectiveZones) && objectiveZones.length > 0) {
+                  const slot = botAi.slot || 0;
+                  const preferredZoneId = slot % 3 === 0 ? 'mid' : (slot % 3 === 1 ? 'left' : 'right');
+                  let targetZone = objectiveZones.find(z => z.id === preferredZoneId) || objectiveZones[0];
+                  if (targetZone.controllingTeam === ((t.team === 'player') ? 'player' : 'enemy')) {
+                      const contestedZone = objectiveZones.find(z => z.controllingTeam !== ((t.team === 'player') ? 'player' : 'enemy'));
+                      if (contestedZone) targetZone = contestedZone;
+                  }
+                  currentZone = targetZone;
+              } else if (isTugZoneMode && tugZone) {
+                  currentZone = tugZone;
+              }
+              const zoneR = currentZone.r || 240;
               let zoneEnemy = null;
               let zoneEnemyDist = Infinity;
               if (player.hp > 0 && !areAlliedEntities(t, player)) {
-                  const playerToZone = Math.hypot(player.x - objectiveZone.x, player.y - objectiveZone.y);
-                  if (playerToZone <= zoneR + 50) {
+                  const playerToZone = Math.hypot(player.x - currentZone.x, player.y - currentZone.y);
+                  if (playerToZone <= zoneR + 70) {
                       zoneEnemy = player;
                       zoneEnemyDist = Math.hypot(player.x - t.x, player.y - t.y);
                   }
               }
               for (const o of aliveBots) {
                   if (!o || o.id === t.id || o.hp <= 0 || areAlliedEntities(t, o)) continue;
-                  const oToZone = Math.hypot(o.x - objectiveZone.x, o.y - objectiveZone.y);
-                  if (oToZone > zoneR + 50) continue;
+                  const oToZone = Math.hypot(o.x - currentZone.x, o.y - currentZone.y);
+                  if (oToZone > zoneR + 70) continue;
                   const dToBot = Math.hypot(o.x - t.x, o.y - t.y);
                   if (dToBot < zoneEnemyDist) {
                       zoneEnemyDist = dToBot;
@@ -39719,6 +42733,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           
           let activeBotSpeed = t.speed;
           activeBotSpeed *= getFastpassSpeedMultiplier(t, nowTarget);
+          if(t.brawler==='anti_royal'){ensureAntiRoyalState(t);if(nowTarget>=(t.antiRoyalBlockReadyAt||0)&&nowTarget>=(t.antiRoyalCounterfeitUntil||0))activeBotSpeed*=.88;}
+          if (t.brawler === 'sir_cheeseburger' && (t.selectedStar === 'long' || t.selectedStar === 'sp2') && (t.sirCheeseDmgBonus || 0) >= 0.20) activeBotSpeed *= 1.20;
           if (t.brawler === 'cursed' && t.selectedStar === 'long' && nowTarget < (t.cursedStormUntil || 0)) activeBotSpeed *= 1.15;
           if (t.brawler === 'ramage' && (t.selectedStar === 'slow' || t.selectedStar === 'fast' || t.selectedStar === 'sp1') && (t.ramageMultiplier || 1) >= 12) activeBotSpeed *= 1.20;
           if (isArenaForgeMode) activeBotSpeed *= t.arenaForgeBlueprintSpeedMult || 1;
@@ -40435,7 +43451,25 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
         ctx.save();
         try {
-            if (brawlerId === 'trampaheal') {
+            if (brawlerId === 'classy' && getActiveSkinForBrawler('classy')?.id === 'back-to-school-classy') {
+                ctx.translate(entity.x,drawY-attackKick*3);ctx.rotate(Math.sin(now*.005)*.025+Math.sin(aim)*attackKick*.09);
+                ctx.shadowColor=superKick>0?'#b56cff':'#55dfff';ctx.shadowBlur=10+superKick*18;
+                const uniform=ctx.createLinearGradient(-radius,-radius,radius,radius);uniform.addColorStop(0,'#4f8cff');uniform.addColorStop(.55,'#243f91');uniform.addColorStop(1,'#111d46');
+                ctx.fillStyle=uniform;ctx.strokeStyle='#b9f6ff';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(-radius*.7,-radius*.42,radius*1.4,radius*1.45,radius*.32);ctx.fill();ctx.stroke();
+                // Face, school blazer and gold tie.
+                ctx.fillStyle='#ffd7b5';ctx.strokeStyle='#fff3d0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-radius*.22,radius*.59,0,Math.PI*2);ctx.fill();ctx.stroke();
+                ctx.fillStyle='#162a59';ctx.beginPath();ctx.arc(-radius*.22,-radius*.25,radius*.09,0,Math.PI*2);ctx.arc(radius*.22,-radius*.25,radius*.09,0,Math.PI*2);ctx.fill();
+                ctx.strokeStyle='#7b492f';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-radius*.06,radius*.22,.15,Math.PI-.15);ctx.stroke();
+                ctx.fillStyle='#eff6ff';ctx.beginPath();ctx.moveTo(-radius*.42,radius*.34);ctx.lineTo(0,radius*.62);ctx.lineTo(radius*.42,radius*.34);ctx.lineTo(radius*.25,radius*.92);ctx.lineTo(-radius*.25,radius*.92);ctx.closePath();ctx.fill();
+                ctx.fillStyle='#ffe36e';ctx.beginPath();ctx.moveTo(0,radius*.39);ctx.lineTo(radius*.13,radius*.58);ctx.lineTo(0,radius*.9);ctx.lineTo(-radius*.13,radius*.58);ctx.closePath();ctx.fill();
+                // Graduation cap, tassel and glowing honor-roll crest.
+                ctx.fillStyle='#315fc9';ctx.strokeStyle='#ffe36e';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-radius*.85,-radius*.68);ctx.lineTo(0,-radius*1.08);ctx.lineTo(radius*.85,-radius*.68);ctx.lineTo(0,-radius*.36);ctx.closePath();ctx.fill();ctx.stroke();
+                ctx.beginPath();ctx.moveTo(radius*.64,-radius*.66);ctx.lineTo(radius*.72,-radius*.15);ctx.stroke();ctx.fillStyle='#ffe36e';ctx.beginPath();ctx.arc(radius*.72,-radius*.1,radius*.09,0,Math.PI*2);ctx.fill();
+                ctx.fillStyle=superKick>0?'#d887ff':'#55dfff';ctx.beginPath();ctx.arc(-radius*.48,radius*.62,radius*.14,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font=`900 ${Math.max(7,radius*.3)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('A+',-radius*.48,radius*.63);
+                // Pencil baton reacts to each shot.
+                ctx.save();ctx.rotate(aim);ctx.translate(radius*(.72+attackKick*.28),0);ctx.fillStyle='#ffe36e';ctx.fillRect(-radius*.18,-radius*.08,radius*.62,radius*.16);ctx.fillStyle='#ff7a9e';ctx.fillRect(-radius*.28,-radius*.08,radius*.12,radius*.16);ctx.fillStyle='#f5d2a6';ctx.beginPath();ctx.moveTo(radius*.44,-radius*.08);ctx.lineTo(radius*.62,0);ctx.lineTo(radius*.44,radius*.08);ctx.closePath();ctx.fill();ctx.restore();
+                if(superKick>0){ctx.globalAlpha=superKick*.7;ctx.strokeStyle='#ffe36e';ctx.lineWidth=3;for(let ring=0;ring<2;ring++){ctx.beginPath();ctx.arc(0,0,radius*(1.15+ring*.3+superKick*.35),0,Math.PI*2);ctx.stroke();}}
+            } else if (brawlerId === 'trampaheal') {
                 // Trampaheal: Emerald Spring Jumper with Trampoline Hat & Coils
                 ctx.translate(entity.x, drawY - attackKick * 4);
                 ctx.rotate(Math.sin(now * .008) * .03 + (entity.trampahealIsJumping ? Math.sin(now * .02) * .15 : 0));
@@ -40516,6 +43550,412 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                     ctx.strokeStyle = '#2ed573'; ctx.lineWidth = 3;
                     ctx.beginPath(); ctx.arc(0, 0, radius * (1.05 + superKick * .55), 0, Math.PI * 2); ctx.stroke();
                 }
+            } else if (brawlerId === 'rocketeer') {
+                const isRankedSkin = (getActiveSkinForBrawler('rocketeer')?.id === 'ranked-rocketeer') || entity?.skinId === 'ranked-rocketeer' || entity?.isRankedSkin;
+                if (isRankedSkin) {
+                    // --- RANKED ROCKETEER 2.5D MODEL ---
+                    ctx.translate(entity.x, drawY - attackKick * 4);
+                    ctx.rotate(Math.sin(now * .006) * .025 + Math.sin(aim) * attackKick * .14);
+
+                    // Jetpack Ion Thruster Flares
+                    const thrusterPulse = 0.8 + Math.sin(now * 0.02) * 0.2 + (attackKick > 0 ? 0.4 : 0);
+                    ctx.save();
+                    ctx.shadowColor = '#00f5d4';
+                    ctx.shadowBlur = 15 + superKick * 20;
+                    
+                    // Twin jet exhaust
+                    for (const tx of [-radius * 0.55, radius * 0.55]) {
+                        const jetLen = (12 + thrusterPulse * 16) * (superKick > 0 ? 1.8 : 1);
+                        const jetGrad = ctx.createLinearGradient(tx, radius * 0.3, tx, radius * 0.3 + jetLen);
+                        jetGrad.addColorStop(0, '#ffffff');
+                        jetGrad.addColorStop(0.2, '#00f5d4');
+                        jetGrad.addColorStop(0.6, '#ffd166');
+                        jetGrad.addColorStop(1, 'rgba(0, 245, 212, 0)');
+                        ctx.fillStyle = jetGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(tx - 4, radius * 0.3);
+                        ctx.lineTo(tx + 4, radius * 0.3);
+                        ctx.lineTo(tx, radius * 0.3 + jetLen);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    ctx.restore();
+
+                    // Aerospace Carbon Chassis (Torso / Body)
+                    ctx.shadowColor = superKick > 0 ? '#00f5d4' : '#ffd166';
+                    ctx.shadowBlur = 12 + superKick * 18;
+                    const armorGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                    armorGrad.addColorStop(0, '#2a3b53');
+                    armorGrad.addColorStop(0.45, '#131b28');
+                    armorGrad.addColorStop(1, '#080d14');
+                    ctx.fillStyle = armorGrad;
+                    ctx.strokeStyle = '#ffd166';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.roundRect(-radius * 0.75, -radius * 0.45, radius * 1.5, radius * 1.35, radius * 0.28);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Neon Cyan Cyber Circuit Trim
+                    ctx.strokeStyle = '#00f5d4';
+                    ctx.lineWidth = 1.8;
+                    ctx.beginPath();
+                    ctx.moveTo(-radius * 0.5, radius * 0.1);
+                    ctx.lineTo(-radius * 0.2, radius * 0.45);
+                    ctx.lineTo(radius * 0.2, radius * 0.45);
+                    ctx.lineTo(radius * 0.5, radius * 0.1);
+                    ctx.stroke();
+
+                    // Golden Championship Pauldrons (Shoulders)
+                    const goldGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                    goldGrad.addColorStop(0, '#fff4b8');
+                    goldGrad.addColorStop(0.5, '#ffd166');
+                    goldGrad.addColorStop(1, '#d48b00');
+                    ctx.fillStyle = goldGrad;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1.5;
+                    for (const side of [-1, 1]) {
+                        ctx.beginPath();
+                        ctx.arc(side * radius * 0.72, -radius * 0.15, radius * 0.32, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+
+                    // Dual Shoulder Rocket Pods with Recoil
+                    const podKick = attackKick * 6;
+                    for (const side of [-1, 1]) {
+                        ctx.save();
+                        ctx.translate(side * (radius * 0.78), -radius * 0.45 + podKick);
+                        ctx.fillStyle = '#1e293b';
+                        ctx.strokeStyle = '#ffd166';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.roundRect(-radius * 0.2, -radius * 0.28, radius * 0.4, radius * 0.56, 3);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // 2 Loaded glowing cyan warheads per pod
+                        ctx.fillStyle = '#00f5d4';
+                        ctx.beginPath();
+                        ctx.arc(-radius * 0.08, -radius * 0.25, 2.5, 0, Math.PI * 2);
+                        ctx.arc(radius * 0.08, -radius * 0.25, 2.5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+
+                    // Cyber Helmet & Holographic Cyan HUD Visor
+                    ctx.fillStyle = '#1e293b';
+                    ctx.strokeStyle = '#ffd166';
+                    ctx.lineWidth = 2.2;
+                    ctx.beginPath();
+                    ctx.arc(0, -radius * 0.3, radius * 0.55, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Visor glass
+                    const visorGrad = ctx.createLinearGradient(0, -radius * 0.5, 0, -radius * 0.1);
+                    visorGrad.addColorStop(0, '#00f5d4');
+                    visorGrad.addColorStop(0.5, '#05c7a5');
+                    visorGrad.addColorStop(1, '#005b4d');
+                    ctx.fillStyle = visorGrad;
+                    ctx.beginPath();
+                    ctx.roundRect(-radius * 0.38, -radius * 0.45, radius * 0.76, radius * 0.32, 4);
+                    ctx.fill();
+
+                    // Visor HUD Scanline & Crosshair
+                    const scanX = Math.sin(now * 0.005) * (radius * 0.28);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(scanX, -radius * 0.42);
+                    ctx.lineTo(scanX, -radius * 0.16);
+                    ctx.stroke();
+
+                    // Floating Holographic Ranked Grandmaster Halo / Crest Ring
+                    const haloY = -radius * 0.95 + Math.sin(now * 0.004) * 3;
+                    const haloRot = now * 0.003;
+                    ctx.save();
+                    ctx.translate(0, haloY);
+                    ctx.scale(1, 0.35);
+                    ctx.strokeStyle = '#ffd166';
+                    ctx.lineWidth = 2.5;
+                    ctx.shadowColor = '#00f5d4';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius * 0.65, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Orbiting diamond stars on halo
+                    for (let s = 0; s < 3; s++) {
+                        const starAng = haloRot + (s * Math.PI * 2) / 3;
+                        const sx = Math.cos(starAng) * radius * 0.65;
+                        const sy = Math.sin(starAng) * radius * 0.65;
+                        ctx.fillStyle = '#00f5d4';
+                        ctx.beginPath();
+                        ctx.arc(sx, sy, 3.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+
+                    // Super shockwave aura
+                    if (superKick > 0) {
+                        ctx.globalAlpha = superKick * 0.8;
+                        ctx.strokeStyle = '#00f5d4';
+                        ctx.lineWidth = 3.5;
+                        for (let ring = 0; ring < 2; ring++) {
+                            ctx.beginPath();
+                            ctx.arc(0, 0, radius * (1.15 + ring * 0.35 + superKick * 0.4), 0, Math.PI * 2);
+                            ctx.stroke();
+                        }
+                    }
+                } else {
+                    // --- BASE ROCKETEER 2.5D MODEL ---
+                    ctx.translate(entity.x, drawY - attackKick * 3);
+                    ctx.rotate(Math.sin(now * .006) * .025 + Math.sin(aim) * attackKick * .1);
+                    ctx.shadowColor = '#ff9f43';
+                    ctx.shadowBlur = 8 + superKick * 12;
+
+                    // Aviator Bomber Jacket
+                    const jacketGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                    jacketGrad.addColorStop(0, '#8b5a2b');
+                    jacketGrad.addColorStop(0.6, '#5c3a1b');
+                    jacketGrad.addColorStop(1, '#2d1c0d');
+                    ctx.fillStyle = jacketGrad;
+                    ctx.strokeStyle = '#d4a373';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(-radius * 0.7, -radius * 0.4, radius * 1.4, radius * 1.3, radius * 0.25);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // White Billowing Flight Scarf
+                    const scarfWave = Math.sin(now * 0.008) * 4;
+                    ctx.fillStyle = '#f8f9fa';
+                    ctx.strokeStyle = '#dee2e6';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(-radius * 0.4, -radius * 0.1);
+                    ctx.quadraticCurveTo(0, radius * 0.15, radius * 0.4, -radius * 0.1);
+                    ctx.lineTo(radius * 0.6 + scarfWave, radius * 0.4);
+                    ctx.lineTo(radius * 0.2, radius * 0.2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Shoulder Rocket Bazooka Cannon
+                    ctx.fillStyle = '#2d5a27';
+                    ctx.strokeStyle = '#1b3817';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(radius * 0.4, -radius * 0.55 + attackKick * 4, radius * 0.4, radius * 0.9, 4);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.beginPath();
+                    ctx.arc(radius * 0.6, -radius * 0.55 + attackKick * 4, radius * 0.15, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Leather Pilot Helmet & Amber Goggles
+                    ctx.fillStyle = '#4a2810';
+                    ctx.beginPath();
+                    ctx.arc(0, -radius * 0.25, radius * 0.52, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Goggles
+                    ctx.fillStyle = '#ffd166';
+                    ctx.strokeStyle = '#2b1708';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.ellipse(-radius * 0.2, -radius * 0.25, radius * 0.18, radius * 0.14, 0, 0, Math.PI * 2);
+                    ctx.ellipse(radius * 0.2, -radius * 0.25, radius * 0.18, radius * 0.14, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    if (superKick > 0) {
+                        ctx.globalAlpha = superKick * 0.7;
+                        ctx.strokeStyle = '#ff6b6b';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, radius * (1.1 + superKick * 0.4), 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                }
+            } else if (brawlerId === 'sir_cheeseburger') {
+                // --- SIR CHEESEBURGER KNIGHT 2.5D MODEL ---
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * .005) * .025 + Math.sin(aim) * attackKick * .14);
+
+                const isHyper = entity === player ? !!isHypercharged : !!entity?.isHypercharged;
+                const isShielded = (entity.sirChestGuardUntil || 0) > now;
+                
+                // Outer Knightly Cheese Aura / Shield Barrier
+                if (isShielded || isHyper || superKick > 0) {
+                    ctx.save();
+                    const auraPulse = 0.75 + Math.sin(now * 0.01) * 0.25;
+                    ctx.shadowColor = (isHyper || entity.sirChestGuardHyper) ? '#e056fd' : '#ffb830';
+                    ctx.shadowBlur = 16 + auraPulse * 10;
+                    ctx.strokeStyle = (isHyper || entity.sirChestGuardHyper) ? '#f368e0' : '#ffd32a';
+                    ctx.lineWidth = 3.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius * (1.15 + (isShielded ? 0.2 : 0) + superKick * 0.3), 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 1. Bottom Bun (Golden Toasted Brown)
+                ctx.fillStyle = '#b7791f';
+                ctx.strokeStyle = '#78350f';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(0, radius * 0.62, radius * 0.78, radius * 0.32, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // 2. Juicy Burger Patty Layer (Dark savory beef)
+                ctx.fillStyle = '#451a03';
+                ctx.strokeStyle = '#270e02';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(-radius * 0.82, radius * 0.32, radius * 1.64, radius * 0.30, 4);
+                else ctx.rect(-radius * 0.82, radius * 0.32, radius * 1.64, radius * 0.30);
+                ctx.fill();
+                ctx.stroke();
+
+                // 3. Melted Golden Cheddar Cheese Layer (dripping down with sharp triangular cheese points)
+                ctx.fillStyle = '#f59e0b';
+                ctx.strokeStyle = '#d97706';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.85, radius * 0.32);
+                ctx.lineTo(-radius * 0.65, radius * 0.58);
+                ctx.lineTo(-radius * 0.45, radius * 0.34);
+                ctx.lineTo(-radius * 0.20, radius * 0.64);
+                ctx.lineTo(0, radius * 0.34);
+                ctx.lineTo(radius * 0.25, radius * 0.60);
+                ctx.lineTo(radius * 0.50, radius * 0.34);
+                ctx.lineTo(radius * 0.70, radius * 0.55);
+                ctx.lineTo(radius * 0.85, radius * 0.32);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // 4. Knight Helmet / Body Visor (Darkened burnished steel helmet plate)
+                const helmGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                helmGrad.addColorStop(0, '#475569');
+                helmGrad.addColorStop(0.5, '#1e293b');
+                helmGrad.addColorStop(1, '#0f172a');
+                ctx.fillStyle = helmGrad;
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(-radius * 0.76, -radius * 0.35, radius * 1.52, radius * 0.65, [8, 8, 4, 4]);
+                else ctx.rect(-radius * 0.76, -radius * 0.35, radius * 1.52, radius * 0.65);
+                ctx.fill();
+                ctx.stroke();
+
+                // Knight Visor Slits (T-slit or horizontal knight visor with glowing golden eyes)
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(-radius * 0.55, -radius * 0.12, radius * 1.10, radius * 0.18);
+                ctx.fillRect(-radius * 0.08, -radius * 0.12, radius * 0.16, radius * 0.38);
+
+                // Glowing Cheese Knight Eyes through visor
+                ctx.fillStyle = isHyper ? '#f368e0' : '#fbbf24';
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.arc(-radius * 0.28, -radius * 0.03, radius * 0.07, 0, Math.PI * 2);
+                ctx.arc(radius * 0.28, -radius * 0.03, radius * 0.07, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // 5. Top Bun (Knight Crown / Bun Dome)
+                const bunGrad = ctx.createRadialGradient(-radius * 0.2, -radius * 0.7, 2, 0, -radius * 0.45, radius * 0.8);
+                bunGrad.addColorStop(0, '#fbbf24');
+                bunGrad.addColorStop(0.6, '#d97706');
+                bunGrad.addColorStop(1, '#92400e');
+                ctx.fillStyle = bunGrad;
+                ctx.strokeStyle = '#78350f';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.ellipse(0, -radius * 0.45, radius * 0.82, radius * 0.50, 0, Math.PI, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Sesame Seeds on top bun
+                ctx.fillStyle = '#fef3c7';
+                const seeds = [
+                    [-0.5, -0.65], [-0.2, -0.78], [0.15, -0.80], [0.48, -0.66],
+                    [-0.32, -0.52], [0.0, -0.58], [0.32, -0.50], [-0.15, -0.42], [0.20, -0.40]
+                ];
+                for (const [sx, sy] of seeds) {
+                    ctx.beginPath();
+                    ctx.ellipse(radius * sx, radius * sy, radius * 0.045, radius * 0.025, 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 6. Knight Crest / Plume (Golden Cheddar Plume on top)
+                ctx.fillStyle = isHyper ? '#d946ef' : '#f59e0b';
+                ctx.strokeStyle = '#b45309';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.12, -radius * 0.95);
+                ctx.quadraticCurveTo(0, -radius * 1.25, radius * 0.22, -radius * 1.15);
+                ctx.quadraticCurveTo(radius * 0.10, -radius * 0.95, radius * 0.12, -radius * 0.85);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // 7. Handheld Cheese Sword & Coat-of-Arms Shield (Rotates with aim)
+                ctx.save();
+                ctx.rotate(aim);
+                
+                // Shield on off-hand (left side)
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = isHyper ? '#f368e0' : '#fbbf24';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.5, radius * 0.6);
+                ctx.lineTo(-radius * 0.9, radius * 0.4);
+                ctx.lineTo(-radius * 0.8, -radius * 0.1);
+                ctx.lineTo(-radius * 0.35, radius * 0.1);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                // Cheese wedge emblem inside shield
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.75, radius * 0.25);
+                ctx.lineTo(-radius * 0.55, radius * 0.45);
+                ctx.lineTo(-radius * 0.45, radius * 0.20);
+                ctx.closePath();
+                ctx.fill();
+
+                // Golden Cheddar Cleaver / Sword on weapon hand (right side)
+                const swordExt = radius * (0.85 + attackKick * 0.4);
+                ctx.fillStyle = '#78350f'; // Sword hilt
+                ctx.fillRect(radius * 0.4, -radius * 0.08, radius * 0.2, radius * 0.16);
+                ctx.fillStyle = '#f59e0b'; // Sword guard
+                ctx.fillRect(radius * 0.6, -radius * 0.24, radius * 0.1, radius * 0.48);
+                // Golden Blade
+                const bladeGrad = ctx.createLinearGradient(radius * 0.7, 0, swordExt + radius * 0.8, 0);
+                bladeGrad.addColorStop(0, '#fef08a');
+                bladeGrad.addColorStop(0.5, '#fbbf24');
+                bladeGrad.addColorStop(1, isHyper ? '#f368e0' : '#f59e0b');
+                ctx.fillStyle = bladeGrad;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(radius * 0.7, -radius * 0.14);
+                ctx.lineTo(swordExt + radius * 0.7, -radius * 0.10);
+                ctx.lineTo(swordExt + radius * 0.95, 0);
+                ctx.lineTo(swordExt + radius * 0.7, radius * 0.10);
+                ctx.lineTo(radius * 0.7, radius * 0.14);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.restore();
             } else {
                 const palette = brawlerId === 'evil_doctor'
                     ? ['#51ffad','#522c75','#e8fff7']
@@ -40918,6 +44358,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     ctx.strokeStyle = envColors.wallBorder; ctx.lineWidth = 10;
     ctx.strokeRect(0,0,WORLD_W,WORLD_H);
 
+    renderTrainingGroundsOverlay();
+
     // Ground Layer: Render Mageny Residual Electrified Floors
     if (typeof magenyResidualFloors !== 'undefined' && magenyResidualFloors.length > 0) {
         const nowFloor = performance.now();
@@ -41249,6 +44691,28 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
     }
 
+    // Arena Forge Flame Puddles
+    if (typeof arenaForgeFlamePuddles !== 'undefined' && arenaForgeFlamePuddles.length > 0) {
+        const now = performance.now();
+        for (const puddle of arenaForgeFlamePuddles) {
+            if (now >= puddle.until) continue;
+            const remaining = puddle.until - now;
+            const alpha = Math.min(1, remaining / 400) * 0.7;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            const grad = ctx.createRadialGradient(puddle.x, puddle.y, 4, puddle.x, puddle.y, puddle.radius);
+            grad.addColorStop(0, '#fff4cc');
+            grad.addColorStop(0.35, '#ff7700');
+            grad.addColorStop(0.8, '#ff2200');
+            grad.addColorStop(1, 'rgba(255, 34, 0, 0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(puddle.x, puddle.y, puddle.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
         for (const tile of hyperoriginLiftTiles) {
             const total = Math.max(1, tile.until - tile.start);
             const p = clamp((performance.now() - tile.start) / total, 0, 1);
@@ -41492,6 +44956,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
     }
 
+    function drawAntiRoyalFrontBlocker(entity,drawY){
+        if(getEntityBrawlerId(entity)!=='anti_royal')return;
+        ensureAntiRoyalState(entity);const now=performance.now(),ready=now>=(entity.antiRoyalBlockReadyAt||0),facing=Number.isFinite(entity.visualAimAngle)?entity.visualAimAngle:0;
+        ctx.save();ctx.translate(entity.x,drawY);ctx.rotate(facing);ctx.globalAlpha=ready?1:.22;ctx.shadowColor=isEntityHyperchargedNow(entity,now)?'#d96cff':'#ffd34f';ctx.shadowBlur=ready?16:0;
+        ctx.strokeStyle=ready?(isEntityHyperchargedNow(entity,now)?'#e998ff':'#ffe071'):'rgba(174,151,102,.6)';ctx.lineWidth=6;ctx.beginPath();ctx.arc(0,0,(entity.radius||16)+11,-Math.PI*55/180,Math.PI*55/180);ctx.stroke();
+        ctx.fillStyle=ready?'rgba(255,208,66,.24)':'rgba(110,100,77,.12)';ctx.beginPath();ctx.arc(0,0,(entity.radius||16)+8,-Math.PI*55/180,Math.PI*55/180);ctx.lineTo(0,0);ctx.closePath();ctx.fill();ctx.restore();
+    }
+
     const aliveBots = bots.filter(t=>t.hp>0);
     // bots
     for(const t of aliveBots){
@@ -41679,6 +45151,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.fill();
       } else {
           drawBrawlerPortrait(t, drawY, false, botColor, !!t.isBoss);
+          drawAntiRoyalFrontBlocker(t,drawY);
       }
 
       const activeSkinId = getActiveSkinForBrawler(t.brawler || (t === player ? selectedBrawler : ''))?.id;
@@ -42074,19 +45547,56 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
 
       if (t.isTrainingBot) {
-          // Activation ring
-          ctx.beginPath();
-          ctx.strokeStyle = t.isDummy ? 'rgba(255,255,255,0.15)' : 'rgba(255,100,100,0.4)';
-          ctx.lineWidth = 2;
-          ctx.arc(t.baseX, t.baseY, 350, 0, Math.PI * 2);
-          ctx.stroke();
-          if(t.isDamageMeterBot){
-              const meterNow=performance.now();t.trainingDamageEvents=(t.trainingDamageEvents||[]).filter(hit=>meterNow-hit.at<=5000);
-              const total=t.trainingDamageEvents.reduce((sum,hit)=>sum+hit.amount,0),dps=total/5,panelY=drawY-t.radius-74;
-              ctx.save();ctx.fillStyle='rgba(5,18,29,.94)';ctx.strokeStyle='#5df2c2';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(t.x-112,panelY,224,54,14);ctx.fill();ctx.stroke();
-              ctx.textAlign='center';ctx.fillStyle='#8fffd7';ctx.font='900 10px sans-serif';ctx.fillText('LAST 5 SECONDS',t.x,panelY+14);
-              ctx.fillStyle='#fff';ctx.font='1000 22px sans-serif';ctx.fillText(`${Math.round(total).toLocaleString()} DMG`,t.x,panelY+36);
-              ctx.fillStyle='#9bb4c8';ctx.font='800 9px sans-serif';ctx.fillText(`${Math.round(dps).toLocaleString()} DPS`,t.x,panelY+49);ctx.restore();
+          if (t.isTrainingAlly) {
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(0, 245, 212, 0.55)';
+              ctx.lineWidth = 2.5;
+              ctx.arc(t.x, drawY, t.radius + 10, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fillStyle = '#00f5d4';
+              ctx.font = 'bold 10px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('ALLY', t.x, drawY - t.radius - 18);
+          } else if (t.isTrainingGridBot) {
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(255, 209, 102, 0.4)';
+              ctx.lineWidth = 1.5;
+              ctx.arc(t.x, drawY, t.radius + 6, 0, Math.PI * 2);
+              ctx.stroke();
+          } else if (t.isTrainingCustomEnemy) {
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(255, 77, 109, 0.65)';
+              ctx.lineWidth = 2.5;
+              ctx.arc(t.x, drawY, t.radius + 12, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fillStyle = '#ff4d6d';
+              ctx.font = 'bold 10px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(t.customEnemyMode === 'ai' ? 'ENEMY AI' : 'ENEMY DUMMY', t.x, drawY - t.radius - 18);
+          } else if (t.isDamageMeterBot) {
+              const meterNow = performance.now();
+              t.trainingDamageEvents = (t.trainingDamageEvents || []).filter(hit => meterNow - hit.at <= 5000);
+              const total = t.trainingDamageEvents.reduce((sum, hit) => sum + hit.amount, 0), dps = total / 5, panelY = drawY - t.radius - 74;
+              ctx.save(); ctx.fillStyle = 'rgba(5,18,29,.94)'; ctx.strokeStyle = '#5df2c2'; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(t.x - 112, panelY, 224, 54, 14); ctx.fill(); ctx.stroke();
+              ctx.textAlign = 'center'; ctx.fillStyle = '#8fffd7'; ctx.font = '900 10px sans-serif'; ctx.fillText('LAST 5 SECONDS', t.x, panelY + 14);
+              ctx.fillStyle = '#fff'; ctx.font = '1000 22px sans-serif'; ctx.fillText(`${Math.round(total).toLocaleString()} DMG`, t.x, panelY + 36);
+              ctx.fillStyle = '#9bb4c8'; ctx.font = '800 9px sans-serif'; ctx.fillText(`${Math.round(dps).toLocaleString()} DPS`, t.x, panelY + 49); ctx.restore();
+          } else if (t.isColossusBot) {
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(255, 99, 72, 0.55)';
+              ctx.lineWidth = 2.5;
+              ctx.arc(t.x, drawY, t.radius + 14, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fillStyle = '#ff6348';
+              ctx.font = 'bold 10px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('10M HP COLOSSUS', t.x, drawY - t.radius - 20);
+          } else {
+              ctx.beginPath();
+              ctx.strokeStyle = t.isDummy ? 'rgba(255,255,255,0.15)' : 'rgba(255,100,100,0.4)';
+              ctx.lineWidth = 2;
+              ctx.arc(t.baseX, t.baseY, 350, 0, Math.PI * 2);
+              ctx.stroke();
           }
       }
       
@@ -42150,6 +45660,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         ctx.beginPath(); ctx.arc(player.x, drawY, (player.radius + 18) * pulse, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
     }
     drawBrawlerPortrait(player, drawY, true, '#9ef6d6', false);
+    drawAntiRoyalFrontBlocker(player,drawY);
 
     {
       const t = player;
@@ -42472,6 +45983,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.fillStyle='rgba(2,12,22,.72)';ctx.beginPath();ctx.roundRect(player.x-25,meterY,50,5,3);ctx.fill();
           const momentumGrad=ctx.createLinearGradient(player.x-25,0,player.x+25,0);momentumGrad.addColorStop(0,'#45dfff');momentumGrad.addColorStop(1,'#e078ff');ctx.fillStyle=momentumGrad;ctx.beginPath();ctx.roundRect(player.x-24,meterY+1,48*pct,3,2);ctx.fill();
           ctx.fillStyle='#dffcff';ctx.font='bold 7px sans-serif';ctx.textAlign='center';ctx.fillText(`MOMENTUM ${Math.round(pct*100)}%`,player.x,meterY-3);ctx.textAlign='left';
+      }else if(selectedBrawler==='anti_royal'){
+          ensureAntiRoyalState(player);const rounds=Math.floor(player.antiRoyalMortarRounds||0),ready=performance.now()>=(player.antiRoyalBlockReadyAt||0);
+          ctx.fillStyle='rgba(20,13,4,.84)';ctx.beginPath();ctx.roundRect(player.x-34,drawY-16,68,12,5);ctx.fill();
+          for(let slot=0;slot<ANTI_ROYAL_MORTAR_ROUND_CAP;slot++){ctx.fillStyle=slot<rounds?'#ffd34f':'rgba(255,221,113,.18)';ctx.fillRect(player.x-30+slot*8,drawY-13,6,5);}
+          ctx.fillStyle=ready?'#fff2a8':'#dbb96a';ctx.font='bold 7px sans-serif';ctx.textAlign='center';ctx.fillText(`MORTAR ${rounds}/8 · ${ready?'BLOCK READY':'BLOCK CD'}`,player.x,drawY-7);ctx.textAlign='left';
       }else if(selectedBrawler==='freestyle'){
           const names=['DISCO','DJ BOARD','MIC'],colors=['#78e8ff','#ffd45f','#ff72dc'],stage=player.freestyleSetlistStage||0;
            ctx.fillStyle='rgba(3,10,18,.78)';ctx.beginPath();ctx.roundRect(player.x-27,drawY-14,54,10,5);ctx.fill();ctx.strokeStyle=colors[stage];ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle=colors[stage];ctx.font='bold 7px sans-serif';ctx.textAlign='center';ctx.fillText(`NEXT: ${names[stage]}`,player.x,drawY-7);ctx.textAlign='left';
@@ -42859,6 +46375,31 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           for(const off of [-.105,0,.105]){ctx.strokeStyle=hyperMain?'rgba(230,126,255,.58)':'rgba(255,190,96,.62)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(endX,endY);ctx.lineTo(endX+Math.cos(ang+off)*300,endY+Math.sin(ang+off)*300);ctx.stroke();}
           if(hyperMain){for(const lane of [-24,24]){ctx.strokeStyle='rgba(226,118,255,.72)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(player.x+Math.cos(perp)*lane,player.y+Math.sin(perp)*lane);ctx.lineTo(endX+Math.cos(perp)*lane,endY+Math.sin(perp)*lane);ctx.stroke();}}
           ctx.fillStyle='rgba(255,95,24,.15)';ctx.strokeStyle=hyperMain?'#df79ff':'#ffad4c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(endX,endY,hyperMain?67:48,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+      }
+      if (selectedBrawler === 'king') {
+          ctx.save();
+          if(aimingSuper){
+              const distance=Math.min(420,Math.max(70,Math.hypot(dx,dy))),tx=player.x+Math.cos(ang)*distance,ty=player.y+Math.sin(ang)*distance,perp=ang+Math.PI/2;
+              ctx.strokeStyle=isHypercharged?'#dc72ff':'#ffe26d';ctx.lineWidth=4;ctx.setLineDash([12,7]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(tx,ty);ctx.stroke();ctx.setLineDash([]);
+              const spots=isHypercharged?[-34,34]:[0];for(const side of spots){const px=tx+Math.cos(perp)*side,py=ty+Math.sin(perp)*side;ctx.fillStyle=isHypercharged?'rgba(185,75,230,.2)':'rgba(255,207,74,.18)';ctx.strokeStyle=isHypercharged?'#e893ff':'#ffd34f';ctx.beginPath();ctx.arc(px,py,28,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#fff2ad';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.fillText('♛',px,py+6);}
+          }else{
+              drawStandardAimCone(player.x,player.y,ang,720,.045,{fill:'rgba(255,205,68,.10)',stroke:player.kingSiegeRoundArmed?'#ff7043':'#ffe47a',center:'rgba(255,250,211,.88)'});
+              ctx.strokeStyle='rgba(255,224,112,.7)';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(player.x-Math.cos(ang)*12,player.y-Math.sin(ang)*12);ctx.lineTo(player.x-Math.cos(ang)*60,player.y-Math.sin(ang)*60);ctx.stroke();
+          }
+          ctx.restore();
+      }
+      if (selectedBrawler === 'anti_royal') {
+          ensureAntiRoyalState(player);ctx.save();
+          if(aimingSuper){
+              const distance=Math.min(430,Math.max(75,Math.hypot(dx,dy))),tx=player.x+Math.cos(ang)*distance,ty=player.y+Math.sin(ang)*distance;
+              ctx.strokeStyle=isHypercharged?'#dc72ff':'#ffd34f';ctx.lineWidth=4;ctx.setLineDash([12,7]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+tx)/2,(player.y+ty)/2-72,tx,ty);ctx.stroke();ctx.setLineDash([]);
+              ctx.fillStyle=isHypercharged?'rgba(188,74,235,.2)':'rgba(255,196,52,.18)';ctx.strokeStyle=isHypercharged?'#e995ff':'#ffe071';ctx.beginPath();ctx.arc(tx,ty,30,0,Math.PI*2);ctx.fill();ctx.stroke();
+              ctx.fillStyle='#fff3bd';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(`${Math.floor(player.antiRoyalMortarRounds||0)} ROUNDS${isHypercharged?' ×2':''}`,tx,ty-40);ctx.textAlign='left';
+          }else{
+              drawStandardAimCone(player.x,player.y,ang,680,.05,{fill:'rgba(255,199,52,.10)',stroke:'rgba(255,224,112,.9)',center:'rgba(255,250,218,.82)'});
+              if(performance.now()>=(player.antiRoyalBlockReadyAt||0)){ctx.strokeStyle=isHypercharged?'#e07aff':'#ffd34f';ctx.lineWidth=6;ctx.beginPath();ctx.arc(player.x,player.y,42,ang-Math.PI*55/180,ang+Math.PI*55/180);ctx.stroke();}
+          }
+          ctx.restore();
       }
       if (selectedBrawler === 'cursed') {
           ctx.save();
@@ -43327,6 +46868,56 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(isHypercharged ? '⚡💨' : '🎪', deployX, deployY);
+
+          ctx.restore();
+      }
+      if (selectedBrawler === 'sir_cheeseburger' && !aimingSuper) {
+          ctx.save();
+          const combo = player.sirCheeseDmgBonus || 0;
+          const range = isHypercharged ? 150 : 90;
+          const sliceWidth = 40 + Math.min(24, combo * 100);
+
+          ctx.translate(player.x, player.y);
+          ctx.rotate(ang);
+          ctx.fillStyle = isHypercharged ? 'rgba(224, 86, 253, 0.35)' : 'rgba(255, 184, 48, 0.30)';
+          ctx.strokeStyle = isHypercharged ? '#e056fd' : '#ffb830';
+          ctx.lineWidth = 2.5;
+
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(0, -sliceWidth / 2, range, sliceWidth, 8);
+          else ctx.rect(0, -sliceWidth / 2, range, sliceWidth);
+          ctx.fill();
+          ctx.stroke();
+
+          // Combo indicator text
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`🧀 +${Math.round(combo * 100)}% DMG`, range / 2, 0);
+
+          ctx.restore();
+      }
+      if (selectedBrawler === 'sir_cheeseburger' && aimingSuper) {
+          ctx.save();
+          const shockRadius = isHypercharged ? 190 : 140;
+
+          // Shockwave AoE Ring
+          ctx.strokeStyle = isHypercharged ? 'rgba(224, 86, 253, 0.85)' : 'rgba(255, 184, 48, 0.85)';
+          ctx.fillStyle = isHypercharged ? 'rgba(224, 86, 253, 0.20)' : 'rgba(255, 184, 48, 0.15)';
+          ctx.lineWidth = 3;
+
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, shockRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Center shield aura text
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(isHypercharged ? '👑 ROYAL CHEST GUARD (85% DR)' : '🛡️ CHEST GUARD (50% DR)', player.x, player.y - shockRadius - 12);
 
           ctx.restore();
       }
@@ -45208,11 +48799,44 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
 
     for(const zone of rocketeerFireZones){
+      const isRanked = zone.skinId === 'ranked-rocketeer';
       const pulse=.9+Math.sin(performance.now()/115)*.08;ctx.save();
-      const grad=ctx.createRadialGradient(zone.x,zone.y,4,zone.x,zone.y,zone.radius);
-      grad.addColorStop(0,zone.hyper?'rgba(241,113,255,.52)':'rgba(255,220,73,.55)');grad.addColorStop(.55,'rgba(255,92,20,.35)');grad.addColorStop(1,'rgba(120,18,0,.04)');
-      ctx.fillStyle=grad;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.radius*pulse,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle=zone.hyper?'rgba(229,103,255,.9)':'rgba(255,145,48,.85)';ctx.lineWidth=3;ctx.setLineDash([7,5]);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      if (isRanked) {
+          ctx.shadowColor = '#00f5d4';
+          ctx.shadowBlur = 14;
+          const grad = ctx.createRadialGradient(zone.x, zone.y, 4, zone.x, zone.y, zone.radius);
+          grad.addColorStop(0, 'rgba(0, 245, 212, 0.65)');
+          grad.addColorStop(0.5, 'rgba(255, 209, 102, 0.42)');
+          grad.addColorStop(1, 'rgba(0, 245, 212, 0.02)');
+          ctx.fillStyle = grad;
+          ctx.beginPath(); ctx.arc(zone.x, zone.y, zone.radius * pulse, 0, Math.PI * 2); ctx.fill();
+          
+          // Shimmering digital esports hex rings & particles
+          ctx.strokeStyle = '#00f5d4';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([8, 6]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          
+          ctx.strokeStyle = '#ffd166';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(zone.x, zone.y, zone.radius * 0.55 * pulse, 0, Math.PI * 2); ctx.stroke();
+          
+          // Orbiting plasma cyber sparks
+          const now = performance.now();
+          for (let s = 0; s < 4; s++) {
+              const a = now * 0.003 + (s * Math.PI / 2);
+              const r = zone.radius * 0.72;
+              ctx.fillStyle = s % 2 === 0 ? '#00f5d4' : '#ffd166';
+              ctx.beginPath(); ctx.arc(zone.x + Math.cos(a) * r, zone.y + Math.sin(a) * r, 3, 0, Math.PI * 2); ctx.fill();
+          }
+      } else {
+          const grad=ctx.createRadialGradient(zone.x,zone.y,4,zone.x,zone.y,zone.radius);
+          grad.addColorStop(0,zone.hyper?'rgba(241,113,255,.52)':'rgba(255,220,73,.55)');grad.addColorStop(.55,'rgba(255,92,20,.35)');grad.addColorStop(1,'rgba(120,18,0,.04)');
+          ctx.fillStyle=grad;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.radius*pulse,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle=zone.hyper?'rgba(229,103,255,.9)':'rgba(255,145,48,.85)';ctx.lineWidth=3;ctx.setLineDash([7,5]);ctx.stroke();ctx.setLineDash([]);
+      }
+      ctx.restore();
     }
     for(const zone of minigunninMutationFireZones){
       const remaining=clamp((zone.until-performance.now())/1200,0,1);
@@ -45227,18 +48851,83 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       ctx.restore();
     }
     for(const strike of rocketeerAirstrikes){
+      const isRanked = strike.skinId === 'ranked-rocketeer';
       const remain=Math.max(0,strike.landAt-performance.now()),pulse=.82+Math.sin(performance.now()/70)*.12;ctx.save();
-      ctx.fillStyle=strike.hyper?'rgba(204,76,255,.15)':'rgba(255,85,30,.14)';ctx.strokeStyle=strike.hyper?'#dc77ff':'#ffb04a';ctx.lineWidth=4;ctx.setLineDash([10,6]);
-      ctx.beginPath();ctx.arc(strike.x,strike.y,108*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(`${Math.max(1,Math.ceil(remain/100))}`,strike.x,strike.y+5);ctx.restore();
+      if (isRanked) {
+          ctx.shadowColor = '#00f5d4';
+          ctx.shadowBlur = 18;
+          ctx.fillStyle = 'rgba(0, 245, 212, 0.18)';
+          ctx.strokeStyle = '#ffd166';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath(); ctx.arc(strike.x, strike.y, 114 * pulse, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          
+          // Rotating dual diamond brackets
+          const now = performance.now();
+          ctx.save();
+          ctx.translate(strike.x, strike.y);
+          ctx.rotate(now * 0.003);
+          ctx.strokeStyle = '#00f5d4';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([12, 8]);
+          ctx.strokeRect(-80 * pulse, -80 * pulse, 160 * pulse, 160 * pulse);
+          ctx.restore();
+          
+          // Targeting Crosshairs
+          ctx.strokeStyle = 'rgba(255, 209, 102, 0.8)';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(strike.x - 40, strike.y); ctx.lineTo(strike.x + 40, strike.y);
+          ctx.moveTo(strike.x, strike.y - 40); ctx.lineTo(strike.x, strike.y + 40);
+          ctx.stroke();
+          
+          ctx.fillStyle = '#00f5d4';
+          ctx.font = '900 16px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`⚡ ${Math.max(1, Math.ceil(remain/100))}`, strike.x, strike.y + 6);
+      } else {
+          ctx.fillStyle=strike.hyper?'rgba(204,76,255,.15)':'rgba(255,85,30,.14)';ctx.strokeStyle=strike.hyper?'#dc77ff':'#ffb04a';ctx.lineWidth=4;ctx.setLineDash([10,6]);
+          ctx.beginPath();ctx.arc(strike.x,strike.y,108*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);
+          ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(`${Math.max(1,Math.ceil(remain/100))}`,strike.x,strike.y+5);
+      }
+      ctx.restore();
     }
 
     for(const zone of chickpigEggZones){
       const pulse=.75+Math.sin(performance.now()/100)*.12;ctx.save();ctx.fillStyle=`rgba(255,213,67,${.12+pulse*.08})`;ctx.strokeStyle='rgba(255,241,158,.82)';ctx.lineWidth=3;ctx.setLineDash([9,6]);ctx.beginPath();ctx.arc(zone.x,zone.y,zone.radius*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#ffcf32';ctx.beginPath();ctx.arc(zone.x,zone.y,18,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff8d8';ctx.beginPath();ctx.arc(zone.x,zone.y,8,0,Math.PI*2);ctx.fill();ctx.restore();
     }
 
+    for(const zone of antiRoyalMortarZones){
+      const remain=clamp((zone.until-performance.now())/1200,0,1),pulse=1+Math.sin(performance.now()/120)*.05;ctx.save();
+      ctx.fillStyle=zone.hyper?'rgba(168,62,222,.18)':'rgba(255,163,38,.16)';ctx.strokeStyle=zone.hyper?'rgba(227,132,255,.8)':'rgba(255,205,78,.78)';ctx.lineWidth=3;ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(zone.x,zone.y,zone.radius*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);
+      ctx.globalAlpha=.35+.5*remain;ctx.fillStyle=zone.hyper?'#d369ff':'#ff9f2f';for(let ember=0;ember<5;ember++){const a=ember*Math.PI*2/5+performance.now()/650,r=zone.radius*(.3+.12*(ember%3));ctx.beginPath();ctx.arc(zone.x+Math.cos(a)*r,zone.y+Math.sin(a)*r,3,0,Math.PI*2);ctx.fill();}ctx.restore();
+    }
+    for(const shell of antiRoyalMortarShells){
+      const progress=clamp((performance.now()-shell.launchedAt)/(shell.impactAt-shell.launchedAt),0,1),shadowY=shell.startY+(shell.targetY-shell.startY)*progress;ctx.save();
+      ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(shell.x,shadowY,15,7,0,0,Math.PI*2);ctx.fill();ctx.shadowColor=shell.hyper?'#d96cff':'#ffc83d';ctx.shadowBlur=18;ctx.fillStyle=shell.hyper?'#7b329e':'#2f3446';ctx.strokeStyle=shell.hyper?'#eca0ff':'#ffe071';ctx.lineWidth=3;ctx.beginPath();ctx.arc(shell.x,shell.y,12,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#ffd34f';ctx.font='bold 10px serif';ctx.textAlign='center';ctx.fillText('♠',shell.x,shell.y+4);ctx.restore();
+    }
+
     // draw healing pods
     for(const pod of healingPods){
+      if(pod.isAntiRoyalMortar){
+          const now=performance.now(),r=pod.radius||30,ready=!!pod.antiRoyalShieldReady;ctx.save();ctx.translate(pod.x,pod.y);
+          ctx.shadowColor=pod.antiRoyalHyper?'#d96cff':'#ffc83d';ctx.shadowBlur=16;ctx.fillStyle='#38281c';ctx.strokeStyle=pod.antiRoyalHyper?'#e997ff':'#ffe071';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(-r,-r*.66,r*2,r*1.35,9);ctx.fill();ctx.stroke();
+          ctx.fillStyle='#181d2c';ctx.beginPath();ctx.roundRect(-6,-r-17,37,13,5);ctx.fill();ctx.stroke();ctx.fillStyle='#ffd34f';ctx.beginPath();ctx.arc(-15,6,8,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(15,6,8,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle=pod.antiRoyalHyper?'#7a2c9b':'#b83b36';ctx.beginPath();ctx.moveTo(-20,-r-5);ctx.lineTo(-20,-r-37);ctx.lineTo(8,-r-27);ctx.lineTo(-20,-r-17);ctx.closePath();ctx.fill();
+          if(ready){ctx.strokeStyle='#fff09a';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,r+11,0,Math.PI*2);ctx.stroke();}
+          ctx.fillStyle='#fff2ad';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText((pod.antiRoyalRoundsLeft||0)>0?`BARRAGE ${pod.antiRoyalRoundsLeft}`:'1.3s FIRE',0,r+22);ctx.restore();
+          const pct=clamp(pod.hp/pod.maxHp,0,1),w=68;ctx.fillStyle='rgba(4,9,20,.82)';ctx.fillRect(pod.x-w/2,pod.y-r-13,w,7);ctx.fillStyle=pod.antiRoyalHyper?'#d96cff':'#ffd34f';ctx.fillRect(pod.x-w/2,pod.y-r-13,w*pct,7);ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(getSmoothDisplayedHp(pod),pod.x,pod.y-r-17);ctx.textAlign='left';continue;
+      }
+      if (pod.isKingPrincess) {
+          const now=performance.now(), enraged=now<(pod.kingEnragedUntil||0), hyper=!!pod.kingHyperTwin, r=pod.radius||24;
+          ctx.save();ctx.translate(pod.x,pod.y);ctx.shadowColor=enraged?'#ff7043':hyper?'#dc72ff':'#ffd34f';ctx.shadowBlur=enraged?22:15;
+          ctx.fillStyle=hyper?'#4c286c':'#612f79';ctx.strokeStyle=enraged?'#ff8b50':hyper?'#e28cff':'#ffe071';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(-r,-r*.7,r*2,r*1.55,8);ctx.fill();ctx.stroke();
+          ctx.fillStyle='#f3d5ff';ctx.beginPath();ctx.arc(0,-5,9,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d59af2';ctx.beginPath();ctx.moveTo(-11,-13);ctx.lineTo(-6,-27);ctx.lineTo(0,-17);ctx.lineTo(7,-28);ctx.lineTo(12,-13);ctx.closePath();ctx.fill();
+          ctx.strokeStyle='#ffd98a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(2,5,11,-1.1,1.1);ctx.stroke();ctx.beginPath();ctx.moveTo(7,-5);ctx.lineTo(17,5);ctx.stroke();
+          if(enraged){ctx.strokeStyle='#ff6b3d';ctx.lineWidth=3;ctx.setLineDash([6,5]);ctx.beginPath();ctx.arc(0,0,r+10,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}
+          if((pod.kingBurnReadyAt||0)<=now){ctx.fillStyle='#ff8b36';ctx.font='15px sans-serif';ctx.textAlign='center';ctx.fillText('🔥',0,-r-16);}
+          ctx.restore();
+          const pct=clamp(pod.hp/pod.maxHp,0,1),w=58;ctx.fillStyle='rgba(4,9,20,.82)';ctx.fillRect(pod.x-w/2,pod.y-r-11,w,6);ctx.fillStyle=enraged?'#ff7043':hyper?'#dc72ff':'#ffd34f';ctx.fillRect(pod.x-w/2,pod.y-r-11,w*pct,6);ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(getSmoothDisplayedHp(pod),pod.x,pod.y-r-15);ctx.textAlign='left';continue;
+      }
       // Special rendering for MiniBrickkin lego fort
       if (pod.isLegoFort) {
           // Skip - will be rendered in the MiniBrickkin super rendering section
@@ -45274,6 +48963,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                     const owner = [player, ...aliveBots].find(e => e.id === pod.ownerId);
                     const ownerSkin = owner ? getActiveSkinForBrawler(owner.brawler || (owner === player ? selectedBrawler : '')) : null;
                     const isClassicClassy = ownerSkin?.id === 'classic-classy';
+                    const isSchoolClassy = ownerSkin?.id === 'back-to-school-classy';
 
                     if (performance.now() < (pod.classySignatureUntil || 0)) {
                         const step = Math.sin(performance.now() / 95) * 3;
@@ -45288,7 +48978,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
                     // 1. Draw Custom Outward Range Aura Line
                     ctx.beginPath();
-                    ctx.strokeStyle = isClassicClassy ? 'rgba(194, 157, 83, 0.45)' : (pod.classyHyper ? 'rgba(255, 220, 90, 0.45)' : 'rgba(212, 175, 55, 0.35)');
+                    ctx.strokeStyle = isSchoolClassy ? (pod.classyHyper?'rgba(213,112,255,.72)':'rgba(85,223,255,.6)') : isClassicClassy ? 'rgba(194, 157, 83, 0.45)' : (pod.classyHyper ? 'rgba(255, 220, 90, 0.45)' : 'rgba(212, 175, 55, 0.35)');
                     ctx.lineWidth = 2;
                     ctx.setLineDash([10, 7]);
                     ctx.arc(pod.x, pod.y, zoneR, 0, Math.PI * 2);
@@ -45297,11 +48987,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
                     // 2. Draw Soft Center Pulse Ground Shadow
                     ctx.beginPath();
-                    ctx.fillStyle = isClassicClassy ? 'rgba(139, 90, 43, 0.25)' : (pod.classyHyper ? 'rgba(255, 210, 80, 0.35)' : 'rgba(212, 175, 55, 0.32)');
+                    ctx.fillStyle = isSchoolClassy ? (pod.classyHyper?'rgba(155,72,255,.28)':'rgba(79,140,255,.2)') : isClassicClassy ? 'rgba(139, 90, 43, 0.25)' : (pod.classyHyper ? 'rgba(255, 210, 80, 0.35)' : 'rgba(212, 175, 55, 0.32)');
                     ctx.arc(pod.x, pod.y, (pod.radius || 34) * pulse, 0, Math.PI * 2);
                     ctx.fill();
 
-                    if (isClassicClassy) {
+                    if (isSchoolClassy) {
+                        const r=pod.radius||34;ctx.save();ctx.translate(pod.x,pod.y);ctx.shadowColor=pod.classyHyper?'#bd69ff':'#55dfff';ctx.shadowBlur=20;
+                        // Animated school locker transformed into a concert speaker.
+                        ctx.fillStyle=pod.classyHyper?'#502779':'#244da5';ctx.strokeStyle='#b9f6ff';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(-r,-r,r*2,r*2,7);ctx.fill();ctx.stroke();
+                        ctx.strokeStyle='rgba(205,242,255,.65)';ctx.lineWidth=2;for(const slit of [-12,-5,2]){ctx.beginPath();ctx.moveTo(-r*.62,slit-r*.3);ctx.lineTo(r*.62,slit-r*.3);ctx.stroke();}
+                        ctx.fillStyle='#101b3c';ctx.strokeStyle='#ffe36e';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,r*.28,r*.48*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=pod.classyHyper?'#c66fff':'#55dfff';ctx.beginPath();ctx.arc(0,r*.28,r*.2*pulse,0,Math.PI*2);ctx.fill();
+                        ctx.fillStyle='#ffe36e';ctx.beginPath();ctx.roundRect(-r*.55,-r*.83,r*1.1,r*.24,4);ctx.fill();ctx.fillStyle='#18336c';ctx.font='900 10px sans-serif';ctx.textAlign='center';ctx.fillText('CLASSY 101',0,-r*.66);
+                        ctx.fillStyle='#fff';ctx.font='900 9px sans-serif';ctx.fillText('A+',r*.62,-r*.35);ctx.restore();
+                    } else if (isClassicClassy) {
                         const r = pod.radius || 34;
                         
                         // A. Wood Cabinet (saloon box style)
@@ -45888,11 +49586,66 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           const a=Math.atan2(b.vy,b.vx);ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);ctx.shadowColor=b.hyperVisual?'#d66cff':'#ff72dc';ctx.shadowBlur=20;ctx.fillStyle='#25213d';ctx.strokeStyle=b.hyperVisual?'#df8aff':'#ff99e5';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(-16,-14,32,28,6);ctx.fill();ctx.stroke();for(const yy of [-7,7]){ctx.fillStyle=yy<0?'#7eeaff':'#ff72dc';ctx.beginPath();ctx.arc(2,yy,6,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();}ctx.restore();continue;
       }
       if (b.isRocketeerMain || b.isRocketeerMini) {
+          const isRanked = b.skinId === 'ranked-rocketeer' || earlyProjectileSkin?.id === 'ranked-rocketeer';
           const a=Math.atan2(b.vy,b.vx),mini=!!b.isRocketeerMini,escort=!!b.rocketeerEscort;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);if(escort)ctx.scale(.7,.7);else if(b.rocketeerPrimaryHyper)ctx.scale(1.4,1.4);
-          ctx.shadowColor=b.hyperVisual?'#db68ff':'#ff6f28';ctx.shadowBlur=mini?10:20;
-          ctx.fillStyle=b.hyperVisual?'#c75be8':(mini?'#ffb12f':'#ef4c24');ctx.strokeStyle='#fff0bf';ctx.lineWidth=2;
-          ctx.beginPath();ctx.moveTo(mini?10:18,0);ctx.lineTo(mini?-7:-13,-(mini?5:8));ctx.lineTo(mini?-4:-8,0);ctx.lineTo(mini?-7:-13,mini?5:8);ctx.closePath();ctx.fill();ctx.stroke();
-          ctx.strokeStyle=b.hyperVisual?'rgba(225,105,255,.7)':'rgba(255,176,51,.72)';ctx.lineWidth=mini?4:7;ctx.beginPath();ctx.moveTo(mini?-6:-11,0);ctx.lineTo(mini?-20:-34,0);ctx.stroke();ctx.restore();continue;
+          if (isRanked) {
+              ctx.shadowColor = b.hyperVisual ? '#00f5d4' : (mini ? '#ffd166' : '#00f5d4');
+              ctx.shadowBlur = mini ? 14 : 24;
+              
+              // Dual-tone exhaust jet trail
+              ctx.strokeStyle = 'rgba(0, 245, 212, 0.85)';
+              ctx.lineWidth = mini ? 3.5 : 6;
+              ctx.beginPath();
+              ctx.moveTo(mini ? -6 : -12, -2);
+              ctx.lineTo(mini ? -24 : -42, -2);
+              ctx.stroke();
+
+              ctx.strokeStyle = 'rgba(255, 209, 102, 0.85)';
+              ctx.lineWidth = mini ? 3.5 : 6;
+              ctx.beginPath();
+              ctx.moveTo(mini ? -6 : -12, 2);
+              ctx.lineTo(mini ? -24 : -42, 2);
+              ctx.stroke();
+
+              // Carbon Aero Body
+              ctx.fillStyle = '#0f172a';
+              ctx.strokeStyle = '#ffd166';
+              ctx.lineWidth = mini ? 1.5 : 2.5;
+              ctx.beginPath();
+              ctx.moveTo(mini ? 12 : 22, 0);
+              ctx.lineTo(mini ? -8 : -14, -(mini ? 6 : 9));
+              ctx.lineTo(mini ? -4 : -8, 0);
+              ctx.lineTo(mini ? -8 : -14, mini ? 6 : 9);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+
+              // Glowing Neon Cyan Plasma Warhead Tip
+              ctx.fillStyle = '#00f5d4';
+              ctx.beginPath();
+              ctx.moveTo(mini ? 12 : 22, 0);
+              ctx.lineTo(mini ? 2 : 6, -(mini ? 3 : 4.5));
+              ctx.lineTo(mini ? 2 : 6, mini ? 3 : 4.5);
+              ctx.closePath();
+              ctx.fill();
+
+              // Hypercharge Plasma Rings
+              if (b.hyperVisual || b.rocketeerPrimaryHyper) {
+                  ctx.strokeStyle = '#00f5d4';
+                  ctx.lineWidth = 2;
+                  ctx.setLineDash([4, 3]);
+                  ctx.beginPath();
+                  ctx.arc(0, 0, mini ? 14 : 22, 0, Math.PI * 2);
+                  ctx.stroke();
+                  ctx.setLineDash([]);
+              }
+          } else {
+              ctx.shadowColor=b.hyperVisual?'#db68ff':'#ff6f28';ctx.shadowBlur=mini?10:20;
+              ctx.fillStyle=b.hyperVisual?'#c75be8':(mini?'#ffb12f':'#ef4c24');ctx.strokeStyle='#fff0bf';ctx.lineWidth=2;
+              ctx.beginPath();ctx.moveTo(mini?10:18,0);ctx.lineTo(mini?-7:-13,-(mini?5:8));ctx.lineTo(mini?-4:-8,0);ctx.lineTo(mini?-7:-13,mini?5:8);ctx.closePath();ctx.fill();ctx.stroke();
+              ctx.strokeStyle=b.hyperVisual?'rgba(225,105,255,.7)':'rgba(255,176,51,.72)';ctx.lineWidth=mini?4:7;ctx.beginPath();ctx.moveTo(mini?-6:-11,0);ctx.lineTo(mini?-20:-34,0);ctx.stroke();
+          }
+          ctx.restore();continue;
       }
       if (b.isOrboMain || b.isOrboSuper) {
           const angle=Math.atan2(b.vy,b.vx),hyper=!!b.hyperVisual;
@@ -46611,6 +50364,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           continue;
       }
       if (b.isClassyNote) {
+          if (activeSkinId === 'back-to-school-classy') {
+              const angle=Math.atan2(b.vy,b.vx),scale=(b.classySpeakerShot?1.25:1)*(b.hitboxMod||1),hyper=!!b.hyperVisual;
+              ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.shadowColor=hyper?'#ca70ff':'#55dfff';ctx.shadowBlur=hyper?20:13;
+              ctx.globalAlpha=.42;ctx.strokeStyle=hyper?'#c96fff':'#ffe36e';ctx.lineWidth=4*scale;ctx.beginPath();ctx.moveTo(-30*scale,0);ctx.lineTo(-8*scale,0);ctx.stroke();ctx.globalAlpha=1;
+              // Flying report card with pencil nose and animated grade stamp.
+              ctx.rotate(Math.sin(performance.now()/90+b.life*8)*.12);ctx.fillStyle=hyper?'#7440a5':'#eef8ff';ctx.strokeStyle=hyper?'#f0a1ff':'#4f8cff';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-9*scale,-7*scale,18*scale,14*scale,2);ctx.fill();ctx.stroke();
+              ctx.strokeStyle=hyper?'#ffd5ff':'#8db2e8';ctx.lineWidth=1.2;for(const line of [-3,1,5]){ctx.beginPath();ctx.moveTo(-5*scale,line*scale);ctx.lineTo(3*scale,line*scale);ctx.stroke();}
+              ctx.fillStyle='#ffe36e';ctx.beginPath();ctx.moveTo(7*scale,-3*scale);ctx.lineTo(17*scale,0);ctx.lineTo(7*scale,3*scale);ctx.closePath();ctx.fill();ctx.fillStyle=hyper?'#fff':'#ff547d';ctx.font=`900 ${Math.max(7,7*scale)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(b.classyGolden?'A+':'A',1*scale,0);ctx.restore();continue;
+          }
           if (activeSkinId === 'classic-classy' && !b.hyperVisual) {
               const scale = (b.classySpeakerShot ? 1.25 : 1.0) * (b.hitboxMod || 1);
               const superShot = !!b.isClassySuperShot;
@@ -47200,6 +50962,18 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.restore();
           continue;
       }
+      else if (b.ownerBrawler === 'anti_royal' && b.isAntiRoyalGoldPouch) {
+          const angle=Math.atan2(b.vy,b.vx),spin=performance.now()/120;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);
+          ctx.strokeStyle=b.hyperVisual?'rgba(224,110,255,.75)':'rgba(255,210,63,.72)';ctx.lineWidth=5;ctx.globalAlpha=.45;ctx.beginPath();ctx.moveTo(-28,0);ctx.lineTo(-9,0);ctx.stroke();ctx.globalAlpha=1;
+          ctx.rotate(spin);ctx.shadowColor=b.hyperVisual?'#d96cff':'#ffc832';ctx.shadowBlur=14;ctx.fillStyle=b.hyperVisual?'#7f35a4':'#8b541f';ctx.strokeStyle=b.hyperVisual?'#efa1ff':'#ffe27a';ctx.lineWidth=2.5;ctx.beginPath();ctx.roundRect(-11,-9,22,18,6);ctx.fill();ctx.stroke();
+          ctx.fillStyle='#ffd34f';ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#5d3713';ctx.font='bold 8px serif';ctx.textAlign='center';ctx.fillText('$',0,3);ctx.restore();continue;
+      }
+      else if (b.ownerBrawler === 'king' && (b.isKingCannon || b.isKingPrincessArrow)) {
+          const angle=Math.atan2(b.vy,b.vx);ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);
+          if(b.isKingCannon){ctx.shadowColor=b.kingSiegeRound?'#ff5b38':b.hyperVisual?'#d96cff':'#ffc83d';ctx.shadowBlur=18;ctx.fillStyle=b.kingSiegeRound?'#38201b':b.hyperVisual?'#74309b':'#2f3446';ctx.strokeStyle=b.kingSiegeRound?'#ff8b4c':b.hyperVisual?'#e998ff':'#ffe071';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,13,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle=ctx.shadowColor;ctx.lineWidth=5;ctx.globalAlpha=.55;ctx.beginPath();ctx.moveTo(-14,0);ctx.lineTo(-34,0);ctx.stroke();ctx.globalAlpha=1;ctx.fillStyle='#ffe071';ctx.font='11px serif';ctx.textAlign='center';ctx.fillText('♛',0,4);}
+          else{ctx.shadowColor=b.kingBurning?'#ff6b2d':b.hyperVisual?'#dc72ff':'#ffd970';ctx.shadowBlur=b.kingBurning?20:10;ctx.strokeStyle=b.kingBurning?'#ff8a42':b.hyperVisual?'#eaa0ff':'#fff0a5';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-14,0);ctx.lineTo(13,0);ctx.stroke();ctx.fillStyle=b.kingBurning?'#ffcf45':'#e8c6ff';ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(7,-5);ctx.lineTo(7,5);ctx.closePath();ctx.fill();ctx.fillStyle=b.hyperVisual?'#bb65e8':'#a467c1';ctx.fillRect(-13,-3,5,6);}
+          ctx.restore();continue;
+      }
       else if (b.ownerBrawler === 'cursed' && b.isCursedBolt) {
           const progress=clamp(b.maxLife>0?b.life/b.maxLife:1,0,1),r=7+18*progress*(b.cursedMarkedFate?1.25:1),spin=performance.now()/170;
           ctx.save();ctx.translate(b.x,b.y);ctx.rotate(spin);ctx.shadowColor=b.hyperVisual?'#ef6fff':'#a443c7';ctx.shadowBlur=10;ctx.fillStyle=b.hyperVisual?'rgba(116,23,151,.92)':'rgba(76,28,101,.9)';ctx.strokeStyle=b.hyperVisual?'#f0a0ff':'#cf83ed';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.shadowBlur=0;
@@ -47344,6 +51118,68 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           continue;
       }
       
+      else if (b.ownerBrawler === 'sir_cheeseburger' && b.isSirCheeseburgerSlice) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(b.aimAngle);
+          const progress = Math.min(1, (b.life || 0) / (b.maxLife || 0.18));
+          const sliceLen = b.range || (b.hyperVisual ? 150 : 90);
+          const sliceWidth = (36 + (b.sirCheeseBonus || 0) * 40) * (1 - progress * 0.3);
+
+          ctx.shadowColor = b.hyperVisual ? '#e056fd' : '#ffb830';
+          ctx.shadowBlur = b.hyperVisual ? 18 : 10;
+
+          // Golden Cheddar Cleave Slash Arc
+          const grad = ctx.createLinearGradient(0, 0, sliceLen, 0);
+          grad.addColorStop(0, 'rgba(255, 234, 167, 0.95)');
+          grad.addColorStop(0.6, b.hyperVisual ? 'rgba(224, 86, 253, 0.9)' : 'rgba(255, 184, 48, 0.95)');
+          grad.addColorStop(1, b.hyperVisual ? 'rgba(243, 104, 224, 0)' : 'rgba(230, 126, 34, 0)');
+          ctx.fillStyle = grad;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+
+          ctx.beginPath();
+          ctx.moveTo(10, -sliceWidth * 0.5);
+          ctx.quadraticCurveTo(sliceLen * 0.8, -sliceWidth * 0.6, sliceLen, 0);
+          ctx.quadraticCurveTo(sliceLen * 0.8, sliceWidth * 0.6, 10, sliceWidth * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Central sharp cheese cutting edge
+          ctx.strokeStyle = b.hyperVisual ? '#ffffff' : '#fff3b0';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(15, 0);
+          ctx.lineTo(sliceLen * 0.95, 0);
+          ctx.stroke();
+
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'sir_cheeseburger' && b.isSirCheeseShockwave) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const waveAng = Math.atan2(b.vy, b.vx);
+          ctx.rotate(waveAng);
+          ctx.shadowColor = '#e056fd';
+          ctx.shadowBlur = 14;
+
+          // Expanding Hypercharge Fondue Shockwave Arc
+          ctx.strokeStyle = '#f368e0';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(0, 0, 24, -Math.PI * 0.45, Math.PI * 0.45);
+          ctx.stroke();
+
+          ctx.fillStyle = '#fffa65';
+          ctx.beginPath();
+          ctx.arc(0, 0, 16, -Math.PI * 0.35, Math.PI * 0.35);
+          ctx.fill();
+
+          ctx.restore();
+          continue;
+      }
       
       else if (b.ownerBrawler === 'axeywaxy' && b.isAxeyWaxyCleave) {
           // Animated sweeping axe cleave visual
@@ -48805,89 +52641,144 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     
     // Draw mode objective geometry
     if (isObjectiveMode && playing && !isBossFight && !isSoloTrial && !isDuels) {
-        const pulse = 1 + Math.sin(performance.now() / 220) * 0.04;
-        const ringRadius = objectiveZone.r * pulse;
-        const progress = clamp(objectiveControl / Math.max(1, BALANCE_PROFILE.objectiveMode.winScore), 0, 1);
-        ctx.save();
-        ctx.fillStyle = 'rgba(75, 140, 220, 0.12)';
-        ctx.beginPath();
-        ctx.arc(objectiveZone.x, objectiveZone.y, ringRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(130, 195, 255, 0.78)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(objectiveZone.x, objectiveZone.y, ringRadius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(93, 242, 194, 0.95)';
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.arc(objectiveZone.x, objectiveZone.y, ringRadius + 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
-        ctx.stroke();
-        ctx.restore();
-    }
-    if (isTugZoneMode && playing && !gameOver) {
         const now = performance.now();
-        const hostile = tugZone.x >= WORLD_W*.45 && tugZone.x <= WORLD_W*.55;
-        ctx.save();
-        ctx.fillStyle = hostile ? 'rgba(255,75,95,.16)' : 'rgba(80,225,255,.13)';
-        ctx.strokeStyle = hostile ? '#ff596d' : '#66e7ff'; ctx.lineWidth=5;
-        ctx.beginPath(); ctx.arc(tugZone.x,tugZone.y,tugZone.r*(1+Math.sin(now/180)*.025),0,Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.setLineDash([16,12]); ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.moveTo(WORLD_W*.45,0);ctx.lineTo(WORLD_W*.45,WORLD_H);ctx.moveTo(WORLD_W*.55,0);ctx.lineTo(WORLD_W*.55,WORLD_H);ctx.stroke(); ctx.setLineDash([]);
-        for(const h of tugZoneHazards){ const left=Math.max(0,(h.impactAt-now)/800); ctx.strokeStyle=`rgba(255,190,80,${.45+.5*(1-left)})`;ctx.lineWidth=4;ctx.beginPath();ctx.arc(h.x,h.y,72*(.45+.55*left),0,Math.PI*2);ctx.stroke(); }
-        ctx.restore();
+        const pulse = 1 + Math.sin(now / 220) * 0.04;
+        const zonesToDraw = (Array.isArray(objectiveZones) && objectiveZones.length > 0)
+            ? objectiveZones
+            : [{ id: 'mid', name: 'Center Zone', x: objectiveZone.x, y: objectiveZone.y, r: objectiveZone.r, controllingTeam: null, playerIn: 0, enemyIn: 0 }];
+
+        zonesToDraw.forEach((z) => {
+            const ringR = (z.r || 165) * pulse;
+            const team = z.controllingTeam;
+            let baseColor = 'rgba(148, 163, 184, 0.12)';
+            let strokeColor = 'rgba(148, 163, 184, 0.6)';
+            let statusText = '⚪ NEUTRAL';
+            if (team === 'player') {
+                baseColor = 'rgba(56, 189, 248, 0.18)';
+                strokeColor = '#38bdf8';
+                statusText = '🟦 BLUE CONTROL';
+            } else if (team === 'enemy') {
+                baseColor = 'rgba(248, 113, 113, 0.18)';
+                strokeColor = '#f87171';
+                statusText = '🟥 RED CONTROL';
+            } else if (team === 'contested') {
+                baseColor = 'rgba(250, 204, 21, 0.22)';
+                strokeColor = '#facc15';
+                statusText = '⚠️ CONTESTED';
+            }
+
+            ctx.save();
+            ctx.fillStyle = baseColor;
+            ctx.beginPath();
+            ctx.arc(z.x, z.y, ringR, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(z.x, z.y, ringR, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner pulsing ring
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(z.x, z.y, ringR * 0.45 + Math.sin(now / 150) * 4, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Center Zone Label
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(z.name || 'Zone', z.x, z.y - 10);
+            ctx.fillStyle = strokeColor;
+            ctx.font = '900 11px sans-serif';
+            ctx.fillText(statusText, z.x, z.y + 12);
+            ctx.textAlign = 'left';
+            ctx.restore();
+        });
     }
 
     if (isConstructionMode && playing && !isBossFight && !isSoloTrial && !isDuels) {
-        const drawPath = (team, pathColor, zoneColor, cartColor) => {
-            const path = constructionPaths[team];
-            const cart = constructionCarts[team];
-            if (!path || !cart) return;
-            const cartPos = getConstructionCartPosition(team);
-            if (!cartPos) return;
-
+        const now = performance.now();
+        // 1. Draw central Gem Mine
+        if (brickMine) {
             ctx.save();
-            ctx.strokeStyle = pathColor;
-            ctx.lineWidth = 7;
-            ctx.setLineDash([12, 10]);
-            ctx.lineDashOffset = -(performance.now() / 38);
+            const minePulse = 1 + Math.sin(now / 200) * 0.08;
+            const mineGlow = ctx.createRadialGradient(brickMine.x, brickMine.y, 10, brickMine.x, brickMine.y, 65 * minePulse);
+            mineGlow.addColorStop(0, 'rgba(168, 85, 247, 0.65)');
+            mineGlow.addColorStop(0.5, 'rgba(6, 182, 212, 0.3)');
+            mineGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = mineGlow;
             ctx.beginPath();
-            ctx.moveTo(path.start.x, path.start.y);
-            ctx.quadraticCurveTo(path.control.x, path.control.y, path.end.x, path.end.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            ctx.fillStyle = zoneColor;
-            ctx.beginPath();
-            ctx.arc(cartPos.x, cartPos.y, CONSTRUCTION_CART_ZONE_RADIUS, 0, Math.PI * 2);
+            ctx.arc(brickMine.x, brickMine.y, 65 * minePulse, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.fillStyle = cartColor;
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
+            // Gem Mine Base Crystal
+            ctx.fillStyle = '#1e1b4b';
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.roundRect(cartPos.x - 22, cartPos.y - 14, 44, 28, 7);
+            ctx.roundRect(brickMine.x - 22, brickMine.y - 22, 44, 44, 10);
             ctx.fill();
             ctx.stroke();
 
-            const siteProgress = clamp(cart.progress / 100, 0, 1);
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.fillRect(cartPos.x - 28, cartPos.y - 26, 56, 7);
-            ctx.fillStyle = '#5df2c2';
-            ctx.fillRect(cartPos.x - 27, cartPos.y - 25, 54 * siteProgress, 5);
+            ctx.fillStyle = '#a855f7';
+            ctx.font = '22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('💎', brickMine.x, brickMine.y + 7);
 
-            if (cart.progress >= 100 && cart.siteTimer > 0) {
-                ctx.fillStyle = '#ffd166';
-                ctx.font = 'bold 12px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(`${Math.ceil(cart.siteTimer)}s`, cartPos.x, cartPos.y - 32);
-                ctx.textAlign = 'left';
-            }
+            const remainingInMine = Math.max(0, brickMine.maxBricks - brickMine.spawnedTotal);
+            ctx.fillStyle = '#e9d5ff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(`MINE (${remainingInMine} LEFT)`, brickMine.x, brickMine.y - 30);
+            ctx.textAlign = 'left';
             ctx.restore();
-        };
+        }
 
-        drawPath('player', 'rgba(80, 210, 255, 0.7)', 'rgba(80, 210, 255, 0.11)', 'rgba(90, 220, 255, 0.9)');
-        drawPath('enemy', 'rgba(255, 120, 120, 0.7)', 'rgba(255, 120, 120, 0.11)', 'rgba(255, 140, 140, 0.9)');
+        // 2. Draw ground gems
+        for (const gb of groundBricks) {
+            if (!gb) continue;
+            ctx.save();
+            const floatY = Math.sin((now + gb.id * 100) / 180) * 5;
+            const gx = gb.x, gy = gb.y + floatY;
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = '#38bdf8';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(gx, gy - 12);
+            ctx.lineTo(gx + 9, gy - 2);
+            ctx.lineTo(gx, gy + 12);
+            ctx.lineTo(gx - 9, gy - 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 3. Draw carried gem badges above fighters
+        const allLiving = [player, ...aliveBots].filter(e => e && e.hp > 0 && (e.carriedBricks || 0) > 0);
+        for (const entity of allLiving) {
+            ctx.save();
+            const count = entity.carriedBricks;
+            const badgeX = entity.x;
+            const badgeY = entity.y - (entity.radius || 14) - 24;
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(badgeX - 24, badgeY - 11, 48, 20, 6);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#67e8f9';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`💎 x${count}`, badgeX, badgeY + 4);
+            ctx.textAlign = 'left';
+            ctx.restore();
+        }
     }
 
     for (const zone of fightnFireZones) {
@@ -49010,6 +52901,71 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             continue;
         }
         const alpha = Math.max(0, 1 - ex.life/ex.maxLife);
+        if (ex.fxKind === 'rankedRocketeerBurst') {
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const burst = 1 - Math.pow(1 - progress, 3);
+            ctx.save();
+            ctx.translate(ex.x, ex.y);
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.shadowColor = '#00f5d4';
+            ctx.shadowBlur = 32;
+
+            // Dual Shockwave Rings in Neon Cyan & Championship Gold
+            for (let ring = 0; ring < 3; ring++) {
+                ctx.globalAlpha = alpha * (1 - ring * 0.22);
+                ctx.strokeStyle = ring % 2 === 0 ? '#00f5d4' : '#ffd166';
+                ctx.lineWidth = Math.max(2, 6 - ring * 1.5);
+                ctx.beginPath();
+                ctx.arc(0, 0, ex.radius * (0.15 + burst * (0.45 + ring * 0.18)), 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Expanding Hexagonal Cyber Matrix
+            ctx.globalAlpha = alpha * 0.65;
+            ctx.strokeStyle = '#ffd166';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+            for (let h = 0; h < 6; h++) {
+                const a = (h * Math.PI / 3) + progress * 0.8;
+                const r = ex.radius * (0.2 + burst * 0.7);
+                const hx = Math.cos(a) * r, hy = Math.sin(a) * r;
+                h === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Radial Diamond Spark Embers
+            for (let p = 0; p < 8; p++) {
+                const ang = (p * Math.PI / 4) + progress * 1.2;
+                const dist = ex.radius * (0.25 + burst * 0.75);
+                const px = Math.cos(ang) * dist, py = Math.sin(ang) * dist;
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = p % 2 === 0 ? '#00f5d4' : '#ffd166';
+                ctx.beginPath();
+                ctx.moveTo(px, py - 4);
+                ctx.lineTo(px + 4, py);
+                ctx.lineTo(px, py + 4);
+                ctx.lineTo(px - 4, py);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Core White-Hot Cyan Flash
+            ctx.globalAlpha = alpha * 0.8;
+            const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, ex.radius * 0.45 * (1 - progress));
+            coreGrad.addColorStop(0, '#ffffff');
+            coreGrad.addColorStop(0.4, '#00f5d4');
+            coreGrad.addColorStop(1, 'rgba(0, 245, 212, 0)');
+            ctx.fillStyle = coreGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, ex.radius * 0.45 * (1 - progress), 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+            continue;
+        }
         if(ex.fxKind==='jackTradeHealing'){
             const progress=clamp(ex.life/ex.maxLife,0,1),open=1-Math.pow(1-progress,3);
             ctx.save();ctx.translate(ex.x,ex.y);ctx.globalCompositeOperation='lighter';ctx.shadowColor='#5dffae';ctx.shadowBlur=24;
@@ -49093,6 +53049,62 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const isLegendary = !!ex.legendary || ex.radius > 45;
             if (isLegendary) {
                 const kind = ex.fxKind || 'pulse';
+
+                if (ex.skinId === 'back-to-school-classy') {
+                    ctx.save();
+                    ctx.translate(ex.x, ex.y);
+                    const schoolColor = kind === 'death' ? '#9b72ff' : (kind === 'takedown' ? '#55dfff' : '#ffe36e');
+                    const schoolLabel = kind === 'death' ? 'DISMISSED' : (kind === 'takedown' ? 'A+' : '1ST BELL');
+                    const schoolScale = 0.82 + (1 - alpha) * 0.55;
+
+                    ctx.globalAlpha = alpha;
+                    ctx.shadowColor = schoolColor;
+                    ctx.shadowBlur = 14;
+                    for (let ring = 0; ring < 3; ring++) {
+                        ctx.strokeStyle = ring === 1 ? '#ffffff' : schoolColor;
+                        ctx.lineWidth = Math.max(1.5, 5 - ring * 1.4);
+                        ctx.globalAlpha = alpha * (0.9 - ring * 0.2);
+                        ctx.beginPath();
+                        ctx.arc(0, 0, ex.radius * schoolScale * (0.58 + ring * 0.24), 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    // Eight lightweight report-card/pencil streaks make the effect
+                    // read as a school skin without spawning persistent particles.
+                    ctx.globalAlpha = alpha * 0.9;
+                    for (let mark = 0; mark < 8; mark++) {
+                        const markAngle = mark * Math.PI / 4 + performance.now() / 900;
+                        const inner = ex.radius * (0.45 + (1 - alpha) * 0.18);
+                        const outer = ex.radius * (0.78 + (1 - alpha) * 0.42);
+                        ctx.save();
+                        ctx.rotate(markAngle);
+                        ctx.strokeStyle = mark % 2 ? '#ffe36e' : '#55dfff';
+                        ctx.lineWidth = mark % 2 ? 5 : 3;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(inner, 0);
+                        ctx.lineTo(outer, 0);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    ctx.globalAlpha = alpha;
+                    ctx.shadowBlur = 9;
+                    ctx.fillStyle = '#10244d';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.roundRect(-ex.radius * 0.42, -ex.radius * 0.22, ex.radius * 0.84, ex.radius * 0.44, 8);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = schoolColor;
+                    ctx.font = `900 ${Math.max(10, Math.round(ex.radius * 0.2))}px Arial Black, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(schoolLabel, 0, 1);
+                    ctx.restore();
+                    continue;
+                }
                 
                 if (ex.skinId === 'classic-classy' && kind === 'takedown') {
                     ctx.save();
@@ -49556,42 +53568,54 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
 
     if (isObjectiveMode && playing) {
-        const capNow = Math.round(objectiveControl);
-        const capGoal = BALANCE_PROFILE.objectiveMode.winScore;
-        const timeLeft = Math.max(0, Math.ceil(BALANCE_PROFILE.objectiveMode.matchSeconds - objectiveTimer));
-        const label = `Control Clash ${capNow}/${capGoal} - ${timeLeft}s`;
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.72)';
-        ctx.fillRect(innerWidth / 2 - 150, 78, 300, 30);
+        const bluePct = Math.round(objectiveScores?.player || 0);
+        const redPct = Math.round(objectiveScores?.enemy || 0);
+        const timeLeft = Math.max(0, Math.ceil(180 - objectiveTimer));
+        const bannerW = 420;
+        ctx.fillStyle = 'rgba(4, 14, 32, 0.85)';
+        ctx.fillRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
         ctx.strokeStyle = 'rgba(120, 190, 255, 0.75)';
         ctx.lineWidth = 2;
-        ctx.strokeRect(innerWidth / 2 - 150, 78, 300, 30);
+        ctx.strokeRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
+
+        // Progress bars
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(innerWidth / 2 - bannerW / 2 + 8, 104, (bannerW / 2 - 14) * (bluePct / 100), 5);
+        ctx.fillStyle = '#f87171';
+        ctx.fillRect(innerWidth / 2 + 6, 104, (bannerW / 2 - 14) * (redPct / 100), 5);
+
         ctx.fillStyle = '#d8f0ff';
-        ctx.font = 'bold 14px sans-serif';
+        ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(label, innerWidth / 2, 98);
+        ctx.fillText(`CONTROL CLASH • 🟦 ${bluePct}% vs ${redPct}% 🟥 • ⏱️ ${timeLeft}s`, innerWidth / 2, 96);
         ctx.textAlign = 'left';
     } else if (isConstructionMode && playing) {
-        const playerCart = constructionCarts.player || { progress: 0, siteTimer: 0, siteDamage: 0 };
-        const enemyCart = constructionCarts.enemy || { progress: 0, siteTimer: 0, siteDamage: 0 };
-        const enemyPushLeft = enemyCart.progress >= 100
-            ? Math.max(0, CONSTRUCTION_PUSHBACK_DAMAGE_REQUIREMENT - (enemyCart.siteDamage || 0))
-            : CONSTRUCTION_PUSHBACK_DAMAGE_REQUIREMENT;
-        const playerPushLeft = playerCart.progress >= 100
-            ? Math.max(0, CONSTRUCTION_PUSHBACK_DAMAGE_REQUIREMENT - (playerCart.siteDamage || 0))
-            : CONSTRUCTION_PUSHBACK_DAMAGE_REQUIREMENT;
-        const label = `Your Cart ${Math.round(playerCart.progress)}% (${Math.ceil(playerCart.siteTimer || 0)}s) | Enemy Cart ${Math.round(enemyCart.progress)}% (${Math.ceil(enemyCart.siteTimer || 0)}s)`;
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.78)';
-        ctx.fillRect(innerWidth / 2 - 290, 78, 580, 46);
-        ctx.strokeStyle = 'rgba(125, 210, 255, 0.75)';
+        let playerTeamBricks = player.hp > 0 ? (player.carriedBricks || 0) : 0;
+        let enemyTeamBricks = 0;
+        for (const b of bots) {
+            if (!b || b.hp <= 0) continue;
+            if (areAlliedEntities(player, b) || b.isTeammate || b.team === 'player') playerTeamBricks += (b.carriedBricks || 0);
+            else enemyTeamBricks += (b.carriedBricks || 0);
+        }
+
+        const bannerW = 480;
+        ctx.fillStyle = 'rgba(4, 14, 32, 0.88)';
+        ctx.fillRect(innerWidth / 2 - bannerW / 2, 78, bannerW, brickCountdownTeam ? 52 : 36);
+        ctx.strokeStyle = brickCountdownTeam === 'player' ? '#38bdf8' : (brickCountdownTeam === 'enemy' ? '#f87171' : 'rgba(125, 210, 255, 0.75)');
         ctx.lineWidth = 2;
-        ctx.strokeRect(innerWidth / 2 - 290, 78, 580, 46);
+        ctx.strokeRect(innerWidth / 2 - bannerW / 2, 78, bannerW, brickCountdownTeam ? 52 : 36);
+
         ctx.fillStyle = '#d8f0ff';
-        ctx.font = 'bold 14px sans-serif';
+        ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(label, innerWidth / 2, 98);
-        ctx.font = '12px sans-serif';
-        ctx.fillStyle = '#ffd166';
-        ctx.fillText(`Damage near cart to push back 10%: Enemy ${enemyPushLeft} | Yours ${playerPushLeft}`, innerWidth / 2, 116);
+        ctx.fillText(`BRICK RUN • 🟦 BLUE: ${playerTeamBricks}/10 💎 | 🟥 RED: ${enemyTeamBricks}/10 💎`, innerWidth / 2, 96);
+
+        if (brickCountdownTeam) {
+            const teamLabel = brickCountdownTeam === 'player' ? '🟦 BLUE TEAM' : '🟥 RED TEAM';
+            ctx.fillStyle = brickCountdownTeam === 'player' ? '#38bdf8' : '#f87171';
+            ctx.font = '900 13px sans-serif';
+            ctx.fillText(`⏳ ${teamLabel} VICTORY IN ${Math.ceil(brickCountdownTimer)}s!`, innerWidth / 2, 118);
+        }
         ctx.textAlign = 'left';
     } else if (isBrickVaultMode && playing) {
         const yourPct = Math.round(getBrickVaultDamagePct('player') * 100);
@@ -50497,15 +54521,46 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             let rankedPromotionCoins = 0;
             let rankedPromotionSouls = 0;
             let rankedPromotionGems = 0;
+            let rankedPassXpGained = 0;
+            let rankedNewPassTiers = 0;
+            let rankedStreakBonusRp = 0;
+            let isRankedMVP = false;
             if (isRankedMatch) {
                 if (!playerData.ranked || typeof playerData.ranked !== 'object') {
                     playerData.ranked = { points: 0, rewardsClaimed: [] };
                 }
+                ensureRankedSeasonState();
                 const beforePoints = Math.max(0, Math.floor(playerData.ranked.points || 0));
                 const beforeTier = getRankedTierInfo(beforePoints);
-                rankedDelta = won ? 30 : -18;
-                const afterPoints = Math.max(0, beforePoints + rankedDelta);
+                
+                // MVP evaluation: top performance / damage / victory
+                isRankedMVP = won || (fullOnDamageEarned >= 3000) || (playerScore > 0);
+                
+                if (won) {
+                    playerData.ranked.winStreak = (playerData.ranked.winStreak || 0) + 1;
+                    if (playerData.ranked.winStreak >= 2) {
+                        rankedStreakBonusRp = Math.min(15, 5 + (playerData.ranked.winStreak - 2) * 2);
+                    }
+                    rankedDelta = 35 + rankedStreakBonusRp + (isRankedMVP ? 10 : 0);
+                } else {
+                    playerData.ranked.winStreak = 0;
+                    rankedDelta = -15 + (isRankedMVP ? 5 : 0);
+                }
+                
+                const safetyFloor = getRankedDivisionFloor(beforePoints);
+                const afterPoints = Math.max(safetyFloor, beforePoints + rankedDelta);
                 playerData.ranked.points = afterPoints;
+                playerData.ranked.highPoints = Math.max(playerData.ranked.highPoints || 0, afterPoints);
+
+                // Award Seasonal Ranked Pass XP
+                const passXpMultiplier = isArenaForgeMode ? 1.5 : 1.0;
+                const basePassXp = won ? (150 + (isRankedMVP ? 50 : 0)) : (60 + (isRankedMVP ? 50 : 0));
+                rankedPassXpGained = Math.round(basePassXp * passXpMultiplier);
+                const beforePassTier = Math.floor((playerData.ranked.passXp || 0) / RANKED_PASS_XP_PER_TIER);
+                playerData.ranked.passXp = (playerData.ranked.passXp || 0) + rankedPassXpGained;
+                const afterPassTier = Math.floor(playerData.ranked.passXp / RANKED_PASS_XP_PER_TIER);
+                rankedNewPassTiers = Math.max(0, Math.min(RANKED_PASS_TIERS, afterPassTier) - beforePassTier);
+
                 const afterTier = getRankedTierInfo(afterPoints);
                 rankedDivisionSummary = `${beforeTier.label} (${beforePoints} RP) → ${afterTier.label} (${afterPoints} RP)`;
                 if (afterTier.index > beforeTier.index) {
@@ -50517,8 +54572,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                     rewardCoins += rankedPromotionCoins;
                 }
                 rankText = rankText
-                    ? `${rankText} | Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`
-                    : `Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
+                    ? `${rankText} | Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP • +${rankedPassXpGained} Pass XP`
+                    : `Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP • +${rankedPassXpGained} Pass XP`;
             }
 
             let earnedDropCount = 0;
@@ -50629,7 +54684,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             rankedDiv.style.fontWeight = 'bold';
             rankedDiv.style.color = '#ffd9a0';
             if (isRankedMatch) {
-                rankedDiv.textContent = `🏆 Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
+                let rpBreakdown = `🏆 Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
+                if (rankedStreakBonusRp > 0) rpBreakdown += ` (+${rankedStreakBonusRp} Streak)`;
+                if (isRankedMVP) rpBreakdown += ` ⭐ MVP Bonus!`;
+                rankedDiv.textContent = rpBreakdown;
             }
              
             rewardsBox.appendChild(rword);
@@ -50646,7 +54704,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 rotationRewardDiv.style.marginTop = '9px';
                 rewardsBox.appendChild(rotationRewardDiv);
             }
-            if (isRankedMatch) rewardsBox.appendChild(rankedDiv);
+            if (isRankedMatch) {
+                rewardsBox.appendChild(rankedDiv);
+                
+                const passXpDiv = document.createElement('div');
+                passXpDiv.textContent = `🎖️ +${rankedPassXpGained} Ranked Pass XP${isArenaForgeMode ? ' (1.5x Forge)' : ''}${rankedNewPassTiers > 0 ? ` • 🎉 ${rankedNewPassTiers} Pass Tier(s) Unlocked!` : ''}`;
+                passXpDiv.style.fontSize = '18px';
+                passXpDiv.style.fontWeight = 'bold';
+                passXpDiv.style.color = '#70e000';
+                passXpDiv.style.marginTop = '6px';
+                rewardsBox.appendChild(passXpDiv);
+            }
             if (isRankedMatch && rankedDivisionSummary) {
                 const rankedTierDiv = document.createElement('div');
                 rankedTierDiv.textContent = rankedDivisionSummary;
