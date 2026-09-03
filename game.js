@@ -4032,7 +4032,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           return questAliases[questKey] || questKey;
       }
 
-      const DAILY_WEEKLY_QUEST_SCHEMA_VERSION = 3;
+      const DAILY_WEEKLY_QUEST_SCHEMA_VERSION = 4;
       const WEEKLY_STAGE_COUNT = 10;
       const DAILY_QUESTS = [
           { id: 'daily_play_1', kind: 'play_match', title: 'Play 2 Matches', desc: 'Finish 2 matches in any mode.', target: 2, rewards: { coins: 140 } },
@@ -4248,6 +4248,98 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           const event=ensureFullOnDamageEventState();let count=FULL_ON_DAMAGE_MILESTONES.filter((m,i)=>event.totalDamage>=m.target&&!event.claimedMilestones.includes(i)).length;
           if(event.daily&&!event.daily.claimed&&(event.daily.progress||0)>=event.daily.target)count++;
           return count;
+      }
+
+      const GOLD_EVENT_ID = 'gold-event-2026-08';
+      const GOLD_EVENT_DURATION_MS=7*24*60*60*1000;
+      const GOLD_EVENT_MATCH_COIN_CAP=25000;
+      const GOLD_EVENT_DAMAGE_PER_COIN=100;
+      let goldEventMatchDamage = 0;
+
+      function resetGoldEventMatchLedger() {
+          goldEventMatchDamage = 0;
+      }
+
+      function ensureGoldEventState() {
+          ensureDailyWeeklyQuestData();
+          const board = playerData.questBoard;
+          if (!board.goldEvent || board.goldEvent.eventId !== GOLD_EVENT_ID) {
+              board.goldEvent = {
+                  eventId: GOLD_EVENT_ID,
+                  startAt: Date.now(),
+                  endAt: Date.now() + GOLD_EVENT_DURATION_MS,
+                  totalCoins: 0,
+                  totalDamage: 0,
+                  matchesCounted: 0,
+                  bestMatchCoins: 0
+              };
+          }
+          return board.goldEvent;
+      }
+
+      function isGoldEventActive(now = Date.now()) {
+          const event = ensureGoldEventState();
+          return now < (event.endAt || 0);
+      }
+
+      function formatGoldEventTimeLeft() {
+          const event = ensureGoldEventState();
+          const left = Math.max(0, (event.endAt || 0) - Date.now());
+          if (!left) return 'EVENT ENDED';
+          const hours = Math.ceil(left / 3600000);
+          const days = Math.floor(hours / 24);
+          return days ? `${days}d ${hours % 24}h left` : `${hours}h left`;
+      }
+
+      function getGoldEventWinStreakMultiplier(streak = 0) {
+          return Math.min(2.0, 1.0 + Math.max(0, streak) * 0.1);
+      }
+
+      function getGoldEventMultiplierBreakdown(now = Date.now()) {
+          const currentStreak = Math.max(0, playerData.winStreak || 0);
+          const streakMult = getGoldEventWinStreakMultiplier(currentStreak);
+          const rushMult = isDailyBrickRushActive(now)?getDailyBrickRushMultiplier(now) : 1.0;
+          const total = streakMult * rushMult;
+          return { currentStreak, streakMult, rushMult, total };
+      }
+
+      function addGoldEventMatchDamage(amount) {
+          if (isTraining || isTutorialMode || !isGoldEventActive()) return;
+          const value = Math.max(0, Math.round(Number(amount) || 0));
+          goldEventMatchDamage += value;
+      }
+
+      function commitGoldEventMatch(isWin = false, now = Date.now()) {
+          if (!isGoldEventActive(now)) return 0;
+          const damage = goldEventMatchDamage;
+          goldEventMatchDamage = 0;
+          if (damage <= 0) return 0;
+          const mult = getGoldEventMultiplierBreakdown(now);
+          const rawCoins=Math.floor((damage/GOLD_EVENT_DAMAGE_PER_COIN)*mult.total),coins=Math.min(GOLD_EVENT_MATCH_COIN_CAP,rawCoins);
+          const event = ensureGoldEventState();
+          event.totalCoins+=coins;
+          event.totalDamage += damage;
+          event.matchesCounted = (event.matchesCounted || 0) + 1;
+          event.bestMatchCoins = Math.max(event.bestMatchCoins || 0, coins);
+          playerData.coins = (playerData.coins || 0) + coins;
+          saveProgress();
+          return coins;
+      }
+
+      function grantContractXP(amount) {
+          if (!amount || amount <= 0) return;
+          ensureDailyWeeklyQuestData();
+          const board = playerData.questBoard;
+          if (!board) return;
+          board.questXP = (board.questXP || 0) + amount;
+          let needed = Math.max(50, ((board.questLevel || 0) + 1) * 100);
+          while (board.questXP >= needed) {
+              board.questXP -= needed;
+              const after = (board.questLevel || 0) + 1;
+              board.questLevel=after;
+              playerData.coins = (playerData.coins || 0) + 250;
+              needed = Math.max(50, ((board.questLevel || 0) + 1) * 100);
+          }
       }
 
       function getLocalWeekKey(ts = Date.now()) {
@@ -4590,6 +4682,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           if (rewards.tappers) playerData.starrDrops = (playerData.starrDrops || 0) + rewards.tappers;
           if (rewards.superTappers) playerData.superTapperCount = (playerData.superTapperCount || 0) + rewards.superTappers;
           if (rewards.hyperTappers) playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + rewards.hyperTappers;
+          if (rewards.questXP) grantContractXP(rewards.questXP);
           if (rewards.brawlerUnlock && !playerData.unlockedBrawlers[rewards.brawlerUnlock]) {
               playerData.unlockedBrawlers[rewards.brawlerUnlock] = true;
               spawnFloatingText(innerWidth / 2, 120, `${brawlerData[rewards.brawlerUnlock]?.name || rewards.brawlerUnlock} UNLOCKED!`, '#ffd166');
@@ -4715,8 +4808,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                   claimButton.onclick = () => {
                       if (!claimable) return;
                       if (claimQuestReward(bucketName, quest.id)) {
-                          const tab = bucketName === 'limited' ? 'limited' : ((bucketName === 'brawler' || bucketName === 'awakenatorJourney' || bucketName === 'coinAscent') ? 'journeys' : 'core');
-                          setActiveTab(tab);
+                          const tab = 'core';
+                          if (overlay.isConnected) overlay.remove();
+                          openQuestBoard(tab);
                           refreshHomeUI();
                       }
                   };
@@ -5002,10 +5096,167 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               body.appendChild(grid);return body;
           }
 
+          function createCoreView() {
+              const grid = document.createElement('div');
+              grid.style.display = 'grid';
+              grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(280px, 1fr))';
+              grid.style.gap = '14px';
+              grid.style.height = '100%';
+              grid.style.overflowY = 'auto';
+              grid.style.padding = '4px';
+
+              grid.appendChild(createColumn('Daily Contracts', 'Refreshes every 24h', 'daily'));
+              grid.appendChild(createColumn('Weekly Contracts', 'Refreshes every Thursday', 'weekly'));
+              grid.appendChild(createColumn('Fighter Hunt', 'Weekly brawler recruitment', 'brawler'));
+              grid.appendChild(createColumn('Awake Awakenator', 'Unlock Awakenator for free', 'awakenatorJourney'));
+              grid.appendChild(createColumn('Coin Ascent', '20-stage coin ladder (10,000 Coins)', 'coinAscent'));
+              grid.appendChild(createColumn('Starter Journey', 'One-time onboarding', 'starter'));
+              return grid;
+          }
+
+          function createGoldEventView() {
+              const event = ensureGoldEventState();
+              const mult = getGoldEventMultiplierBreakdown();
+              const currentStreak = mult.currentStreak;
+              const isRush = isDailyBrickRushActive();
+
+              const view = document.createElement('div');
+              view.className = 'gold-event-view';
+              view.style.height = '100%';
+              view.style.overflowY = 'auto';
+              view.style.padding = '4px 6px 18px';
+
+              const hero = document.createElement('div');
+              hero.className = 'gold-event-hero';
+              hero.innerHTML = `
+                  <div>
+                      <small>7-DAY LIMITED EVENT</small>
+                      <h2>🪙 GOLD EVENT</h2>
+                      <p>Convert combat damage directly into raw Coins with no daily limit! Every 100 real damage dealt grants base Gold, amplified by your live Win Streak and Brick Rush.</p>
+                  </div>
+                  <strong>NO DAILY LIMIT • ${formatGoldEventTimeLeft()}</strong>
+              `;
+              view.appendChild(hero);
+
+              const grid = document.createElement('div');
+              grid.className = 'gold-event-grid';
+              grid.innerHTML = `
+                  <article>
+                      <small>CONVERSION RATE</small>
+                      <b>100 DMG = 1 🪙</b>
+                      <span>Direct combat payout</span>
+                  </article>
+                  <article>
+                      <small>CURRENT WIN STREAK</small>
+                      <b>${currentStreak} (${mult.streakMult.toFixed(2)}x)</b>
+                      <span>Up to 2.00x at 10 wins</span>
+                  </article>
+                  <article>
+                      <small>BRICK RUSH MULTIPLIER</small>
+                      <b>${mult.rushMult.toFixed(2)}x</b>
+                      <span>${isRush ? 'ACTIVE NOW' : 'Inactive'}</span>
+                  </article>
+                  <article>
+                      <small>TOTAL MULTIPLIER</small>
+                      <b>${mult.total.toFixed(2)}x</b>
+                      <span>Max per match: 25,000 🪙</span>
+                  </article>
+              `;
+              view.appendChild(grid);
+
+              const lifetime = document.createElement('div');
+              lifetime.className = 'gold-event-lifetime';
+              lifetime.innerHTML = `
+                  <div>
+                      <span>LIFETIME GOLD EVENT EARNINGS</span>
+                      <p style="margin:4px 0 0;color:#c2d4e7;font-size:12px;">All gold earned across ${event.matchesCounted || 0} matches during this event.</p>
+                  </div>
+                  <b>+${(event.totalCoins || 0).toLocaleString()} 🪙</b>
+              `;
+              view.appendChild(lifetime);
+
+              return view;
+          }
+
+          function createFullOnDamageView() {
+              const event = ensureFullOnDamageEventState();
+              const container = document.createElement('div');
+              container.style.height = '100%';
+              container.style.overflowY = 'auto';
+              container.style.padding = '4px 6px 18px';
+
+              const hero = document.createElement('div');
+              hero.style.cssText = 'padding:18px;border:2px solid #ff7b87;border-radius:16px;background:linear-gradient(125deg,#38121a,#10182b);margin-bottom:14px;color:#fff;';
+              hero.innerHTML = `
+                  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                      <div style="font-size:26px;font-weight:900;color:#ff9b9b;">💥 FULL ON DAMAGE</div>
+                      <strong style="padding:6px 10px;border-radius:8px;background:#ff6b7b;color:#180408;">${formatFullOnDamageTimeLeft()}</strong>
+                  </div>
+                  <p style="margin:6px 0 0;color:#e8c6ce;font-size:13px;">Everyone in your matches contributes—including every bot! Deal damage to climb 20 milestone tiers up to 50M.</p>
+              `;
+              container.appendChild(hero);
+
+              if (event.daily) {
+                  const dailyCard = document.createElement('div');
+                  const dDone = (event.daily.progress || 0) >= event.daily.target;
+                  const dClaimed = !!event.daily.claimed;
+                  dailyCard.style.cssText = 'padding:14px;border:1px solid #ffb15a;border-radius:12px;background:rgba(255,177,90,0.08);margin-bottom:14px;color:#fff;';
+                  dailyCard.innerHTML = `
+                      <div style="display:flex;justify-content:space-between;align-items:center;">
+                          <div>
+                              <div style="font-weight:900;color:#ffd39a;font-size:15px;">Daily Task: ${event.daily.title}</div>
+                              <div style="font-size:12px;color:#d7c2ae;margin-top:2px;">Target: ${(event.daily.progress || 0).toLocaleString()} / ${event.daily.target.toLocaleString()} damage</div>
+                              <div style="font-size:11px;color:#ffe073;margin-top:4px;">Reward: ${questRewardText(event.daily.rewards)}</div>
+                          </div>
+                          <button style="padding:8px 16px;border:none;border-radius:8px;font-weight:900;cursor:${dDone && !dClaimed ? 'pointer' : 'default'};background:${dClaimed ? '#5f6f82' : (dDone ? '#58e4b6' : '#3d2b18')};color:#07111d;">${dClaimed ? 'CLAIMED' : (dDone ? 'CLAIM' : 'IN PROGRESS')}</button>
+                      </div>
+                  `;
+                  const btn = dailyCard.querySelector('button');
+                  btn.onclick = () => {
+                      if (claimFullOnDamageDaily()) {
+                          setActiveTab('damage');
+                          refreshHomeUI();
+                      }
+                  };
+                  container.appendChild(dailyCard);
+              }
+
+              const mList = document.createElement('div');
+              mList.style.display = 'grid';
+              mList.style.gridTemplateColumns = 'repeat(auto-fit, minmax(260px, 1fr))';
+              mList.style.gap = '10px';
+
+              FULL_ON_DAMAGE_MILESTONES.forEach((m, idx) => {
+                  const mDone = (event.totalDamage || 0) >= m.target;
+                  const mClaimed = event.claimedMilestones.includes(idx);
+                  const card = document.createElement('div');
+                  card.style.cssText = `padding:10px;border-radius:10px;border:1px solid ${mClaimed ? '#4e6c85' : (mDone ? '#58e4b6' : '#2f4f70')};background:${mClaimed ? 'rgba(54,75,95,0.2)' : (mDone ? 'rgba(88,228,182,0.08)' : 'rgba(12,22,36,0.6)')};`;
+                  card.innerHTML = `
+                      <div style="display:flex;justify-content:space-between;align-items:center;">
+                          <div>
+                              <div style="font-weight:900;color:#e7dcff;font-size:13px;">Tier ${idx + 1}: ${m.target.toLocaleString()} DMG</div>
+                              <div style="font-size:11px;color:#ffda8f;margin-top:2px;">${questRewardText(m.rewards)}</div>
+                          </div>
+                          <button style="padding:6px 12px;border:none;border-radius:8px;font-weight:900;cursor:${mDone && !mClaimed ? 'pointer' : 'default'};background:${mClaimed ? '#5f6f82' : (mDone ? '#58e4b6' : '#27405b')};color:#07111d;">${mClaimed ? 'Claimed' : (mDone ? 'Claim' : 'Locked')}</button>
+                      </div>
+                  `;
+                  const claimBtn = card.querySelector('button');
+                  claimBtn.onclick = () => {
+                      if (claimFullOnDamageMilestone(idx)) {
+                          setActiveTab('damage');
+                          refreshHomeUI();
+                      }
+                  };
+                  mList.appendChild(card);
+              });
+              container.appendChild(mList);
+
+              return container;
+          }
+
           const views = {
               core: createCoreView,
-              limited: createLimitedView,
-              journeys: createJourneysView,
+              gold: createGoldEventView,
               damage: createFullOnDamageView,
               special: createSpecialBreakthroughView,
               season: createSeasonView
@@ -5013,7 +5264,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
           function setActiveTab(tabId) {
               content.innerHTML = '';
-              content.appendChild(views[tabId]());
+              content.appendChild(views[tabId] ? views[tabId]() : createCoreView());
               for (const btn of tabRow.querySelectorAll('button')) {
                   const active = btn.dataset.tab === tabId;
                   btn.style.background = active ? '#5ec4ff' : '#1a2a40';
@@ -5035,12 +5286,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               tabRow.appendChild(btn);
           }
 
-          makeTab('core', 'Random Contracts');
-          makeTab('limited', '\u26A1 Charged Packs');
-          makeTab('journeys', 'New Journeys');
+          makeTab('core', '📋 Contracts');
+          makeTab('gold', '🪙 Gold Event');
           makeTab('damage', `💥 Full On Damage${getFullOnDamageClaimableCount()?` (${getFullOnDamageClaimableCount()})`:''}`);
           makeTab('special', `✨ Unleash Potential${getSpecialClaimableCount()?` (${getSpecialClaimableCount()})`:''}`);
-          if (ENABLE_SEASON_QUESTS) makeTab('season', 'Season Quests');
+          if (ENABLE_SEASON_QUESTS) makeTab('season', '⚡ Core Circuit Pass');
           setActiveTab(views[initialTab] ? initialTab : 'core');
 
           panel.appendChild(top);
@@ -7452,7 +7702,18 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       progressSeason3Quest('packet_triggers',1);
       progressSeason3Quest('packet_variety',packets.stats.used.length,true);
   }
-  function recordPacketEquippedDamage(owner,amount){if(owner!==player||!getEquippedPacketDef(player)||isTraining||isTutorialMode)return;progressSeason3Quest('packet_damage',Math.max(0,Number(amount)||0));}
+  function recordPacketEquippedDamage(owner,amount,target=null){
+      if(owner!==player||!getEquippedPacketDef(player)||isTraining||isTutorialMode)return;
+      const value=Math.max(0,Number(amount)||0);
+      progressSeason3Quest('packet_damage',value);
+      if(target&&value>0){
+          const hpBeforeHit=Math.max(0,Number(target.hp)+value);
+          const credit=Math.min(value,hpBeforeHit);
+          addGoldEventMatchDamage(credit);
+      } else if(value>0) {
+          addGoldEventMatchDamage(value);
+      }
+  }
   function progressSeason3Quest(kind,amount=1,absolute=false){
       if(isTraining||isTutorialMode||!isSeason3PassActive())return false;ensureSeasonPassState();let changed=false;
       for(const q of Object.values(playerData.seasonPass.quests||{})){
@@ -12222,6 +12483,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         { id: 'quick_loader', name: 'Quick Loader', icon: 'RLD', desc: 'Reload 18% faster.' },
         { id: 'siege_lens', name: 'Siege Lens', icon: 'TWR', desc: '+25% damage to Towers, Camps and Cores.' },
         { id: 'battery_pack', name: 'Battery Pack', icon: 'ENG', desc: 'Each Energy pickup also grants a 1200 shield.' },
+        { id: 'hyper_dynamo', name: 'Hyper Dynamo', icon: '⚡', desc: '+35% faster Super charge, and takedowns instantly grant +35% Super.' },
+        { id: 'vampiric_edge', name: 'Vampiric Core', icon: '🩸', desc: 'Attacks siphon life: heals you for 18% of damage dealt (30% vs brawlers).' },
+        { id: 'command_beacon', name: 'Warlord Aura', icon: '🚩', desc: 'Friendly minions and teammates near you move 20% faster and deal +18% damage.' },
+        { id: 'core_detonator', name: 'Blast Chassis', icon: '💥', desc: 'Dropping below 35% HP detonates an EMP shockwave that stuns and knocks back enemies.' },
     ];
 
     function getArenaForgeCombatants(team = null, livingOnly = false) {
@@ -12287,6 +12552,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         else if (blueprintId === 'quick_loader') entity.arenaForgeReloadMult *= 0.82;
         else if (blueprintId === 'siege_lens') entity.arenaForgeSiegeMult *= 1.25;
         else if (blueprintId === 'battery_pack') entity.arenaForgeEnergyCarryBonus += 3;
+        else if (blueprintId === 'hyper_dynamo') entity.arenaForgeHyperDynamo = true;
+        else if (blueprintId === 'vampiric_edge') entity.arenaForgeVampiric = true;
+        else if (blueprintId === 'command_beacon') entity.arenaForgeCommandBeacon = true;
+        else if (blueprintId === 'core_detonator') entity.arenaForgeBlastChassis = true;
         spawnFloatingText(entity.x, entity.y - 46, blueprint.name.toUpperCase(), entity.team === 'player' ? '#7fffd4' : '#ff9b9b');
         return true;
     }
@@ -12769,6 +13038,34 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
         if (scoringTeam) {
             awardArenaForgeTeamXp(scoringTeam, entity.x, entity.y, entity.isArenaForgeMinion ? 18 : 65);
+            if (!entity.isArenaForgeMinion && !entity.isStructure && !entity.isArenaForgeCamp) {
+                const killer = getEntityById(entity.lastDamagerId);
+                if (killer) {
+                    if (killer.arenaForgeHyperDynamo) {
+                        if (killer.id === player.id) {
+                            superCharge = clamp(superCharge + 35, 0, 100);
+                            updateSuperButton();
+                        } else {
+                            killer.superCharge = clamp((killer.superCharge || 0) + 35, 0, 100);
+                        }
+                        spawnFloatingText(killer.x, killer.y - 36, '+35% SUPER CHARGE!', '#ffe66d');
+                    }
+                    killer.arenaForgeStreak = (killer.arenaForgeStreak || 0) + 1;
+                    const streak = killer.arenaForgeStreak;
+                    if (streak === 2) {
+                        setArenaForgeCallout(`⚔️ ${killer.id === player.id ? 'YOU GOT A' : (killer.team === 'player' ? 'ALLY' : 'ENEMY')} DOUBLE TAKEDOWN!`, killer.team === 'player' ? '#7fffd4' : '#ff7b8f');
+                        awardArenaForgeTeamXp(scoringTeam, killer.x, killer.y, 40);
+                    } else if (streak === 3) {
+                        setArenaForgeCallout(`🔥 ${killer.id === player.id ? 'YOU ARE ON A' : (killer.team === 'player' ? 'ALLY IS ON A' : 'ENEMY IS ON A')} TRIPLE TAKEDOWN!`, '#ffcf66');
+                        awardArenaForgeTeamXp(scoringTeam, killer.x, killer.y, 75);
+                    } else if (streak >= 4) {
+                        setArenaForgeCallout(`⚡ ${killer.id === player.id ? 'YOU ARE' : (killer.team === 'player' ? 'ALLY IS' : 'ENEMY IS')} DOMINATING THE FORGE! (${streak} STREAK)`, '#ff9bde');
+                        awardArenaForgeTeamXp(scoringTeam, killer.x, killer.y, 120);
+                        spawnArenaForgeEnergy(entity.x, entity.y, 2);
+                    }
+                }
+                entity.arenaForgeStreak = 0;
+            }
             if (entity.arenaForgeBreachMinion) {
                 awardArenaForgeTeamXp(scoringTeam, entity.x, entity.y, 32);
                 spawnArenaForgeEnergy(entity.x, entity.y, 2);
@@ -12830,19 +13127,28 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     function activateArenaForgeCampReward(camp, team, now = performance.now()) {
         if (!camp || !team) return;
-        awardArenaForgeTeamXp(team, camp.x, camp.y, 110);
-        arenaForgeSoulBank[team] = (arenaForgeSoulBank[team] || 0) + 3;
+        awardArenaForgeTeamXp(team, camp.x, camp.y, 140);
+        arenaForgeSoulBank[team] = (arenaForgeSoulBank[team] || 0) + 4;
         if (camp.arenaForgeCampType === 'repair') {
             for (const structure of getArenaForgeStructures(team)) {
-                structure.hp = Math.min(structure.maxHp, structure.hp + Math.round(structure.maxHp * 0.14));
+                structure.hp = Math.min(structure.maxHp, structure.hp + Math.round(structure.maxHp * 0.16));
             }
+            for (const ally of getArenaForgeCombatants(team, true)) {
+                doHeal(ally, 1800);
+            }
+            explosions.push({ x: camp.x, y: camp.y, radius: 160, life: 0, maxLife: 0.45, color: '#79f2c0' });
         } else if (camp.arenaForgeCampType === 'arsenal') {
-            arenaForgeTeamBuffs[team].arsenalUntil = now + 14000;
+            arenaForgeTeamBuffs[team].arsenalUntil = now + 16000;
+            explosions.push({ x: camp.x, y: camp.y, radius: 160, life: 0, maxLife: 0.45, color: '#ff7373' });
         } else if (camp.arenaForgeCampType === 'foundry') {
-            spawnArenaForgeWave(team, true);
+            for (let lane = 0; lane < 3; lane++) {
+                spawnArenaForgeMinion(team, lane, true);
+            }
+            explosions.push({ x: camp.x, y: camp.y, radius: 160, life: 0, maxLife: 0.45, color: '#ffd166' });
         }
         camp.respawnAt = now + ARENA_FORGE_CAMP_RESPAWN_MS;
-        spawnFloatingText(camp.x, camp.y - 68, `${camp.arenaForgeCampLabel} CLAIMED!`, team === 'player' ? '#7fffd4' : '#ff9b9b');
+        setArenaForgeCallout(`⚔️ ${team === 'player' ? 'YOUR' : 'ENEMY'} TEAM CLAIMED ${camp.arenaForgeCampLabel} CAMP!`, team === 'player' ? '#7fffd4' : '#ff7b8f');
+        spawnFloatingText(camp.x, camp.y - 68, `${camp.arenaForgeCampLabel} OVERCHARGED!`, team === 'player' ? '#7fffd4' : '#ff9b9b');
     }
 
     function updateArenaForgeCamps(now) {
@@ -13037,6 +13343,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                     entity.isFlying = false;
                     entity.arenaForgePadFlight = null;
                     entity.arenaForgePadCooldownUntil = now + 1600;
+                    explosions.push({ x: flight.toX, y: flight.toY, radius: 52, life: 0, maxLife: 0.25, color: 'rgba(93,242,194,0.72)' });
+                    entity.speedBoostUntil = Math.max(entity.speedBoostUntil || 0, now + 2500);
+                    spawnFloatingText(flight.toX, flight.toY - 32, '🚀 LAUNCH SPEED BOOST!', '#5df2c2');
                 }
                 continue;
             }
@@ -15428,7 +15737,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           if (owner.chargedMainAttackActivations.length > 24) owner.chargedMainAttackActivations.splice(0, owner.chargedMainAttackActivations.length - 24);
       }
       const brawler = source?.ownerBrawler || owner.currentMainAttackBrawler || owner.brawler || (owner.id === player.id ? selectedBrawler : 'outlit');
-      const gain = (100 / getSuperChargeHitsForBrawler(brawler)) * getAttackChargeMultiplier(owner);
+      let gain = (100 / getSuperChargeHitsForBrawler(brawler)) * getAttackChargeMultiplier(owner);
+      if (isArenaForgeMode && owner.arenaForgeHyperDynamo) gain *= 1.35;
       // Four-card volleys connect often, so JackTrade builds Hypercharge 30%
       // slower without changing his normal Super charge rate.
       // Classy's seven-note volleys each count as real projectile hits. Keep
@@ -29628,6 +29938,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       gameOver = false;
       hasHandledGameOver = false;
       resetFullOnDamageMatchLedger();
+      resetGoldEventMatchLedger();
       objectiveControl = 0;
       objectiveTimer = 0;
       objectiveWon = false;
@@ -30922,11 +31233,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const overlay = document.createElement('div');
         overlay.style.position = 'fixed'; overlay.style.inset = '0';
         overlay.style.background = 'rgba(8, 17, 31, 0.95)'; overlay.style.zIndex = '100';
-        overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
-        overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'flex-start';
-        overlay.style.padding = '60px 0';
         overlay.style.color = '#fff'; overlay.style.fontFamily = 'sans-serif';
-        overlay.style.overflowY = 'auto';
         overlay.className = 'brawler-browser';
 
         refreshBrawlerList = showList;
@@ -31091,11 +31398,16 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const useBtn = selectedBanner.querySelector('.brawler-browser__selected-use');
             if (useBtn) {
                 useBtn.onclick = () => {
-                    if (!isBrawlerUnlocked(selectedBrawler)) return;
-                    if (brawlerSelect) brawlerSelect.value = selectedBrawler;
+                    if (!isBrawlerUnlocked(selectedBrawler) && !isWeeklyTrialBrawler(selectedBrawler)) return;
+                    normalizeSelectedBrawler();
+                    if (brawlerSelect) {
+                        brawlerSelect.value = selectedBrawler;
+                        brawlerSelect.dispatchEvent(new Event('change'));
+                    }
                     initPlayerHP();
                     syncAbilityInputs();
                     updateGadgetInfo();
+                    updateGadgetButton();
                     renderHomeBrawlerCard();
                     saveProgress();
                     if (overlay.isConnected) document.body.removeChild(overlay);
@@ -31598,6 +31910,34 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const data = brawlerData[id];
             const isWeeklyTrial=isWeeklyTrialBrawler(id);
             const pData = getEffectiveBrawlerProgress(id);
+
+            const detailNav = document.createElement('div');
+            detailNav.className = 'brawler-detail__nav';
+            detailNav.style.cssText = 'position:sticky;top:0;z-index:60;width:min(1180px,96vw);display:flex;justify-content:space-between;align-items:center;padding:10px 14px;margin-bottom:14px;background:rgba(8,17,31,0.96);border:1px solid #284467;border-radius:12px;box-sizing:border-box;backdrop-filter:blur(10px);';
+
+            const topBackBtn = document.createElement('button');
+            topBackBtn.type = 'button';
+            topBackBtn.textContent = '← BACK TO ROSTER';
+            topBackBtn.style.cssText = 'padding:8px 16px;border-radius:10px;border:1px solid #45658f;background:#14263e;color:#e1f4ff;font-weight:900;font-size:12px;cursor:pointer;letter-spacing:0.04em;';
+            topBackBtn.onclick = () => showList();
+
+            const topTitle = document.createElement('div');
+            topTitle.style.cssText = 'font-weight:900;font-size:16px;color:' + (data?.color || '#6ee7ff') + ';letter-spacing:0.06em;text-align:center;';
+            topTitle.textContent = `${(data?.name || id).toUpperCase()} · POWER ${pData.level || 1}`;
+
+            const topCloseBtn = document.createElement('button');
+            topCloseBtn.type = 'button';
+            topCloseBtn.textContent = '✕';
+            topCloseBtn.title = 'Close';
+            topCloseBtn.style.cssText = 'width:34px;height:34px;border-radius:9px;border:1px solid #753545;background:#2d141e;color:#ffb2bf;font-weight:900;font-size:16px;cursor:pointer;display:grid;place-items:center;';
+            topCloseBtn.onclick = () => {
+                if (overlay.isConnected) document.body.removeChild(overlay);
+            };
+
+            detailNav.appendChild(topBackBtn);
+            detailNav.appendChild(topTitle);
+            detailNav.appendChild(topCloseBtn);
+            overlay.appendChild(detailNav);
             if (!isBrawlerUnlocked(id)) {
                 const lockTitle = document.createElement('h1');
                 lockTitle.textContent = `${data.name} is locked`;
@@ -32283,16 +32623,21 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             selBtn.style.padding = '12px 24px'; selBtn.style.background = data.color;
             selBtn.style.color = '#000'; selBtn.style.border = 'none';
             selBtn.style.borderRadius = '8px'; selBtn.style.fontSize = '16px'; selBtn.style.fontWeight = 'bold'; selBtn.style.cursor = 'pointer';
-            selBtn.disabled = !isBrawlerUnlocked(id);
+            selBtn.disabled = !isBrawlerUnlocked(id) && !isWeeklyTrialBrawler(id);
             selBtn.onclick = () => {
                 selectedBrawler = id;
-                if (brawlerSelect) brawlerSelect.value = id;
+                normalizeSelectedBrawler();
+                if (brawlerSelect) {
+                    brawlerSelect.value = id;
+                    brawlerSelect.dispatchEvent(new Event('change'));
+                }
                 initPlayerHP();
                 syncAbilityInputs();
                 updateGadgetInfo();
+                updateGadgetButton();
                 renderHomeBrawlerCard();
                 saveProgress();
-                document.body.removeChild(overlay);
+                if (overlay.isConnected) document.body.removeChild(overlay);
             };
             const tryTrainingBtn = document.createElement('button');
             tryTrainingBtn.textContent = 'Try in Training';
@@ -50197,6 +50542,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 ensureSlopSushiState();
                 playerData.slopSushi.tappers = (playerData.slopSushi.tappers || 0) + rotationReward.amount;
             }
+            const goldEventReward = commitGoldEventMatch(won);
+            if (goldEventReward > 0) rewardCoins += goldEventReward;
             playerData.coins += rewardCoins;
             addSouls(soulReward);
             if (rankedPromotionSouls > 0) addSouls(rankedPromotionSouls);
@@ -51044,7 +51391,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       close.onclick = () => document.body.removeChild(overlay);
 
       const title = document.createElement('h1');
-      title.textContent = 'Season 3 Pass — Core Breaker × Arena Forge';
+      title.textContent = 'CORE CIRCUIT PASS';
       title.style.margin = '0 0 6px 0';
       title.style.color = '#ffb15a';
 
@@ -51059,68 +51406,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       questBox.style.border = '1px solid #3d2b18';
       questBox.style.borderRadius = '12px';
       questBox.style.background = 'linear-gradient(180deg, #1b100b, #081226)';
-      questBox.style.maxHeight = '260px';
-      questBox.style.overflowY = 'auto';
       questBox.style.marginBottom = '12px';
-
-      const questTitle = document.createElement('div');
-      questTitle.textContent = 'Season Quests';
-      questTitle.style.fontWeight = '900';
-      questTitle.style.color = '#ffb15a';
-      questTitle.style.marginBottom = '6px';
-
-      const questHint = document.createElement('div');
-      questHint.textContent = 'These quests are separate from the event quests and only drive the season pass.';
-      questHint.style.fontSize = '11px';
-      questHint.style.color = '#ffd9c0';
-      questHint.style.marginBottom = '10px';
-
-      const seasonQuestGrid = document.createElement('div');
-      seasonQuestGrid.style.display = 'grid';
-      seasonQuestGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(210px, 1fr))';
-      seasonQuestGrid.style.gap = '10px';
-
-      const seasonQuestGroups = {};
-      for (const quest of buildSeasonPassQuests()) {
-          if (!seasonQuestGroups[quest.kind]) seasonQuestGroups[quest.kind] = [];
-          seasonQuestGroups[quest.kind].push(quest);
-      }
-
-      for (const kind in seasonQuestGroups) {
-          const kindQuests = seasonQuestGroups[kind];
-          const kindHeader = document.createElement('div');
-          kindHeader.style.gridColumn = '1 / -1';
-          kindHeader.style.padding = '8px 0 4px 0';
-          kindHeader.style.color = '#ff9900';
-          kindHeader.style.fontWeight = '900';
-          kindHeader.style.borderBottom = '1px solid #3d2b18';
-          kindHeader.textContent = kindQuests[0].title;
-          seasonQuestGrid.appendChild(kindHeader);
-
-          for (const quest of kindQuests) {
-              const questState = playerData.seasonPass?.quests?.[quest.id] || { progress: 0, target: quest.target, completed: false };
-              const done = !!questState.completed;
-              const percent = Math.max(0, Math.min(100, Math.round((questState.progress || 0) / Math.max(1, quest.target) * 100)));
-              const questCard = document.createElement('div');
-              questCard.style.padding = '10px';
-              questCard.style.borderRadius = '10px';
-              questCard.style.border = done ? '1px solid #5df2c2' : '1px solid #304876';
-              questCard.style.background = done ? 'rgba(93,242,194,0.08)' : 'rgba(7,17,30,0.78)';
-              questCard.innerHTML = `
-                  <div style="font-size:12px;font-weight:900;color:${done ? '#5df2c2' : '#ffd9c0'};">Stage ${quest.stage}${done ? ' ✓' : ''}</div>
-                  <div style="font-size:11px;color:#93a7da;margin:4px 0 8px 0;line-height:1.3;">${quest.desc}</div>
-                  <div style="height:6px;border-radius:999px;overflow:hidden;background:#0d1c2c;">
-                      <div style="height:100%;width:${percent}%;background:${done ? '#5df2c2' : '#ffb15a'};"></div>
-                  </div>
-                  <div style="margin-top:5px;font-size:11px;color:${done ? '#5df2c2' : '#ffd700'};font-weight:700;text-align:center;">${questState.progress || 0}/${quest.target}</div>
-              `;
-              seasonQuestGrid.appendChild(questCard);
-          }
-      }
-
-      questBox.appendChild(questTitle);
-      questBox.appendChild(questHint);
-      questBox.appendChild(seasonQuestGrid);
+      questBox.innerHTML = `
+          <div style="font-weight:900;color:#ffb15a;margin-bottom:6px;">MISSION CONTROL MOVED</div>
+          <div style="font-size:12px;color:#ffd9c0;margin-bottom:10px;">Season missions are now integrated into the unified Quest HQ.</div>
+          <button style="padding:8px 14px;border:none;border-radius:8px;background:#ffb15a;color:#08101d;font-weight:900;cursor:pointer;">OPEN MISSION CONTROL</button>
+      `;
+      questBox.querySelector('button').onclick=()=>{overlay.remove();openQuestBoard('season');};
 
       const seasonBox = document.createElement('div');
       seasonBox.style.padding = '12px';
