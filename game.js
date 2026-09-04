@@ -13126,7 +13126,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     function resetKnockDonateRound() {
         closeKnockDonateDonationUI();
-        bullets.length = 0; trampolines.length = 0; trampaHealAuras.length = 0; magenyVortexZones.length = 0; magenyResidualFloors.length = 0;
+        bullets.length = 0; weefeePoles.length = 0; trampolines.length = 0; trampaHealAuras.length = 0; magenyVortexZones.length = 0; magenyResidualFloors.length = 0;
         fastpassCheckpoints.length = 0;
         freestyleMicrophones.length = 0;
         portaloPortalPairs.length = 0;
@@ -17049,7 +17049,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   }
 
   function startDuelsRound() {
-    bullets.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
+    bullets.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     minigunninMutationFireZones.length = 0;
@@ -41547,6 +41547,23 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               spawnSplitterTravelSplit(b);
           }
       }
+      if (b.isWeeFeeToss && b.life >= b.maxLife) {
+          const landX = clamp(b.targetX !== undefined ? b.targetX : b.x, 30, WORLD_W - 30);
+          const landY = clamp(b.targetY !== undefined ? b.targetY : b.y, 30, WORLD_H - 30);
+          AOEDamage(landX, landY, 56, b.damage || 1200, b.ownerId, false);
+          spawnWeeFeePole(b.ownerId, landX, landY, !!b.isHyper);
+          explosions.push({
+              x: landX,
+              y: landY,
+              radius: 56,
+              life: 0,
+              maxLife: 0.22,
+              color: b.hyperVisual ? '#d946ef' : '#00f5d4'
+          });
+          bullets.splice(i, 1);
+          i--;
+          continue;
+      }
       if(b.life > b.maxLife){ 
             if (b.minigunninMutationExplosive) {
                 triggerMinigunninMutationEndpoint(b);
@@ -42208,6 +42225,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
       if(consumed) continue;
 
+      if (b.isWeeFeeToss) continue;
       // VS player
       if(player.hp > 0 && b.ownerId !== player.id){
          if (b.hitIds && b.hitIds[player.id]) { /* skip duplicate hits */ }

@@ -26,6 +26,12 @@ assert.match(
 
 assert.match(
   game,
+  /if\s*\(b\.isWeeFeeToss\s*&&\s*b\.life\s*>=\s*b\.maxLife\)\s*\{[\s\S]{0,300}spawnWeeFeePole\(b\.ownerId,\s*landX,\s*landY/,
+  'Signal Pole toss projectile lands at destination and deploys pole on ground'
+);
+
+assert.match(
+  game,
   /function spawnWeeFeePole\(owner,\s*x,\s*y/,
   'spawnWeeFeePole helper creates deployable Signal Poles'
 );
