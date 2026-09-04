@@ -48100,9 +48100,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
           ctx.restore();
       }
-            if (selectedBrawler === 'weefee' && !aimingSuper) {
+      if (selectedBrawler === 'weefee' && !aimingSuper) {
           const maxRange = 600;
-          const dist = clamp(rawAimDist, 80, maxRange);
+          const mouseDist = Math.hypot(wm.x - player.x, wm.y - player.y);
+          const dist = clamp(mouseDist, 80, maxRange);
           const landX = clamp(player.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
           const landY = clamp(player.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
           
