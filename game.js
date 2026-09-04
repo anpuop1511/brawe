@@ -6177,7 +6177,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const slotLabel = { hyper:'Hyper Main', g1:'Gadget 1', g2:'Gadget 2', slow:'Star Power 1', long:'Star Power 2' };
         const slotDesc = {
             outlit: { g1:'Next Shot Pierce attacks return once.', g2:'Healing Pod gains +1500 HP and 30% larger heal range.', slow:'Boom Break restores 2 ammo.', long:'Scatter Pump gains +15% range.' },
-            echo: { g1:'Amplify keeps full damage.', g2:'Shielding converts 70% of prevented damage into shield.', slow:'Reverb Heal also grants 30% of the heal as shield.', long:'Double Wave fires 3 extra bigger side rings.' },
+                  fightnfire: {
+          type: 'instinct',
+          name: 'Flash Freeze',
+          icon: 'FF',
+          color: '#62ef88',
+          pieceName: "Fight'n'Fire Instinct Piece",
+          shortDesc: 'Every other Super cast, half of the fire projectiles become Sub-Zero Ice Cores that encase enemies in a solid Block of Ice for 1.3s (100% damage reduction, cannot move or attack).'
+      },
+      echo: { g1:'Amplify keeps full damage.', g2:'Shielding converts 70% of prevented damage into shield.', slow:'Reverb Heal also grants 30% of the heal as shield.', long:'Double Wave fires 3 extra bigger side rings.' },
             cheseypuff: { g1:'Big Puff also pulls enemies.', g2:'Cheese Trap deals 160 damage per tick.', slow:'Cheese Ball leaves a mini cheese field at the end.', long:'Cheese Ball gains 22% more range.' },
             decayer: { g1:'Homing Shot also slows enemies for 1.1 seconds.', g2:'Sacrifice grants an 80% damage reduction shield until hit.', slow:'Decayer shield max increases by 2500.', long:'Decay Shot stacks 5% damage reduction per hit, up to 25%, for 7 seconds.' },
             unopcoloco: { g1:'Tangled Scarf pierces one target, then jumps to a second for 60% damage.', g2:'Wrapped Up immediately heals 900 HP.', slow:'Scarf landings leave a 1.25-second patch that slows by 20%.', long:'Whack healing splashes nearby allies for 50%.' },
@@ -11036,9 +11044,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
   });
   const SPECIAL_ABILITY_TYPES = Object.freeze(['mutation', 'signature', 'instinct']);
-  const UNLEASH_POTENTIAL_EVENT_ID = 'unleash-potential-2026-08-v2';
+  const UNLEASH_POTENTIAL_EVENT_ID = 'unleash-potential-2026-08-all-specials-v3';
   const UNLEASH_POTENTIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
-  const UNLEASH_POTENTIAL_FIGHTERS = Object.freeze(['minigunnin','classy','splitter']);
+  const UNLEASH_POTENTIAL_FIGHTERS = Object.freeze(Object.keys(SPECIAL_ABILITY_DEFS));
   const SPECIAL_BREAKTHROUGH_QUESTS = Object.freeze({
       outlit: [
           {id:'pressure_building',title:'Pressure Building',desc:'Play 3 matches with Outlit.',kind:'play_match',target:3},
@@ -11054,6 +11062,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           {id:'sound_check',title:'Sound Check',desc:'Play 3 matches with Echo.',kind:'play_match',target:3},
           {id:'frequency_test',title:'Frequency Test',desc:'Land 30 Echo main-ring hits.',kind:'main_hit',target:30},
           {id:'resonance',title:'Resonance',desc:'Deal 15,000 damage with Echo.',kind:'deal_damage',target:15000}
+      ],
+            fightnfire: [
+          {id:'fire_and_ice',title:'Fire & Ice',desc:"Play 3 matches with Fight'n'Fire.",kind:'play_match',target:3},
+          {id:'flash_freeze_drill',title:'Flash Freeze Drill',desc:"Land 25 Super hits or freeze 8 enemies with Fight'n'Fire.",kind:'super_or_freeze',target:25},
+          {id:'thermal_regulation',title:'Thermal Regulation',desc:"Deal 20,000 damage with Fight'n'Fire.",kind:'deal_damage',target:20000}
       ],
       minigunnin: [
           {id:'feed_the_belt',title:'Feed the Belt',desc:'Fire 300 Minigunnin bullets.',kind:'main_bullet',target:300},
@@ -15877,7 +15890,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     for (const wall of cover) cubes.push({ ...wall, wallType: 'impossible_arena' });
   }
 
-  function buildArenaForgeMap() {
+    function buildArenaForgeMap() {
+    // Modern 3-Lane Sub-Zero Tactical Forge Layout
     cubes.length = 0;
     destructibleWalls.length = 0;
     bushZones.length = 0;
@@ -15887,14 +15901,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     const wall = (x, y, w, h, collapse = false) => {
       const made = addArenaWallStrip(x, y, w, h, {
         wallType: 'forge_lane',
-        hp: collapse ? 6200 : 9000,
+        hp: collapse ? 6500 : 9000,
       });
       if (collapse) made.forEach((tile) => { tile.arenaForgeCollapseWall = true; });
       return made;
     };
 
-    // Mirrored cover placed BETWEEN the three lane centerlines. Every minion
-    // lane needs a direct corridor to its assigned structure.
+    // Sub-Zero Tactical Bastions between lanes
     for (const y of [760, WORLD_H - 900]) {
       wall(WORLD_W * 0.29, y, 175, 82);
       wall(WORLD_W * 0.71 - 175, y, 175, 82);
@@ -15903,17 +15916,25 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       bushZones.push({ x: 500, y: y - 75, w: 220, h: 175 });
       bushZones.push({ x: WORLD_W - 720, y: y - 75, w: 220, h: 175 });
     }
-    wall(WORLD_W * 0.5 - 390, WORLD_H * 0.5 - 42, 250, 84, true);
-    wall(WORLD_W * 0.5 + 140, WORLD_H * 0.5 - 42, 250, 84, true);
-    bushZones.push({ x: WORLD_W * 0.5 - 100, y: WORLD_H * 0.5 - 170, w: 200, h: 340 });
+
+    // Central Soul Forge Crucible barricades & bushes
+    wall(WORLD_W * 0.5 - 390, WORLD_H * 0.5 - 45, 250, 90, true);
+    wall(WORLD_W * 0.5 + 140, WORLD_H * 0.5 - 45, 250, 90, true);
+    bushZones.push({ x: WORLD_W * 0.5 - 120, y: WORLD_H * 0.5 - 180, w: 240, h: 360 });
 
     const addPadPair = (x, fromY, toY) => {
       const a = { id: `forge_pad_${arenaForgeJumpPads.length}`, x, y: fromY, targetX: x, targetY: toY, radius: 34 };
       const b = { id: `forge_pad_${arenaForgeJumpPads.length + 1}`, x, y: toY, targetX: x, targetY: fromY, radius: 34 };
       arenaForgeJumpPads.push(a, b);
     };
-    addPadPair(WORLD_W * 0.5, WORLD_H - 690, WORLD_H * 0.5 + 235);
-    addPadPair(WORLD_W * 0.5, 690, WORLD_H * 0.5 - 235);
+
+    // Center lane assault jump pads
+    addPadPair(WORLD_W * 0.5, WORLD_H - 680, WORLD_H * 0.5 + 235);
+    addPadPair(WORLD_W * 0.5, 680, WORLD_H * 0.5 - 235);
+
+    // Flank rotation jump pads
+    addPadPair(360, WORLD_H - 800, WORLD_H * 0.5 + 180);
+    addPadPair(WORLD_W - 360, 800, WORLD_H * 0.5 - 180);
   }
 
   function buildMarkedMayhemMap() {
@@ -16345,14 +16366,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return current + clamp(delta, -maxStep, maxStep);
     }
 
-    function startFightnFireSuper(entity, targetX, targetY, isHyper) {
+        function startFightnFireSuper(entity, targetX, targetY, isHyper) {
         const now = performance.now();
         const originX = entity.x;
         const originY = entity.y;
         const aimAngle = Math.atan2(targetY - originY, targetX - originX);
-        const shardCount = 24;
-        const spitDamage = isHyper ? 1200 : 1000;
-        const burstDamage = isHyper ? 864 : 720;
+        const targetDist = Math.max(100, Math.hypot(targetX - originX, targetY - originY));
+        const travelSpeed = 860 * 0.6; // 516 px/s
+        const travelTime = targetDist / travelSpeed;
+        const shardCount = isHyper ? 32 : 24;
+        const spitDamage = isHyper ? 1400 : 1100;
+        const burstDamage = isHyper ? 950 : 750;
 
         entity.isJumping = false;
         entity.z = 0;
@@ -16370,44 +16394,54 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         entity.fightnFireSuperBurstUntil = now + 220;
         entity.fightnFireSuperJumpStart = now;
 
+        const hasInstinct = isSpecialAbilityAvailableForEntity(entity, 'fightnfire');
+        entity.fightnfireSuperCount = (entity.fightnfireSuperCount || 0) + 1;
+        const isFlashFreeze = hasInstinct && (entity.fightnfireSuperCount % 2 === 1);
+
         const skin = getActiveSkinForBrawler('fightnfire');
         const isSpice = skin?.id === 'fightn-spice';
         const shot = {
             ownerBrawler: 'fightnfire',
             isFightnFireShot: true,
+            isFightnfireIceProj: isFlashFreeze,
+            isFlashFreeze: isFlashFreeze,
             super: true,
             superSpit: true,
             x: originX + Math.cos(aimAngle) * (entity.radius + 4),
             y: originY + Math.sin(aimAngle) * (entity.radius + 4),
-            vx: Math.cos(aimAngle) * 860 * 0.6,
-            vy: Math.sin(aimAngle) * 860 * 0.6,
+            vx: Math.cos(aimAngle) * travelSpeed,
+            vy: Math.sin(aimAngle) * travelSpeed,
             life: 0,
-            maxLife: (isHyper ? 560 : 460) / (860 * 0.6),
-            dieAt: now + (isHyper ? 560 : 460),
+            maxLife: travelTime,
+            dieAt: now + travelTime * 1000,
             damage: spitDamage,
-            pierce: true,
+            burstDamage: burstDamage,
+            pierce: false,
             hyperVisual: isHyper,
             ownerId: entity.id,
-            fightnFireShardCount: isHyper ? 8 : 4,
-            burnDuration: isHyper ? 3800 : 3000,
+            fightnFireShardCount: shardCount,
+            burnDuration: isHyper ? 4200 : 3200,
             aimAngle: aimAngle,
             birthTime: now
         };
-        if (isSpice) {
-            applySkinVisuals(shot, 'fightnfire', true);
+        if (isSpice && !isFlashFreeze) {
+            shot.skinId = skin.id;
+            shot.skinEffect = skin.superEffect?.type || 'spiceBurst';
+            shot.skinColor = skin.superEffect?.color || skin._displayColor || '#ff2e63';
+            shot.skinTrailColor = skin.superEffect?.trailColor || null;
+            shot.skinGlow = !!skin.superEffect?.glow;
             shot.birthTime = now;
         }
         bullets.push(shot);
 
-        triggerFightnFireImpact({
+        explosions.push({
             x: originX,
             y: originY,
-            damage: burstDamage,
-            ownerId: entity.id,
-            fightnFireShardCount: shardCount,
-            hyperVisual: isHyper,
-            superBurst: true
-        }, false);
+            radius: 65,
+            life: 0,
+            maxLife: 0.28,
+            color: isFlashFreeze ? 'rgba(116, 200, 255, 0.85)' : (isHyper ? 'rgba(255, 75, 10, 0.85)' : 'rgba(255, 140, 50, 0.75)')
+        });
     }
 
     function pointInTrapperFence(entity, zone) {
@@ -17273,12 +17307,68 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       const chips = [];
       if (!entity) return chips;
       if (includeGadget && gadgetArmed) chips.push({ t: 'GAD', c: '#6de38f' });
+      if ((entity.iceBlockUntil || 0) > now) chips.push({ t: 'ICE', c: '#48dbfb' });
       if ((entity.stunUntil || 0) > now) chips.push({ t: 'STN', c: '#ff6b6b' });
       else if ((entity.slowUntil || 0) > now) chips.push({ t: 'SLW', c: '#87cefa' });
       if ((entity.poisonUntil || 0) > now) chips.push({ t: 'PSN', c: '#88d66b' });
       if ((entity.fireUntil || 0) > now) chips.push({ t: 'BRN', c: '#ff8c42' });
       if (entity.boomArangTaggedBy && (entity.boomArangTagUntil || 0) > now) chips.push({ t: 'TAG', c: '#ffaa00' });
       return chips;
+  }
+
+    function drawIceBlockStasis(ctx, entity, cx, cy, radius) {
+      if (!entity || !entity.iceBlockUntil || entity.iceBlockUntil <= performance.now()) return;
+      const now = performance.now();
+      const pulse = 1 + Math.sin(now * 0.008) * 0.05;
+      const r = (radius || entity.radius || 20) * 1.55 * pulse;
+      
+      ctx.save();
+      ctx.translate(cx, cy);
+      
+      // Outer Ice Shield Glow
+      ctx.shadowColor = '#00d2d3';
+      ctx.shadowBlur = 18;
+      
+      // Diamond Prism Crystalline Ice Block
+      ctx.fillStyle = 'rgba(116, 200, 255, 0.45)';
+      ctx.strokeStyle = '#c8f7ff';
+      ctx.lineWidth = 2.5;
+      
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 1.25);
+      ctx.lineTo(r * 1.05, -r * 0.35);
+      ctx.lineTo(r * 0.85, r * 1.15);
+      ctx.lineTo(-r * 0.85, r * 1.15);
+      ctx.lineTo(-r * 1.05, -r * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Inner Frost Facets
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 1.25);
+      ctx.lineTo(0, r * 0.5);
+      ctx.lineTo(r * 0.85, r * 1.15);
+      ctx.moveTo(0, r * 0.5);
+      ctx.lineTo(-r * 0.85, r * 1.15);
+      ctx.moveTo(0, r * 0.5);
+      ctx.lineTo(r * 1.05, -r * 0.35);
+      ctx.moveTo(0, r * 0.5);
+      ctx.lineTo(-r * 1.05, -r * 0.35);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Glint highlights
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.beginPath();
+      ctx.arc(-r * 0.4, -r * 0.55, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(r * 0.35, -r * 0.2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.restore();
   }
 
   function drawEntityStatusChips(entity, cx, cy, includeGadget = false) {
@@ -22988,7 +23078,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             birthTime: now
         };
         if (isSpice) {
-            applySkinVisuals(shot, 'fightnfire', false);
+            shot.skinId = skin.id;
+            shot.skinEffect = skin.attackEffect?.type || 'spiceFlame';
+            shot.skinColor = skin.attackEffect?.color || skin._displayColor || '#ff2e63';
+            shot.skinTrailColor = skin.attackEffect?.trailColor || null;
+            shot.skinGlow = !!skin.attackEffect?.glow;
             shot.birthTime = now;
         }
         bullets.push(shot);
@@ -23288,15 +23382,29 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if (isPlayerOwned) { screenShakeUntil = performance.now() + 100; screenShakeAmount = 5; }
   }
 
-  function triggerFightnFireImpact(projectile, shardImpact = false) {
+    function triggerFightnFireImpact(projectile, shardImpact = false) {
       const ownerId = projectile.ownerId;
       const isPlayerOwned = ownerId === player.id;
-      const damage = Math.max(1, Math.round(projectile.damage || (isPlayerOwned ? 900 : 750)));
-      const centerRadius = shardImpact ? 60 : (projectile.superBurst ? 88 : 92);
-      triggerExplosion(projectile.x, projectile.y, damage, centerRadius, isPlayerOwned);
+      const damage = Math.max(1, Math.round(projectile.burstDamage || projectile.damage || (isPlayerOwned ? 900 : 750)));
+      const isFlashFreezeBurst = !!(projectile.isFlashFreeze || projectile.isFightnfireIceProj);
+      const isHyper = !!projectile.hyperVisual;
+      const centerRadius = shardImpact ? 60 : (projectile.superBurst ? 96 : 92);
+      
+      AOEDamage(projectile.x, projectile.y, centerRadius, damage, isPlayerOwned ? player.id : null, true);
+      explosions.push({
+          x: projectile.x,
+          y: projectile.y,
+          radius: centerRadius,
+          life: 0,
+          maxLife: 0.28,
+          color: isFlashFreezeBurst 
+              ? 'rgba(116, 200, 255, 0.85)' 
+              : (isHyper ? 'rgba(255, 60, 0, 0.85)' : 'rgba(255, 140, 50, 0.75)')
+      });
+      if (isPlayerOwned) { screenShakeUntil = performance.now() + 120; screenShakeAmount = 6; }
 
       if (!shardImpact) {
-          const shardCount = projectile.fightnFireShardCount || 4;
+          const shardCount = projectile.fightnFireShardCount || (projectile.superBurst ? (isHyper ? 32 : 24) : 4);
           const shardDamage = Math.max(1, Math.round(damage * (projectile.superBurst ? 0.45 : 0.6)));
           const baseOffset = shardCount === 4 ? Math.PI / 4 : 0;
           const shardOwner = getEntityById(ownerId);
@@ -23306,9 +23414,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           for (let i = 0; i < shardCount; i++) {
               const ang = baseOffset + (Math.PI * 2 * i) / shardCount;
               const assignedTarget = homingTargets.length ? homingTargets[i % homingTargets.length] : null;
+              const isIceShard = isFlashFreezeBurst && (i % 2 === 0);
               bullets.push({
                   ownerBrawler: 'fightnfire',
                   isFightnFireShard: true,
+                  isFightnfireIceProj: isIceShard,
+                  isFlashFreeze: isFlashFreezeBurst,
                   x: projectile.x,
                   y: projectile.y,
                   vx: Math.cos(ang) * 760 * 0.6,
@@ -26058,10 +26169,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return;
     }
 
-    if(selectedBrawler === 'fightnfire') {
+        if(selectedBrawler === 'fightnfire') {
         const hc = isHypercharged;
-        const range = hc ? 175 : 145;
-        const targetDist = Math.min(range, Math.hypot(wm.x - player.x, wm.y - player.y));
+        const range = hc ? 750 : 650;
+        const targetDist = Math.max(120, Math.min(range, Math.hypot(wm.x - player.x, wm.y - player.y)));
         const targetX = player.x + Math.cos(ang) * targetDist;
         const targetY = player.y + Math.sin(ang) * targetDist;
         startFightnFireSuper(player, clamp(targetX, player.radius, WORLD_W - player.radius), clamp(targetY, player.radius, WORLD_H - player.radius), hc);
@@ -26279,7 +26390,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         castKageSuper(player, isHypercharged, wm.x, wm.y);
         updateSuperButton();
         return;
-    } else if (selectedBrawler === 'outlit') {
+    } else           if (selectedBrawler === 'fightnfire') {
+              const count = player.fightnfireSuperCount || 0;
+              const isNextFreeze = (count % 2 === 0);
+              return { 
+                  label: isNextFreeze ? 'INSTINCT - FLASH FREEZE PRIMED' : 'INSTINCT - INFERNO PRIMED', 
+                  value: isNextFreeze ? 1 : 0, 
+                  max: 1, 
+                  color: isNextFreeze ? '#62ef88' : '#ff8c42' 
+              };
+          }
+          if (selectedBrawler === 'outlit') {
         for(let s=-0.08;s<=0.08;s+=0.16){
           const a = ang + s;
           // Outlit hypercharge: super now pierces enemies
@@ -35846,6 +35967,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         // If target has temporary invulnerability (e.g., overlord transform), ignore the hit
         if (target && target.invulnerableUntil && target.invulnerableUntil > performance.now()) return false;
 
+        // Ice Block Stasis 100% Damage Reduction
+        if (target && target.iceBlockUntil && target.iceBlockUntil > performance.now()) {
+            spawnFloatingText(target.x, target.y - 30, '🧊 IMMUNE', '#aef2ff');
+            return false;
+        }
+
         // Sir Cheeseburger Super Chest Guard Damage Reduction
         if (target && (target.sirChestGuardUntil || 0) > performance.now()) {
             ensureSirCheeseburgerState(target);
@@ -36616,7 +36743,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }, b.crystilaFollowDelayMs || 220);
     }
 
-    if (b.ownerBrawler === 'fightnfire') {
+        if (b.ownerBrawler === 'fightnfire') {
+        const now = performance.now();
         if (!b.isFightnFireShard && !b.fightnFireExploded) {
             triggerFightnFireImpact(b, false);
             b.fightnFireExploded = true;
@@ -36624,17 +36752,44 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             explosions.push({
                 x: target.x,
                 y: target.y,
-                radius: 22,
+                radius: b.isFightnfireIceProj ? 28 : 22,
                 life: 0,
                 maxLife: 0.15,
-                color: 'rgba(255, 190, 120, 0.6)'
+                color: b.isFightnfireIceProj ? 'rgba(116, 200, 255, 0.85)' : 'rgba(255, 190, 120, 0.6)'
             });
         }
-        const burnDuration = b.superBurst ? 4000 : (b.isFightnFireShard ? 3200 : 2500);
-        const burnTickDelay = b.superBurst ? 250 : 350;
-        target.fireUntil = Math.max(target.fireUntil || 0, performance.now() + burnDuration);
-        target.fireStacks = Math.max(target.fireStacks || 0, b.superBurst ? 2 : 1);
-        target.fireTickAt = Math.min(target.fireTickAt || (performance.now() + burnTickDelay), performance.now() + burnTickDelay);
+
+        if (b.isFightnfireIceProj || b.isFlashFreeze) {
+            if (!target.iceBlockImmuneUntil || target.iceBlockImmuneUntil <= now) {
+                target.iceBlockUntil = now + 1300;
+                target.iceBlockImmuneUntil = target.iceBlockUntil + 2000;
+                target.stunUntil = Math.max(target.stunUntil || 0, target.iceBlockUntil);
+                spawnFloatingText(target.x, target.y - 45, '🧊 FLASH FREEZE!', '#74c0fc');
+                explosions.push({
+                    x: target.x,
+                    y: target.y,
+                    radius: 54,
+                    life: 0,
+                    maxLife: 0.35,
+                    color: 'rgba(116, 200, 255, 0.8)'
+                });
+                if (b.ownerId === player.id) {
+                    addSpecialQuestProgress('fightnfire', 'super_or_freeze', 1);
+                }
+            }
+        } else {
+            const burnDuration = b.superBurst ? 4000 : (b.isFightnFireShard ? 3200 : 2500);
+            const burnTickDelay = b.superBurst ? 250 : 350;
+            target.fireUntil = Math.max(target.fireUntil || 0, now + burnDuration);
+            target.fireStacks = Math.max(target.fireStacks || 0, b.superBurst ? 2 : 1);
+            target.fireTickAt = Math.min(target.fireTickAt || (now + burnTickDelay), now + burnTickDelay);
+        }
+
+        if (b.super || b.superBurst || b.isFightnFireShard) {
+            if (b.ownerId === player.id) {
+                addSpecialQuestProgress('fightnfire', 'super_or_freeze', 1);
+            }
+        }
     }
     
     if (b.splitOnHit) {
@@ -41021,7 +41176,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               continue;
           }
       } else if (b.isFightnFireShot) {
-          if (b.maxLife && b.life > b.maxLife && !b.fightnFireExploded) {
+          if (((b.maxLife && b.life >= b.maxLife) || (b.dieAt && now >= b.dieAt)) && !b.fightnFireExploded) {
               b.fightnFireExploded = true;
               triggerFightnFireImpact(b, false);
               bullets.splice(i, 1);
@@ -43740,6 +43895,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     if(fighterId==='beast'&&isBeastyBeastActive(entity,now)){
       ctx.save();const pulse=.5+Math.sin(now/70)*.5;ctx.strokeStyle=`rgba(255,211,79,${.72+pulse*.25})`;ctx.lineWidth=4;ctx.setLineDash([10,4]);ctx.lineDashOffset=-now/22;ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+20+pulse*5,0,Math.PI*2);ctx.stroke();ctx.strokeStyle='rgba(255,91,60,.7)';ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+13-pulse*2,0,Math.PI*2);ctx.stroke();ctx.restore();
     }
+        if(fighterId==='fightnfire'&&isSpecialAbilityAvailableForEntity(entity,'fightnfire')){
+      const isPrime = (entity.fightnfireSuperCount || 0) % 2 === 0;
+      ctx.save();const pulse=.5+Math.sin(now/105)*.5;
+      ctx.strokeStyle=isPrime ? `rgba(98,239,136,${.66+pulse*.25})` : `rgba(255,140,50,${.66+pulse*.25})`;
+      ctx.lineWidth=3;ctx.setLineDash([5,4]);ctx.lineDashOffset=-now/25;
+      ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+18+pulse*4,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
     if(fighterId==='splitter'&&isSpecialAbilityAvailableForEntity(entity,'splitter')){
       const instinct=ensureSplitterInstinctState(entity,now);
       if(instinct?.ready){ctx.save();const pulse=.5+Math.sin(now/105)*.5;ctx.strokeStyle=`rgba(98,239,136,${.66+pulse*.25})`;ctx.lineWidth=3;ctx.setLineDash([4,5]);ctx.lineDashOffset=-now/25;ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+18+pulse*4,0,Math.PI*2);ctx.stroke();ctx.restore();}
@@ -46148,6 +46310,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       ctx.fillStyle = 'rgba(3,10,18,0.88)'; ctx.beginPath(); ctx.roundRect(hpX, hpY, hpW, 10, 5); ctx.fill();
       ctx.fillStyle = (t.team === 'player') ? '#5df2c2' : '#f03a47'; ctx.beginPath(); ctx.roundRect(hpX + 1, hpY + 1, Math.max(0, (hpW - 2) * Math.max(0,t.hp/t.maxHp)), 8, 4); ctx.fill();
       drawEntityShieldBar(t, t.x, hpY - 20, Math.max(48, hpW), 12);
+      drawIceBlockStasis(ctx, t, t.x, t.y, t.radius);
       
     if ((t.brawler === 'beast' || isEntityEmpoweredBeast(t, false)) && t.beastModeActive && t.beastModeUntil && performance.now() < t.beastModeUntil) {
           const remaining = t.beastModeUntil - performance.now();
@@ -46485,6 +46648,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpColor = playerHpPct <= BALANCE_PROFILE.lowHpCriticalPct ? '#ff3b30' : (playerHpPct <= BALANCE_PROFILE.lowHpWarningPct ? '#ff9a3c' : '#5df2c2');
             ctx.fillStyle = hpColor; ctx.beginPath(); ctx.roundRect(player.x-24, drawY-40, 48 * playerHpPct,10,5); ctx.fill();
       drawEntityShieldBar(player, player.x, drawY - 61, 64, 14);
+      drawIceBlockStasis(ctx, player, player.x, player.y, player.radius);
 
             if (player.hp > 0 && playerHpPct <= BALANCE_PROFILE.lowHpWarningPct) {
                     const pulse = 0.45 + Math.sin(performance.now() / 120) * 0.25;
@@ -49028,7 +49192,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                         const targetDist = Math.min(range, Math.hypot(wm.x - player.x, wm.y - player.y));
                         const aimX = player.x + Math.cos(ang) * targetDist;
                         const aimY = player.y + Math.sin(ang) * targetDist;
-                        ctx.strokeStyle = isHypercharged ? 'rgba(238, 0, 255, 0.55)' : 'rgba(255, 107, 45, 0.55)';
+                        ctx.strokeStyle = isHypercharged ? 'rgba(255, 75, 15, 0.75)' : 'rgba(255, 107, 45, 0.55)';
                         ctx.lineWidth = 3;
                         ctx.beginPath();
                         ctx.moveTo(player.x, player.y);
@@ -49041,7 +49205,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                         ctx.arc(player.x, player.y, 64, 0, Math.PI * 2);
                         ctx.stroke();
                         const shardPreview = Math.min(12, burstCount);
-                        ctx.fillStyle = isHypercharged ? 'rgba(238, 0, 255, 0.25)' : 'rgba(255, 107, 45, 0.25)';
+                        ctx.fillStyle = isHypercharged ? 'rgba(255, 120, 0, 0.35)' : 'rgba(255, 107, 45, 0.25)';
                         for (let i = 0; i < shardPreview; i++) {
                             const previewAng = (Math.PI * 2 * i) / shardPreview;
                             ctx.beginPath();

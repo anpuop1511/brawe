@@ -23,7 +23,7 @@ assert.match(css,/#homeHeader\{position:sticky!important[\s\S]{0,420}grid-templa
 assert.match(css,/\.brawler-browser__controls\{order:3!important;position:sticky!important/,'mobile roster filters stay reachable while scrolling');
 assert.match(css,/\.brawler-browser__grid\{order:4!important[\s\S]{0,180}repeat\(2,minmax\(0,1fr\)\)/,'mobile roster uses a stable two-column grid');
 assert.match(css,/min-height:44px!important/,'utility touch targets retain accessible sizing');
-assert.match(html,/20260903-hyperfusion-fuser2/,'mobile rebuild assets are cache-busted');
-assert.match(bootstrap,/20260903-hyperfusion-fuser2/,'runtime game script is cache-busted');
+assert.match(html,/20260904-skin-visuals-fix1/,'mobile rebuild assets are cache-busted');
+assert.match(bootstrap,/20260904-skin-visuals-fix1/,'runtime game script is cache-busted');
 
 console.log('BRAWE mobile V3 layout and control regression checks passed.');
