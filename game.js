@@ -16967,7 +16967,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if (isRankedMatch && activeRankedModifier === 'quickfire') {
            if (owner.id === player.id) {
                ammo = Math.min(maxAmmo, ammo + maxAmmo * 0.1);
-               updateAmmoUI();
+               if (typeof updateAmmoUI === 'function') updateAmmoUI();
            } else {
                owner.ammo = Math.min(owner.maxAmmo || 3, (owner.ammo || 0) + (owner.maxAmmo || 3) * 0.1);
            }
@@ -28934,6 +28934,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const cd = now < activeCdUntil ? ` — CD ${Math.ceil((activeCdUntil - now) / 1000)}s` : '';
         infoEl.textContent = desc + cd;
     }
+  function updateAmmoUI() {
+    // Canvas render loop dynamically draws player and entity ammo bars every frame
+  }
+
   function updateSuperButton(){
     if (selectedBrawler !== 'jacktrade') delete superBtn.dataset.lockedOutcome;
     if (selectedBrawler === 'hyperorigin') {
