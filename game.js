@@ -19520,7 +19520,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       const scale = getLevelDamageScale(level);
       const shockDmg = Math.round((hyper ? 1800 : 1400) * scale);
       const shockRadius = hyper ? 190 : 140;
-      
+      const aliveBots = (typeof bots !== 'undefined' && Array.isArray(bots)) ? bots.filter(b => b && b.hp > 0) : [];
       const candidates = owner.id === player.id ? aliveBots : [player, ...aliveBots];
       for (const t of candidates) {
           if (!t || t.hp <= 0 || t.id === owner.id || t.isFlying) continue;
@@ -19563,7 +19563,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       
       const level = entity.id === player.id ? getSelectedBrawlerLevel() : (entity.level || 11);
       const dmg = getScaledStats('sir_cheeseburger', level).dmg;
-      
+      const aliveBots = (typeof bots !== 'undefined' && Array.isArray(bots)) ? bots.filter(b => b && b.hp > 0) : [];
       const candidates = entity.id === player.id ? aliveBots : [player, ...aliveBots];
       for (const t of candidates) {
           if (!t || t.hp <= 0 || t.id === entity.id || t.isFlying) continue;
@@ -19602,7 +19602,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       const scale = getLevelDamageScale(level);
       const dmg = Math.round(1000 * scale);
       const slamRadius = 130;
-      
+      const aliveBots = (typeof bots !== 'undefined' && Array.isArray(bots)) ? bots.filter(b => b && b.hp > 0) : [];
       const candidates = entity.id === player.id ? aliveBots : [player, ...aliveBots];
       for (const t of candidates) {
           if (!t || t.hp <= 0 || t.id === entity.id || t.isFlying) continue;
