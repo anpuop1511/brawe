@@ -239,6 +239,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     function getScaledStats(brawlerId, levelOverride) {
         const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
+        if (brawlerId === 'weefee') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6800 * scale), dmg: Math.round(1200 * scale), speed: 270 };
+        }
         if (brawlerId === 'sir_cheeseburger') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(7800 * scale), dmg: Math.round(1650 * scale), speed: 270 };
@@ -2579,6 +2583,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         },
         reloadMsByBrawler: {
             warrior: 1650,
+            weefee: 1400,
             sir_cheeseburger: 1300,
             outlit: 1060,
             echo: 1600,
@@ -2627,6 +2632,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             ,predator: 1500
         },
         fireDelayMsByBrawler: {
+            weefee: 240,
             sir_cheeseburger: 220,
             warrior: 260,
             outlit: 200,
@@ -2807,7 +2813,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger'
+        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -2885,6 +2891,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             fastpass: 'Mythic',
             freestyle: 'Mythic',
             drainbow: 'Mythic',
+            weefee: 'Mythic',
             draflygon: 'Mythic',
             homer: 'Mythic',
             predator: 'Mythic',
@@ -5571,6 +5578,21 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
 
     const brawlerData = {
+      'weefee': {
+          name: 'Wee-Fee',
+          role: 'Controller',
+          desc: 'A cyber router robot who controls the arena with throwable Signal Poles, establishing an interconnected Wi-Fi network that pulses digital waves and supercharges into 5G Mobile Data.',
+          color: '#00f5d4',
+          attack: 'Signal Pole',
+          attackDesc: 'Throws an antenna tower (1200 impact damage) to target location. Holds up to 3 poles at once. Active poles emit concentric Wi-Fi arc waves (📶) inward toward the network center dealing 1100 damage (750 in overlapping center interference). Throwing a 4th pole replaces the oldest.',
+          super: 'Moe Buyle Date Uh',
+          superDesc: 'Upgrades all active poles to high-speed 5G Mobile Data coverage for 6 seconds. Wi-Fi poles boost each other and radiate expanding 5G energy rings, pulsing 850 damage and slowing enemies by 20% in and beyond the pole perimeters.',
+          hyper: 'Sat Uh Light: Calls down orbital satellite laser strikes creating 1800-damage purple explosions around every active pole. Allows deploying +1 extra pole (up to 4 poles max) during the surge. +25% damage, +25% speed, +15% shield.',
+          g1: 'Overclock Router (All active Signal Poles immediately fire 2 rapid high-power Wi-Fi pulse bursts dealing 1200 damage each)',
+          g2: 'Router Reboot (Destroys all active Signal Poles, healing Wee-Fee for 1000 HP per pole and instantly restoring 1 ammo)',
+          sp1: 'Signal Interference (Enemies caught in the network center between active poles suffer bad connection, reducing their damage output by 20% for 3 seconds)',
+          sp2: 'E-Waste Demolition (Replaced or destroyed Signal Poles detonate in an electric shockwave dealing 1400 damage in a 90px radius)'
+      },
       'sir_cheeseburger': {
           name: 'Sir Cheeseburger',
           role: 'Tank',
@@ -6005,10 +6027,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         amplifier:'Support', angel:'Support', echo:'Support', fastpass:'Support', freestyle:'Support', hope:'Support', relay:'Support', trampaheal:'Support', sera_eclipse:'Support',
         adlof:'Controller', awakenator:'Controller', cursed:'Controller', king:'Controller', anti_royal:'Controller', daggershard:'Controller', darkener:'Controller', decayer:'Controller', forest:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller', mageny:'Controller',
         beam:'Damage Dealer', fuser:'Damage Dealer', heater_miser:'Damage Dealer', jacktrade:'Damage Dealer', minigunnin:'Damage Dealer', money_and_tax:'Damage Dealer', outlit:'Damage Dealer', steamer:'Damage Dealer', axeywaxy:'Damage Dealer', upgradart:'Damage Dealer',
-        bouncin_balls:'Skirmisher', chickpig:'Skirmisher', classy:'Skirmisher', copyphase:'Skirmisher', goonbob:'Skirmisher', hoop:'Skirmisher', hyperorigin:'Skirmisher', robber:'Skirmisher', cinderion:'Controller'
+        bouncin_balls:'Skirmisher', chickpig:'Skirmisher', classy:'Skirmisher', copyphase:'Skirmisher', goonbob:'Skirmisher', hoop:'Skirmisher', hyperorigin:'Skirmisher', robber:'Skirmisher', cinderion:'Controller', weefee:'Controller'
     };
     for (const [id, role] of Object.entries(PRIMARY_ROLE_BY_BRAWLER)) if (brawlerData[id]) brawlerData[id].role = role;
     const brawlerPortraitIcons = {
+        weefee: '📶',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
         cursed: '🧿',
@@ -6110,6 +6133,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (!hasCustomBrawlerPortrait(brawlerId)) return getBrawlerPortraitIcon(brawlerId);
         const isRankedRocketeer = brawlerId === 'rocketeer' && getActiveSkinForBrawler('rocketeer')?.id === 'ranked-rocketeer';
         const art = {
+                        weefee: `<circle cx="50" cy="50" r="34" fill="#0b1e28" stroke="#00f5d4" stroke-width="4"/><rect x="24" y="38" width="52" height="34" rx="7" fill="#132c3a" stroke="#00f5d4" stroke-width="2.5"/><line x1="33" y1="38" x2="27" y2="20" stroke="#00f5d4" stroke-width="3" stroke-linecap="round"/><circle cx="27" cy="20" r="3.5" fill="#00ff88"/><line x1="67" y1="38" x2="73" y2="20" stroke="#00f5d4" stroke-width="3" stroke-linecap="round"/><circle cx="73" cy="20" r="3.5" fill="#00ff88"/><rect x="33" y="46" width="34" height="18" rx="4" fill="#07141c" stroke="#58f0cf" stroke-width="1.5"/><rect x="37" y="56" width="4" height="5" rx="1" fill="#00ff88"/><rect x="44" y="53" width="4" height="8" rx="1" fill="#00ff88"/><rect x="51" y="50" width="4" height="11" rx="1" fill="#00ff88"/><rect x="58" y="47" width="4" height="14" rx="1" fill="#00ff88"/><circle cx="30" cy="65" r="2" fill="#ff4757"/><circle cx="70" cy="65" r="2" fill="#00f5d4"/>`,
             sir_cheeseburger: `<circle cx="50" cy="50" r="34" fill="#2b2d42" stroke="#ffb830" stroke-width="4"/><path d="M22 36Q50 14 78 36L72 74Q50 86 28 74Z" fill="#3d405b" stroke="#f4a261" stroke-width="2.5"/><path d="M24 35Q50 16 76 35L74 46Q50 36 26 46Z" fill="#e07a5f"/><circle cx="38" cy="28" r="1.5" fill="#ffffff"/><circle cx="50" cy="24" r="1.5" fill="#ffffff"/><circle cx="62" cy="28" r="1.5" fill="#ffffff"/><circle cx="44" cy="34" r="1.5" fill="#ffffff"/><circle cx="56" cy="34" r="1.5" fill="#ffffff"/><rect x="28" y="44" width="44" height="7" rx="2" fill="#ffb830" stroke="#d48b00" stroke-width="1.5"/><rect x="32" y="54" width="36" height="5" rx="2" fill="#1b1d2b"/><line x1="42" y1="54" x2="42" y2="59" stroke="#3d405b" stroke-width="2"/><line x1="50" y1="54" x2="50" y2="59" stroke="#3d405b" stroke-width="2"/><line x1="58" y1="54" x2="58" y2="59" stroke="#3d405b" stroke-width="2"/><path d="M14 48L24 44L24 64L14 60Z" fill="#f4a261" stroke="#ffb830" stroke-width="1.5"/><path d="M86 48L76 44L76 64L86 60Z" fill="#f4a261" stroke="#ffb830" stroke-width="1.5"/><path d="M72 16L82 6L86 10L76 20Z" fill="#ffb830" stroke="#ffffff" stroke-width="1.5"/><polygon points="76,20 70,26 74,30 80,24" fill="#3d405b"/><polygon points="78,10 88,20 74,34 64,24" fill="none"/>`,
             evil_doctor: `<circle cx="50" cy="47" r="30" fill="#183c38" stroke="#51ffad" stroke-width="4"/><path d="M24 37Q50 10 76 37L70 48H30Z" fill="#e8fff7"/><path d="M43 24h14v8H43zM46 21h8v14h-8z" fill="#ff4f74"/><circle cx="39" cy="49" r="6" fill="#87ffcf"/><circle cx="61" cy="49" r="6" fill="#87ffcf"/><path d="M36 65Q50 75 64 65" fill="none" stroke="#b7ffe1" stroke-width="5"/><path d="M19 71Q50 57 81 71L88 96H12Z" fill="#522c75" stroke="#9d68db" stroke-width="3"/><path d="M47 73h6v18h-6zM41 79h18v6H41z" fill="#54ffac"/>`,
             bouncin_balls: `<circle cx="50" cy="50" r="35" fill="#127bd1" stroke="#7df2ff" stroke-width="4"/><path d="M22 44Q50 15 78 44M22 56Q50 85 78 56M50 15v70" fill="none" stroke="#e7fbff" stroke-width="5"/><circle cx="39" cy="45" r="4" fill="#071b37"/><circle cx="61" cy="45" r="4" fill="#071b37"/><path d="M38 63Q50 70 62 63" fill="none" stroke="#071b37" stroke-width="4"/>`,
@@ -16736,6 +16760,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         else if (brawler === 'ramage') base = 1200;
         else if (brawler === 'upgradart') base = 1350;
         else if (brawler === 'cinderion') base = 1800;
+        else if (brawler === 'weefee') base = 1400;
         else if (brawler === 'sir_cheeseburger') base = 1300;
         else if (brawler === 'angel') base = 1700;
         else if (brawler === 'demon') base = 1800;
@@ -16768,7 +16793,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       adlof:6, daggershard:10, decayer:6, fuel:6, ice_cream:6, paradox:6, peter_pickle:6, scuba_diver:5, screener:6, tempo_maker:14, unstable:5, witch:7,
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
-      portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, sir_cheeseburger:4
+      portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, sir_cheeseburger:4
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -18941,6 +18966,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   }
 
   function AOEDamage(x, y, radius, damage, ownerId, isSuper = false) {
+      const aoeOwner = ownerId ? (ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find(bt => bt && bt.id === ownerId) : null)) : null;
+      if (aoeOwner && (aoeOwner.weefeeInterferenceUntil || 0) > performance.now()) {
+          damage = Math.round(damage * 0.80);
+      }
     let owner = ownerId === player.id ? player : bots.find(bt=>bt.id===ownerId);
     let hitCount = 0;
     // Size cards must also affect attacks implemented as direct blasts, melee
@@ -20780,7 +20809,36 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     fromEntity.visualAimAngle = ang;
     fromEntity.visualAttackAt = now;
 
-    if (brawler === 'sir_cheeseburger') {
+    if (brawler === 'weefee') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const now = performance.now();
+        const maxRange = 600;
+        const targetDist = clamp(Math.hypot(dx, dy) || maxRange, 100, maxRange);
+        const finalTargetX = clamp(fromEntity.x + Math.cos(ang) * targetDist, 40, WORLD_W - 40);
+        const finalTargetY = clamp(fromEntity.y + Math.sin(ang) * targetDist, 40, WORLD_H - 40);
+        const flightTime = targetDist / 620;
+
+        bullets.push({
+            ownerBrawler: 'weefee',
+            isWeeFeeToss: true,
+            startX: fromEntity.x,
+            startY: fromEntity.y,
+            x: fromEntity.x,
+            y: fromEntity.y,
+            targetX: finalTargetX,
+            targetY: finalTargetY,
+            vx: ((finalTargetX - fromEntity.x) / flightTime),
+            vy: ((finalTargetY - fromEntity.y) / flightTime),
+            life: 0,
+            maxLife: flightTime,
+            damage: 1200,
+            pierce: true,
+            ownerId: fromEntity.id,
+            hitIds: {},
+            hyperVisual: hyper,
+            isHyper: hyper
+        });
+    } else if (brawler === 'sir_cheeseburger') {
         ensureSirCheeseburgerState(fromEntity);
         const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
         const stats = getScaledStats('sir_cheeseburger', level);
@@ -25451,6 +25509,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     if (combatBrawler === 'awakenator') { castAwakenatorSuper(player,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'king') { castKingSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'anti_royal') { if(!castAntiRoyalSuper(player,!!isHypercharged,wm.x,wm.y))superCharge=100; updateSuperButton(); return; }
+    if (combatBrawler === 'weefee') { castWeeFeeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'sir_cheeseburger') { castSirCheeseburgerSuper(player, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'cursed') { castCursedStorm(player,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'darkener') { castDarkagon(player,wm.x,wm.y,!!isHypercharged); updateSuperButton(); return; }
@@ -26609,6 +26668,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if(!enrageKingPrincesses(bot))setEntityGadgetCooldownUntil(bot,now,g);
     } else if (bot.brawler === 'king' && g === 'g2') {
       bot.kingSiegeRoundArmed=true;bot.gadgetArmed=true;spawnFloatingText(bot.x,bot.y-34,'SIEGE ORDER','#ffcf52');
+        } else if (bot.brawler === 'weefee' && g === 'g1') {
+        triggerWeeFeeOverclockGadget(bot);
+    } else if (bot.brawler === 'weefee' && g === 'g2') {
+        triggerWeeFeeRebootGadget(bot);
     } else if (bot.brawler === 'sir_cheeseburger' && g === 'g1') {
       const tx = target ? target.x : (bot.x + Math.cos(ang) * 180);
       const ty = target ? target.y : (bot.y + Math.sin(ang) * 180);
@@ -27093,6 +27156,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     if (botCombatBrawler === 'awakenator') { castAwakenatorSuper(bot,isHyper); return; }
     if (botCombatBrawler === 'king') { castKingSuper(bot,isHyper,targetX,targetY); return; }
     if (botCombatBrawler === 'anti_royal') { if(!castAntiRoyalSuper(bot,isHyper,targetX,targetY))bot.superCharge=100; return; }
+    if (botCombatBrawler === 'weefee') { castWeeFeeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'sir_cheeseburger') { castSirCheeseburgerSuper(bot, isHyper); return; }
     const dx = targetX - bot.x; const dy = targetY - bot.y; const ang = Math.atan2(dy, dx);
 
@@ -28427,6 +28491,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         spawnFloatingText(player.x, player.y - 36, '☠️ TOXIC CALTROPS!', '#a855f7');
         updateGadgetButton();
+        } else if (curBrawler === 'weefee' && curGadget === 'g1') {
+      if (triggerWeeFeeOverclockGadget(player)) { gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); }
+    } else if (curBrawler === 'weefee' && curGadget === 'g2') {
+      if (triggerWeeFeeRebootGadget(player)) { gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); }
     } else if (curBrawler === 'sir_cheeseburger' && curGadget === 'g1') {
         const mw = getMouseWorld();
         executeBurgerDash(player, mw.x, mw.y);
@@ -35984,6 +36052,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             return false;
         }
 
+        // Wee-Fee SP1 Signal Interference Debuff (attacker deals 20% less damage)
+        const projectileOwner = b && b.ownerId ? (b.ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find(bt => bt && bt.id === b.ownerId) : null)) : null;
+        if (projectileOwner && (projectileOwner.weefeeInterferenceUntil || 0) > performance.now()) {
+            b.damage = Math.round((b.damage || 0) * 0.80);
+        }
+
         // Sir Cheeseburger Super Chest Guard Damage Reduction
         if (target && (target.sirChestGuardUntil || 0) > performance.now()) {
             ensureSirCheeseburgerState(target);
@@ -36269,6 +36343,18 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             target.vx = (target.vx || 0) + Math.cos(pullAng) * 221;
             target.vy = (target.vy || 0) + Math.sin(pullAng) * 221;
             explosions.push({ x: target.x, y: target.y, radius: 38, life: 0, maxLife: 0.2, color: '#d957ff' });
+        }
+    }
+    if (b.isWeeFeeWifiWave) {
+        const distCenter = Math.hypot(target.x - (b.targetCenterX || target.x), target.y - (b.targetCenterY || target.y));
+        if (distCenter <= (b.interferenceRadius || 45)) {
+            b.damage = b.centerDamage || 750;
+            if (b.sp1) {
+                target.weefeeInterferenceUntil = performance.now() + 3000;
+                spawnFloatingText(target.x, target.y - 32, '📶 LAG -20% DMG', '#00f5d4');
+            }
+        } else {
+            b.damage = b.damage || 1100;
         }
     }
     if (b.isXrayBeam) {
@@ -37894,6 +37980,197 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       boss.beastBossNextFrenzy = now + 999999;
   }
 
+  
+  // Wee-Fee Network & Signal Pole Systems
+  let weefeePoles = [];
+
+  function clearWeeFeeMatchState() {
+      weefeePoles = [];
+  }
+
+  function spawnWeeFeePole(owner, x, y, isHyper = false) {
+      const ownerId = typeof owner === 'object' ? owner.id : owner;
+      const ownerEntity = ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find(bt => bt && bt.id === ownerId) : null);
+      const hasSp2 = ownerEntity ? (ownerEntity.id === player.id ? (selectedStar === 'long' || selectedStar === 'sp2') : (ownerEntity.selectedStar === 'long' || ownerEntity.selectedStar === 'sp2')) : false;
+      const isOwnerHyper = isHyper || (ownerEntity && isEntityHyperchargedNow(ownerEntity, performance.now()));
+      const maxPoles = isOwnerHyper ? 4 : 3;
+
+      const currentPoles = weefeePoles.filter(p => p.ownerId === ownerId);
+      while (currentPoles.length >= maxPoles) {
+          const oldest = currentPoles.shift();
+          const idx = weefeePoles.indexOf(oldest);
+          if (idx !== -1) {
+              weefeePoles.splice(idx, 1);
+              if (hasSp2) {
+                  AOEDamage(oldest.x, oldest.y, 90, 1400, ownerId);
+                  spawnFloatingText(oldest.x, oldest.y - 30, 'E-WASTE BOOM!', '#00f5d4');
+                  explosions.push({ x: oldest.x, y: oldest.y, radius: 90, life: 0, maxLife: 0.28, color: '#00f5d4' });
+              }
+          }
+      }
+
+      weefeePoles.push({
+          id: 'pole_' + Math.random().toString(36).slice(2, 9),
+          x,
+          y,
+          ownerId,
+          createdAt: performance.now(),
+          nextPulseAt: performance.now() + 650,
+          isHyper: !!isOwnerHyper
+      });
+      spawnFloatingText(x, y - 36, 'SIGNAL POLE!', '#00f5d4');
+      explosions.push({ x, y, radius: 52, life: 0, maxLife: 0.22, color: isOwnerHyper ? '#d946ef' : '#00f5d4' });
+  }
+
+  function castWeeFeeSuper(owner, hyper, targetX, targetY) {
+      const now = performance.now();
+      owner.weefeeMobileDataUntil = now + 6000;
+      spawnFloatingText(owner.x, owner.y - 45, '5G MOBILE DATA!', '#00f5d4');
+      explosions.push({ x: owner.x, y: owner.y, radius: 140, life: 0, maxLife: 0.35, color: hyper ? '#d946ef' : '#00f5d4' });
+
+      const ownerPoles = weefeePoles.filter(p => p.ownerId === owner.id);
+      ownerPoles.forEach((pole, idx) => {
+          pole.nextPulseAt = now + 100;
+          if (hyper) {
+              setTimeout(() => {
+                  AOEDamage(pole.x, pole.y, 110, 1800, owner.id, true);
+                  spawnFloatingText(pole.x, pole.y - 40, '🛰️ SATELLITE STRIKE!', '#d946ef');
+                  explosions.push({ x: pole.x, y: pole.y, radius: 110, life: 0, maxLife: 0.45, color: 'rgba(217, 70, 239, 0.95)' });
+              }, idx * 120);
+          }
+      });
+  }
+
+  function triggerWeeFeeOverclockGadget(owner) {
+      const ownerPoles = weefeePoles.filter(p => p.ownerId === owner.id);
+      if (!ownerPoles.length) {
+          spawnFloatingText(owner.x, owner.y - 32, 'NO POLES ACTIVE!', '#ff6b81');
+          return false;
+      }
+      const now = performance.now();
+      spawnFloatingText(owner.x, owner.y - 40, '⚡ OVERCLOCKED!', '#00ff88');
+      
+      const cx = ownerPoles.reduce((acc, p) => acc + p.x, 0) / ownerPoles.length;
+      const cy = ownerPoles.reduce((acc, p) => acc + p.y, 0) / ownerPoles.length;
+
+      for (let burst = 0; burst < 2; burst++) {
+          setTimeout(() => {
+              for (const pole of ownerPoles) {
+                  const ang = Math.atan2(cy - pole.y, cx - pole.x);
+                  bullets.push({
+                      ownerBrawler: 'weefee',
+                      isWeeFeeWifiWave: true,
+                      x: pole.x,
+                      y: pole.y,
+                      vx: Math.cos(ang) * 440,
+                      vy: Math.sin(ang) * 440,
+                      targetCenterX: cx,
+                      targetCenterY: cy,
+                      interferenceRadius: 45,
+                      life: 0,
+                      maxLife: Math.max(0.4, Math.hypot(cx - pole.x, cy - pole.y) / 440 + 0.3),
+                      damage: 1200,
+                      centerDamage: 850,
+                      ownerId: owner.id,
+                      hitIds: {},
+                      hitboxMod: 2.4,
+                      hyperVisual: true,
+                      sp1: owner.id === player.id ? (selectedStar === 'slow' || selectedStar === 'sp1') : (owner.selectedStar === 'slow' || owner.selectedStar === 'sp1')
+                  });
+              }
+          }, burst * 160);
+      }
+      return true;
+  }
+
+  function triggerWeeFeeRebootGadget(owner) {
+      const ownerPoles = weefeePoles.filter(p => p.ownerId === owner.id);
+      if (!ownerPoles.length) {
+          spawnFloatingText(owner.x, owner.y - 32, 'NO POLES ACTIVE!', '#ff6b81');
+          return false;
+      }
+      const count = ownerPoles.length;
+      const hasSp2 = owner.id === player.id ? (selectedStar === 'long' || selectedStar === 'sp2') : (owner.selectedStar === 'long' || owner.selectedStar === 'sp2');
+      
+      for (const pole of ownerPoles) {
+          const idx = weefeePoles.indexOf(pole);
+          if (idx !== -1) weefeePoles.splice(idx, 1);
+          if (hasSp2) {
+              AOEDamage(pole.x, pole.y, 90, 1400, owner.id);
+              explosions.push({ x: pole.x, y: pole.y, radius: 90, life: 0, maxLife: 0.28, color: '#00f5d4' });
+          }
+      }
+      doHeal(owner, count * 1000);
+      if (owner.id === player.id) ammo = Math.min(maxAmmo, ammo + 1);
+      else owner.ammo = Math.min(owner.maxAmmo || 3, (owner.ammo || 0) + 1);
+      spawnFloatingText(owner.x, owner.y - 42, `+${count * 1000} HP REBOOT!`, '#58f0cf');
+      return true;
+  }
+
+  function updateWeeFeeSystems(dt) {
+      const now = performance.now();
+      const allEntities = [player, ...(typeof bots !== 'undefined' && Array.isArray(bots) ? bots : [])].filter(e => e && e.hp > 0);
+
+      for (const entity of allEntities) {
+          const brawlerId = entity === player ? selectedBrawler : entity.brawler;
+          if (brawlerId !== 'weefee') continue;
+
+          const ownerPoles = weefeePoles.filter(p => p.ownerId === entity.id);
+          if (!ownerPoles.length) continue;
+
+          const is5G = now < (entity.weefeeMobileDataUntil || 0);
+          const isHyper = isEntityHyperchargedNow(entity, now);
+          const pulseInterval = is5G ? 500 : 1100;
+
+          const cx = ownerPoles.reduce((acc, p) => acc + p.x, 0) / ownerPoles.length;
+          const cy = ownerPoles.reduce((acc, p) => acc + p.y, 0) / ownerPoles.length;
+
+          // 5G Mobile Data Area Pulse
+          if (is5G && (entity.weefeeNext5GPulseAt || 0) <= now) {
+              entity.weefeeNext5GPulseAt = now + 420;
+              for (const pole of ownerPoles) {
+                  AOEDamage(pole.x, pole.y, 120, 850, entity.id, true);
+                  for (const foe of allEntities) {
+                      if (foe.id !== entity.id && !areAlliedEntities(entity, foe) && Math.hypot(foe.x - pole.x, foe.y - pole.y) <= 120 + (foe.radius || 15)) {
+                          applyStatusEffect(foe, 'slow', 800);
+                      }
+                  }
+                  explosions.push({ x: pole.x, y: pole.y, radius: 120, life: 0, maxLife: 0.22, color: 'rgba(0, 245, 212, 0.45)' });
+              }
+          }
+
+          // Wi-Fi Waves towards center
+          for (const pole of ownerPoles) {
+              if (now >= pole.nextPulseAt) {
+                  pole.nextPulseAt = now + pulseInterval;
+                  const ang = (ownerPoles.length > 1) ? Math.atan2(cy - pole.y, cx - pole.x) : (now / 200) % (Math.PI * 2);
+                  const dist = (ownerPoles.length > 1) ? Math.hypot(cx - pole.x, cy - pole.y) : 260;
+                  
+                  bullets.push({
+                      ownerBrawler: 'weefee',
+                      isWeeFeeWifiWave: true,
+                      x: pole.x,
+                      y: pole.y,
+                      vx: Math.cos(ang) * 380,
+                      vy: Math.sin(ang) * 380,
+                      targetCenterX: cx,
+                      targetCenterY: cy,
+                      interferenceRadius: 45,
+                      life: 0,
+                      maxLife: Math.max(0.4, dist / 380 + 0.25),
+                      damage: is5G ? 1250 : 1100,
+                      centerDamage: is5G ? 850 : 750,
+                      ownerId: entity.id,
+                      hitIds: {},
+                      hitboxMod: 2.2,
+                      hyperVisual: isHyper,
+                      sp1: entity.id === player.id ? (selectedStar === 'slow' || selectedStar === 'sp1') : (entity.selectedStar === 'slow' || entity.selectedStar === 'sp1')
+                  });
+              }
+          }
+      }
+  }
+
   function updateAngelDemonStates(dt) {
       const now = performance.now();
       for (const entity of [player, ...bots]) {
@@ -38005,6 +38282,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     updateLavaBossEvent(now,dt);
 
     updateAngelDemonStates(dt);
+      updateWeeFeeSystems(dt);
     updatePredatorStates();
     updateSnapperWaves(dt);
 
@@ -45761,6 +46039,93 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
     }
 
+    
+      // Render Wee-Fee Signal Poles & Network Mesh
+      if (weefeePoles && weefeePoles.length > 0) {
+          const now = performance.now();
+          // Draw interconnected network laser lines between poles of same owner
+          const polesByOwner = {};
+          for (const pole of weefeePoles) {
+              polesByOwner[pole.ownerId] = polesByOwner[pole.ownerId] || [];
+              polesByOwner[pole.ownerId].push(pole);
+          }
+
+          for (const [ownerId, poles] of Object.entries(polesByOwner)) {
+              if (poles.length >= 2) {
+                  const ownerEntity = ownerId === String(player.id) ? player : (typeof bots !== 'undefined' ? bots.find(bt => bt && String(bt.id) === ownerId) : null);
+                  const is5G = ownerEntity && now < (ownerEntity.weefeeMobileDataUntil || 0);
+                  const cx = poles.reduce((acc, p) => acc + p.x, 0) / poles.length;
+                  const cy = poles.reduce((acc, p) => acc + p.y, 0) / poles.length;
+
+                  ctx.save();
+                  ctx.strokeStyle = is5G ? 'rgba(0, 245, 212, 0.85)' : 'rgba(0, 245, 212, 0.45)';
+                  ctx.lineWidth = is5G ? 3.5 : 2;
+                  ctx.setLineDash(is5G ? [6, 4] : [10, 6]);
+                  ctx.lineDashOffset = -now / 30;
+                  ctx.beginPath();
+                  for (let p1 = 0; p1 < poles.length; p1++) {
+                      for (let p2 = p1 + 1; p2 < poles.length; p2++) {
+                          ctx.moveTo(poles[p1].x, poles[p1].y);
+                          ctx.lineTo(poles[p2].x, poles[p2].y);
+                      }
+                  }
+                  ctx.stroke();
+                  ctx.setLineDash([]);
+
+                  // Draw central network hub node
+                  ctx.fillStyle = is5G ? 'rgba(0, 245, 212, 0.35)' : 'rgba(0, 245, 212, 0.18)';
+                  ctx.beginPath();
+                  ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.strokeStyle = '#00f5d4';
+                  ctx.lineWidth = 1.5;
+                  ctx.stroke();
+                  ctx.restore();
+              }
+          }
+
+          // Draw individual Signal Poles
+          for (const pole of weefeePoles) {
+              const pulse = 1 + Math.sin((now - pole.createdAt) / 120) * 0.08;
+              ctx.save();
+              // Base holographic ground ring
+              ctx.strokeStyle = pole.isHyper ? '#d946ef' : '#00f5d4';
+              ctx.shadowColor = ctx.strokeStyle;
+              ctx.shadowBlur = 14;
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.arc(pole.x, pole.y, 22 * pulse, 0, Math.PI * 2);
+              ctx.stroke();
+
+              // Antenna pillar
+              ctx.fillStyle = '#0f2430';
+              ctx.strokeStyle = '#00f5d4';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.rect(pole.x - 4, pole.y - 28, 8, 28);
+              ctx.fill();
+              ctx.stroke();
+
+              // Crossbar fins
+              ctx.strokeStyle = '#00ff88';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.moveTo(pole.x - 14, pole.y - 18);
+              ctx.lineTo(pole.x + 14, pole.y - 18);
+              ctx.moveTo(pole.x - 10, pole.y - 10);
+              ctx.lineTo(pole.x + 10, pole.y - 10);
+              ctx.stroke();
+
+              // Blinking top LED
+              const ledOn = Math.sin(now / 150) > 0;
+              ctx.fillStyle = ledOn ? (pole.isHyper ? '#ff00ff' : '#00ff88') : '#ff4757';
+              ctx.beginPath();
+              ctx.arc(pole.x, pole.y - 30, 3.5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+          }
+      }
+
     // Render Ramage Hypercharge Shadow Clones
     const ramageShadowEntities = [player, ...(typeof bots !== 'undefined' && Array.isArray(bots) ? bots : [])].filter(ent => ent && ent.hp > 0 && Array.isArray(ent.ramageShadowClones) && ent.ramageShadowClones.length > 0);
     for (const ent of ramageShadowEntities) {
@@ -47734,6 +48099,32 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.fillText(isHypercharged ? '⚡💨' : '🎪', deployX, deployY);
 
           ctx.restore();
+      }
+            if (selectedBrawler === 'weefee' && !aimingSuper) {
+          const maxRange = 600;
+          const dist = clamp(rawAimDist, 80, maxRange);
+          const landX = clamp(player.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
+          const landY = clamp(player.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
+          
+          ctx.save();
+          ctx.strokeStyle = '#00f5d4';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(player.x, player.y);
+          ctx.lineTo(landX, landY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          
+          ctx.fillStyle = 'rgba(0, 245, 212, 0.25)';
+          ctx.strokeStyle = '#00f5d4';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(landX, landY, 32, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+          return;
       }
       if (selectedBrawler === 'sir_cheeseburger' && !aimingSuper) {
           ctx.save();
@@ -50679,6 +51070,55 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.fillStyle=outer;ctx.beginPath();ctx.moveTo(2,-4);ctx.lineTo(9,0);ctx.lineTo(2,4);ctx.closePath();ctx.fill();
           if(b.hyperVisual){ctx.rotate(performance.now()/180);ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;for(let i=0;i<4;i++){ctx.rotate(Math.PI/2);ctx.beginPath();ctx.moveTo(13,0);ctx.lineTo(19,0);ctx.stroke();}}
           ctx.restore();continue;
+      }
+            if (b.isWeeFeeToss) {
+          const progress = clamp((b.life || 0) / (b.maxLife || 1), 0, 1);
+          const lift = Math.sin(progress * Math.PI) * 70;
+          ctx.save();
+          // Ground target landing shadow
+          ctx.fillStyle = 'rgba(0, 245, 212, 0.28)';
+          ctx.beginPath();
+          ctx.arc(b.targetX, b.targetY, 28 * progress, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#00f5d4';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Lobbed pole projectile
+          ctx.translate(b.x, b.y - lift);
+          ctx.rotate(progress * Math.PI * 3);
+          ctx.fillStyle = '#132c3a';
+          ctx.strokeStyle = b.hyperVisual ? '#d946ef' : '#00f5d4';
+          ctx.lineWidth = 2.5;
+          ctx.fillRect(-4, -16, 8, 32);
+          ctx.strokeRect(-4, -16, 8, 32);
+          ctx.fillStyle = '#00ff88';
+          ctx.beginPath();
+          ctx.arc(0, -18, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          continue;
+      }
+      if (b.isWeeFeeWifiWave) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(Math.atan2(b.vy, b.vx));
+          ctx.strokeStyle = b.hyperVisual ? '#d946ef' : '#00f5d4';
+          ctx.shadowColor = ctx.strokeStyle;
+          ctx.shadowBlur = 12;
+          ctx.lineWidth = 3;
+          // 3 concentric Wi-Fi arcs 📶
+          for (let arc = 1; arc <= 3; arc++) {
+              ctx.beginPath();
+              ctx.arc(0, 0, arc * 6, -0.75, 0.75);
+              ctx.stroke();
+          }
+          ctx.fillStyle = '#00ff88';
+          ctx.beginPath();
+          ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          continue;
       }
       if (b.isAngelLight) {
           ctx.save();ctx.shadowColor=b.hyperVisual?'#db66ff':'#fff0a8';ctx.shadowBlur=16;ctx.fillStyle=b.hyperVisual?'#f0a5ff':'#fff8c9';ctx.beginPath();ctx.arc(b.x,b.y,b.hyperVisual?8:7,0,Math.PI*2);ctx.fill();ctx.restore();continue;
