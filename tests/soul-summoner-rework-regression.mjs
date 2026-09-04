@@ -9,17 +9,16 @@ for (const c of ['Rare', 'Epic', 'Mythic', 'Exotic', 'Unique', 'Anomaly']) {
     assert.match(game, new RegExp(`id:\\s*'${c}'`), `Constellation ${c} is defined`);
 }
 
-// 2. Progression helpers exist
-assert.match(game, /function getConstellationProgress\(constellationId\)/, 'getConstellationProgress helper exists');
-assert.match(game, /function getActiveConstellationTier\(\)/, 'getActiveConstellationTier helper exists');
-assert.match(game, /function claimConstellationMilestone\(constellationId\)/, 'claimConstellationMilestone helper exists');
+// 2. Choice & Random helpers exist
+assert.match(game, /function getOrGenerateCurrentChoices/, 'getOrGenerateCurrentChoices helper exists');
+assert.match(game, /function rerollCurrentChoices/, 'rerollCurrentChoices helper exists');
+assert.match(game, /function getConstellationProgress/, 'getConstellationProgress helper exists');
+assert.match(game, /function getActiveConstellationTier/, 'getActiveConstellationTier helper exists');
 
-// 3. openSoulSummoner UI
+// 3. UI Title & Choice Options
 assert.match(game, /SOUL SUMMONER · STARR ROAD/, 'Soul Summoner Starr Road title rendered');
-assert.match(game, /CURRENT CHANNELING TARGET/, 'Channeling target focus card rendered');
-assert.match(game, /CONSTELLATION/, 'Constellation section rendered');
+assert.match(game, /CURRENT STARR ROAD STEP/, 'Current Starr Road step rendered');
+assert.match(game, /RANDOM PICK/, 'Random Pick button exists');
+assert.match(game, /REROLL OPTIONS/, 'Reroll Options button exists');
 
-// 4. Milestone rewards
-assert.match(game, /milestoneReward/, 'Milestone rewards configured for all tiers');
-
-console.log('Soul Summoner Constellation & Starr Road regression test passed successfully!');
+console.log('Soul Summoner Choice & Random regression tests passed successfully!');
