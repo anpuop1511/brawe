@@ -3149,44 +3149,119 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
         function _tryShowUnlockBrawlerPopup(justUnlockedId) {
             if (!document.body) return;
-            const meta = brawlerData[justUnlockedId] || { name: justUnlockedId, color: '#6ee7ff' };
+            ensureSoulSummonerData();
+            const meta = brawlerData[justUnlockedId] || { name: justUnlockedId, color: '#6ee7ff', role: 'Fighter' };
+            const rarity = getBrawlerRarity(justUnlockedId);
+            
             const popup = document.createElement('div');
-            popup.style.cssText = 'position:fixed;inset:0;background:rgba(4,8,20,0.92);z-index:2000;display:flex;align-items:center;justify-content:center;font-family:sans-serif;color:#fff;';
+            popup.style.cssText = 'position:fixed;inset:0;background:radial-gradient(ellipse at 50% 20%, rgba(16,25,52,0.96), rgba(3,6,14,0.98));z-index:2500;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;color:#fff;padding:clamp(8px,2vh,16px);box-sizing:border-box;backdrop-filter:blur(12px);';
+            
             const box = document.createElement('div');
-            box.style.cssText = 'background:#0e1830;border:3px solid ' + (meta.color || '#caa6ff') + ';border-radius:18px;padding:28px 32px;max-width:380px;text-align:center;';
-            box.innerHTML = `<div style="font-size:38px;">🎉</div><div style="font-size:22px;font-weight:900;color:${meta.color||'#caa6ff'};margin:8px 0;">${meta.name || justUnlockedId} UNLOCKED!</div><div style="font-size:13px;color:#9dc0ea;margin-bottom:18px;">Auto-unlocked via Soul Summoner</div>`;
+            box.style.cssText = 'background:linear-gradient(180deg,#0f1a35 0%,#060b17 100%);border:2px solid ' + (meta.color || '#caa6ff') + ';border-radius:22px;padding:20px;width:min(520px,96vw);max-height:calc(100dvh - 24px);max-height:calc(100vh - 24px);overflow-y:auto;text-align:center;box-sizing:border-box;box-shadow:0 25px 70px rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;gap:12px;';
+            
+            const portraitMarkup = getBrawlerPortraitMarkup(justUnlockedId);
+            
+            box.innerHTML = `
+                <div style="font-size:36px;animation:bounce 1s infinite;">🎉</div>
+                <div style="width:72px;height:72px;border-radius:20px;background:radial-gradient(circle,${meta.color||'#6ee7ff'}55,#081020);border:2.5px solid ${meta.color||'#6ee7ff'};display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:0 0 24px ${meta.color||'#6ee7ff'}44;">
+                    ${portraitMarkup}
+                </div>
+                <div style="font-size:22px;font-weight:900;color:${meta.color||'#caa6ff'};margin-top:-4px;">
+                    ${meta.name || justUnlockedId} UNLOCKED!
+                </div>
+                <div style="font-size:12px;color:#9dc0ea;margin-top:-6px;">
+                    ${rarity.toUpperCase()} • ${meta.role || 'Fighter'} • Auto-unlocked via Soul Summoner
+                </div>
+            `;
+            
             const remaining = allBrawlers.filter(b => getBrawlerRarity(b) !== 'Starter' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
             if (remaining.length > 0) {
-                const pickLabel = document.createElement('div');
-                pickLabel.textContent = 'Choose your next unlock target:';
-                pickLabel.style.cssText = 'font-size:14px;font-weight:800;color:#ffd9c0;margin-bottom:10px;';
-                box.appendChild(pickLabel);
-                const grid = document.createElement('div');
-                grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;justify-content:center;';
-                for (const bid of remaining) {
-                    const bmeta = brawlerData[bid] || { name: bid, color: '#caa6ff' };
-                    const cost = getSoulUnlockCostForRarity(getBrawlerRarity(bid));
-                    const btn = document.createElement('button');
-                    btn.style.cssText = `padding:8px 12px;border-radius:10px;border:2px solid ${bmeta.color||'#caa6ff'};background:#162645;color:#f5f7ff;font-weight:800;cursor:pointer;font-size:12px;`;
-                    btn.innerHTML = `${bmeta.name||bid}<br><span style="font-size:10px;color:#9dc0ea;">${cost} souls</span>`;
-                    btn.onclick = () => {
+                const choices = typeof getOrGenerateCurrentChoices === 'function' ? getOrGenerateCurrentChoices(3) : remaining.slice(0, 3);
+                const activeTier = typeof getActiveConstellationTier === 'function' ? getActiveConstellationTier() : getBrawlerRarity(choices[0] || remaining[0]);
+                const curCost = getSoulUnlockCostForRarity(activeTier);
+                
+                const nextSection = document.createElement('div');
+                nextSection.style.cssText = 'width:100%;background:rgba(8,14,28,0.7);border:1px solid rgba(138,92,255,0.25);border-radius:16px;padding:12px;box-sizing:border-box;margin-top:4px;';
+                nextSection.innerHTML = `
+                    <div style="font-size:11px;font-weight:900;color:#caa6ff;text-transform:uppercase;letter-spacing:0.06em;">
+                        🛤️ NEXT ON STARR ROAD · ${activeTier.toUpperCase()} CHOICE
+                    </div>
+                    <div style="font-size:12px;color:#dbe8ff;margin-top:2px;">
+                        Choose your next target or let random decide (${curCost} Souls):
+                    </div>
+                `;
+                
+                const cardsContainer = document.createElement('div');
+                cardsContainer.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:8px;margin-top:10px;width:100%;box-sizing:border-box;';
+                
+                choices.forEach(bid => {
+                    const bmeta = brawlerData[bid] || { name: bid, role: 'Fighter', color: '#6ee7ff' };
+                    const isSelected = playerData.soulSummoner.targetBrawler === bid;
+                    
+                    const cCard = document.createElement('div');
+                    cCard.style.cssText = `background:${isSelected ? 'linear-gradient(135deg,rgba(30,50,90,0.9),rgba(15,25,50,0.9))' : 'rgba(12,20,38,0.6)'};border:2px solid ${isSelected ? '#ffd166' : 'rgba(255,255,255,0.1)'};border-radius:12px;padding:10px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;transition:all 0.2s;box-sizing:border-box;`;
+                    
+                    cCard.innerHTML = `
+                        <div style="font-size:9px;font-weight:900;color:${isSelected ? '#ffd166' : '#8eaad0'};margin-bottom:4px;">
+                            ${isSelected ? '🎯 TARGET' : 'CHOOSE'}
+                        </div>
+                        <div style="width:40px;height:40px;border-radius:10px;background:radial-gradient(circle,${bmeta.color||'#6ee7ff'}44,#081020);border:1.5px solid ${bmeta.color||'#6ee7ff'};display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:4px;">
+                            ${getBrawlerPortraitMarkup(bid)}
+                        </div>
+                        <div style="font-size:12px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;">
+                            ${bmeta.name || bid}
+                        </div>
+                        <div style="font-size:9px;color:#8eaad0;">${bmeta.role || 'Fighter'}</div>
+                    `;
+                    
+                    cCard.onclick = () => {
                         playerData.soulSummoner.targetBrawler = bid;
-                        playerData.soulSummoner.pendingTargetPick = null;
                         saveProgress();
-                        autoSpendSoulsOnTarget();
                         document.body.removeChild(popup);
+                        autoSpendSoulsOnTarget();
                     };
-                    grid.appendChild(btn);
-                }
-                box.appendChild(grid);
+                    cardsContainer.appendChild(cCard);
+                });
+                nextSection.appendChild(cardsContainer);
+                box.appendChild(nextSection);
+                
+                // Action Buttons Row
+                const actionRow = document.createElement('div');
+                actionRow.style.cssText = 'display:flex;gap:8px;justify-content:center;flex-wrap:wrap;width:100%;margin-top:4px;';
+                
+                const randomBtn = document.createElement('button');
+                randomBtn.innerHTML = '🎲 <b>RANDOM PICK</b>';
+                randomBtn.style.cssText = 'padding:9px 16px;border-radius:10px;border:1.5px solid #6ee7ff;background:rgba(110,231,255,0.12);color:#6ee7ff;font-size:12px;font-weight:800;cursor:pointer;';
+                randomBtn.onclick = () => {
+                    if (choices.length > 0) {
+                        const rnd = choices[Math.floor(Math.random() * choices.length)];
+                        playerData.soulSummoner.targetBrawler = rnd;
+                        saveProgress();
+                    }
+                    document.body.removeChild(popup);
+                    autoSpendSoulsOnTarget();
+                };
+                
+                const continueBtn = document.createElement('button');
+                continueBtn.textContent = '✨ CONTINUE';
+                continueBtn.style.cssText = 'padding:9px 22px;border-radius:10px;border:none;background:linear-gradient(135deg,#5df2c2,#00b894);color:#05141b;font-weight:900;font-size:12px;cursor:pointer;';
+                continueBtn.onclick = () => {
+                    document.body.removeChild(popup);
+                    autoSpendSoulsOnTarget();
+                };
+                
+                actionRow.appendChild(randomBtn);
+                actionRow.appendChild(continueBtn);
+                box.appendChild(actionRow);
             } else {
-                box.innerHTML += `<div style="font-size:16px;color:#5df2c2;font-weight:900;">🏆 All brawlers unlocked!</div><div style="font-size:12px;color:#9dc0ea;margin-top:6px;">Souls now go to Soul Bank & Soul Water rewards.</div>`;
+                box.innerHTML += `<div style="font-size:16px;color:#5df2c2;font-weight:900;">🏆 All fighters unlocked!</div><div style="font-size:12px;color:#9dc0ea;">Souls now route to the Soul Bank & Soul Water Fountain.</div>`;
                 const doneBtn = document.createElement('button');
                 doneBtn.textContent = 'Amazing!';
-                doneBtn.style.cssText = 'margin-top:16px;padding:10px 20px;border-radius:8px;border:2px solid #5df2c2;background:transparent;color:#5df2c2;font-weight:800;cursor:pointer;';
+                doneBtn.style.cssText = 'margin-top:10px;padding:10px 24px;border-radius:10px;border:2px solid #5df2c2;background:transparent;color:#5df2c2;font-weight:800;cursor:pointer;';
                 doneBtn.onclick = () => document.body.removeChild(popup);
                 box.appendChild(doneBtn);
             }
+            
             popup.appendChild(box);
             document.body.appendChild(popup);
         }
@@ -3498,6 +3573,25 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             deathEffect: { type: 'dismissalBell', color: '#9b72ff', glow: true },
             isAlwaysAvailable: true
         },
+        'hyperfusion-fuser': {
+            id: 'hyperfusion-fuser',
+            name: 'Hyperfusion Fuser',
+            brawler: 'fuser',
+            rarity: 'legendary',
+            set: 'Hypercharge Transformations',
+            price: 149,
+            currency: 'gems',
+            icon: '⚛️',
+            description: 'Fuser enters battle in a split-core reactor suit, then transforms into an unstable cyan-and-violet energy form during Hypercharge. Includes transformed fighter, dual-lane plasma shots, returning Super bolts, spawn, takedown, and defeat effects.',
+            _displayColor: '#38e8ff',
+            attackEffect: { type: 'fusionBolt', color: '#38e8ff', glow: true, trailColor: '#ff477e' },
+            superEffect: { type: 'reactorBarrage', color: '#9d4dff', glow: true, trailColor: '#38e8ff' },
+            spawnEffect: { type: 'reactorOnline', color: '#38e8ff', glow: true },
+            takedownEffect: { type: 'coreBreach', color: '#ff477e', glow: true },
+            deathEffect: { type: 'fusionShutdown', color: '#9d4dff', glow: true },
+            hyperTransform: true,
+            isAlwaysAvailable: true
+        },
         'icy-zapper-miser': {
             id: 'icy-zapper-miser',
             name: 'Icy Zapper Miser',
@@ -3592,7 +3686,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (skin.brawler && projectileBrawler && projectileBrawler !== skin.brawler) return false;
 
         // Don't override special visual flags that have dedicated render blocks
-        if (b.isMagenyMagnet || b.isTrappedInMagenyVortex || b.isOrboSuper || b.isOrboMain || b.isHomerProjectile || b.isRocketeerMain || b.isRocketeerMini || b.isClassyNote) return false;
+        if (b.isMagenyMagnet || b.isTrappedInMagenyVortex || b.isOrboSuper || b.isOrboMain || b.isHomerProjectile || b.isRocketeerMain || b.isRocketeerMini || b.isClassyNote || b.isFuserBullet) return false;
 
         const color = effect.color || skin._displayColor || '#00d2d3';
         const radius = Math.max(4, (b.hitboxMod || 1) * (b.radius || 6));
@@ -5952,7 +6046,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     const CUSTOM_BRAWLER_PORTRAITS = Object.freeze(['evil_doctor', 'bouncin_balls', 'minigunnin', 'mageny', 'trampaheal', 'ramage', 'upgradart', 'rocketeer', 'sir_cheeseburger']);
     function hasCustomBrawlerPortrait(brawlerId) {
-        return CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId) || (brawlerId === 'classy' && getActiveSkinForBrawler('classy')?.id === 'back-to-school-classy');
+        return CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId)
+            || (brawlerId === 'classy' && getActiveSkinForBrawler('classy')?.id === 'back-to-school-classy')
+            || (brawlerId === 'fuser' && getActiveSkinForBrawler('fuser')?.id === 'hyperfusion-fuser');
     }
     function getBrawlerPortraitMarkup(brawlerId) {
         if (!hasCustomBrawlerPortrait(brawlerId)) return getBrawlerPortraitIcon(brawlerId);
@@ -5967,6 +6063,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             ramage: `<circle cx="50" cy="50" r="34" fill="#2c0b0e" stroke="#e74c3c" stroke-width="4"/><path d="M16 35 C8 15, 30 10, 36 28 C30 22, 18 25, 22 38 Z" fill="#f39c12" stroke="#d35400" stroke-width="2"/><path d="M84 35 C92 15, 70 10, 64 28 C70 22, 82 25, 78 38 Z" fill="#f39c12" stroke="#d35400" stroke-width="2"/><path d="M28 32 Q50 18 72 32 L76 68 Q50 82 24 68 Z" fill="#1c0d0f" stroke="#c0392b" stroke-width="3"/><path d="M30 46 L70 46 L65 58 L35 58 Z" fill="#e74c3c"/><circle cx="40" cy="52" r="3" fill="#ffeaa7"/><circle cx="60" cy="52" r="3" fill="#ffeaa7"/><path d="M42 66 L50 74 L58 66" fill="none" stroke="#f39c12" stroke-width="3" stroke-linecap="round"/>`,
             upgradart: `<circle cx="50" cy="50" r="34" fill="#0b2416" stroke="#00ff88" stroke-width="4"/><circle cx="50" cy="50" r="24" fill="#123d24" stroke="#a855f7" stroke-width="2"/><path d="M22 50h56M50 22v56" stroke="#00ff88" stroke-width="2"/><circle cx="50" cy="50" r="14" fill="#0b2416" stroke="#00e5ff" stroke-width="2"/><polygon points="50,26 56,44 74,50 56,56 50,74 44,56 26,50 44,44" fill="#00ff88"/><circle cx="50" cy="50" r="4" fill="#a855f7"/>`,
             classy: `<path d="M18 43Q50 11 82 43L76 87Q50 99 24 87Z" fill="#17366d" stroke="#55dfff" stroke-width="4"/><path d="M17 34L50 13L83 34L50 48Z" fill="#315fc9" stroke="#ffe36e" stroke-width="3"/><path d="M50 13v35M82 34v20" stroke="#ffe36e" stroke-width="3"/><circle cx="38" cy="56" r="6" fill="#eef8ff"/><circle cx="62" cy="56" r="6" fill="#eef8ff"/><circle cx="38" cy="57" r="3" fill="#13254c"/><circle cx="62" cy="57" r="3" fill="#13254c"/><path d="M38 72Q50 82 62 72" fill="none" stroke="#ffe36e" stroke-width="4"/><path d="M16 88Q50 70 84 88L91 100H9Z" fill="#4f8cff" stroke="#9b72ff" stroke-width="3"/><path d="M47 80h6v15h-6zM40 85h20v5H40z" fill="#ffe36e"/>`,
+            fuser: `<defs><linearGradient id="hfCore" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#38e8ff"/><stop offset=".5" stop-color="#17264e"/><stop offset="1" stop-color="#ff477e"/></linearGradient></defs><path d="M20 39Q50 10 80 39L75 84Q50 98 25 84Z" fill="url(#hfCore)" stroke="#dffcff" stroke-width="4"/><path d="M18 42L7 55L20 68M82 42L93 55L80 68" fill="none" stroke="#9d4dff" stroke-width="7" stroke-linecap="round"/><circle cx="38" cy="48" r="7" fill="#08142f" stroke="#38e8ff" stroke-width="3"/><circle cx="62" cy="48" r="7" fill="#08142f" stroke="#ff477e" stroke-width="3"/><path d="M39 68L50 58L61 68L50 82Z" fill="#101a39" stroke="#ffffff" stroke-width="2"/><circle cx="50" cy="70" r="7" fill="#9d4dff" stroke="#38e8ff" stroke-width="2"/><path d="M31 24L39 8L49 27M69 24L61 8L51 27" fill="#253864" stroke="#dffcff" stroke-width="3"/>`,
             rocketeer: isRankedRocketeer 
                 ? `<circle cx="50" cy="50" r="34" fill="#0f172a" stroke="#ffd166" stroke-width="4"/><path d="M22 45L50 14L78 45L70 84H30Z" fill="#1e293b" stroke="#00f5d4" stroke-width="3"/><path d="M26 44h48v16H26z" fill="#00f5d4" stroke="#ffffff" stroke-width="1.5"/><line x1="26" y1="52" x2="74" y2="52" stroke="#ffffff" stroke-width="2"/><circle cx="16" cy="38" r="8" fill="#ffd166" stroke="#ffffff" stroke-width="1.5"/><circle cx="84" cy="38" r="8" fill="#ffd166" stroke="#ffffff" stroke-width="1.5"/><polygon points="50,6 54,16 65,16 56,22 60,32 50,26 40,32 44,22 35,16 46,16" fill="#ffd166"/>`
                 : `<circle cx="50" cy="50" r="34" fill="#2d1c0d" stroke="#ff9f43" stroke-width="4"/><path d="M25 40Q50 16 75 40L72 82H28Z" fill="#6c3e1b" stroke="#d4a373" stroke-width="3"/><circle cx="38" cy="46" r="9" fill="#ffd166" stroke="#2d1c0d" stroke-width="3"/><circle cx="62" cy="46" r="9" fill="#ffd166" stroke="#2d1c0d" stroke-width="3"/><path d="M22 72Q50 86 78 72L84 88H16Z" fill="#f8f9fa" stroke="#ced4da" stroke-width="2"/><rect x="74" y="24" width="16" height="34" rx="4" fill="#2d5a27" stroke="#1b3817" stroke-width="2"/>`
@@ -43549,7 +43646,41 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
         ctx.save();
         try {
-            if (brawlerId === 'classy' && getActiveSkinForBrawler('classy')?.id === 'back-to-school-classy') {
+            if (brawlerId === 'fuser' && getActiveSkinForBrawler('fuser')?.id === 'hyperfusion-fuser') {
+                const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
+                const pulse = 0.5 + Math.sin(now * (transformed ? .018 : .008)) * .5;
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * .006) * .025 + Math.sin(aim) * attackKick * .12);
+                ctx.shadowColor = transformed ? '#d658ff' : '#38e8ff';
+                ctx.shadowBlur = transformed ? 22 + pulse * 12 : 10;
+
+                // Split reactor armor opens into a pure-energy silhouette in Hypercharge.
+                const body = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                body.addColorStop(0, transformed ? '#54f5ff' : '#163d68');
+                body.addColorStop(.48, transformed ? '#6b35d5' : '#121c3b');
+                body.addColorStop(1, transformed ? '#ff4fa3' : '#681d4b');
+                ctx.fillStyle = body; ctx.strokeStyle = transformed ? '#ffffff' : '#bff9ff'; ctx.lineWidth = transformed ? 3.5 : 2.5;
+                ctx.beginPath();ctx.roundRect(-radius*.72,-radius*.55,radius*1.44,radius*1.5,radius*.3);ctx.fill();ctx.stroke();
+
+                // Two polarized faceplates and the fusion core.
+                for (const side of [-1,1]) {
+                    ctx.fillStyle = side < 0 ? '#38e8ff' : '#ff477e';
+                    ctx.beginPath();ctx.roundRect(side*radius*.12-(side<0?radius*.4:0),-radius*.34,radius*.4,radius*.34,radius*.1);ctx.fill();
+                }
+                ctx.fillStyle='#07132d';ctx.beginPath();ctx.arc(-radius*.22,-radius*.2,radius*.075,0,Math.PI*2);ctx.arc(radius*.22,-radius*.2,radius*.075,0,Math.PI*2);ctx.fill();
+                ctx.fillStyle=transformed?'#ffffff':'#9d4dff';ctx.strokeStyle=transformed?'#38e8ff':'#e6caff';ctx.lineWidth=2.5;
+                ctx.beginPath();ctx.arc(0,radius*.38,radius*(.2+pulse*.035),0,Math.PI*2);ctx.fill();ctx.stroke();
+
+                // Twin fuse cannons track the current aim direction.
+                ctx.save();ctx.rotate(aim);for(const lane of [-1,1]){ctx.fillStyle=lane<0?'#38e8ff':'#ff477e';ctx.beginPath();ctx.roundRect(radius*.42,lane*radius*.29-radius*.09,radius*(.7+attackKick*.18),radius*.18,radius*.08);ctx.fill();}ctx.restore();
+
+                if (transformed) {
+                    ctx.globalAlpha=.42+.25*pulse;ctx.strokeStyle='#f4e8ff';ctx.lineWidth=2;
+                    for(let arc=0;arc<3;arc++){ctx.beginPath();ctx.arc(0,0,radius*(1.05+arc*.22),now*.003+arc,now*.003+arc+Math.PI*1.3);ctx.stroke();}
+                    ctx.globalAlpha=.8;for(let spark=0;spark<6;spark++){const sa=now*.004+spark*Math.PI/3,sr=radius*(1.08+pulse*.18);ctx.fillStyle=spark%2?'#ff477e':'#38e8ff';ctx.beginPath();ctx.arc(Math.cos(sa)*sr,Math.sin(sa)*sr,2.2,0,Math.PI*2);ctx.fill();}
+                }
+                if(superKick>0){ctx.globalAlpha=superKick*.75;ctx.strokeStyle='#9d4dff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,radius*(1.25+superKick*.7),0,Math.PI*2);ctx.stroke();}
+            } else if (brawlerId === 'classy' && getActiveSkinForBrawler('classy')?.id === 'back-to-school-classy') {
                 ctx.translate(entity.x,drawY-attackKick*3);ctx.rotate(Math.sin(now*.005)*.025+Math.sin(aim)*attackKick*.09);
                 ctx.shadowColor=superKick>0?'#b56cff':'#55dfff';ctx.shadowBlur=10+superKick*18;
                 const uniform=ctx.createLinearGradient(-radius,-radius,radius,radius);uniform.addColorStop(0,'#4f8cff');uniform.addColorStop(.55,'#243f91');uniform.addColorStop(1,'#111d46');
@@ -50881,6 +51012,22 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       } else if (b.ownerBrawler === 'fuser' && b.isFuserBullet) {
           const a=Math.atan2(b.vy||0,b.vx||1);
           const isSuperShot=!!b.super,coreR=isSuperShot?7:4.1;
+          if (activeSkinId === 'hyperfusion-fuser') {
+              const transformed=!!b.hyperVisual;
+              const lane=(b.fuserShotIndex||0)%2;
+              const primary=transformed?(lane?'#ff55bd':'#75f8ff'):(lane?'#ff477e':'#38e8ff');
+              const secondary=transformed?'#9d4dff':'#17264e';
+              ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);
+              ctx.shadowColor=primary;ctx.shadowBlur=transformed?20:12;
+              const trail=ctx.createLinearGradient(-30,0,8,0);trail.addColorStop(0,'rgba(0,0,0,0)');trail.addColorStop(.58,secondary);trail.addColorStop(1,primary);
+              ctx.strokeStyle=trail;ctx.lineWidth=isSuperShot?8:5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-31,0);ctx.lineTo(2,0);ctx.stroke();
+              ctx.fillStyle=primary;ctx.strokeStyle='#efffff';ctx.lineWidth=1.4;
+              ctx.beginPath();ctx.moveTo(coreR+7,0);ctx.lineTo(0,-coreR);ctx.lineTo(-coreR-3,0);ctx.lineTo(0,coreR);ctx.closePath();ctx.fill();ctx.stroke();
+              ctx.fillStyle=transformed?'#ffffff':secondary;ctx.beginPath();ctx.arc(0,0,coreR*.42,0,Math.PI*2);ctx.fill();
+              if(isSuperShot){ctx.globalAlpha=.75;ctx.strokeStyle=lane?'#38e8ff':'#ff477e';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,coreR+5,0,Math.PI*2);ctx.stroke();}
+              if(transformed){ctx.globalAlpha=.7;ctx.strokeStyle='#ffffff';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(-18,-5);ctx.lineTo(-10,4);ctx.lineTo(-3,-4);ctx.stroke();}
+              ctx.restore();continue;
+          }
           const accent=b.hyperVisual?'#e991ff':((b.fuserShotIndex||0)%2===0?'#ff416c':'#ff9f43');
           ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(a);
           ctx.strokeStyle=b.hyperVisual?'rgba(220,91,255,.55)':'rgba(255,65,108,.48)';ctx.lineWidth=isSuperShot?6:3;ctx.lineCap='round';
