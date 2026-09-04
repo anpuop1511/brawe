@@ -3381,6 +3381,58 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     // Skin Database with Sets
     const skinsDatabase = {
+        'possessed-claws-hunter': {
+            id: 'possessed-claws-hunter',
+            name: 'Possessed Claws Hunter',
+            brawler: 'hunter',
+            rarity: 'mythic',
+            set: 'Possessed Claws',
+            price: 199,
+            currency: 'gems',
+            description: 'Demonic shadow-hunter overtaken by cursed blood-talons. Fires spectral shadow-claw projectiles with razor crimson trails.',
+            _displayColor: '#ff2a55',
+            icon: '🩸',
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'possessedClawSlash', color: '#ff2a55', glow: true, trailColor: '#8b0000' },
+            superEffect: { type: 'possessedClawVortex', color: '#ff0033', glow: true, trailColor: '#3a0007' },
+            spawnEffect: { type: 'possessedSpawn', color: '#ff2a55', glow: true },
+            takedownEffect: { type: 'possessedTakedown', color: '#ff2a55', glow: true }
+        },
+        'possessed-claws-malakor': {
+            id: 'possessed-claws-malakor',
+            name: 'Possessed Claws Malakor',
+            brawler: 'malakor',
+            rarity: 'legendary',
+            set: 'Possessed Claws',
+            price: 299,
+            currency: 'gems',
+            description: 'Ancient necrotic warlord possessed by primeval obsidian shadow-claws. Unleashes blood-flame shockwaves and erupts giant demonic void-talons from the ground.',
+            _displayColor: '#e11d48',
+            icon: '👹',
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'possessedEldritchClaws', color: '#e11d48', glow: true, trailColor: '#4c0519' },
+            superEffect: { type: 'possessedHellhands', color: '#ff1744', glow: true, trailColor: '#7f1d1d' },
+            spawnEffect: { type: 'possessedLegendarySpawn', color: '#e11d48', glow: true },
+            takedownEffect: { type: 'possessedLegendaryTakedown', color: '#ff1744', glow: true },
+            deathEffect: { type: 'possessedDeathBell', color: '#e11d48', glow: true }
+        },
+        'possessed-claws-predator': {
+            id: 'possessed-claws-predator',
+            name: 'Possessed Claws Predator',
+            brawler: 'predator',
+            rarity: 'mythic',
+            set: 'Possessed Claws',
+            price: 199,
+            currency: 'gems',
+            description: 'Eldritch stalker wielding cursed blood-ember talons. Slashes with fiery crimson claw arcs and pounces with explosive necrotic demon fury.',
+            _displayColor: '#ff4500',
+            icon: '🐾',
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'possessedBeastSwipe', color: '#ff4500', glow: true, trailColor: '#7c1c00' },
+            superEffect: { type: 'possessedLeapImpact', color: '#ff3300', glow: true, trailColor: '#4a0e00' },
+            spawnEffect: { type: 'possessedSpawn', color: '#ff4500', glow: true },
+            takedownEffect: { type: 'possessedTakedown', color: '#ff4500', glow: true }
+        },
         'ranked-rocketeer': {
             id: 'ranked-rocketeer',
             name: 'Ranked Rocketeer',
@@ -43886,7 +43938,144 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
         ctx.save();
         try {
-            if (brawlerId === 'fuser' && getActiveSkinForBrawler('fuser')?.id === 'hyperfusion-fuser') {
+            if (brawlerId === 'hunter' && getActiveSkinForBrawler('hunter')?.id === 'possessed-claws-hunter') {
+                const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
+                const pulse = 0.5 + Math.sin(now * 0.009) * 0.5;
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * 0.005) * 0.025 + Math.sin(aim) * attackKick * 0.1);
+                ctx.shadowColor = transformed ? '#ff0055' : '#e11d48';
+                ctx.shadowBlur = transformed ? 20 : 10;
+
+                // Possessed Shadow Cloak
+                const cloakGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                cloakGrad.addColorStop(0, '#2b0914');
+                cloakGrad.addColorStop(0.55, '#12050b');
+                cloakGrad.addColorStop(1, '#080205');
+                ctx.fillStyle = cloakGrad;
+                ctx.strokeStyle = transformed ? '#ff4d6d' : '#85001f';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.95, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Demon Eye Visor
+                ctx.fillStyle = transformed ? '#ffffff' : '#ff1744';
+                ctx.shadowColor = '#ff1744';
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.15, radius * 0.22, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Demonic Cursed Claw Arm
+                ctx.save();
+                ctx.rotate(aim);
+                ctx.fillStyle = '#ff2a55';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                for (let c = -2; c <= 1; c++) {
+                    const clawAng = c * 0.22;
+                    const len = radius * (1.1 + Math.abs(c) * 0.15);
+                    ctx.beginPath();
+                    ctx.moveTo(radius * 0.35, c * 5);
+                    ctx.lineTo(len * Math.cos(clawAng), len * Math.sin(clawAng));
+                    ctx.lineTo(radius * 0.35, (c + 0.5) * 5);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                ctx.restore();
+            } else if (brawlerId === 'malakor' && getActiveSkinForBrawler('malakor')?.id === 'possessed-claws-malakor') {
+                const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
+                const pulse = 0.5 + Math.sin(now * 0.008) * 0.5;
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * 0.004) * 0.02);
+                ctx.shadowColor = transformed ? '#ff0033' : '#b91c1c';
+                ctx.shadowBlur = transformed ? 24 : 12;
+
+                // Obsidian Armor Core
+                const armorGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                armorGrad.addColorStop(0, '#3f0c18');
+                armorGrad.addColorStop(0.5, '#1a040b');
+                armorGrad.addColorStop(1, '#0a0204');
+                ctx.fillStyle = armorGrad;
+                ctx.strokeStyle = transformed ? '#ff4d6d' : '#991b1b';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.9, -radius * 0.8, radius * 1.8, radius * 1.6, radius * 0.3);
+                ctx.fill();
+                ctx.stroke();
+
+                // Blood Horns
+                ctx.fillStyle = '#e11d48';
+                for (const side of [-1, 1]) {
+                    ctx.beginPath();
+                    ctx.moveTo(side * radius * 0.5, -radius * 0.6);
+                    ctx.lineTo(side * radius * 0.85, -radius * 1.25);
+                    ctx.lineTo(side * radius * 0.3, -radius * 0.8);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Floating Obsidian Shadow Talons
+                for (let side of [-1, 1]) {
+                    const bob = Math.sin(now * 0.006 + side) * 4;
+                    ctx.fillStyle = '#ff1744';
+                    ctx.beginPath();
+                    ctx.moveTo(side * radius * 1.25, -radius * 0.2 + bob);
+                    ctx.lineTo(side * radius * 1.6, radius * 0.4 + bob);
+                    ctx.lineTo(side * radius * 1.15, radius * 0.2 + bob);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            } else if (brawlerId === 'predator' && getActiveSkinForBrawler('predator')?.id === 'possessed-claws-predator') {
+                const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * 0.007) * 0.03 + Math.sin(aim) * attackKick * 0.12);
+                ctx.shadowColor = transformed ? '#ff3b30' : '#ea580c';
+                ctx.shadowBlur = transformed ? 20 : 10;
+
+                // Feral Blood-Chitin Body
+                const bodyGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                bodyGrad.addColorStop(0, '#381105');
+                bodyGrad.addColorStop(0.5, '#1c0802');
+                bodyGrad.addColorStop(1, '#0a0301');
+                ctx.fillStyle = bodyGrad;
+                ctx.strokeStyle = transformed ? '#ff6b35' : '#c2410c';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.9, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Jagged Spine Plates
+                ctx.fillStyle = '#ff4500';
+                for (let s = -2; s <= 2; s++) {
+                    ctx.beginPath();
+                    ctx.moveTo(s * 7, -radius * 0.8);
+                    ctx.lineTo(s * 7, -radius * 1.15);
+                    ctx.lineTo((s + 0.4) * 7, -radius * 0.8);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Dual Possessed Blood Blades/Claws
+                ctx.save();
+                ctx.rotate(aim);
+                ctx.fillStyle = '#ff4500';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                for (const side of [-1, 1]) {
+                    ctx.beginPath();
+                    ctx.moveTo(radius * 0.4, side * radius * 0.4);
+                    ctx.lineTo(radius * 1.4, side * radius * 0.6);
+                    ctx.lineTo(radius * 0.6, side * radius * 0.1);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                ctx.restore();
+            } else if (brawlerId === 'fuser' && getActiveSkinForBrawler('fuser')?.id === 'hyperfusion-fuser') {
                 const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
                 const pulse = 0.5 + Math.sin(now * (transformed ? .018 : .008)) * .5;
                 ctx.translate(entity.x, drawY - attackKick * 3);
@@ -50749,6 +50938,77 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               ctx.fillStyle = 'rgba(255, 23, 68, 0.9)';
               ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.fillRect((b.isStickySuper ? -13 : -8)*noteScale, (b.isStickySuper ? -8 : -5)*noteScale, (b.isStickySuper ? 26 : 16)*noteScale, (b.isStickySuper ? 16 : 10)*noteScale); ctx.restore();
           }
+          continue;
+      }
+      if (activeSkinId === 'possessed-claws-hunter' && b.ownerBrawler === 'hunter') {
+          // Possessed Claws Hunter - demonic crimson claw rake
+          const a = Math.atan2(b.vy, b.vx);
+          const progress = b.life / b.maxLife;
+          const radius = 32 + progress * 100;
+          ctx.save();
+          ctx.strokeStyle = b.super ? 'rgba(255, 23, 68, 0.95)' : 'rgba(255, 42, 85, 0.88)';
+          ctx.lineWidth = b.super ? 8 : 5.5;
+          ctx.lineCap = 'round';
+          ctx.shadowColor = '#ff2a55';
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(b.startX, b.startY, radius, a - 0.9, a + 0.9);
+          ctx.stroke();
+
+          // 4 Demonic Talon Slash Marks
+          for (let i = -1.5; i <= 1.5; i += 1.0) {
+              const tipAng = a + i * 0.35;
+              const tx = b.startX + Math.cos(tipAng) * (radius + 6);
+              const ty = b.startY + Math.sin(tipAng) * (radius + 6);
+              ctx.fillStyle = '#ff2a55';
+              ctx.beginPath();
+              ctx.arc(tx, ty, 3.5, 0, Math.PI * 2);
+              ctx.fill();
+          }
+          ctx.restore();
+          continue;
+      }
+      if (activeSkinId === 'possessed-claws-malakor' && b.ownerBrawler === 'malakor') {
+          // Possessed Claws Malakor - obsidian blood shockwave
+          const a = Math.atan2(b.vy, b.vx);
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(a);
+          ctx.shadowColor = '#e11d48';
+          ctx.shadowBlur = 14;
+          ctx.fillStyle = '#e11d48';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(14, 0);
+          ctx.lineTo(-8, -10);
+          ctx.lineTo(-4, 0);
+          ctx.lineTo(-8, 10);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+          continue;
+      }
+      if (activeSkinId === 'possessed-claws-predator' && b.ownerBrawler === 'predator') {
+          // Possessed Claws Predator - twin fiery blood slashes
+          const a = Math.atan2(b.vy, b.vx);
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(a);
+          ctx.shadowColor = '#ff4500';
+          ctx.shadowBlur = 12;
+          ctx.strokeStyle = '#ff4500';
+          ctx.lineWidth = 4;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.arc(0, 0, 16, -0.8, 0.8);
+          ctx.stroke();
+          ctx.fillStyle = '#ff6b35';
+          ctx.beginPath();
+          ctx.arc(12, 0, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
           continue;
       }
       if (activeSkinId === 'battle-hunter' && b.ownerBrawler === 'hunter') {
