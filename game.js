@@ -10082,408 +10082,485 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       };
   }
 
-  function buildSoulSummonerPullPlan(stepNumber, reservedIds = new Set()) {
-      ensureSoulSummonerData();
-      const locked = allBrawlers
-          .filter((bid) => bid !== 'outlit' && !isBrawlerUnlocked(bid) && !disabledBrawlers.has(bid) && !reservedIds.has(bid));
-      if (locked.length <= 0) return null;
-      const isChoicePull = stepNumber % 4 === 0;
-      const deferred = (playerData.soulSummoner.deferredQueue || []).filter((bid) => locked.includes(bid));
-      const deferredId = deferred[0];
-      if (deferredId && !isChoicePull) {
-          const rarity = getBrawlerRarity(deferredId);
-          return { type: 'single', rarity, cost: getSoulUnlockCostForRarity(rarity), options: [deferredId], fromDeferred: true };
+  
+  const SOUL_CONSTELLATIONS = Object.freeze([
+      {
+          id: 'Rare',
+          name: 'Verdant Canopy',
+          subtitle: 'The Gateway Constellation',
+          icon: '🌿',
+          color: '#5df2c2',
+          glow: 'rgba(93, 242, 194, 0.4)',
+          cost: 70,
+          milestoneReward: { coins: 300, gems: 30, label: '300 Coins + 30 Gems' },
+          brawlers: ['echo', 'cheseypuff', 'unopcoloco', 'minigunnin', 'bowlin_rida', 'chaird', 'forest', 'goonbob']
+      },
+      {
+          id: 'Epic',
+          name: 'Blazing Forge',
+          subtitle: 'The Champions Constellation',
+          icon: '⚡',
+          color: '#f1c40f',
+          glow: 'rgba(241, 196, 15, 0.4)',
+          cost: 170,
+          milestoneReward: { coins: 600, gems: 60, label: '600 Coins + 60 Gems' },
+          brawlers: ['trapper', 'heater_miser', 'money_and_tax', 'hunter', 'bouncin_balls', 'fightnfire', 'splitter', 'scuba_diver', 'hoop', 'beam', 'teether', 'fuel', 'warrior', 'peter_pickle', 'axeywaxy', 'ramage', 'sir_cheeseburger']
+      },
+      {
+          id: 'Mythic',
+          name: 'Astral Tempest',
+          subtitle: 'The Arcane Constellation',
+          icon: '🌀',
+          color: '#ff7bd1',
+          glow: 'rgba(255, 123, 209, 0.4)',
+          cost: 270,
+          milestoneReward: { coins: 1000, gems: 100, label: '1,000 Coins + 100 Gems' },
+          brawlers: ['dashaholic', 'classy', 'steamer', 'tempo_maker', 'amplifier', 'skeleflying', 'evil_doctor', 'boom_arang', 'upiedown', 'chickpig', 'jetpack', 'fastpass', 'freestyle', 'drainbow', 'draflygon', 'homer', 'predator', 'ice_cream', 'swimmer', 'boomer', 'blade_vane', 'daggershard', 'cluster', 'witch', 'trampaheal', 'upgradart']
+      },
+      {
+          id: 'Exotic',
+          name: 'Dimensional Rift',
+          subtitle: 'The Hyper-Spatial Constellation',
+          icon: '🔮',
+          color: '#b983ff',
+          glow: 'rgba(185, 131, 255, 0.4)',
+          cost: 420,
+          milestoneReward: { coins: 1500, gems: 150, label: '1,500 Coins + 150 Gems' },
+          brawlers: ['copyphase', 'snapper', 'portalo', 'ghoul', 'jacktrade', 'mageny', 'cinderion', 'cursed', 'anti_royal']
+      },
+      {
+          id: 'Unique',
+          name: 'Sovereign Crown',
+          subtitle: 'The Apex Constellation',
+          icon: '👑',
+          color: '#ff9b42',
+          glow: 'rgba(255, 155, 66, 0.4)',
+          cost: 600,
+          milestoneReward: { coins: 2500, gems: 250, label: '2,500 Coins + 250 Gems' },
+          brawlers: ['decayer', 'hyperorigin', 'overlord', 'beast', 'hope', 'screener', 'kage', 'malakor', 'paradox', 'sera_eclipse', 'xray', 'angel', 'demon', 'relay', 'robber', 'unstable', 'orbo', 'adlof', 'king']
+      },
+      {
+          id: 'Anomaly',
+          name: 'Primordial Singularity',
+          subtitle: 'The Genesis Constellation',
+          icon: '🌌',
+          color: '#a855f7',
+          glow: 'rgba(168, 85, 247, 0.4)',
+          cost: 850,
+          milestoneReward: { coins: 4000, gems: 400, label: '4,000 Coins + 400 Gems' },
+          brawlers: ['crystila', 'darkener', 'awakenator']
       }
+  ]);
 
-      const byRarity = {};
-      for (const bid of locked) {
-          const rarity = getBrawlerRarity(bid);
-          if (!byRarity[rarity]) byRarity[rarity] = [];
-          byRarity[rarity].push(bid);
-      }
-      const rarityKeys = Object.keys(byRarity);
-      if (rarityKeys.length <= 0) return null;
-
-      if (isChoicePull) {
-          const choiceRarities = rarityKeys.filter((r) => byRarity[r].length >= 2);
-          if (choiceRarities.length > 0) {
-              const rarity = choiceRarities[Math.floor(Math.random() * choiceRarities.length)];
-              const pool = [...byRarity[rarity]];
-              const first = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
-              const second = pool[Math.floor(Math.random() * pool.length)];
-              return { type: 'choice', rarity, cost: getSoulUnlockCostForRarity(rarity), options: [first, second], fromDeferred: false };
-          }
-      }
-
-      const rarity = rarityKeys[Math.floor(Math.random() * rarityKeys.length)];
-      const options = byRarity[rarity] || [];
-      const chosen = options[Math.floor(Math.random() * options.length)];
-      return { type: 'single', rarity, cost: getSoulUnlockCostForRarity(rarity), options: [chosen], fromDeferred: false };
+  function getConstellationProgress(constellationId) {
+      const c = SOUL_CONSTELLATIONS.find(x => x.id === constellationId);
+      if (!c) return { total: 0, unlocked: 0, pct: 0, completed: false, brawlers: [] };
+      const valid = c.brawlers.filter(b => !disabledBrawlers.has(b) && !brawlerData?.[b]?.disabled);
+      const unlocked = valid.filter(b => isBrawlerUnlocked(b));
+      const total = valid.length;
+      return {
+          total,
+          unlocked: unlocked.length,
+          pct: total > 0 ? Math.round((unlocked.length / total) * 100) : 100,
+          completed: total > 0 && unlocked.length >= total,
+          brawlers: valid
+      };
   }
 
-  function ensureSoulSummonerRoad(minLength = 8) {
-      ensureSoulSummonerData();
-      const oldRoadJson = JSON.stringify(playerData.soulSummoner.road || []);
-      const cleanedRoad = [];
-      for (const step of playerData.soulSummoner.road || []) {
-          const cleanStep = sanitizeSummonerPlanEntry(step);
-          if (cleanStep) cleanedRoad.push(cleanStep);
+  function getActiveConstellationTier() {
+      for (const c of SOUL_CONSTELLATIONS) {
+          const prog = getConstellationProgress(c.id);
+          if (!prog.completed) return c.id;
       }
-      playerData.soulSummoner.road = cleanedRoad;
-
-      const reserved = new Set(playerData.soulSummoner.road.flatMap((entry) => entry.options || []));
-      let stepNumber = (playerData.soulSummoner.pullCount || 0) + playerData.soulSummoner.road.length + 1;
-      while (playerData.soulSummoner.road.length < minLength) {
-          const nextStep = buildSoulSummonerPullPlan(stepNumber, reserved);
-          if (!nextStep) break;
-          playerData.soulSummoner.road.push(nextStep);
-          for (const bid of nextStep.options || []) reserved.add(bid);
-          stepNumber += 1;
-      }
-
-      if (JSON.stringify(playerData.soulSummoner.road) !== oldRoadJson) {
-          saveProgress();
-      }
+      return 'Anomaly';
   }
 
-  function getCurrentSoulSummonerPlan() {
-      ensureSoulSummonerRoad(8);
-      return playerData.soulSummoner.road[0] || null;
-  }
-
-  function resolveSoulSummonerPull(plan, chosenBrawlerId) {
-      if (!plan) return { ok: false, reason: 'No pull plan available.' };
+  function claimConstellationMilestone(constellationId) {
       ensureSoulSummonerData();
-      const currentPlan = getCurrentSoulSummonerPlan();
-      if (!currentPlan) return { ok: false, reason: 'No pull plan available.' };
-      if (JSON.stringify(currentPlan.options || []) !== JSON.stringify(plan.options || []) || currentPlan.type !== plan.type) {
-          return { ok: false, reason: 'Plan updated. Try again.' };
-      }
-      const targetId = chosenBrawlerId || plan.options?.[0];
-      if (!targetId || !allBrawlers.includes(targetId) || !plan.options.includes(targetId)) {
-          return { ok: false, reason: 'Invalid selection.' };
-      }
-      if (isBrawlerUnlocked(targetId)) {
-          return { ok: false, reason: 'That brawler is already unlocked.' };
-      }
-      const cost = plan.cost || getSoulUnlockCostForRarity(getBrawlerRarity(targetId));
-      if ((playerData.souls || 0) < cost) {
-          return { ok: false, reason: 'Not enough Souls.' };
-      }
+      if (!playerData.soulSummoner.claimedMilestones) playerData.soulSummoner.claimedMilestones = {};
+      const c = SOUL_CONSTELLATIONS.find(x => x.id === constellationId);
+      if (!c) return false;
+      const prog = getConstellationProgress(constellationId);
+      if (!prog.completed) return false;
+      if (playerData.soulSummoner.claimedMilestones[constellationId]) return false;
 
-      playerData.souls -= cost;
-      unlockBrawler(targetId);
-      if (plan.fromDeferred) {
-          const idx = playerData.soulSummoner.deferredQueue.indexOf(targetId);
-          if (idx >= 0) playerData.soulSummoner.deferredQueue.splice(idx, 1);
+      playerData.soulSummoner.claimedMilestones[constellationId] = true;
+      if (c.milestoneReward) {
+          if (c.milestoneReward.coins) playerData.coins = (playerData.coins || 0) + c.milestoneReward.coins;
+          if (c.milestoneReward.gems) playerData.gems = (playerData.gems || 0) + c.milestoneReward.gems;
       }
-
-      if (plan.type === 'choice') {
-          const deferredId = plan.options.find((id) => id !== targetId && !isBrawlerUnlocked(id));
-          if (deferredId) playerData.soulSummoner.deferredQueue.push(deferredId);
-      }
-
-      if (Array.isArray(playerData.soulSummoner.road) && playerData.soulSummoner.road.length > 0) {
-          playerData.soulSummoner.road.shift();
-      }
-      playerData.soulSummoner.pullCount = (playerData.soulSummoner.pullCount || 0) + 1;
-      ensureSoulSummonerRoad(8);
-      normalizeSelectedBrawler();
       saveProgress();
-      return { ok: true, unlockedId: targetId, cost };
+      return true;
   }
 
   function openSoulSummoner() {
       ensureSoulSummonerData();
+      if (!playerData.soulSummoner.claimedMilestones) playerData.soulSummoner.claimedMilestones = {};
+
       const overlay = document.createElement('div');
       overlay.style.position = 'fixed';
       overlay.style.inset = '0';
-      overlay.style.background = 'rgba(4, 8, 16, 0.95)';
+      overlay.style.background = 'radial-gradient(ellipse at 50% 10%, rgba(20, 28, 55, 0.98), rgba(4, 7, 16, 0.98))';
       overlay.style.zIndex = '1400';
       overlay.style.display = 'flex';
       overlay.style.alignItems = 'center';
       overlay.style.justifyContent = 'center';
-      overlay.style.fontFamily = 'sans-serif';
+      overlay.style.fontFamily = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
       overlay.style.color = '#fff';
-      overlay.style.padding = '16px';
+      overlay.style.padding = '14px';
+      overlay.style.boxSizing = 'border-box';
+      overlay.style.backdropFilter = 'blur(12px)';
 
       const panel = document.createElement('div');
-      panel.style.width = 'min(860px, 94vw)';
-      panel.style.background = '#101b34';
-      panel.style.border = '3px solid #8a5cff';
-      panel.style.borderRadius = '18px';
-      panel.style.padding = '24px';
-      panel.style.boxShadow = '0 20px 60px rgba(0,0,0,0.5)';
+      panel.style.width = 'min(980px, 96vw)';
       panel.style.maxHeight = '92vh';
+      panel.style.background = 'linear-gradient(180deg, #0c152a 0%, #060b17 100%)';
+      panel.style.border = '2px solid rgba(138, 92, 255, 0.5)';
+      panel.style.borderRadius = '24px';
+      panel.style.padding = '24px';
+      panel.style.boxShadow = '0 25px 80px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.1)';
       panel.style.overflowY = 'auto';
+      panel.style.display = 'flex';
+      panel.style.flexDirection = 'column';
+      panel.style.gap = '16px';
+      panel.style.position = 'relative';
 
-      const title = document.createElement('h1');
-      title.textContent = 'SOUL SUMMONER';
-      title.style.margin = '0 0 10px 0';
-      title.style.color = '#caa6ff';
-      panel.appendChild(title);
+      let activeTab = 'constellation'; // 'constellation' | 'all'
+      let selectedConstellationId = getActiveConstellationTier();
 
-      const render = () => {
-          panel.querySelectorAll('.ss-dynamic').forEach((node) => node.remove());
-          const wrap = document.createElement('div');
-          wrap.className = 'ss-dynamic';
-          const evilDoctorCard = document.createElement('div');
-          evilDoctorCard.style.marginBottom = '12px';
-          evilDoctorCard.style.padding = '12px';
-          evilDoctorCard.style.border = '1px solid #2f8f5b';
-          evilDoctorCard.style.borderRadius = '12px';
-          evilDoctorCard.style.background = 'rgba(0, 204, 102, 0.08)';
-          const edTitle = document.createElement('div');
-          edTitle.textContent = '🧬 Evil Doctor Unlock Path';
-          edTitle.style.fontWeight = '900';
-          edTitle.style.color = '#8ff6bb';
-          evilDoctorCard.appendChild(edTitle);
-          const edSub = document.createElement('div');
-          edSub.style.fontSize = '12px';
-          edSub.style.color = '#c9ffe0';
-          edSub.style.margin = '4px 0 8px 0';
-          const edEndAt = playerData.evilDoctorUnlockEndAt || 0;
-          if (isBrawlerUnlocked('evil_doctor')) {
-              edSub.textContent = 'Unlocked and ready to play.';
-              evilDoctorCard.appendChild(edSub);
-          } else if (edEndAt > Date.now()) {
-              const remain = Math.max(0, edEndAt - Date.now());
-              const d = Math.floor(remain / (24 * 60 * 60 * 1000));
-              const h = Math.floor((remain % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-              const m = Math.floor((remain % (60 * 60 * 1000)) / (60 * 1000));
-              const s = Math.floor((remain % (60 * 1000)) / 1000);
-              edSub.textContent = `Incubating... ${d}d ${h}h ${m}m ${s}s remaining`;
-              evilDoctorCard.appendChild(edSub);
-              setTimeout(() => {
-                  if (document.body.contains(overlay)) render();
-              }, 1000);
-          } else {
-              edSub.textContent = 'Start a one-time 4 day unlock timer. This persists across reloads.';
-              evilDoctorCard.appendChild(edSub);
-              const edBtn = document.createElement('button');
-              edBtn.textContent = 'Start Evil Doctor Unlock (4 Days)';
-              edBtn.style.padding = '8px 12px';
-              edBtn.style.borderRadius = '8px';
-              edBtn.style.border = '1px solid #76f0ac';
-              edBtn.style.background = '#103328';
-              edBtn.style.color = '#76f0ac';
-              edBtn.style.fontWeight = '800';
-              edBtn.style.cursor = 'pointer';
-              edBtn.onclick = () => {
-                  if (!playerData.evilDoctorUnlockEndAt || playerData.evilDoctorUnlockEndAt <= Date.now()) {
-                      playerData.evilDoctorUnlockEndAt = Date.now() + 4 * 24 * 60 * 60 * 1000;
-                      saveProgress();
-                  }
-                  render();
-              };
-              evilDoctorCard.appendChild(edBtn);
-          }
-          wrap.appendChild(evilDoctorCard);
-          const appendSummonerRoad = () => {
-              const upcoming = document.createElement('div');
-              upcoming.style.marginTop = '12px';
-              upcoming.style.padding = '12px';
-              upcoming.style.border = '1px solid #304876';
-              upcoming.style.borderRadius = '12px';
-              upcoming.style.background = '#0d1730';
-              const upcomingTitle = document.createElement('div');
-              upcomingTitle.textContent = 'Upcoming Summoner Path';
-              upcomingTitle.style.fontWeight = '900';
-              upcomingTitle.style.color = '#ffd9c0';
-              upcomingTitle.style.marginBottom = '8px';
-              upcoming.appendChild(upcomingTitle);
-              const roadEntries = (playerData.soulSummoner.road || []).slice(0, 8);
-              if (roadEntries.length <= 0) {
-                  const empty = document.createElement('div');
-                  empty.textContent = 'No upcoming pulls.';
-                  empty.style.color = '#9dc0ea';
-                  upcoming.appendChild(empty);
-              } else {
-                  roadEntries.forEach((entry, idx) => {
-                      const step = (playerData.soulSummoner.pullCount || 0) + idx + 1;
-                      const row = document.createElement('div');
-                      row.style.marginBottom = '6px';
-                      row.style.fontSize = '12px';
-                      row.style.color = '#dbe8ff';
-                      const names = (entry.options || []).map((bid) => (brawlerData[bid]?.name || bid)).join(entry.type === 'choice' ? ' OR ' : '');
-                      row.textContent = `#${step} • ${entry.type === 'choice' ? 'Choice' : 'Single'} • ${entry.rarity} • ${entry.cost} Souls • ${names}`;
-                      upcoming.appendChild(row);
-                  });
-              }
-              wrap.appendChild(upcoming);
+      function render() {
+          panel.innerHTML = '';
+          ensureSoulSummonerData();
 
-              const rarityOrder = ['Starter', 'Rare', 'Epic', 'Mythic', 'Exotic', 'Unique', 'Anomaly'];
-              const road = document.createElement('div');
-              road.style.marginTop = '16px';
-              road.style.padding = '12px';
-              road.style.border = '1px solid #304876';
-              road.style.borderRadius = '12px';
-              road.style.background = '#0a1428';
-              const roadTitle = document.createElement('div');
-              roadTitle.textContent = 'Full Soul Summoner Road';
-              roadTitle.style.fontWeight = '900';
-              roadTitle.style.color = '#caa6ff';
-              roadTitle.style.marginBottom = '8px';
-              road.appendChild(roadTitle);
-              for (const rarity of rarityOrder) {
-                  const rowIds = allBrawlers.filter((bid) => !disabledBrawlers.has(bid) && getBrawlerRarity(bid) === rarity);
-                  if (rowIds.length <= 0) continue;
-                  const row = document.createElement('div');
-                  row.style.marginBottom = '6px';
-                  const label = document.createElement('div');
-                  label.textContent = `${rarity} • ${getSoulUnlockCostForRarity(rarity)} Souls`;
-                  label.style.fontSize = '12px';
-                  label.style.fontWeight = '800';
-                  label.style.color = '#9dc0ea';
-                  row.appendChild(label);
-                  const chips = document.createElement('div');
-                  chips.style.display = 'flex';
-                  chips.style.flexWrap = 'wrap';
-                  chips.style.gap = '6px';
-                  for (const bid of rowIds) {
-                      const chip = document.createElement('div');
-                      const meta = brawlerData[bid] || { name: bid };
-                      const unlocked = isBrawlerUnlocked(bid);
-                      chip.textContent = `${unlocked ? '✓' : '🔒'} ${meta.name || bid}`;
-                      chip.style.padding = '4px 8px';
-                      chip.style.borderRadius = '999px';
-                      chip.style.fontSize = '11px';
-                      chip.style.fontWeight = '700';
-                      chip.style.border = unlocked ? '1px solid #5df2c2' : '1px solid #caa6ff';
-                      chip.style.color = unlocked ? '#5df2c2' : '#f0e7ff';
-                      chip.style.background = unlocked ? 'rgba(93,242,194,0.12)' : 'rgba(138,92,255,0.16)';
-                      chips.appendChild(chip);
-                  }
-                  row.appendChild(chips);
-                  road.appendChild(row);
-              }
-              wrap.appendChild(road);
-          };
           const ss = playerData.soulSummoner;
-          const locked = allBrawlers.filter(b => b !== 'outlit' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
-          const allUnlocked = locked.length === 0;
+          const lockedBrawlers = allBrawlers.filter(b => getBrawlerRarity(b) !== 'Starter' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
+          const allUnlocked = lockedBrawlers.length === 0;
 
-          // ── Balance bar ──
-          const balRow = document.createElement('div');
-          balRow.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;';
+          // ── Header Bar ──
+          const header = document.createElement('div');
+          header.style.display = 'flex';
+          header.style.alignItems = 'center';
+          header.style.justifyContent = 'space-between';
+          header.style.flexWrap = 'wrap';
+          header.style.gap = '12px';
+          header.style.borderBottom = '1px solid rgba(138, 92, 255, 0.2)';
+          header.style.paddingBottom = '14px';
+
+          const titleBox = document.createElement('div');
+          titleBox.innerHTML = `
+              <div style="font-size:20px;font-weight:900;letter-spacing:0.06em;background:linear-gradient(90deg, #caa6ff, #6ee7ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px;">
+                  🌌 SOUL SUMMONER · STARR ROAD
+              </div>
+              <div style="font-size:12px;color:#8eaad0;margin-top:2px;">Unlock fighters across celestial constellations with Souls</div>
+          `;
+
+          const headerRight = document.createElement('div');
+          headerRight.style.display = 'flex';
+          headerRight.style.alignItems = 'center';
+          headerRight.style.gap = '10px';
+
+          const soulChip = document.createElement('div');
+          soulChip.style.cssText = 'background:rgba(255,209,102,0.12);border:1.5px solid #ffd166;padding:7px 14px;border-radius:999px;font-weight:900;color:#ffd166;font-size:14px;display:flex;align-items:center;gap:6px;box-shadow:0 0 14px rgba(255,209,102,0.25);';
+          soulChip.innerHTML = `<span>🪄</span> <span>${playerData.souls || 0} SOULS</span>`;
+
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = '✕';
+          closeBtn.style.cssText = 'width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#dbe8ff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;';
+          closeBtn.onmouseenter = () => { closeBtn.style.background = 'rgba(255,80,80,0.3)'; closeBtn.style.borderColor = '#ff6b6b'; };
+          closeBtn.onmouseleave = () => { closeBtn.style.background = 'rgba(255,255,255,0.08)'; closeBtn.style.borderColor = 'rgba(255,255,255,0.2)'; };
+          closeBtn.onclick = () => document.body.removeChild(overlay);
+
+          headerRight.appendChild(soulChip);
+          headerRight.appendChild(closeBtn);
+          header.appendChild(titleBox);
+          header.appendChild(headerRight);
+          panel.appendChild(header);
+
+          // ── Active Target Channeling Card (Hero Focus) ──
           if (!allUnlocked) {
-              balRow.innerHTML = `<div style="padding:10px 16px;background:#0b1730;border:1px solid #304876;border-radius:10px;font-weight:800;color:#ffd166;">🪄 ${playerData.souls || 0} Souls</div>`;
-          } else {
-              const bankAmt = ss.soulBank || 0;
-              const waterAmt = ss.soulWater || 0;
-              balRow.innerHTML = `<div style="padding:10px 14px;background:#0b1730;border:1px solid #304876;border-radius:10px;font-weight:800;color:#a78bfa;">🏦 Soul Bank: ${bankAmt}</div><div style="padding:10px 14px;background:#0b1730;border:1px solid #304876;border-radius:10px;font-weight:800;color:#38bdf8;">💧 Soul Water: ${waterAmt}</div>`;
-          }
-          wrap.appendChild(balRow);
+              const targetId = ss.targetBrawler || lockedBrawlers[0];
+              if (targetId && !ss.targetBrawler) ss.targetBrawler = targetId;
 
-          // ── Soul Water pending reward claim ──
-          if (ss.pendingWaterReward) {
-              const r = ss.pendingWaterReward;
-              const rewardLabel = r.type === 'coins' ? `💰 ${r.amount} Coins` : r.type === 'gems' ? `💎 ${r.amount} Gems` : `✨ Starr Drop`;
-              const claimCard = document.createElement('div');
-              claimCard.style.cssText = 'padding:14px;background:rgba(56,189,248,0.1);border:2px solid #38bdf8;border-radius:12px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;';
-              claimCard.innerHTML = `<div><div style="font-weight:900;color:#38bdf8;font-size:15px;">Soul Water Reward Ready!</div><div style="font-size:13px;color:#bae6fd;margin-top:2px;">${r.tier} • ${rewardLabel}</div></div>`;
-              const claimBtn = document.createElement('button');
-              claimBtn.textContent = 'Claim';
-              claimBtn.style.cssText = 'padding:10px 20px;border-radius:8px;border:2px solid #38bdf8;background:#0c2130;color:#38bdf8;font-weight:900;cursor:pointer;font-size:14px;';
-              claimBtn.onclick = () => {
-                  claimSoulWaterReward();
-                  render();
-              };
-              claimCard.appendChild(claimBtn);
-              wrap.appendChild(claimCard);
-          }
+              const targetMeta = brawlerData[targetId] || { name: targetId, role: 'Fighter', color: '#6ee7ff' };
+              const targetRarity = getBrawlerRarity(targetId);
+              const targetCost = getSoulUnlockCostForRarity(targetRarity);
+              const curSouls = playerData.souls || 0;
+              const pct = Math.min(100, Math.round((curSouls / Math.max(1, targetCost)) * 100));
+              const canUnlockNow = curSouls >= targetCost;
 
-          // ── All unlocked state ──
-          if (allUnlocked) {
-              const done = document.createElement('div');
-              done.style.cssText = 'font-size:16px;font-weight:900;color:#5df2c2;margin-bottom:8px;';
-              done.textContent = '🏆 All brawlers unlocked!';
-              wrap.appendChild(done);
-              const desc = document.createElement('div');
-              desc.style.cssText = 'font-size:12px;color:#9dc0ea;margin-bottom:12px;';
-              desc.textContent = 'Every soul you earn now goes 25% to Soul Bank (for future brawlers) and 75% to Soul Water (random rewards). Claim rewards when Soul Water is full enough.';
-              wrap.appendChild(desc);
-              // Soul Water next threshold info
-              const table = _getSoulWaterRewardTable();
-              const nextTier = table.find(t => (ss.soulWater || 0) < t.cost) || table[0];
-              const needed = Math.max(0, nextTier.cost - (ss.soulWater || 0));
-              const pct = Math.min(100, Math.round(((ss.soulWater || 0) / nextTier.cost) * 100));
-              const waterBar = document.createElement('div');
-              waterBar.style.cssText = 'margin-bottom:14px;';
-              waterBar.innerHTML = `<div style="font-size:12px;color:#9dc0ea;margin-bottom:4px;">Soul Water → next reward at ${nextTier.cost} (${nextTier.tier}) • need ${needed} more</div><div style="background:#0b1730;border-radius:6px;height:10px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#38bdf8,#818cf8);border-radius:6px;transition:width 0.4s;"></div></div>`;
-              wrap.appendChild(waterBar);
-              appendSummonerRoad();
-              panel.insertBefore(wrap, close);
-              return;
-          }
-
-          // ── Active target section ──
-          const targetId = ss.targetBrawler;
-          if (targetId) {
-              const tmeta = brawlerData[targetId] || { name: targetId, color: '#caa6ff' };
-              const tcost = getSoulUnlockCostForRarity(getBrawlerRarity(targetId));
-              const haveS = playerData.souls || 0;
-              const pct = Math.min(100, Math.round((haveS / tcost) * 100));
               const targetCard = document.createElement('div');
-              targetCard.style.cssText = `padding:14px;background:#0b1730;border:2px solid ${tmeta.color||'#caa6ff'};border-radius:12px;margin-bottom:14px;`;
-              targetCard.innerHTML = `<div style="font-weight:900;color:${tmeta.color||'#caa6ff'};font-size:16px;margin-bottom:4px;">🎯 Target: ${tmeta.name || targetId}</div><div style="font-size:12px;color:#9dc0ea;margin-bottom:8px;">${getBrawlerRarity(targetId)} • ${tcost} souls needed • ${haveS}/${tcost} collected</div><div style="background:#162645;border-radius:6px;height:12px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,${tmeta.color||'#8a5cff'},#fff);border-radius:6px;"></div></div>`;
-              if (haveS >= tcost) {
-                  const autoNote = document.createElement('div');
-                  autoNote.textContent = '✅ Enough souls — auto-unlocking…';
-                  autoNote.style.cssText = 'margin-top:8px;font-size:13px;color:#5df2c2;font-weight:800;';
-                  targetCard.appendChild(autoNote);
-                  autoSpendSoulsOnTarget();
-              }
-              const changeBtn = document.createElement('button');
-              changeBtn.textContent = '🔄 Change Target';
-              changeBtn.style.cssText = 'margin-top:10px;padding:7px 14px;border-radius:8px;border:1px solid #9dc0ea;background:transparent;color:#9dc0ea;cursor:pointer;font-size:12px;font-weight:700;';
-              changeBtn.onclick = () => {
-                  ss.targetBrawler = null;
-                  render();
-              };
-              targetCard.appendChild(changeBtn);
-              wrap.appendChild(targetCard);
-          } else {
-              // No target — show picker inline
-              const pickLabel = document.createElement('div');
-              pickLabel.textContent = 'Choose a brawler to unlock next:';
-              pickLabel.style.cssText = 'font-size:14px;font-weight:800;color:#ffd9c0;margin-bottom:10px;';
-              wrap.appendChild(pickLabel);
-              const grid = document.createElement('div');
-              grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;';
-              for (const bid of locked) {
-                  const bmeta = brawlerData[bid] || { name: bid, color: '#caa6ff' };
-                  const bcost = getSoulUnlockCostForRarity(getBrawlerRarity(bid));
-                  const btn = document.createElement('button');
-                  btn.style.cssText = `padding:8px 12px;border-radius:10px;border:2px solid ${bmeta.color||'#caa6ff'};background:#162645;color:#f5f7ff;font-weight:800;cursor:pointer;font-size:12px;`;
-                  btn.innerHTML = `${bmeta.name||bid}<br><span style="font-size:10px;color:#9dc0ea;">${bcost} souls • ${getBrawlerRarity(bid)}</span>`;
-                  btn.onclick = () => {
-                      ss.targetBrawler = bid;
-                      saveProgress();
+              targetCard.style.cssText = `background:linear-gradient(135deg, rgba(20,35,68,0.7) 0%, rgba(10,18,36,0.9) 100%);border:2px solid ${targetMeta.color || '#8a5cff'};border-radius:18px;padding:16px 20px;position:relative;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.4), inset 0 0 20px ${targetMeta.color || '#8a5cff'}22;`;
+
+              const cardContent = document.createElement('div');
+              cardContent.style.display = 'flex';
+              cardContent.style.alignItems = 'center';
+              cardContent.style.justifyContent = 'space-between';
+              cardContent.style.flexWrap = 'wrap';
+              cardContent.style.gap = '16px';
+
+              const leftBox = document.createElement('div');
+              leftBox.style.display = 'flex';
+              leftBox.style.alignItems = 'center';
+              leftBox.style.gap = '14px';
+
+              const portrait = document.createElement('div');
+              portrait.style.cssText = `width:60px;height:60px;border-radius:16px;background:radial-gradient(circle at 35% 30%, ${targetMeta.color || '#6ee7ff'}dd, #0b1426);border:2px solid ${targetMeta.color || '#6ee7ff'};display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 20px ${targetMeta.color || '#6ee7ff'}44;`;
+              portrait.innerHTML = getBrawlerPortraitMarkup(targetId);
+
+              const infoBox = document.createElement('div');
+              infoBox.innerHTML = `
+                  <div style="font-size:11px;font-weight:800;letter-spacing:0.08em;color:#9dc0ea;text-transform:uppercase;">CURRENT CHANNELING TARGET</div>
+                  <div style="font-size:20px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;">
+                      ${targetMeta.name || targetId}
+                      <span style="font-size:11px;padding:3px 8px;border-radius:999px;background:${targetMeta.color || '#8a5cff'}33;border:1px solid ${targetMeta.color || '#8a5cff'};color:${targetMeta.color || '#8a5cff'};font-weight:800;">${targetRarity.toUpperCase()}</span>
+                      <span style="font-size:11px;color:#8eaad0;font-weight:600;">${targetMeta.role || 'Fighter'}</span>
+                  </div>
+                  <div style="font-size:12px;color:#ffd166;font-weight:700;margin-top:2px;">
+                      ${curSouls} / ${targetCost} Souls collected (${pct}%)
+                  </div>
+              `;
+              leftBox.appendChild(portrait);
+              leftBox.appendChild(infoBox);
+
+              const rightBox = document.createElement('div');
+              rightBox.style.display = 'flex';
+              rightBox.style.alignItems = 'center';
+              rightBox.style.gap = '10px';
+
+              if (canUnlockNow) {
+                  const unlockBtn = document.createElement('button');
+                  unlockBtn.textContent = `⚡ SUMMON NOW (${targetCost} SOULS)`;
+                  unlockBtn.style.cssText = 'padding:12px 22px;border-radius:12px;border:none;background:linear-gradient(135deg, #5df2c2 0%, #00b894 100%);color:#05141b;font-weight:900;font-size:14px;cursor:pointer;box-shadow:0 0 24px rgba(93,242,194,0.6);animation:pulse 1.5s infinite;';
+                  unlockBtn.onclick = () => {
                       autoSpendSoulsOnTarget();
                       render();
                   };
-                  grid.appendChild(btn);
+                  rightBox.appendChild(unlockBtn);
+              } else {
+                  const needed = targetCost - curSouls;
+                  const needBadge = document.createElement('div');
+                  needBadge.style.cssText = 'font-size:12px;color:#8eaad0;background:rgba(0,0,0,0.3);padding:8px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);text-align:right;';
+                  needBadge.innerHTML = `<span style="color:#ffd166;font-weight:800;">${needed} more</span> souls needed<br><small style="color:#6ee7ff;">Play matches & complete quests to earn Souls</small>`;
+                  rightBox.appendChild(needBadge);
               }
-              wrap.appendChild(grid);
+
+              cardContent.appendChild(leftBox);
+              cardContent.appendChild(rightBox);
+              targetCard.appendChild(cardContent);
+
+              // Progress Bar
+              const barContainer = document.createElement('div');
+              barContainer.style.cssText = 'width:100%;height:10px;background:#091224;border-radius:999px;margin-top:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);position:relative;';
+              const fill = document.createElement('div');
+              fill.style.cssText = `width:${pct}%;height:100%;background:linear-gradient(90deg, ${targetMeta.color || '#6ee7ff'}, #ffd166);border-radius:999px;transition:width 0.4s ease;box-shadow:0 0 10px ${targetMeta.color || '#6ee7ff'};`;
+              barContainer.appendChild(fill);
+              targetCard.appendChild(barContainer);
+
+              panel.appendChild(targetCard);
+          } else {
+              // All Unlocked Cosmic Overflow Fountain
+              const fountainCard = document.createElement('div');
+              fountainCard.style.cssText = 'background:linear-gradient(135deg, rgba(30,20,60,0.8), rgba(10,30,50,0.8));border:2px solid #5df2c2;border-radius:18px;padding:20px;box-shadow:0 0 30px rgba(93,242,194,0.3);text-align:center;';
+              fountainCard.innerHTML = `
+                  <div style="font-size:32px;">🏆 🌌</div>
+                  <div style="font-size:22px;font-weight:900;color:#5df2c2;margin:6px 0;">ALL FIGHTERS SUMMONED!</div>
+                  <div style="font-size:13px;color:#9dc0ea;max-width:560px;margin:0 auto 14px auto;">
+                      You have mastered every constellation in the galaxy. Souls you earn now divide into the <b>Soul Bank</b> (25% for upcoming fighters) and <b>Soul Water</b> (75% for celestial reward drops).
+                  </div>
+              `;
+
+              const fountainStats = document.createElement('div');
+              fountainStats.style.cssText = 'display:flex;gap:12px;justify-content:center;flex-wrap:wrap;';
+              fountainStats.innerHTML = `
+                  <div style="padding:10px 18px;background:#0b1730;border:1.5px solid #a78bfa;border-radius:12px;font-weight:800;color:#a78bfa;font-size:14px;">🏦 Soul Bank: ${ss.soulBank || 0}</div>
+                  <div style="padding:10px 18px;background:#0b1730;border:1.5px solid #38bdf8;border-radius:12px;font-weight:800;color:#38bdf8;font-size:14px;">💧 Soul Water: ${ss.soulWater || 0}</div>
+              `;
+              fountainCard.appendChild(fountainStats);
+
+              if (ss.pendingWaterReward) {
+                  const r = ss.pendingWaterReward;
+                  const rewardLabel = r.type === 'coins' ? `💰 ${r.amount} Coins` : r.type === 'gems' ? `💎 ${r.amount} Gems` : `✨ Starr Drop`;
+                  const claimBtn = document.createElement('button');
+                  claimBtn.textContent = `🎁 Claim Ready Reward: ${rewardLabel}`;
+                  claimBtn.style.cssText = 'margin-top:14px;padding:12px 24px;border-radius:12px;border:none;background:linear-gradient(135deg, #38bdf8, #818cf8);color:#05141b;font-weight:900;font-size:14px;cursor:pointer;box-shadow:0 0 20px rgba(56,189,248,0.5);';
+                  claimBtn.onclick = () => {
+                      claimSoulWaterReward();
+                      render();
+                  };
+                  fountainCard.appendChild(claimBtn);
+              }
+              panel.appendChild(fountainCard);
           }
 
-          appendSummonerRoad();
-          panel.insertBefore(wrap, close);
-      };
+          // ── Evil Doctor Research Banner (if applicable) ──
+          if (!isBrawlerUnlocked('evil_doctor')) {
+              const edEndAt = playerData.evilDoctorUnlockEndAt || 0;
+              const edCard = document.createElement('div');
+              edCard.style.cssText = 'background:rgba(0,204,102,0.08);border:1.5px solid #2f8f5b;border-radius:14px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;';
+              if (edEndAt > Date.now()) {
+                  const remDays = Math.ceil((edEndAt - Date.now()) / (1000 * 60 * 60 * 24));
+                  edCard.innerHTML = `
+                      <div>
+                          <div style="font-weight:900;color:#8ff6bb;font-size:14px;">🧬 Evil Doctor Biological Research In Progress</div>
+                          <div style="font-size:12px;color:#c9ffe0;">Auto-unlocks for free in ${remDays} day(s).</div>
+                      </div>
+                  `;
+              } else {
+                  edCard.innerHTML = `
+                      <div>
+                          <div style="font-weight:900;color:#8ff6bb;font-size:14px;">🧬 Optional Research: Evil Doctor</div>
+                          <div style="font-size:12px;color:#c9ffe0;">Begin 4-day research to unlock Evil Doctor for free without spending Souls.</div>
+                      </div>
+                  `;
+                  const edBtn = document.createElement('button');
+                  edBtn.textContent = 'Start 4-Day Research';
+                  edBtn.style.cssText = 'padding:8px 16px;border-radius:8px;border:1px solid #76f0ac;background:#103328;color:#76f0ac;font-weight:800;cursor:pointer;font-size:12px;';
+                  edBtn.onclick = () => {
+                      playerData.evilDoctorUnlockEndAt = Date.now() + 4 * 24 * 60 * 60 * 1000;
+                      saveProgress();
+                      render();
+                  };
+                  edCard.appendChild(edBtn);
+              }
+              panel.appendChild(edCard);
+          }
 
-      const close = document.createElement('button');
-      close.textContent = 'Close';
-      close.style.marginTop = '16px';
-      close.style.padding = '10px 16px';
-      close.style.borderRadius = '8px';
-      close.style.border = '1px solid #c9d7ff';
-      close.style.background = 'transparent';
-      close.style.color = '#c9d7ff';
-      close.style.cursor = 'pointer';
-      close.onclick = () => document.body.removeChild(overlay);
+          // ── Constellation Navigation Tabs (Starr Road) ──
+          const navRow = document.createElement('div');
+          navRow.style.cssText = 'display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x mandatory;';
 
-      panel.appendChild(close);
+          SOUL_CONSTELLATIONS.forEach((c) => {
+              const prog = getConstellationProgress(c.id);
+              const isActive = selectedConstellationId === c.id;
+              const tab = document.createElement('button');
+              tab.style.cssText = `flex:1;min-width:130px;padding:10px 12px;border-radius:14px;border:2px solid ${isActive ? c.color : 'rgba(255,255,255,0.08)'};background:${isActive ? c.color + '22' : 'rgba(10,18,36,0.6)'};color:#fff;cursor:pointer;text-align:left;transition:all 0.2s;box-shadow:${isActive ? '0 0 16px ' + c.glow : 'none'};`;
+              tab.innerHTML = `
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <span style="font-size:16px;">${c.icon}</span>
+                      <span style="font-size:11px;font-weight:800;color:${c.color};">${c.cost} 🪄</span>
+                  </div>
+                  <div style="font-weight:900;font-size:13px;margin-top:4px;color:${isActive ? c.color : '#e0e8ff'};">${c.id}</div>
+                  <div style="font-size:10px;color:#8eaad0;margin-top:2px;display:flex;justify-content:space-between;">
+                      <span>${prog.unlocked}/${prog.total}</span>
+                      <span>${prog.completed ? '⭐ COMPLETED' : prog.pct + '%'}</span>
+                  </div>
+              `;
+              tab.onclick = () => {
+                  selectedConstellationId = c.id;
+                  render();
+              };
+              navRow.appendChild(tab);
+          });
+          panel.appendChild(navRow);
+
+          // ── Active Constellation Interactive Node Web ──
+          const activeConstellation = SOUL_CONSTELLATIONS.find(x => x.id === selectedConstellationId) || SOUL_CONSTELLATIONS[0];
+          const activeProg = getConstellationProgress(activeConstellation.id);
+
+          const constellationSection = document.createElement('div');
+          constellationSection.style.cssText = `background:rgba(8, 14, 28, 0.85);border:1.5px solid ${activeConstellation.color}44;border-radius:20px;padding:20px;position:relative;box-shadow:inset 0 0 30px ${activeConstellation.color}11;`;
+
+          const cHeader = document.createElement('div');
+          cHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:12px;';
+          cHeader.innerHTML = `
+              <div>
+                  <div style="font-size:18px;font-weight:900;color:${activeConstellation.color};display:flex;align-items:center;gap:8px;">
+                      ${activeConstellation.icon} ${activeConstellation.name.toUpperCase()} CONSTELLATION
+                  </div>
+                  <div style="font-size:12px;color:#8eaad0;">${activeConstellation.subtitle} • ${activeConstellation.cost} Souls per Star Node</div>
+              </div>
+          `;
+
+          // Milestone Reward claim button if completed
+          if (activeProg.completed) {
+              const claimed = playerData.soulSummoner.claimedMilestones?.[activeConstellation.id];
+              const rewardBox = document.createElement('div');
+              if (claimed) {
+                  rewardBox.innerHTML = `<span style="font-size:12px;color:#5df2c2;font-weight:800;padding:6px 12px;background:rgba(93,242,194,0.12);border-radius:8px;border:1px solid #5df2c2;">✓ Milestone Claimed (${activeConstellation.milestoneReward.label})</span>`;
+              } else {
+                  const claimBtn = document.createElement('button');
+                  claimBtn.textContent = `🎁 Claim Milestone (${activeConstellation.milestoneReward.label})`;
+                  claimBtn.style.cssText = 'padding:8px 16px;border-radius:10px;border:none;background:linear-gradient(135deg, #ffd166, #ff9f43);color:#0a1428;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 0 16px rgba(255,209,102,0.5);';
+                  claimBtn.onclick = () => {
+                      claimConstellationMilestone(activeConstellation.id);
+                      render();
+                  };
+                  rewardBox.appendChild(claimBtn);
+              }
+              cHeader.appendChild(rewardBox);
+          }
+          constellationSection.appendChild(cHeader);
+
+          // ── Constellation Star Nodes Grid ──
+          const nodesGrid = document.createElement('div');
+          nodesGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:12px;';
+
+          activeProg.brawlers.forEach((bid) => {
+              const meta = brawlerData[bid] || { name: bid, role: 'Fighter', color: activeConstellation.color };
+              const isUnlocked = isBrawlerUnlocked(bid);
+              const isTarget = ss.targetBrawler === bid;
+
+              const node = document.createElement('div');
+              node.style.cssText = `background:${isTarget ? 'linear-gradient(135deg, rgba(30,50,95,0.9), rgba(15,25,50,0.9))' : isUnlocked ? 'rgba(12,24,45,0.7)' : 'rgba(10,16,32,0.7)'};border:2px solid ${isTarget ? '#ffd166' : isUnlocked ? '#5df2c2' : 'rgba(255,255,255,0.12)'};border-radius:16px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;position:relative;transition:all 0.22s;box-shadow:${isTarget ? '0 0 20px rgba(255,209,102,0.35)' : isUnlocked ? '0 0 12px rgba(93,242,194,0.18)' : 'none'};`;
+
+              node.onmouseenter = () => {
+                  node.style.transform = 'translateY(-3px)';
+                  node.style.borderColor = isTarget ? '#ffd166' : isUnlocked ? '#5df2c2' : meta.color || activeConstellation.color;
+              };
+              node.onmouseleave = () => {
+                  node.style.transform = 'translateY(0)';
+                  node.style.borderColor = isTarget ? '#ffd166' : isUnlocked ? '#5df2c2' : 'rgba(255,255,255,0.12)';
+              };
+
+              // Star status indicator
+              const starIcon = isUnlocked ? '⭐' : isTarget ? '🎯' : '✨';
+              const portraitMarkup = getBrawlerPortraitMarkup(bid);
+
+              node.innerHTML = `
+                  <div style="font-size:10px;font-weight:900;margin-bottom:6px;color:${isTarget ? '#ffd166' : isUnlocked ? '#5df2c2' : '#8eaad0'};">
+                      ${starIcon} ${isUnlocked ? 'UNLOCKED' : isTarget ? 'ACTIVE TARGET' : 'AVAILABLE'}
+                  </div>
+                  <div style="width:48px;height:48px;border-radius:14px;background:radial-gradient(circle, ${meta.color || '#6ee7ff'}55, #081020);border:1.5px solid ${meta.color || '#6ee7ff'};display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:6px;">
+                      ${portraitMarkup}
+                  </div>
+                  <div style="font-size:13px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:115px;">${meta.name || bid}</div>
+                  <div style="font-size:10px;color:#8eaad0;margin-top:2px;">${meta.role || 'Fighter'}</div>
+              `;
+
+              // Action on clicking node: switch active target or view detail
+              node.onclick = () => {
+                  if (!isUnlocked) {
+                      ss.targetBrawler = bid;
+                      saveProgress();
+                      autoSpendSoulsOnTarget(true);
+                      render();
+                  } else {
+                      // Already unlocked: select as active brawler
+                      selectedBrawler = bid;
+                      saveProgress();
+                      if (typeof normalizeSelectedBrawler === 'function') normalizeSelectedBrawler();
+                      if (typeof rebuildBrawlerSelectOptions === 'function') rebuildBrawlerSelectOptions();
+                      if (typeof renderHomeBrawlerCard === 'function') renderHomeBrawlerCard();
+                      render();
+                  }
+              };
+
+              nodesGrid.appendChild(node);
+          });
+          constellationSection.appendChild(nodesGrid);
+          panel.appendChild(constellationSection);
+
+          // ── Close Footer Button ──
+          const footerRow = document.createElement('div');
+          footerRow.style.cssText = 'display:flex;justify-content:flex-end;margin-top:4px;';
+          const backBtn = document.createElement('button');
+          backBtn.textContent = 'Done Exploring';
+          backBtn.style.cssText = 'padding:10px 24px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#dbe8ff;font-weight:800;font-size:13px;cursor:pointer;';
+          backBtn.onclick = () => document.body.removeChild(overlay);
+          footerRow.appendChild(backBtn);
+          panel.appendChild(footerRow);
+      }
+
       overlay.appendChild(panel);
       document.body.appendChild(overlay);
       render();
