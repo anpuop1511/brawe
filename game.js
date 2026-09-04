@@ -48125,7 +48125,29 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.fill();
           ctx.stroke();
           ctx.restore();
-          return;
+      }
+      if (selectedBrawler === 'weefee' && aimingSuper) {
+          ctx.save();
+          const superRadius = isHypercharged ? 160 : 140;
+          ctx.strokeStyle = isHypercharged ? 'rgba(217, 70, 239, 0.85)' : 'rgba(0, 245, 212, 0.85)';
+          ctx.fillStyle = isHypercharged ? 'rgba(217, 70, 239, 0.20)' : 'rgba(0, 245, 212, 0.15)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, superRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          const playerPoles = weefeePoles.filter(p => p.ownerId === player.id);
+          for (const pole of playerPoles) {
+              ctx.strokeStyle = isHypercharged ? '#d946ef' : '#00ff88';
+              ctx.lineWidth = 2.5;
+              ctx.setLineDash([6, 4]);
+              ctx.beginPath();
+              ctx.arc(pole.x, pole.y, 120, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.setLineDash([]);
+          }
+          ctx.restore();
       }
       if (selectedBrawler === 'sir_cheeseburger' && !aimingSuper) {
           ctx.save();
