@@ -5,7 +5,7 @@ const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
 const checks = [
   ["roster registration", /'cursed', 'king'/],
-  ["Legendary rarity", /king:\s*'Legendary'/],
+  ["Unique rarity", /king:\s*'Unique'/],
   ["Power 11 stats", /Math\.round\(7600 \* scale\).*Math\.round\(1650 \* scale\)/s],
   ["three ammo by default", /function getNativeAmmoCapacity[\s\S]*return 3;/],
   ["six-hit Super charge", /cursed:7, king:6/],

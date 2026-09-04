@@ -2820,100 +2820,116 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     const favoriteBrawlersKey = 'brawl_arena_favorites';
     let favoriteBrawlers = new Set(safeJsonParse(localStorage.getItem(favoriteBrawlersKey) || '[]', []));
         const SOUL_UNLOCK_COST_BY_RARITY = {
-            Common: 40,
+            Starter: 0,
             Rare: 70,
-            'Super Rare': 110,
             Epic: 170,
-            Mythic: 250,
-            Legendary: 360,
-            Exotic: 520,
-            Anomaly: 750,
+            Mythic: 270,
+            Exotic: 420,
+            Unique: 600,
+            Anomaly: 850,
+            Common: 0,
+            'Super Rare': 70,
+            Legendary: 600
         };
         const brawlerRarities = {
-            outlit: 'Common',
-            echo: 'Super Rare',
-            cheseypuff: 'Super Rare',
-            decayer: 'Legendary',
-            unopcoloco: 'Super Rare',
-            dashaholic: 'Mythic',
-            trapper: 'Epic',
-            classy: 'Mythic',
-            hyperorigin: 'Legendary',
-            heater_miser: 'Epic',
+            // Starter (3) - Unlocked by default only
+            outlit: 'Starter',
+            fuser: 'Starter',
+            rocketeer: 'Starter',
+
+            // Rare (8)
+            echo: 'Rare',
+            cheseypuff: 'Rare',
+            unopcoloco: 'Rare',
             minigunnin: 'Rare',
-            steamer: 'Mythic',
             bowlin_rida: 'Rare',
+            chaird: 'Rare',
+            forest: 'Rare',
+            goonbob: 'Rare',
+
+            // Epic (17)
+            trapper: 'Epic',
+            heater_miser: 'Epic',
             money_and_tax: 'Epic',
             hunter: 'Epic',
-            chaird: 'Rare',
-            forest: 'Super Rare',
             bouncin_balls: 'Epic',
-            goonbob: 'Common',
-            tempo_maker: 'Mythic',
-            overlord: 'Legendary',
-            copyphase: 'Exotic',
             fightnfire: 'Epic',
-            beast: 'Legendary',
-            amplifier: 'Mythic',
-            skeleflying: 'Mythic',
-            crystila: 'Anomaly',
-            hope: 'Legendary',
-            evil_doctor: 'Mythic',
             splitter: 'Epic',
             scuba_diver: 'Epic',
             hoop: 'Epic',
-            screener: 'Legendary',
-            kage: 'Legendary',
-            malakor: 'Legendary',
             beam: 'Epic',
-            paradox: 'Legendary',
-            sera_eclipse: 'Legendary',
-            boom_arang: 'Mythic',
             teether: 'Epic',
             fuel: 'Epic',
-            xray: 'Legendary',
-            angel: 'Legendary',
-            demon: 'Legendary',
             warrior: 'Epic',
-            relay: 'Legendary',
+            peter_pickle: 'Epic',
+            axeywaxy: 'Epic',
+            ramage: 'Epic',
+            sir_cheeseburger: 'Epic',
+
+            // Mythic (26)
+            dashaholic: 'Mythic',
+            classy: 'Mythic',
+            steamer: 'Mythic',
+            tempo_maker: 'Mythic',
+            amplifier: 'Mythic',
+            skeleflying: 'Mythic',
+            evil_doctor: 'Mythic',
+            boom_arang: 'Mythic',
             upiedown: 'Mythic',
             chickpig: 'Mythic',
             jetpack: 'Mythic',
-            snapper: 'Exotic',
-            robber: 'Legendary',
-            fuser: 'Common',
-            rocketeer: 'Common',
-            peter_pickle: 'Epic',
-            unstable: 'Legendary',
             fastpass: 'Mythic',
             freestyle: 'Mythic',
             drainbow: 'Mythic',
-            portalo: 'Exotic',
-            ghoul: 'Exotic',
-            jacktrade: 'Exotic',
-            darkener: 'Anomaly',
-            awakenator: 'Anomaly',
+            draflygon: 'Mythic',
             homer: 'Mythic',
-            orbo: 'Legendary',
             predator: 'Mythic',
             ice_cream: 'Mythic',
             swimmer: 'Mythic',
             boomer: 'Mythic',
             blade_vane: 'Mythic',
             daggershard: 'Mythic',
-            adlof: 'Legendary',
             cluster: 'Mythic',
             witch: 'Mythic',
-            axeywaxy: 'Epic',
             trampaheal: 'Mythic',
-            mageny: 'Exotic',
-            ramage: 'Epic',
             upgradart: 'Mythic',
+
+            // Exotic (9)
+            copyphase: 'Exotic',
+            snapper: 'Exotic',
+            portalo: 'Exotic',
+            ghoul: 'Exotic',
+            jacktrade: 'Exotic',
+            mageny: 'Exotic',
             cinderion: 'Exotic',
             cursed: 'Exotic',
-            king: 'Legendary',
             anti_royal: 'Exotic',
-            sir_cheeseburger: 'Epic'
+
+            // Unique (19)
+            decayer: 'Unique',
+            hyperorigin: 'Unique',
+            overlord: 'Unique',
+            beast: 'Unique',
+            hope: 'Unique',
+            screener: 'Unique',
+            kage: 'Unique',
+            malakor: 'Unique',
+            paradox: 'Unique',
+            sera_eclipse: 'Unique',
+            xray: 'Unique',
+            angel: 'Unique',
+            demon: 'Unique',
+            relay: 'Unique',
+            robber: 'Unique',
+            unstable: 'Unique',
+            orbo: 'Unique',
+            adlof: 'Unique',
+            king: 'Unique',
+
+            // Anomaly (3)
+            crystila: 'Anomaly',
+            darkener: 'Anomaly',
+            awakenator: 'Anomaly'
         };
         let brawlerSortMode = localStorage.getItem('brawl_arena_brawler_sort') || 'rarity-desc';
 
@@ -2928,8 +2944,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
 
         function getBrawlerRarityRank(brawlerId) {
-            const order = { Common: 1, Rare: 2, 'Super Rare': 3, Epic: 4, Mythic: 5, Legendary: 6, Exotic: 7, Anomaly: 8 };
-            return order[brawlerRarities[brawlerId]] || 0;
+            const order = { Starter: 1, Rare: 2, Epic: 3, Mythic: 4, Exotic: 5, Unique: 6, Anomaly: 7, Common: 1, 'Super Rare': 2, Legendary: 6 };
+            return order[brawlerRarities[brawlerId]] || 1;
         }
 
         function ensurePlayerDataDefaults() {
@@ -2942,25 +2958,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (typeof playerData.hyperChargeFragments !== 'number') playerData.hyperChargeFragments = 0;
             if (typeof playerData.trophyRoadProgress !== 'number') playerData.trophyRoadProgress = 0;
             if (!playerData.unlockedBrawlers || typeof playerData.unlockedBrawlers !== 'object') {
-                playerData.unlockedBrawlers = { outlit: true, fuser: true };
+                playerData.unlockedBrawlers = { outlit: true, fuser: true, rocketeer: true };
             }
             for (const bid of allBrawlers) {
                 playerData.unlockedBrawlers[bid] = !!playerData.unlockedBrawlers[bid];
             }
             playerData.unlockedBrawlers.outlit = true;
             playerData.unlockedBrawlers.fuser = true;
-            playerData.unlockedBrawlers.axeywaxy = true;
-            playerData.unlockedBrawlers.trampaheal = true;
-            playerData.unlockedBrawlers.draflygon = true;
-            playerData.unlockedBrawlers.drainbow = true;
-            playerData.unlockedBrawlers.kage = true;
-            playerData.unlockedBrawlers.ramage = true;
-            playerData.unlockedBrawlers.upgradart = true;
-            playerData.unlockedBrawlers.cinderion = true;
-            playerData.unlockedBrawlers.cursed = true;
-            playerData.unlockedBrawlers.king = true;
-            playerData.unlockedBrawlers.anti_royal = true;
-            playerData.unlockedBrawlers.sir_cheeseburger = true;
+            playerData.unlockedBrawlers.rocketeer = true;
         }
 
         function isFavoriteBrawler(id) {
@@ -2974,15 +2979,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
 
         function getBrawlerRarity(brawlerId) {
-            return brawlerRarities[brawlerId] || 'Common';
+            return brawlerRarities[brawlerId] || 'Starter';
         }
 
         function getDisplayRarityName(rarity) {
-            return rarity === 'Super Rare' ? 'Elite' : rarity;
+            return rarity || 'Starter';
         }
 
         function getSoulUnlockCostForRarity(rarity) {
-            return SOUL_UNLOCK_COST_BY_RARITY[rarity] || SOUL_UNLOCK_COST_BY_RARITY.Common;
+            return SOUL_UNLOCK_COST_BY_RARITY[rarity] ?? SOUL_UNLOCK_COST_BY_RARITY.Starter ?? 0;
         }
 
         function getSoulsForPlacement(placement) {
@@ -3005,20 +3010,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (playerData.souls == null) playerData.souls = 0;
             playerData.souls = Math.max(0, Math.floor(playerData.souls || 0));
             if (!playerData.unlockedBrawlers || typeof playerData.unlockedBrawlers !== 'object') {
-                playerData.unlockedBrawlers = { outlit: true, fuser: true };
+                playerData.unlockedBrawlers = { outlit: true, fuser: true, rocketeer: true };
             }
             for (const bid of allBrawlers) {
                 playerData.unlockedBrawlers[bid] = !!playerData.unlockedBrawlers[bid];
             }
             playerData.unlockedBrawlers.outlit = true;
             playerData.unlockedBrawlers.fuser = true;
-            playerData.unlockedBrawlers.axeywaxy = true;
-            playerData.unlockedBrawlers.trampaheal = true;
-            playerData.unlockedBrawlers.draflygon = true;
-            playerData.unlockedBrawlers.drainbow = true;
-            playerData.unlockedBrawlers.kage = true;
-            playerData.unlockedBrawlers.ramage = true;
-            playerData.unlockedBrawlers.upgradart = true;
+            playerData.unlockedBrawlers.rocketeer = true;
             if (!playerData.soulSummoner || typeof playerData.soulSummoner !== 'object') {
                 playerData.soulSummoner = {};
             }
@@ -3106,7 +3105,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         function autoSpendSoulsOnTarget(calledFromUI) {
             ensureSoulSummonerData();
             const ss = playerData.soulSummoner;
-            const locked = allBrawlers.filter(b => b !== 'outlit' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
+            const locked = allBrawlers.filter(b => getBrawlerRarity(b) !== 'Starter' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
             if (locked.length === 0) return;
             // Validate target
             if (ss.targetBrawler && (isBrawlerUnlocked(ss.targetBrawler) || !locked.includes(ss.targetBrawler))) {
@@ -3115,7 +3114,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             // Auto-assign target if none
             if (!ss.targetBrawler) {
                 if (calledFromUI) return; // let the picker handle it
-                const rarityOrder = ['Common','Rare','Super Rare','Epic','Mythic','Legendary','Exotic','Anomaly'];
+                const rarityOrder = ['Starter','Rare','Epic','Mythic','Exotic','Unique','Anomaly'];
                 for (const r of rarityOrder) {
                     const inR = locked.filter(b => getBrawlerRarity(b) === r);
                     if (inR.length > 0) { ss.targetBrawler = inR[0]; break; }
@@ -3136,7 +3135,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 saveProgress();
                 // Apply banked souls to next auto-target if possible
                 if ((playerData.soulSummoner.soulBank || 0) > 0) {
-                    const remaining = allBrawlers.filter(b => b !== 'outlit' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
+                    const remaining = allBrawlers.filter(b => getBrawlerRarity(b) !== 'Starter' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
                     if (remaining.length > 0) {
                         playerData.souls = (playerData.souls || 0) + playerData.soulSummoner.soulBank;
                         playerData.soulSummoner.soulBank = 0;
@@ -3156,7 +3155,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const box = document.createElement('div');
             box.style.cssText = 'background:#0e1830;border:3px solid ' + (meta.color || '#caa6ff') + ';border-radius:18px;padding:28px 32px;max-width:380px;text-align:center;';
             box.innerHTML = `<div style="font-size:38px;">🎉</div><div style="font-size:22px;font-weight:900;color:${meta.color||'#caa6ff'};margin:8px 0;">${meta.name || justUnlockedId} UNLOCKED!</div><div style="font-size:13px;color:#9dc0ea;margin-bottom:18px;">Auto-unlocked via Soul Summoner</div>`;
-            const remaining = allBrawlers.filter(b => b !== 'outlit' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
+            const remaining = allBrawlers.filter(b => getBrawlerRarity(b) !== 'Starter' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
             if (remaining.length > 0) {
                 const pickLabel = document.createElement('div');
                 pickLabel.textContent = 'Choose your next unlock target:';
@@ -3244,8 +3243,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
 
         function getBrawlerSortOrder(mode, brawlerId) {
-            const rarityOrder = { Common: 0, Rare: 1, 'Super Rare': 2, Epic: 3, Mythic: 4, Legendary: 5, Exotic: 6, Anomaly: 7 };
-            const rarity = brawlerRarities[brawlerId] || 'Common';
+            const rarityOrder = { Starter: 0, Rare: 1, Epic: 2, Mythic: 3, Exotic: 4, Unique: 5, Anomaly: 6, Common: 0, 'Super Rare': 1, Legendary: 5 };
+            const rarity = brawlerRarities[brawlerId] || 'Starter';
             const label = (brawlerData[brawlerId]?.name || brawlerId).toLowerCase();
             const role = (brawlerData[brawlerId]?.role || '').toLowerCase();
             const powerLevel = Math.max(1, playerData?.brawlers?.[brawlerId]?.level || 1);
@@ -3282,7 +3281,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
             brawlerSelect.innerHTML = '';
             sortedIds.forEach((id) => {
-                const rarity = brawlerRarities[id] || 'Common';
+                const rarity = brawlerRarities[id] || 'Starter';
                 const meta = brawlerData[id] || { name: id };
                 const isLocked = !isBrawlerUnlocked(id);
                 const isDisabled = disabledBrawlers.has(id) || brawlerData?.[id]?.disabled;
@@ -10313,7 +10312,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               }
               wrap.appendChild(upcoming);
 
-              const rarityOrder = ['Common', 'Rare', 'Super Rare', 'Epic', 'Mythic', 'Legendary', 'Exotic'];
+              const rarityOrder = ['Starter', 'Rare', 'Epic', 'Mythic', 'Exotic', 'Unique', 'Anomaly'];
               const road = document.createElement('div');
               road.style.marginTop = '16px';
               road.style.padding = '12px';
@@ -28673,15 +28672,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if (!card) return;
       const data = brawlerData[selectedBrawler] || brawlerData.outlit || { name: 'Outlit', role: 'Fighter', rarity: 'Common' };
       const level = Math.max(1, Math.min(11, playerData?.brawlers?.[selectedBrawler]?.level || 1));
-      const rarity = brawlerRarities[selectedBrawler] || 'Common';
+      const rarity = brawlerRarities[selectedBrawler] || 'Starter';
       const rarityColors = {
+          'Starter': '#9fb4c7',
           'Common': '#9fb4c7',
           'Rare': '#5df2c2',
           'Super Rare': '#6ee7ff',
           'Epic': '#f1c40f',
           'Mythic': '#ff7bd1',
-          'Legendary': '#ff9b42',
           'Exotic': '#b983ff',
+          'Unique': '#ff9b42',
+          'Legendary': '#ff9b42',
           'Anomaly': '#7a4dff',
       };
       const rarityColor = rarityColors[rarity] || '#9fb4c7';
@@ -34009,8 +34010,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const selectedData = brawlerData[selectedBrawler] || brawlerData.outlit;
             const selectedProgress = getEffectiveBrawlerProgress(selectedBrawler);
             const selectedStats = getScaledStats(selectedBrawler);
-            const selectedRarity = brawlerRarities[selectedBrawler] || 'Common';
-            const selectedRarityColor = ({ Common:'#9fb4c7', Rare:'#5df2c2', 'Super Rare':'#6ee7ff', Epic:'#f1c40f', Mythic:'#ff7bd1', Legendary:'#ff9b42', Exotic:'#b983ff' })[selectedRarity] || '#9fb4c7';
+            const selectedRarity = brawlerRarities[selectedBrawler] || 'Starter';
+            const selectedRarityColor = ({ Starter:'#9fb4c7', Common:'#9fb4c7', Rare:'#5df2c2', 'Super Rare':'#6ee7ff', Epic:'#f1c40f', Mythic:'#ff7bd1', Exotic:'#b983ff', Unique:'#ff9b42', Legendary:'#ff9b42', Anomaly:'#7a4dff' })[selectedRarity] || '#9fb4c7';
             const selectedBanner = document.createElement('section');
             selectedBanner.className = 'brawler-browser__selected';
             selectedBanner.style.setProperty('--selected-brawler-color', selectedData.color || '#6ee7ff');
@@ -34102,13 +34103,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             rarityFilter.style.cssText = 'padding:8px 10px;border-radius:8px;background:#1a2a4f;color:#fff;border:1px solid #4462a3;';
             rarityFilter.innerHTML = `
                 <option value="all">All Rarities</option>
-                <option value="Common">Common</option>
+                <option value="Starter">Starter</option>
                 <option value="Rare">Rare</option>
-                <option value="Super Rare">Elite</option>
                 <option value="Epic">Epic</option>
                 <option value="Mythic">Mythic</option>
-                <option value="Legendary">Legendary</option>
                 <option value="Exotic">Exotic</option>
+                <option value="Unique">Unique</option>
+                <option value="Anomaly">Anomaly</option>
             `;
             rarityFilter.value = modalSortState.rarity;
 
@@ -34157,13 +34158,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             container.style.maxWidth = '1000px';
 
             const rarityColors = {
+                'Starter': '#9fb4c7',
                 'Common': '#9fb4c7',
                 'Rare': '#5df2c2',
                 'Super Rare': '#6ee7ff',
                 'Epic': '#f1c40f',
                 'Mythic': '#ff7bd1',
-                'Legendary': '#ff9b42',
                 'Exotic': '#b983ff',
+                'Unique': '#ff9b42',
+                'Legendary': '#ff9b42',
                 'Anomaly': '#7a4dff',
             };
 
@@ -34171,7 +34174,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 .filter((id) => {
                     if (disabledBrawlers.has(id) || brawlerData?.[id]?.disabled) return false;
                     const role = (brawlerData[id]?.role || '').toLowerCase();
-                    const rarity = brawlerRarities[id] || 'Common';
+                    const rarity = brawlerRarities[id] || 'Starter';
                     const query = modalSortState.search.trim().toLowerCase();
                     if (modalSortState.role !== 'all' && role !== modalSortState.role) return false;
                     if (modalSortState.rarity !== 'all' && rarity !== modalSortState.rarity) return false;
@@ -34229,7 +34232,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 const isLocked = !isBrawlerUnlocked(id);
                 const sushiDeckReady = isSlopSushiLive() && hasSlopSushiDeck(id);
                 const bLevel = progress.level;
-                const rarity = brawlerRarities[id] || 'Common';
+                const rarity = brawlerRarities[id] || 'Starter';
                 const rarityColor = rarityColors[rarity] || '#c0d4ff';
                 const isFavorite = isFavoriteBrawler(id);
                 const rankName = getBrickRankLabel(progress);

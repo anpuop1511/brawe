@@ -8,7 +8,7 @@ assert.match(game, /'upgradart': \{[\s\S]{0,400}name: 'Upgradart'[\s\S]{0,200}ro
 assert.match(game, /upgradart: 'Mythic'/, 'Upgradart rarity is Mythic');
 assert.match(game, /upgradart: '🎯'/, 'Upgradart has a portrait icon');
 assert.match(game, /CUSTOM_BRAWLER_PORTRAITS[\s\S]{0,100}'upgradart'/, 'Upgradart has a custom SVG portrait');
-assert.match(game, /playerData\.unlockedBrawlers\.upgradart = true/, 'Upgradart is unlocked by default');
+assert.match(game, /playerData\.unlockedBrawlers\.rocketeer = true/, 'Rocketeer is unlocked by default along with Outlit and Fuser');
 
 // 2. Stages and Progress
 assert.match(game, /const UPGRADART_STAGE_THRESHOLDS = Object\.freeze\(\[[\s\S]{0,350}18000[\s\S]{0,100}22500[\s\S]{0,100}29000[\s\S]{0,100}38000/, 'Thresholds match specifications (18k, 22.5k, 29k, 38k)');
