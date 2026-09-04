@@ -10676,6 +10676,229 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       render();
   }
 
+  const BRICK_ROAD_MILESTONES = Object.freeze([
+      { bricks: 50, reward: { coins: 100 }, label: '100 Coins', icon: '💰' },
+      { bricks: 100, reward: { gems: 25 }, label: '25 Gems', icon: '💎' },
+      { bricks: 200, reward: { souls: 50 }, label: '50 Souls', icon: '🪄' },
+      { bricks: 300, reward: { coins: 150 }, label: '150 Coins', icon: '💰' },
+      { bricks: 400, reward: { coins: 200, gems: 15 }, label: '200 Coins + 15 Gems', icon: '✨' },
+      { bricks: 500, league: 'Bronze', reward: { coins: 300, gems: 30, souls: 50 }, label: '🏆 Bronze League Reward', icon: '🥉' },
+      { bricks: 750, reward: { souls: 100 }, label: '100 Souls', icon: '🪄' },
+      { bricks: 1000, reward: { gems: 50 }, label: '50 Gems', icon: '💎' },
+      { bricks: 1250, reward: { coins: 400 }, label: '400 Coins', icon: '💰' },
+      { bricks: 1500, league: 'Silver', reward: { coins: 500, gems: 50, souls: 100 }, label: '🏆 Silver League Reward', icon: '🥈' },
+      { bricks: 2000, reward: { souls: 150 }, label: '150 Souls', icon: '🪄' },
+      { bricks: 2500, reward: { gems: 75 }, label: '75 Gems', icon: '💎' },
+      { bricks: 3000, reward: { coins: 600 }, label: '600 Coins', icon: '💰' },
+      { bricks: 3500, reward: { souls: 200 }, label: '200 Souls', icon: '🪄' },
+      { bricks: 4000, league: 'Gold', reward: { coins: 800, gems: 80, souls: 200 }, label: '🏆 Gold League Reward', icon: '🥇' },
+      { bricks: 5000, reward: { souls: 250 }, label: '250 Souls', icon: '🪄' },
+      { bricks: 6000, reward: { gems: 100 }, label: '100 Gems', icon: '💎' },
+      { bricks: 7500, reward: { coins: 1000 }, label: '1,000 Coins', icon: '💰' },
+      { bricks: 9000, reward: { souls: 300 }, label: '300 Souls', icon: '🪄' },
+      { bricks: 10000, league: 'Diamond', reward: { coins: 1500, gems: 150, souls: 350 }, label: '🏆 Diamond League Reward', icon: '💎' },
+      { bricks: 12500, reward: { coins: 1200 }, label: '1,200 Coins', icon: '💰' },
+      { bricks: 15000, reward: { souls: 400 }, label: '400 Souls', icon: '🪄' },
+      { bricks: 17500, reward: { gems: 150 }, label: '150 Gems', icon: '💎' },
+      { bricks: 20000, league: 'Mythic', reward: { coins: 2500, gems: 200, souls: 500 }, label: '🏆 Mythic League Reward', icon: '🔮' },
+      { bricks: 25000, reward: { souls: 600 }, label: '600 Souls', icon: '🪄' },
+      { bricks: 30000, reward: { gems: 250 }, label: '250 Gems', icon: '💎' },
+      { bricks: 35000, league: 'Master', reward: { coins: 4000, gems: 300, souls: 800 }, label: '🏆 Master League Reward', icon: '👑' },
+      { bricks: 40000, reward: { souls: 1000 }, label: '1,000 Souls', icon: '🪄' },
+      { bricks: 45000, reward: { gems: 400 }, label: '400 Gems', icon: '💎' },
+      { bricks: 50000, league: 'Grand Champion', reward: { coins: 8000, gems: 500, souls: 1500 }, label: '🌌 Grand Champion Apex Reward', icon: '🌌' }
+  ]);
+
+  function getTotalAccountBricks() {
+      let total = 0;
+      if (playerData && playerData.brawlers && typeof playerData.brawlers === 'object') {
+          for (const bid of allBrawlers) {
+              if (playerData.brawlers[bid]) {
+                  total += getLifetimeBricks(playerData.brawlers[bid]);
+              }
+          }
+      }
+      return total;
+  }
+
+  function getBrickRoadLeague(totalBricks = getTotalAccountBricks()) {
+      if (totalBricks >= 50000) return { name: 'Grand Champion', icon: '🌌', color: '#a855f7', min: 50000 };
+      if (totalBricks >= 35000) return { name: 'Master', icon: '👑', color: '#ff9b42', min: 35000 };
+      if (totalBricks >= 20000) return { name: 'Mythic', icon: '🔮', color: '#ff7bd1', min: 20000 };
+      if (totalBricks >= 10000) return { name: 'Diamond', icon: '💎', color: '#6ee7ff', min: 10000 };
+      if (totalBricks >= 4000) return { name: 'Gold', icon: '🥇', color: '#ffd166', min: 4000 };
+      if (totalBricks >= 1500) return { name: 'Silver', icon: '🥈', color: '#c0d4ff', min: 1500 };
+      if (totalBricks >= 500) return { name: 'Bronze', icon: '🥉', color: '#d38b5d', min: 500 };
+      return { name: 'Wood', icon: '🪵', color: '#8eaad0', min: 0 };
+  }
+
+  function getUnclaimedBrickRoadMilestonesCount() {
+      ensurePlayerDataDefaults();
+      if (!playerData.claimedBrickRoadMilestones) playerData.claimedBrickRoadMilestones = {};
+      const total = getTotalAccountBricks();
+      return BRICK_ROAD_MILESTONES.filter(m => total >= m.bricks && !playerData.claimedBrickRoadMilestones[m.bricks]).length;
+  }
+
+  function claimBrickRoadMilestone(bricksThreshold) {
+      ensurePlayerDataDefaults();
+      if (!playerData.claimedBrickRoadMilestones) playerData.claimedBrickRoadMilestones = {};
+      const m = BRICK_ROAD_MILESTONES.find(x => x.bricks === bricksThreshold);
+      if (!m) return false;
+      const total = getTotalAccountBricks();
+      if (total < m.bricks) return false;
+      if (playerData.claimedBrickRoadMilestones[bricksThreshold]) return false;
+
+      playerData.claimedBrickRoadMilestones[bricksThreshold] = true;
+      if (m.reward.coins) playerData.coins = (playerData.coins || 0) + m.reward.coins;
+      if (m.reward.gems) playerData.gems = (playerData.gems || 0) + m.reward.gems;
+      if (m.reward.souls) {
+          if (typeof addSouls === 'function') addSouls(m.reward.souls);
+          else playerData.souls = (playerData.souls || 0) + m.reward.souls;
+      }
+      saveProgress();
+      if (typeof updateHomeCurrencyDisplay === 'function') updateHomeCurrencyDisplay();
+      if (typeof syncHomeProgressDock === 'function') syncHomeProgressDock();
+      return true;
+  }
+
+  function openBrickRoadModal() {
+      ensurePlayerDataDefaults();
+      if (!playerData.claimedBrickRoadMilestones) playerData.claimedBrickRoadMilestones = {};
+
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:radial-gradient(ellipse at 50% 10%, rgba(18, 28, 58, 0.98), rgba(3, 6, 14, 0.98));z-index:1600;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;padding:clamp(8px, 2vh, 16px);box-sizing:border-box;backdrop-filter:blur(14px);';
+
+      const panel = document.createElement('div');
+      panel.style.cssText = 'width:min(860px, 98vw);max-height:calc(100dvh - 24px);max-height:calc(100vh - 24px);background:linear-gradient(180deg, #0d172e 0%, #060b17 100%);border:2px solid rgba(255,209,102,0.45);border-radius:20px;box-shadow:0 25px 80px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.1);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;position:relative;';
+
+      function render() {
+          panel.innerHTML = '';
+          const totalBricks = getTotalAccountBricks();
+          const league = getBrickRoadLeague(totalBricks);
+          const nextMilestone = BRICK_ROAD_MILESTONES.find(m => totalBricks < m.bricks) || BRICK_ROAD_MILESTONES[BRICK_ROAD_MILESTONES.length - 1];
+          const unclaimedCount = getUnclaimedBrickRoadMilestonesCount();
+
+          // ── Sticky Header ──
+          const header = document.createElement('div');
+          header.style.cssText = 'padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(255,209,102,0.2);background:rgba(8,14,28,0.92);flex-shrink:0;z-index:10;box-sizing:border-box;';
+
+          const titleBox = document.createElement('div');
+          titleBox.innerHTML = `
+              <div style="font-size:clamp(16px, 2.4vw, 20px);font-weight:900;letter-spacing:0.04em;background:linear-gradient(90deg,#ffd166,#ff9f43);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:6px;">
+                  🏆 BRICK ROAD · TROPHY LEAGUES
+              </div>
+              <div style="font-size:11px;color:#8eaad0;margin-top:1px;">Earn Bricks with any fighter to unlock epic milestone rewards</div>
+          `;
+
+          const headerRight = document.createElement('div');
+          headerRight.style.cssText = 'display:flex;align-items:center;gap:8px;flex-shrink:0;';
+
+          const leagueBadge = document.createElement('div');
+          leagueBadge.style.cssText = `background:${league.color}22;border:1.5px solid ${league.color};padding:6px 12px;border-radius:999px;font-weight:900;color:${league.color};font-size:13px;display:flex;align-items:center;gap:5px;box-shadow:0 0 12px ${league.color}33;`;
+          leagueBadge.innerHTML = `<span>${league.icon}</span> <span>${league.name.toUpperCase()} LEAGUE</span>`;
+
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = '✕';
+          closeBtn.style.cssText = 'width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#dbe8ff;font-size:15px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.18s;flex-shrink:0;';
+          closeBtn.onclick = () => document.body.removeChild(overlay);
+
+          headerRight.appendChild(leagueBadge);
+          headerRight.appendChild(closeBtn);
+          header.appendChild(titleBox);
+          header.appendChild(headerRight);
+          panel.appendChild(header);
+
+          // ── Scrollable Body ──
+          const body = document.createElement('div');
+          body.style.cssText = 'padding:16px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:14px;box-sizing:border-box;flex:1;';
+
+          // Current Progress Summary Card
+          const summaryCard = document.createElement('div');
+          summaryCard.style.cssText = `background:linear-gradient(135deg, rgba(28,40,75,0.8), rgba(12,20,42,0.9));border:2px solid ${league.color};border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:0 0 24px ${league.color}22;box-sizing:border-box;`;
+          
+          const prevThreshold = league.min || 0;
+          const nextThreshold = nextMilestone ? nextMilestone.bricks : totalBricks;
+          const progressInTier = Math.max(0, totalBricks - prevThreshold);
+          const span = Math.max(1, nextThreshold - prevThreshold);
+          const pct = Math.min(100, Math.round((progressInTier / span) * 100));
+
+          summaryCard.innerHTML = `
+              <div style="min-width:0;">
+                  <div style="font-size:11px;font-weight:900;color:${league.color};text-transform:uppercase;letter-spacing:0.06em;">TOTAL ACCOUNT BRICKS</div>
+                  <div style="font-size:26px;font-weight:900;color:#fff;margin-top:2px;">
+                      🧱 ${totalBricks.toLocaleString()} <span style="font-size:14px;color:#8eaad0;font-weight:600;">Bricks</span>
+                  </div>
+                  <div style="font-size:12px;color:#ffd166;margin-top:2px;">
+                      Next Milestone at ${nextThreshold.toLocaleString()} Bricks (${Math.max(0, nextThreshold - totalBricks).toLocaleString()} needed)
+                  </div>
+              </div>
+              <div style="text-align:right;">
+                  ${unclaimedCount > 0 ? `<span style="font-size:12px;font-weight:900;color:#041810;background:linear-gradient(135deg,#5df2c2,#29c996);padding:6px 12px;border-radius:8px;box-shadow:0 0 14px rgba(93,242,194,0.5);">🎉 ${unclaimedCount} REWARD${unclaimedCount > 1 ? 'S' : ''} READY TO CLAIM</span>` : '<span style="font-size:12px;color:#8eaad0;">All unlocked rewards claimed</span>'}
+              </div>
+          `;
+          body.appendChild(summaryCard);
+
+          // Milestones Vertical Road Track
+          const trackContainer = document.createElement('div');
+          trackContainer.style.cssText = 'display:flex;flex-direction:column;gap:10px;box-sizing:border-box;';
+
+          BRICK_ROAD_MILESTONES.forEach((m, idx) => {
+              const isReached = totalBricks >= m.bricks;
+              const isClaimed = !!playerData.claimedBrickRoadMilestones[m.bricks];
+              const canClaim = isReached && !isClaimed;
+
+              const mCard = document.createElement('div');
+              mCard.style.cssText = `display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 16px;border-radius:14px;background:${canClaim ? 'linear-gradient(135deg,rgba(30,60,95,0.9),rgba(14,30,55,0.9))' : isClaimed ? 'rgba(10,20,38,0.5)' : 'rgba(8,14,28,0.7)'};border:1.5px solid ${canClaim ? '#5df2c2' : isClaimed ? 'rgba(93,242,194,0.3)' : isReached ? '#ffd166' : 'rgba(255,255,255,0.08)'};transition:all 0.2s;box-sizing:border-box;`;
+
+              const mLeft = document.createElement('div');
+              mLeft.style.cssText = 'display:flex;align-items:center;gap:12px;min-width:0;';
+
+              const iconBadge = document.createElement('div');
+              iconBadge.style.cssText = `width:46px;height:46px;border-radius:12px;background:radial-gradient(circle,rgba(255,209,102,0.2),rgba(8,16,32,0.9));border:1.5px solid ${canClaim ? '#5df2c2' : '#ffd166'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;`;
+              iconBadge.textContent = m.icon;
+
+              const info = document.createElement('div');
+              info.innerHTML = `
+                  <div style="font-size:11px;font-weight:900;color:${isReached ? '#ffd166' : '#8eaad0'};">
+                      ${m.bricks.toLocaleString()} BRICKS ${m.league ? '· ' + m.league.toUpperCase() + ' LEAGUE' : ''}
+                  </div>
+                  <div style="font-size:14px;font-weight:800;color:#fff;margin-top:2px;">
+                      ${m.label}
+                  </div>
+              `;
+              mLeft.appendChild(iconBadge);
+              mLeft.appendChild(info);
+
+              const mRight = document.createElement('div');
+              if (canClaim) {
+                  const claimBtn = document.createElement('button');
+                  claimBtn.textContent = '🎁 CLAIM';
+                  claimBtn.style.cssText = 'padding:8px 18px;border-radius:10px;border:none;background:linear-gradient(135deg,#5df2c2,#00b894);color:#05141b;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 0 16px rgba(93,242,194,0.6);';
+                  claimBtn.onclick = () => {
+                      claimBrickRoadMilestone(m.bricks);
+                      render();
+                  };
+                  mRight.appendChild(claimBtn);
+              } else if (isClaimed) {
+                  mRight.innerHTML = '<span style="font-size:12px;color:#5df2c2;font-weight:800;">✓ Claimed</span>';
+              } else {
+                  mRight.innerHTML = `<span style="font-size:11px;color:#8eaad0;">🔒 ${(m.bricks - totalBricks).toLocaleString()} more bricks</span>`;
+              }
+
+              mCard.appendChild(mLeft);
+              mCard.appendChild(mRight);
+              trackContainer.appendChild(mCard);
+          });
+
+          body.appendChild(trackContainer);
+          panel.appendChild(body);
+      }
+
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+      render();
+  }
+
   function getUpgradeCost(level) {
       const costs = [0, 50, 100, 175, 300, 500, 750, 1050, 1400, 2000, 3000];
       return costs[Math.max(0, Math.floor(level || 0))] || 99999;
@@ -33300,6 +33523,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     attachiesBtn.setAttribute('aria-label', 'Open Attachies collection');
     styleHomeButton(attachiesBtn, 'purple', true);
     const visibleHomeShortcuts = document.getElementById('homeQuickActions');
+
+    // Brick Road Trophy Progress Banner in Dock
+    const brickRoadBtn = document.createElement('button');
+    brickRoadBtn.id = 'brickRoadBtn';
+    brickRoadBtn.type = 'button';
+    const totalBricks = typeof getTotalAccountBricks === 'function' ? getTotalAccountBricks() : 0;
+    const league = typeof getBrickRoadLeague === 'function' ? getBrickRoadLeague(totalBricks) : { name: 'Wood', icon: '🪵' };
+    const unclaimed = typeof getUnclaimedBrickRoadMilestonesCount === 'function' ? getUnclaimedBrickRoadMilestonesCount() : 0;
+    brickRoadBtn.innerHTML = `🏆 <b>BRICK ROAD</b> <small style="color:#ffd166;">(${totalBricks} 🧱 · ${league.name})${unclaimed > 0 ? ' <span style="background:#5df2c2;color:#05141b;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:900;">' + unclaimed + '</span>' : ''}</small>`;
+    styleHomeButton(brickRoadBtn, 'amber', true);
+    brickRoadBtn.addEventListener('click', openBrickRoadModal);
+    if (visibleHomeShortcuts) visibleHomeShortcuts.insertBefore(brickRoadBtn, visibleHomeShortcuts.firstChild);
+
     if(visibleHomeShortcuts) visibleHomeShortcuts.appendChild(attachiesBtn);
     else if(homeUtilityRow) homeUtilityRow.appendChild(attachiesBtn);
     else if(startBtn) startBtn.parentNode.appendChild(attachiesBtn);
@@ -35553,6 +35789,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     window.__pureHTMLGame.clearMap = ()=>{ currentMapOverride = null; generateCubes(); spawnBots(); console.log('Cleared map override'); };
 
   function checkHit(target, b, i){
+        // A revived target can earn a fresh premium takedown effect. This also
+        // makes Training dummy eliminations useful for previewing owned skins.
+        if (target && target.hp > 0) target._legendaryTakedownFxPlayed = false;
         // If target has temporary invulnerability (e.g., overlord transform), ignore the hit
         if (target && target.invulnerableUntil && target.invulnerableUntil > performance.now()) return false;
 
@@ -36717,9 +36956,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
     }
 
-    if (target.hp <= 0 && b.ownerId === player.id && !target.isDummy) {
-        applySlopSushiOnKill(ownerEntity, target);
-        const takedownSkin = getActiveSkinForBrawler(ownerEntity?.brawler || (b.ownerId === player.id ? selectedBrawler : null));
+    if (target.hp <= 0 && b.ownerId === player.id) {
+        const takedownSkin = getActiveSkinForBrawler(selectedBrawler);
         if ((takedownSkin?.rarity === 'legendary' || takedownSkin?.rarity === 'mythic') && !target._legendaryTakedownFxPlayed) {
             triggerSkinPulse(target, takedownSkin, 'takedown');
             target._legendaryTakedownFxPlayed = true;
@@ -36728,6 +36966,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             screenShakeUntil = now + 150;
             screenShakeAmount = takedownSkin?.rarity === 'legendary' ? 7 : 4;
         }
+    }
+    if (target.hp <= 0 && b.ownerId === player.id && !target.isDummy) {
+        applySlopSushiOnKill(ownerEntity, target);
         addEventQuestProgress('get_kills');
         progressSeasonPassQuest('get_kills');
     }
@@ -51097,7 +51338,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       
       if (b.isCoin || b.isBoomerang) {
           ctx.fillStyle = b.hyperVisual ? '#e0f' : '#f1c40f'; // Gold or Purple
-          ctx.beginPath(); ctx.arc(b.x, b.y, b.isBoomerang ? 16 : (b.moneyEmpoweredCenter ? 10 : 6), 0, Math.PI*2); ctx.fill();
+          const moneyCoinRadius = b.isBoomerang ? 16 : (b.moneyEmpoweredCenter ? 14 : 6.6);
+          ctx.beginPath(); ctx.arc(b.x, b.y, moneyCoinRadius, 0, Math.PI*2); ctx.fill();
           ctx.strokeStyle = b.hyperVisual ? '#ba00d6' : '#d4ac0d'; ctx.lineWidth = 2; ctx.stroke();
           continue;
       } else if (b.isTaxNote || b.isStickySuper) {
@@ -53294,6 +53536,25 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const isLegendary = !!ex.legendary || ex.radius > 45;
             if (isLegendary) {
                 const kind = ex.fxKind || 'pulse';
+
+                if (ex.skinId === 'hyperfusion-fuser' && kind === 'takedown') {
+                    ctx.save();ctx.translate(ex.x,ex.y);ctx.globalAlpha=alpha;
+                    ctx.shadowColor='#9d4dff';ctx.shadowBlur=18;
+                    // The split cores collide, breach, and leave a readable X-shaped reactor mark.
+                    for(let core=0;core<2;core++){
+                        const side=core===0?-1:1;
+                        ctx.fillStyle=core===0?'#38e8ff':'#ff477e';
+                        ctx.beginPath();ctx.arc(side*ex.radius*alpha*.62,0,ex.radius*.2,0,Math.PI*2);ctx.fill();
+                    }
+                    ctx.strokeStyle='#ffffff';ctx.lineWidth=5;ctx.lineCap='round';
+                    ctx.beginPath();ctx.moveTo(-ex.radius*.52,-ex.radius*.52);ctx.lineTo(ex.radius*.52,ex.radius*.52);ctx.moveTo(ex.radius*.52,-ex.radius*.52);ctx.lineTo(-ex.radius*.52,ex.radius*.52);ctx.stroke();
+                    for(let ring=0;ring<3;ring++){
+                        ctx.strokeStyle=ring===1?'#9d4dff':(ring===0?'#38e8ff':'#ff477e');ctx.lineWidth=3-ring*.5;
+                        ctx.beginPath();ctx.arc(0,0,ex.radius*(.45+ring*.25+(1-alpha)*.35),0,Math.PI*2);ctx.stroke();
+                    }
+                    ctx.fillStyle='#ffffff';ctx.font=`900 ${Math.max(11,Math.round(ex.radius*.24))}px Arial Black,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('CORE BREACH',0,1);
+                    ctx.restore();continue;
+                }
 
                 if (ex.skinId === 'back-to-school-classy') {
                     ctx.save();

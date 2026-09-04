@@ -12,6 +12,7 @@ const checks = [
   ['Tax projectile size is 15% larger', /MONEY_TAX_TAX_SIZE_MULT = 2\.30/],
   ['center-size modifier is applied only to full-ammo shots', /firedAtFullAmmo \? MONEY_TAX_FULL_CENTER_SIZE_MULT : 1/],
   ['normal Money shots use their size modifier', /: MONEY_TAX_MONEY_SIZE_MULT/],
+  ['larger Money coins are visible', /b\.moneyEmpoweredCenter \? 14 : 6\.6/],
 ];
 
 for (const [label, pattern] of checks) assert.match(game, pattern, label);
