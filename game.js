@@ -16415,6 +16415,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             isFlashFreeze: isFlashFreeze,
             super: true,
             superSpit: true,
+            superBurst: true,
             x: originX + Math.cos(aimAngle) * (entity.radius + 4),
             y: originY + Math.sin(aimAngle) * (entity.radius + 4),
             vx: Math.cos(aimAngle) * travelSpeed,
@@ -16441,19 +16442,6 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             shot.birthTime = now;
         }
         bullets.push(shot);
-
-        // 360-degree radial nova burst around the brawler
-        triggerFightnFireImpact({
-            x: originX,
-            y: originY,
-            damage: burstDamage,
-            ownerId: entity.id,
-            fightnFireShardCount: shardCount,
-            hyperVisual: isHyper,
-            superBurst: true,
-            isFlashFreeze: isFlashFreeze,
-            isFightnfireIceProj: isFlashFreeze
-        }, false);
     }
 
     function pointInTrapperFence(entity, zone) {
@@ -23400,7 +23388,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       const damage = Math.max(1, Math.round(projectile.burstDamage || projectile.damage || (isPlayerOwned ? 900 : 750)));
       const isFlashFreezeBurst = !!(projectile.isFlashFreeze || projectile.isFightnfireIceProj);
       const isHyper = !!projectile.hyperVisual;
-      const centerRadius = shardImpact ? 60 : (projectile.superBurst ? 96 : 92);
+      const isSuper = !!(projectile.super || projectile.superSpit || projectile.superBurst);
+      const centerRadius = shardImpact ? 60 : (isSuper ? 105 : 92);
       
       AOEDamage(projectile.x, projectile.y, centerRadius, damage, isPlayerOwned ? player.id : null, true);
       explosions.push({
@@ -23411,16 +23400,16 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           maxLife: 0.28,
           color: isFlashFreezeBurst 
               ? 'rgba(116, 200, 255, 0.85)' 
-              : (isHyper ? 'rgba(255, 60, 0, 0.85)' : 'rgba(255, 140, 50, 0.75)')
+              : (isHyper ? 'rgba(238, 0, 255, 0.85)' : 'rgba(255, 140, 50, 0.75)')
       });
       if (isPlayerOwned) { screenShakeUntil = performance.now() + 120; screenShakeAmount = 6; }
 
       if (!shardImpact) {
-          const shardCount = projectile.fightnFireShardCount || (projectile.superBurst ? (isHyper ? 32 : 24) : 4);
-          const shardDamage = Math.max(1, Math.round(damage * (projectile.superBurst ? 0.45 : 0.6)));
+          const shardCount = projectile.fightnFireShardCount || (isSuper ? (isHyper ? 32 : 24) : 4);
+          const shardDamage = Math.max(1, Math.round(damage * (isSuper ? 0.45 : 0.6)));
           const baseOffset = shardCount === 4 ? Math.PI / 4 : 0;
           const shardOwner = getEntityById(ownerId);
-          const homingTargets = projectile.hyperVisual && projectile.superBurst
+          const homingTargets = isHyper && isSuper
               ? [player, ...bots].filter((candidate) => candidate && candidate.hp > 0 && candidate.id !== ownerId && (!shardOwner || !areAlliedEntities(shardOwner, candidate)))
               : [];
           for (let i = 0; i < shardCount; i++) {
@@ -23437,17 +23426,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                   vx: Math.cos(ang) * 760 * 0.6,
                   vy: Math.sin(ang) * 760 * 0.6,
                   life: 0,
-                  maxLife: projectile.superBurst ? 1.15 : 0.85,
-                  dieAt: performance.now() + (projectile.superBurst ? 1150 : 850),
+                  maxLife: isSuper ? 1.15 : 0.85,
+                  dieAt: performance.now() + (isSuper ? 1150 : 850),
                   damage: shardDamage,
                   pierce: false,
-                  hyperVisual: projectile.hyperVisual,
+                  hyperVisual: isHyper,
                   ownerId: ownerId,
-                  superBurst: !!projectile.superBurst,
-                  fightnFireHyperHoming: !!(projectile.hyperVisual && projectile.superBurst),
+                  superBurst: isSuper,
+                  fightnFireHyperHoming: !!(isHyper && isSuper),
                   fightnFireHomingTargetId: assignedTarget?.id ?? null,
                   fightnFireBounced: false,
-                  canBounce: !projectile.superBurst,
+                  canBounce: !isSuper,
                   homingRadius: 0,
                   homingStrength: 0,
                   bounceDmgLoss: 0,
@@ -23456,14 +23445,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                   hitboxMod: 1.2,
                   shardOriginX: projectile.x,
                   shardOriginY: projectile.y,
-                  shardMaxDist: projectile.hyperVisual && !projectile.superBurst ? 600 : 0,
+                  shardMaxDist: isHyper && !isSuper ? 600 : 0,
                   birthTime: performance.now()
               });
           }
       }
   }
 
-    function getBlobertStoredLiquid(entity) {
+  function getBlobertStoredLiquid(entity) {
         return clamp(Math.floor(entity?.blobertStoredLiquid || 0), 0, 12);
     }
 
@@ -51658,43 +51647,140 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           }
           continue;
       } else if (b.isFightnFireShot) {
-          // Main fireball attack / Flash Freeze ice projectile / Blazing solar inferno HC
+          // Main fireball attack / Flash Freeze reworked crystalline ice projectile / Electric purple HC
           const isIce = !!(b.isFightnfireIceProj || b.isFlashFreeze);
           const isHyper = !!b.hyperVisual;
+          const angle = Math.atan2(b.vy || 0, b.vx || 1);
+          const now = performance.now();
+
           if (isIce) {
-              // Crystalline Sub-Zero Ice Core
+              // REWORKED ICE PROJECTILE: Crystalline Sub-Zero Comet & Glacial Frost Core
+              const shimmer = Math.sin(now * 0.012 + b.x * 0.05);
+
+              // 1. Frost Vapor Wake / Trailing Comets
+              for (let i = 1; i <= 3; i++) {
+                  const trailDist = i * 9;
+                  const trailR = 8 - i * 1.8;
+                  const trailAlpha = 0.45 - i * 0.12;
+                  ctx.fillStyle = `rgba(116, 200, 255, ${trailAlpha})`;
+                  ctx.beginPath();
+                  ctx.arc(b.x - Math.cos(angle) * trailDist, b.y - Math.sin(angle) * trailDist, Math.max(1, trailR), 0, Math.PI * 2);
+                  ctx.fill();
+              }
+
+              // 2. Outer Cryo Glow Aura
+              ctx.fillStyle = 'rgba(0, 210, 211, 0.32)';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 22 + shimmer * 2, 0, Math.PI * 2);
+              ctx.fill();
+
+              // 3. Faceted Crystalline Ice Core (Hexagonal Diamond Oriented with Velocity)
+              ctx.save();
+              ctx.translate(b.x, b.y);
+              ctx.rotate(angle);
+
+              // Outer Ice Crystal Shell
+              ctx.fillStyle = 'rgba(72, 219, 251, 0.95)';
+              ctx.strokeStyle = '#e0f7fa';
+              ctx.lineWidth = 2.2;
+              ctx.beginPath();
+              ctx.moveTo(16, 0);                 // Leading sharp tip
+              ctx.lineTo(6, -10);                // Top front wing
+              ctx.lineTo(-8, -8);                // Top rear facet
+              ctx.lineTo(-14, 0);                // Rear tail point
+              ctx.lineTo(-8, 8);                 // Bottom rear facet
+              ctx.lineTo(6, 10);                 // Bottom front wing
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+
+              // Inner Prismatic Facet Ribs
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.moveTo(16, 0);
+              ctx.lineTo(-14, 0);
+              ctx.moveTo(0, -6);
+              ctx.lineTo(16, 0);
+              ctx.lineTo(0, 6);
+              ctx.moveTo(0, -6);
+              ctx.lineTo(-8, -8);
+              ctx.moveTo(0, 6);
+              ctx.lineTo(-8, 8);
+              ctx.stroke();
+
+              // Pure White Ice Core Sparkle
               ctx.fillStyle = '#ffffff';
               ctx.beginPath();
-              ctx.arc(b.x, b.y, 6, 0, Math.PI * 2);
+              ctx.ellipse(3, 0, 6, 3, 0, 0, Math.PI * 2);
               ctx.fill();
-              ctx.fillStyle = 'rgba(72, 219, 251, 0.88)';
+
+              // Prismatic Star Glint at Tip
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(14, 0, 2.2, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.restore();
+
+              // 4. Orbiting Frost Sparkles
+              for (let s = 0; s < 3; s++) {
+                  const sparkAngle = (now * 0.006) + (Math.PI * 2 * s) / 3;
+                  const sx = b.x + Math.cos(sparkAngle) * (15 + shimmer * 3);
+                  const sy = b.y + Math.sin(sparkAngle) * (15 + shimmer * 3);
+                  ctx.fillStyle = s === 0 ? '#ffffff' : 'rgba(164, 235, 255, 0.9)';
+                  ctx.beginPath();
+                  ctx.arc(sx, sy, 1.8, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+          } else if (isHyper) {
+              // HYPERCHARGED: Electric Neon Purple / Radiant Magenta Fireball
+              const pulse = Math.sin(now * 0.015 + b.x * 0.05);
+
+              // 1. Trailing Magenta Energy Motes
+              for (let i = 1; i <= 3; i++) {
+                  const trailDist = i * 8;
+                  const trailR = 7 - i * 1.6;
+                  ctx.fillStyle = `rgba(238, 0, 255, ${0.4 - i * 0.1})`;
+                  ctx.beginPath();
+                  ctx.arc(b.x - Math.cos(angle) * trailDist, b.y - Math.sin(angle) * trailDist, Math.max(1, trailR), 0, Math.PI * 2);
+                  ctx.fill();
+              }
+
+              // 2. Outer Electric Violet Aura Glow
+              ctx.fillStyle = 'rgba(186, 0, 214, 0.35)';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 24 + pulse * 2, 0, Math.PI * 2);
+              ctx.fill();
+
+              // 3. Neon Magenta Main Plasma Body
+              ctx.fillStyle = 'rgba(238, 0, 255, 0.95)';
               ctx.beginPath();
               ctx.arc(b.x, b.y, 14, 0, Math.PI * 2);
               ctx.fill();
-              ctx.strokeStyle = '#c8f7ff';
-              ctx.lineWidth = 2.5;
+              ctx.strokeStyle = '#ba00d6';
+              ctx.lineWidth = 2.8;
               ctx.stroke();
-              ctx.fillStyle = 'rgba(72, 219, 251, 0.28)';
-              ctx.beginPath();
-              ctx.arc(b.x, b.y, 22, 0, Math.PI * 2);
-              ctx.fill();
-          } else if (isHyper) {
-              // Blazing Solar Inferno (White-hot core, fiery crimson body, golden corona)
+
+              // 4. Brilliant White-Hot Fusion Core
               ctx.fillStyle = '#ffffff';
               ctx.beginPath();
-              ctx.arc(b.x, b.y, 7, 0, Math.PI * 2);
+              ctx.arc(b.x, b.y, 6.5, 0, Math.PI * 2);
               ctx.fill();
-              ctx.fillStyle = 'rgba(255, 42, 0, 0.95)';
-              ctx.beginPath();
-              ctx.arc(b.x, b.y, 15, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.strokeStyle = '#ffc048';
-              ctx.lineWidth = 3;
+              ctx.strokeStyle = '#f368e0';
+              ctx.lineWidth = 1.5;
               ctx.stroke();
-              ctx.fillStyle = 'rgba(255, 120, 0, 0.32)';
-              ctx.beginPath();
-              ctx.arc(b.x, b.y, 24, 0, Math.PI * 2);
-              ctx.fill();
+
+              // 5. Electric Arcs / Orbiting Plasma Sparks
+              for (let s = 0; s < 3; s++) {
+                  const sparkAngle = (now * 0.008) + (Math.PI * 2 * s) / 3;
+                  const sx = b.x + Math.cos(sparkAngle) * 16;
+                  const sy = b.y + Math.sin(sparkAngle) * 16;
+                  ctx.fillStyle = '#f368e0';
+                  ctx.beginPath();
+                  ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+                  ctx.fill();
+              }
           } else {
               ctx.fillStyle = 'rgba(255, 107, 45, 0.9)';
               ctx.beginPath();
@@ -51713,30 +51799,87 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           // Shards from explosion
           const isIce = !!(b.isFightnfireIceProj || b.isFlashFreeze);
           const isHyper = !!b.hyperVisual;
-          const angle = Math.atan2(b.vy, b.vx);
-          ctx.beginPath();
-          ctx.moveTo(b.x + Math.cos(angle) * 11, b.y + Math.sin(angle) * 11);
-          ctx.lineTo(b.x + Math.cos(angle + Math.PI * 0.7) * 7.5, b.y + Math.sin(angle + Math.PI * 0.7) * 7.5);
-          ctx.lineTo(b.x + Math.cos(angle - Math.PI * 0.7) * 7.5, b.y + Math.sin(angle - Math.PI * 0.7) * 7.5);
-          ctx.closePath();
+          const angle = Math.atan2(b.vy || 0, b.vx || 1);
           
           if (isIce) {
-              ctx.fillStyle = 'rgba(116, 200, 255, 0.92)';
+              // REWORKED: Faceted Crystalline Ice Icicle Dagger
+              ctx.save();
+              ctx.translate(b.x, b.y);
+              ctx.rotate(angle);
+
+              // Piercing Icicle Polygon
+              ctx.beginPath();
+              ctx.moveTo(14, 0);                 // Piercing tip
+              ctx.lineTo(3, -5.5);               // Upper wing
+              ctx.lineTo(-7, -3);                // Upper base
+              ctx.lineTo(-10, 0);                // Notch tail
+              ctx.lineTo(-7, 3);                 // Lower base
+              ctx.lineTo(3, 5.5);                // Lower wing
+              ctx.closePath();
+
+              ctx.fillStyle = 'rgba(116, 200, 255, 0.95)';
               ctx.fill();
-              ctx.strokeStyle = '#ffffff';
-              ctx.lineWidth = 1.5;
+              ctx.strokeStyle = '#e0f7fa';
+              ctx.lineWidth = 1.6;
               ctx.stroke();
-          } else if (isHyper) {
-              ctx.fillStyle = 'rgba(255, 60, 0, 0.95)';
+
+              // Inner Spine Highlight
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.2;
+              ctx.beginPath();
+              ctx.moveTo(12, 0);
+              ctx.lineTo(-6, 0);
+              ctx.stroke();
+
+              // Glint at tip
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(12, 0, 1.6, 0, Math.PI * 2);
               ctx.fill();
-              ctx.strokeStyle = '#ffd32a';
+
+              ctx.restore();
+          } else if (isHyper) {
+              // HYPERCHARGED: Electric Magenta Energy Crystal Shard
+              ctx.save();
+              ctx.translate(b.x, b.y);
+              ctx.rotate(angle);
+
+              ctx.beginPath();
+              ctx.moveTo(13, 0);
+              ctx.lineTo(2, -6);
+              ctx.lineTo(-8, 0);
+              ctx.lineTo(2, 6);
+              ctx.closePath();
+
+              ctx.fillStyle = 'rgba(238, 0, 255, 0.95)';
+              ctx.fill();
+              ctx.strokeStyle = '#ba00d6';
               ctx.lineWidth = 2;
               ctx.stroke();
+
+              // Inner highlight
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.moveTo(8, 0);
+              ctx.lineTo(2, -2.5);
+              ctx.lineTo(-4, 0);
+              ctx.lineTo(2, 2.5);
+              ctx.closePath();
+              ctx.fill();
+
+              ctx.restore();
           } else {
-              ctx.fillStyle = 'rgba(255, 180, 100, 0.8)';
+              // Classic Flaming Ember Shard
+              const a = angle;
+              ctx.beginPath();
+              ctx.moveTo(b.x + Math.cos(a) * 11, b.y + Math.sin(a) * 11);
+              ctx.lineTo(b.x + Math.cos(a + Math.PI * 0.7) * 7.5, b.y + Math.sin(a + Math.PI * 0.7) * 7.5);
+              ctx.lineTo(b.x + Math.cos(a - Math.PI * 0.7) * 7.5, b.y + Math.sin(a - Math.PI * 0.7) * 7.5);
+              ctx.closePath();
+              ctx.fillStyle = 'rgba(255, 180, 100, 0.85)';
               ctx.fill();
               ctx.strokeStyle = '#ff6b2d';
-              ctx.lineWidth = 1;
+              ctx.lineWidth = 1.2;
               ctx.stroke();
           }
           continue;
@@ -53818,7 +53961,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const burstProgress = 1 - (e.fightnFireSuperBurstUntil - performance.now()) / 220;
             const ringRadius = 48 + burstProgress * 54;
             const shardCount = 24;
-            ctx.strokeStyle = e.fightnFireSuperHyper ? 'rgba(255, 75, 15, 0.92)' : 'rgba(255, 107, 45, 0.7)';
+            ctx.strokeStyle = e.fightnFireSuperHyper ? 'rgba(238, 0, 255, 0.85)' : 'rgba(255, 107, 45, 0.7)';
             ctx.lineWidth = 4 - burstProgress * 2;
             ctx.beginPath();
             ctx.arc(e.x, e.y - (e.z || 0), ringRadius, 0, Math.PI * 2);

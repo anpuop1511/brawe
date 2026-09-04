@@ -33,4 +33,14 @@ assert.match(game, /chips\.push\(\{\s*t:\s*'ICE',\s*c:\s*'#48dbfb'\s*\}\)/, 'Sta
 assert.match(game, /function drawIceBlockStasis/, 'Draws 3D crystalline Ice Block stasis');
 assert.match(game, /selectedBrawler === 'fightnfire'[\s\S]*?INSTINCT - FLASH FREEZE PRIMED/, 'Mechanic HUD indicates Flash Freeze readiness');
 
+// 7. Verify Purple Hypercharge Visuals for Fight'n'Fire
+assert.match(game, /rgba\(238, 0, 255, 0\.95\)/, 'Hypercharge projectile uses electric neon purple');
+assert.match(game, /ctx\.strokeStyle = '#ba00d6'/, 'Hypercharge stroke uses vibrant purple/magenta');
+assert.match(game, /e\.fightnFireSuperHyper \? 'rgba\(238, 0, 255, 0\.85\)'/, 'Super hyper cast ring uses purple');
+
+// 8. Verify Reworked Ice Projectile & Shard Visuals
+assert.match(game, /REWORKED ICE PROJECTILE: Crystalline Sub-Zero Comet & Glacial Frost Core/, 'Reworked ice projectile rendering present');
+assert.match(game, /REWORKED: Faceted Crystalline Ice Icicle Dagger/, 'Reworked faceted ice shard rendering present');
+
 console.log('✅ All Flash Freeze Instinct regression tests passed!');
+
