@@ -6972,9 +6972,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         isCoreBreachIntroMode=shouldStartCoreBreachIntro();coreBreachState=isCoreBreachIntroMode?{phase:'pvp',damage:0,progress:0,startedAt:performance.now(),boss:null,nextAttackAt:0,telegraphs:[],pools:[],finished:false}:null;
     }
 
-    const PARADOX_SUPER_AIM_RANGE = 560;
-    const PARADOX_NORMAL_ZONE_RADIUS = 192;
-    const PARADOX_HYPER_ZONE_RADIUS = 240;
+    const PARADOX_SUPER_AIM_RANGE = 728; // 560 * 1.30 (+30% length)
+    const PARADOX_NORMAL_ZONE_RADIUS = 250; // 192 * 1.30 (+30% size)
+    const PARADOX_HYPER_ZONE_RADIUS = 312; // 240 * 1.30 (+30% size)
     function getParadoxSuperTarget(owner, targetX, targetY) {
         const dx = (Number.isFinite(targetX) ? targetX : owner.x) - owner.x;
         const dy = (Number.isFinite(targetY) ? targetY : owner.y) - owner.y;
@@ -7005,12 +7005,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         for (let i = relativityZones.length - 1; i >= 0; i--) {
             if (relativityZones[i].ownerId === owner.id) relativityZones.splice(i, 1);
         }
+        // Super duration +30%: 4000ms -> 5200ms (normal), 6000ms -> 7800ms (hyper)
+        const duration = hyper ? 7800 : 5200;
         addParadoxZone(owner, target.x, target.y,
             hyper ? PARADOX_HYPER_ZONE_RADIUS : PARADOX_NORMAL_ZONE_RADIUS,
-            hyper ? 6000 : 4000, hyper, null);
-        if (hyper) addParadoxZone(owner, owner.x, owner.y, PARADOX_HYPER_ZONE_RADIUS, 6000, true, owner);
+            duration, hyper, null);
+        if (hyper) addParadoxZone(owner, owner.x, owner.y, PARADOX_HYPER_ZONE_RADIUS, duration, true, owner);
         if (getOwnerStarChoice(owner) === 'long') {
-            owner.paradoxFractureUntil = now + 8000;
+            owner.paradoxFractureUntil = now + 10400; // 8000ms * 1.30 = 10400ms (+30%)
             spawnFloatingText(owner.x, owner.y - 42, 'TEMPORAL FRACTURE', '#ffd36f');
         }
     }
@@ -23257,9 +23259,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             ? !!(fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g2')
             : !!(gadgetArmed && selectedGadget === 'g2');
         if (paradoxCharged) bulletDmg *= 2;
-        // Phase 1: travel 0.33s (~180px), then skip 110px, then phase 2: 0.17s (~90px)
+        // Main Attack Range +40%: travel times & skip distances scaled by 1.40 (total range ~532px)
         const paradoxSpeed = speed * 0.6; // 540px/s
-        const skipAt = isHc ? 0.28 : 0.33; // Hyper double-skip begins faster
+        const skipAt = (isHc ? 0.28 : 0.33) * 1.40; // 0.462s / 0.392s in HC (+40%)
+        const postSkipTime = 0.17 * 1.40; // 0.238s (+40%)
         const fractureActive = star === 'long' && now < (fromEntity.paradoxFractureUntil || 0);
         const spawnParadoxShot = (shotAngle, damageScale, sideShot = false) => bullets.push({
             ownerBrawler: 'paradox',
@@ -23268,13 +23271,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             vx: Math.cos(shotAngle) * paradoxSpeed,
             vy: Math.sin(shotAngle) * paradoxSpeed,
             life: 0,
-            maxLife: skipAt + 0.17,
+            maxLife: skipAt + postSkipTime,
             damage: Math.round(bulletDmg * damageScale),
             pierce: paradoxCharged || (fractureActive && !sideShot),
             isParadoxMain: true,
             paradoxSkipAt: skipAt,
             paradoxSkipDone: false,
-            paradoxSkipDist: isHc ? 150 : 110,
+            paradoxSkipDist: Math.round((isHc ? 150 : 110) * 1.40), // 154px / 210px in HC (+40%)
             paradoxSP1: star === 'slow',
             hyperVisual: isHc,
             ownerId: fromEntity.id,
@@ -48329,7 +48332,56 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           }
           ctx.restore();
       }
-      if (selectedBrawler === 'sir_cheeseburger' && !aimingSuper) {
+      if (selectedBrawler === 'paradox' && !aimingSuper) {
+          ctx.save();
+          const totalRange = isHypercharged ? Math.round(532 * 1.15) : 532;
+          const preSkipDist = isHypercharged ? Math.round(212 * 1.15) : 250;
+          const skipGap = isHypercharged ? 210 : 154;
+          const endX = player.x + Math.cos(ang) * totalRange;
+          const endY = player.y + Math.sin(ang) * totalRange;
+          const warpStartX = player.x + Math.cos(ang) * preSkipDist;
+          const warpStartY = player.y + Math.sin(ang) * preSkipDist;
+          const warpEndX = player.x + Math.cos(ang) * (preSkipDist + skipGap);
+          const warpEndY = player.y + Math.sin(ang) * (preSkipDist + skipGap);
+
+          // Phase 1: Solid energy beam
+          ctx.strokeStyle = isHypercharged ? 'rgba(217, 70, 239, 0.85)' : 'rgba(0, 245, 212, 0.85)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(player.x, player.y);
+          ctx.lineTo(warpStartX, warpStartY);
+          ctx.stroke();
+
+          // Phase 2: Dotted temporal skip rift gap
+          ctx.strokeStyle = isHypercharged ? 'rgba(217, 70, 239, 0.45)' : 'rgba(168, 162, 255, 0.45)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 6]);
+          ctx.beginPath();
+          ctx.moveTo(warpStartX, warpStartY);
+          ctx.lineTo(warpEndX, warpEndY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Phase 3: Post-skip impact trajectory
+          ctx.strokeStyle = isHypercharged ? 'rgba(217, 70, 239, 0.90)' : 'rgba(0, 245, 212, 0.90)';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(warpEndX, warpEndY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+
+          // Terminal splash explosion target ring
+          ctx.fillStyle = isHypercharged ? 'rgba(217, 70, 239, 0.22)' : 'rgba(0, 245, 212, 0.20)';
+          ctx.strokeStyle = isHypercharged ? '#d946ef' : '#00f5d4';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(endX, endY, 28, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.restore();
+      }
+            if (selectedBrawler === 'sir_cheeseburger' && !aimingSuper) {
           ctx.save();
           const combo = player.sirCheeseDmgBonus || 0;
           const range = isHypercharged ? 150 : 90;
