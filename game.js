@@ -38142,7 +38142,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     if (isWarperEvent) updateWarperEvent(now);
     if (isRankedMatch && playing && !gameOver) {
         if (activeRankedModifier === 'hyper_overdrive') {
-            if (hyperchargeUnlocked && !isHypercharged && player.hp > 0) {
+            if ((isTraining || !!getSelectedProgress().hyperchargeUnlocked) && !isHypercharged && player.hp > 0) {
                 hyperChargeCharge = Math.min(100, hyperChargeCharge + 4.0 * dt);
             }
             for (const b of bots) {
@@ -51561,7 +51561,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               b.lastParticleTime = performance.now();
           }
           continue;
-      } else if ((b.skinEffect === 'spiceFlame' || b.skinEffect === 'spiceBurst') && b.ownerBrawler === 'fightnfire') {
+      } else if ((b.skinEffect === 'spiceFlame' || b.skinEffect === 'spiceBurst') && b.ownerBrawler === 'fightnfire' && !b.hyperVisual && !b.isFightnfireIceProj && !b.isFlashFreeze) {
           if (b.isFightnFireShot) {
               // INFERNO ORB: Premium Legendary Attack Effect
               const age = (performance.now() - (b.birthTime || performance.now())) / 1000;
@@ -51782,17 +51782,56 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                   ctx.fill();
               }
           } else {
-              ctx.fillStyle = 'rgba(255, 107, 45, 0.9)';
+              // REWORKED STANDARD FIREBALL: Multilayered Solar Plasma
+              const pulse = Math.sin(now * 0.012 + b.x * 0.05);
+
+              // Trailing Flame Motes
+              for (let i = 1; i <= 3; i++) {
+                  const trailDist = i * 7.5;
+                  const trailR = 7.5 - i * 1.6;
+                  ctx.fillStyle = `rgba(255, 107, 45, ${0.4 - i * 0.11})`;
+                  ctx.beginPath();
+                  ctx.arc(b.x - Math.cos(angle) * trailDist, b.y - Math.sin(angle) * trailDist, Math.max(1, trailR), 0, Math.PI * 2);
+                  ctx.fill();
+              }
+
+              // Outer Solar Flare Heat Glow
+              ctx.fillStyle = 'rgba(255, 107, 45, 0.32)';
               ctx.beginPath();
-              ctx.arc(b.x, b.y, 12, 0, Math.PI * 2);
+              ctx.arc(b.x, b.y, 22 + pulse * 2, 0, Math.PI * 2);
               ctx.fill();
-              ctx.strokeStyle = '#ff6b2d';
-              ctx.lineWidth = 2;
+
+              // Molten Orange Fireball Shell
+              ctx.fillStyle = 'rgba(255, 75, 20, 0.96)';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 13.5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#ff9f1c';
+              ctx.lineWidth = 2.5;
               ctx.stroke();
-              ctx.fillStyle = 'rgba(255, 107, 45, 0.3)';
+
+              // Searing Amber Core
+              ctx.fillStyle = '#ffd32a';
               ctx.beginPath();
-              ctx.arc(b.x, b.y, 20, 0, Math.PI * 2);
+              ctx.arc(b.x, b.y, 7.5, 0, Math.PI * 2);
               ctx.fill();
+
+              // White-Hot Center
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 3.5, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Orbiting Embers
+              for (let s = 0; s < 3; s++) {
+                  const emberAngle = (now * 0.007) + (Math.PI * 2 * s) / 3;
+                  const ex = b.x + Math.cos(emberAngle) * 15;
+                  const ey = b.y + Math.sin(emberAngle) * 15;
+                  ctx.fillStyle = '#ffeaa7';
+                  ctx.beginPath();
+                  ctx.arc(ex, ey, 1.8, 0, Math.PI * 2);
+                  ctx.fill();
+              }
           }
           continue;
       } else if (b.isFightnFireShard) {
