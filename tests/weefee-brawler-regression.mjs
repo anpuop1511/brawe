@@ -43,23 +43,23 @@ assert.match(
   'Wee-Fee replaces oldest pole when reaching cap, and SP2 triggers 1400 AOE Demolition explosion'
 );
 
-// 5. Inward Wi-Fi Waves & SP1 Interference
+// 5. Expanding Wi-Fi Shockwaves, Ground Logos & SP1 Interference
 assert.match(
   game,
-  /isWeeFeeWifiWave:\s*true/,
-  'Wee-Fee poles emit inward Wi-Fi wave projectiles'
+  /function spawnWeeFeeShockwave\(x,\s*y,\s*ownerId/,
+  'spawnWeeFeeShockwave creates expanding concentric Wi-Fi shockwaves'
 );
 
 assert.match(
   game,
-  /if\s*\(distCenter\s*<=\s*\(b\.interferenceRadius\s*\|\|\s*45\)\)\s*\{[\s\S]{0,120}b\.damage\s*=\s*b\.centerDamage\s*\|\|\s*750;/,
-  'Enemies in overlapping center take reduced 750 damage due to signal interference'
+  /ctx\.arc\(0,\s*dotY,\s*16,\s*-Math\.PI\s*\*\s*0\.82,\s*-Math\.PI\s*\*\s*0\.18\)/,
+  'Renders animated illuminated Wi-Fi signal arcs that light up sequentially'
 );
 
 assert.match(
   game,
-  /projectileOwner\.weefeeInterferenceUntil[\s\S]{0,80}b\.damage\s*=\s*Math\.round\(\(b\.damage\s*\|\|\s*0\)\s*\*\s*0\.80\)/,
-  'SP1 reduces enemy projectile damage output by 20% during connection interference'
+  /target\.weefeeInterferenceUntil[\s\S]{0,120}spawnFloatingText\(target\.x,\s*target\.y\s*-\s*32,\s*'📶 LAG -20% DMG'/,
+  'SP1 applies 20% damage reduction on Wi-Fi shockwave hits'
 );
 
 // 6. Super & Hypercharge

@@ -13126,7 +13126,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     function resetKnockDonateRound() {
         closeKnockDonateDonationUI();
-        bullets.length = 0; weefeePoles.length = 0; trampolines.length = 0; trampaHealAuras.length = 0; magenyVortexZones.length = 0; magenyResidualFloors.length = 0;
+        bullets.length = 0; weefeePoles.length = 0; weefeeShockwaves.length = 0; trampolines.length = 0; trampaHealAuras.length = 0; magenyVortexZones.length = 0; magenyResidualFloors.length = 0;
         fastpassCheckpoints.length = 0;
         freestyleMicrophones.length = 0;
         portaloPortalPairs.length = 0;
@@ -37981,11 +37981,36 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   }
 
   
-  // Wee-Fee Network & Signal Pole Systems
+  // Wee-Fee Network, Glowing Wi-Fi Logos & Shockwave Systems
   let weefeePoles = [];
+  let weefeeShockwaves = [];
 
   function clearWeeFeeMatchState() {
       weefeePoles = [];
+      weefeeShockwaves = [];
+  }
+
+  function spawnWeeFeeShockwave(x, y, ownerId, is5G = false, isHyper = false, isCenter = false, customDamage = null) {
+      const ownerEntity = ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find(bt => bt && bt.id === ownerId) : null);
+      const hasSp1 = ownerEntity ? (ownerEntity.id === player.id ? (selectedStar === 'slow' || selectedStar === 'sp1') : (ownerEntity.selectedStar === 'slow' || ownerEntity.selectedStar === 'sp1')) : false;
+      const baseDamage = customDamage !== null ? customDamage : (isCenter ? (is5G ? 850 : 750) : (is5G ? 1250 : 1100));
+
+      weefeeShockwaves.push({
+          x,
+          y,
+          radius: 14,
+          maxRadius: isCenter ? 145 : 125,
+          speed: 360,
+          damage: baseDamage,
+          ownerId,
+          is5G,
+          isHyper,
+          hasSp1,
+          isCenter,
+          hitIds: {},
+          life: 0,
+          maxLife: 0.38
+      });
   }
 
   function spawnWeeFeePole(owner, x, y, isHyper = false) {
@@ -38009,16 +38034,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           }
       }
 
+      const now = performance.now();
       weefeePoles.push({
           id: 'pole_' + Math.random().toString(36).slice(2, 9),
           x,
           y,
           ownerId,
-          createdAt: performance.now(),
-          nextPulseAt: performance.now() + 650,
+          createdAt: now,
+          cycleStartAt: now,
           isHyper: !!isOwnerHyper
       });
-      spawnFloatingText(x, y - 36, 'SIGNAL POLE!', '#00f5d4');
+      spawnFloatingText(x, y - 36, '📶 SIGNAL POLE!', '#00f5d4');
       explosions.push({ x, y, radius: 52, life: 0, maxLife: 0.22, color: isOwnerHyper ? '#d946ef' : '#00f5d4' });
   }
 
@@ -38030,13 +38056,16 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
       const ownerPoles = weefeePoles.filter(p => p.ownerId === owner.id);
       ownerPoles.forEach((pole, idx) => {
-          pole.nextPulseAt = now + 100;
+          pole.cycleStartAt = now;
           if (hyper) {
               setTimeout(() => {
                   AOEDamage(pole.x, pole.y, 110, 1800, owner.id, true);
                   spawnFloatingText(pole.x, pole.y - 40, '🛰️ SATELLITE STRIKE!', '#d946ef');
                   explosions.push({ x: pole.x, y: pole.y, radius: 110, life: 0, maxLife: 0.45, color: 'rgba(217, 70, 239, 0.95)' });
+                  spawnWeeFeeShockwave(pole.x, pole.y, owner.id, true, true, false, 1800);
               }, idx * 120);
+          } else {
+              spawnWeeFeeShockwave(pole.x, pole.y, owner.id, true, false, false);
           }
       });
   }
@@ -38049,36 +38078,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
       const now = performance.now();
       spawnFloatingText(owner.x, owner.y - 40, '⚡ OVERCLOCKED!', '#00ff88');
-      
-      const cx = ownerPoles.reduce((acc, p) => acc + p.x, 0) / ownerPoles.length;
-      const cy = ownerPoles.reduce((acc, p) => acc + p.y, 0) / ownerPoles.length;
 
       for (let burst = 0; burst < 2; burst++) {
           setTimeout(() => {
               for (const pole of ownerPoles) {
-                  const ang = Math.atan2(cy - pole.y, cx - pole.x);
-                  bullets.push({
-                      ownerBrawler: 'weefee',
-                      isWeeFeeWifiWave: true,
-                      x: pole.x,
-                      y: pole.y,
-                      vx: Math.cos(ang) * 440,
-                      vy: Math.sin(ang) * 440,
-                      targetCenterX: cx,
-                      targetCenterY: cy,
-                      interferenceRadius: 45,
-                      life: 0,
-                      maxLife: Math.max(0.4, Math.hypot(cx - pole.x, cy - pole.y) / 440 + 0.3),
-                      damage: 1200,
-                      centerDamage: 850,
-                      ownerId: owner.id,
-                      hitIds: {},
-                      hitboxMod: 2.4,
-                      hyperVisual: true,
-                      sp1: owner.id === player.id ? (selectedStar === 'slow' || selectedStar === 'sp1') : (owner.selectedStar === 'slow' || owner.selectedStar === 'sp1')
-                  });
+                  pole.cycleStartAt = performance.now();
+                  spawnWeeFeeShockwave(pole.x, pole.y, owner.id, true, isEntityHyperchargedNow(owner, performance.now()), false, 1200);
+                  explosions.push({ x: pole.x, y: pole.y, radius: 60, life: 0, maxLife: 0.22, color: '#00ff88' });
               }
-          }, burst * 160);
+          }, burst * 180);
       }
       return true;
   }
@@ -38091,7 +38099,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
       const count = ownerPoles.length;
       const hasSp2 = owner.id === player.id ? (selectedStar === 'long' || selectedStar === 'sp2') : (owner.selectedStar === 'long' || owner.selectedStar === 'sp2');
-      
+
       for (const pole of ownerPoles) {
           const idx = weefeePoles.indexOf(pole);
           if (idx !== -1) weefeePoles.splice(idx, 1);
@@ -38103,7 +38111,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       doHeal(owner, count * 1000);
       if (owner.id === player.id) ammo = Math.min(maxAmmo, ammo + 1);
       else owner.ammo = Math.min(owner.maxAmmo || 3, (owner.ammo || 0) + 1);
-      spawnFloatingText(owner.x, owner.y - 42, `+${count * 1000} HP REBOOT!`, '#58f0cf');
+      spawnFloatingText(owner.x, owner.y - 42, '+' + (count * 1000) + ' HP REBOOT!', '#58f0cf');
       return true;
   }
 
@@ -38120,51 +38128,81 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
           const is5G = now < (entity.weefeeMobileDataUntil || 0);
           const isHyper = isEntityHyperchargedNow(entity, now);
-          const pulseInterval = is5G ? 500 : 1100;
+          const cycleDuration = is5G ? 480 : 1100;
 
-          const cx = ownerPoles.reduce((acc, p) => acc + p.x, 0) / ownerPoles.length;
-          const cy = ownerPoles.reduce((acc, p) => acc + p.y, 0) / ownerPoles.length;
-
-          // 5G Mobile Data Area Pulse
-          if (is5G && (entity.weefeeNext5GPulseAt || 0) <= now) {
-              entity.weefeeNext5GPulseAt = now + 420;
-              for (const pole of ownerPoles) {
-                  AOEDamage(pole.x, pole.y, 120, 850, entity.id, true);
-                  for (const foe of allEntities) {
-                      if (foe.id !== entity.id && !areAlliedEntities(entity, foe) && Math.hypot(foe.x - pole.x, foe.y - pole.y) <= 120 + (foe.radius || 15)) {
-                          applyStatusEffect(foe, 'slow', 800);
-                      }
-                  }
-                  explosions.push({ x: pole.x, y: pole.y, radius: 120, life: 0, maxLife: 0.22, color: 'rgba(0, 245, 212, 0.45)' });
+          // Process cyclical charging and shockwave pulses for each pole
+          for (const pole of ownerPoles) {
+              if (now >= (pole.cycleStartAt || 0) + cycleDuration) {
+                  pole.cycleStartAt = now;
+                  spawnWeeFeeShockwave(pole.x, pole.y, entity.id, is5G, isHyper, false);
+                  explosions.push({
+                      x: pole.x,
+                      y: pole.y,
+                      radius: 35,
+                      life: 0,
+                      maxLife: 0.18,
+                      color: isHyper ? '#d946ef' : (is5G ? '#00ff88' : '#00f5d4')
+                  });
               }
           }
 
-          // Wi-Fi Waves towards center
-          for (const pole of ownerPoles) {
-              if (now >= pole.nextPulseAt) {
-                  pole.nextPulseAt = now + pulseInterval;
-                  const ang = (ownerPoles.length > 1) ? Math.atan2(cy - pole.y, cx - pole.x) : (now / 200) % (Math.PI * 2);
-                  const dist = (ownerPoles.length > 1) ? Math.hypot(cx - pole.x, cy - pole.y) : 260;
-                  
-                  bullets.push({
+          // If multiple poles exist, calculate centroid and pulse center interference shockwave in sync
+          if (ownerPoles.length >= 2) {
+              if (!entity.weefeeNextCenterPulseAt) entity.weefeeNextCenterPulseAt = now + cycleDuration;
+              if (now >= entity.weefeeNextCenterPulseAt) {
+                  entity.weefeeNextCenterPulseAt = now + cycleDuration;
+                  const cx = ownerPoles.reduce((acc, p) => acc + p.x, 0) / ownerPoles.length;
+                  const cy = ownerPoles.reduce((acc, p) => acc + p.y, 0) / ownerPoles.length;
+                  spawnWeeFeeShockwave(cx, cy, entity.id, is5G, isHyper, true);
+              }
+          }
+      }
+
+      // Update active expanding Wi-Fi shockwaves
+      for (let i = weefeeShockwaves.length - 1; i >= 0; i--) {
+          const sw = weefeeShockwaves[i];
+          sw.life += dt;
+          sw.radius += sw.speed * dt;
+
+          if (sw.life >= sw.maxLife || sw.radius >= sw.maxRadius) {
+              weefeeShockwaves.splice(i, 1);
+              continue;
+          }
+
+          const ownerEntity = sw.ownerId === player.id ? player : allEntities.find(e => e.id === sw.ownerId);
+
+          for (const target of allEntities) {
+              if (!target || target.hp <= 0 || target.id === sw.ownerId || target.isFlying) continue;
+              if (ownerEntity && areAlliedEntities(ownerEntity, target)) continue;
+              if (sw.hitIds && sw.hitIds[target.id]) continue;
+
+              const dist = Math.hypot(target.x - sw.x, target.y - sw.y);
+              if (dist <= sw.radius + (target.radius || 16)) {
+                  sw.hitIds[target.id] = true;
+                  checkHit(target, {
+                      damage: sw.damage,
                       ownerBrawler: 'weefee',
-                      isWeeFeeWifiWave: true,
-                      x: pole.x,
-                      y: pole.y,
-                      vx: Math.cos(ang) * 380,
-                      vy: Math.sin(ang) * 380,
-                      targetCenterX: cx,
-                      targetCenterY: cy,
-                      interferenceRadius: 45,
+                      ownerId: sw.ownerId,
+                      pierce: true,
+                      super: sw.is5G
+                  }, -1);
+
+                  if (sw.is5G) {
+                      applyStatusEffect(target, 'slow', 800);
+                  }
+
+                  if (sw.hasSp1) {
+                      target.weefeeInterferenceUntil = performance.now() + 3000;
+                      spawnFloatingText(target.x, target.y - 32, '📶 LAG -20% DMG', '#00f5d4');
+                  }
+
+                  explosions.push({
+                      x: target.x,
+                      y: target.y,
+                      radius: 28,
                       life: 0,
-                      maxLife: Math.max(0.4, dist / 380 + 0.25),
-                      damage: is5G ? 1250 : 1100,
-                      centerDamage: is5G ? 850 : 750,
-                      ownerId: entity.id,
-                      hitIds: {},
-                      hitboxMod: 2.2,
-                      hyperVisual: isHyper,
-                      sp1: entity.id === player.id ? (selectedStar === 'slow' || selectedStar === 'sp1') : (entity.selectedStar === 'slow' || entity.selectedStar === 'sp1')
+                      maxLife: 0.16,
+                      color: sw.isHyper ? '#d946ef' : '#00f5d4'
                   });
               }
           }
@@ -46058,10 +46096,59 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
 
     
-      // Render Wee-Fee Signal Poles & Network Mesh
+      // Render Wee-Fee Expanding Wi-Fi Shockwaves
+      if (weefeeShockwaves && weefeeShockwaves.length > 0) {
+          for (const sw of weefeeShockwaves) {
+              const alpha = Math.max(0, 1 - sw.life / sw.maxLife);
+              ctx.save();
+              ctx.translate(sw.x, sw.y);
+
+              // 1. Main outer glowing shockwave perimeter
+              const mainCol = sw.isHyper ? 'rgba(217, 70, 239, ' + (alpha * 0.9) + ')' : (sw.is5G ? 'rgba(0, 255, 180, ' + (alpha * 0.95) + ')' : 'rgba(0, 245, 212, ' + (alpha * 0.85) + ')');
+              const fillCol = sw.isHyper ? 'rgba(217, 70, 239, ' + (alpha * 0.18) + ')' : (sw.is5G ? 'rgba(0, 255, 180, ' + (alpha * 0.22) + ')' : 'rgba(0, 245, 212, ' + (alpha * 0.14) + ')');
+
+              ctx.strokeStyle = mainCol;
+              ctx.fillStyle = fillCol;
+              ctx.shadowColor = mainCol;
+              ctx.shadowBlur = 16;
+              ctx.lineWidth = 3.5 * alpha + 1;
+
+              ctx.beginPath();
+              ctx.arc(0, 0, sw.radius, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+
+              // 2. Inner concentric ripple rings
+              if (sw.radius > 20) {
+                  ctx.lineWidth = 2 * alpha;
+                  ctx.beginPath();
+                  ctx.arc(0, 0, sw.radius * 0.65, 0, Math.PI * 2);
+                  ctx.stroke();
+              }
+
+              // 3. Four outward-facing Wi-Fi signal arcs stamped around shockwave
+              for (let dir = 0; dir < 4; dir++) {
+                  ctx.save();
+                  ctx.rotate(dir * (Math.PI / 2) + sw.life * 2);
+                  ctx.strokeStyle = mainCol;
+                  ctx.lineWidth = 3 * alpha;
+                  for (let arcIdx = 1; arcIdx <= 3; arcIdx++) {
+                      const arcR = sw.radius - arcIdx * 8;
+                      if (arcR > 6) {
+                          ctx.beginPath();
+                          ctx.arc(0, 0, arcR, -0.42, 0.42);
+                          ctx.stroke();
+                      }
+                  }
+                  ctx.restore();
+              }
+              ctx.restore();
+          }
+      }
+
+      // Render Wee-Fee Signal Poles & Big Illuminated Ground Wi-Fi Logos
       if (weefeePoles && weefeePoles.length > 0) {
           const now = performance.now();
-          // Draw interconnected network laser lines between poles of same owner
           const polesByOwner = {};
           for (const pole of weefeePoles) {
               polesByOwner[pole.ownerId] = polesByOwner[pole.ownerId] || [];
@@ -46069,17 +46156,23 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           }
 
           for (const [ownerId, poles] of Object.entries(polesByOwner)) {
+              const ownerEntity = ownerId === String(player.id) ? player : (typeof bots !== 'undefined' ? bots.find(bt => bt && String(bt.id) === ownerId) : null);
+              const is5G = ownerEntity && now < (ownerEntity.weefeeMobileDataUntil || 0);
+              const isHyper = ownerEntity && isEntityHyperchargedNow(ownerEntity, now);
+
+              // Draw interconnected network laser grid
               if (poles.length >= 2) {
-                  const ownerEntity = ownerId === String(player.id) ? player : (typeof bots !== 'undefined' ? bots.find(bt => bt && String(bt.id) === ownerId) : null);
-                  const is5G = ownerEntity && now < (ownerEntity.weefeeMobileDataUntil || 0);
                   const cx = poles.reduce((acc, p) => acc + p.x, 0) / poles.length;
                   const cy = poles.reduce((acc, p) => acc + p.y, 0) / poles.length;
 
                   ctx.save();
-                  ctx.strokeStyle = is5G ? 'rgba(0, 245, 212, 0.85)' : 'rgba(0, 245, 212, 0.45)';
-                  ctx.lineWidth = is5G ? 3.5 : 2;
+                  ctx.strokeStyle = isHyper ? 'rgba(217, 70, 239, 0.85)' : (is5G ? 'rgba(0, 255, 180, 0.95)' : 'rgba(0, 245, 212, 0.55)');
+                  ctx.lineWidth = is5G ? 3.5 : 2.2;
                   ctx.setLineDash(is5G ? [6, 4] : [10, 6]);
-                  ctx.lineDashOffset = -now / 30;
+                  ctx.lineDashOffset = -now / 25;
+                  ctx.shadowColor = ctx.strokeStyle;
+                  ctx.shadowBlur = 12;
+
                   ctx.beginPath();
                   for (let p1 = 0; p1 < poles.length; p1++) {
                       for (let p2 = p1 + 1; p2 < poles.length; p2++) {
@@ -46090,61 +46183,130 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                   ctx.stroke();
                   ctx.setLineDash([]);
 
-                  // Draw central network hub node
-                  ctx.fillStyle = is5G ? 'rgba(0, 245, 212, 0.35)' : 'rgba(0, 245, 212, 0.18)';
+                  // Centroid Network Master Hub with pulsing Wi-Fi symbol
+                  const hubPulse = 1 + Math.sin(now / 160) * 0.12;
+                  ctx.fillStyle = isHyper ? 'rgba(217, 70, 239, 0.25)' : (is5G ? 'rgba(0, 255, 180, 0.30)' : 'rgba(0, 245, 212, 0.16)');
                   ctx.beginPath();
-                  ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+                  ctx.arc(cx, cy, 34 * hubPulse, 0, Math.PI * 2);
                   ctx.fill();
-                  ctx.strokeStyle = '#00f5d4';
-                  ctx.lineWidth = 1.5;
+                  ctx.strokeStyle = isHyper ? '#d946ef' : '#00f5d4';
+                  ctx.lineWidth = 2;
                   ctx.stroke();
+
+                  // Hub icon
+                  ctx.fillStyle = '#ffffff';
+                  ctx.font = '900 16px sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillText('📶', cx, cy);
+                  ctx.restore();
+              }
+
+              // Draw individual Signal Poles and their Big Illuminated Ground Wi-Fi Logos
+              for (const pole of poles) {
+                  const cycleDur = is5G ? 480 : 1100;
+                  const cycleProg = clamp((now - (pole.cycleStartAt || now)) / cycleDur, 0, 1);
+                  const isPoleHyper = pole.isHyper || isHyper;
+
+                  ctx.save();
+                  ctx.translate(pole.x, pole.y);
+
+                  // 1. Holographic Base Aura Ring
+                  const basePulse = 1 + Math.sin(now / 140) * 0.06;
+                  ctx.strokeStyle = isPoleHyper ? '#d946ef' : (is5G ? '#00ff88' : '#00f5d4');
+                  ctx.shadowColor = ctx.strokeStyle;
+                  ctx.shadowBlur = 18;
+                  ctx.lineWidth = 2.5;
+                  ctx.beginPath();
+                  ctx.arc(0, 0, 48 * basePulse, 0, Math.PI * 2);
+                  ctx.stroke();
+
+                  // 2. BIG ILLUMINATED WI-FI LOGO ON GROUND (📶)
+                  // Facing upward with 1 Dot + 3 Concentric Curved Bars
+                  const dotY = 18;
+                  const dotLit = true;
+                  const bar1Lit = cycleProg >= 0.25;
+                  const bar2Lit = cycleProg >= 0.50;
+                  const bar3Lit = cycleProg >= 0.75;
+                  const isMaxSignal = cycleProg >= 0.90;
+
+                  const litColor = isPoleHyper ? (isMaxSignal ? '#ffffff' : '#d946ef') : (is5G ? (isMaxSignal ? '#ffffff' : '#00ff88') : (isMaxSignal ? '#ffffff' : '#00f5d4'));
+                  const dimColor = isPoleHyper ? 'rgba(217, 70, 239, 0.22)' : 'rgba(0, 245, 212, 0.20)';
+
+                  // Wi-Fi Base Dot
+                  ctx.fillStyle = litColor;
+                  ctx.shadowBlur = dotLit ? 16 : 0;
+                  ctx.beginPath();
+                  ctx.arc(0, dotY, isMaxSignal ? 6 : 4.5, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  // Wi-Fi Bar 1 (Lowest/Smallest Arc)
+                  ctx.strokeStyle = bar1Lit ? litColor : dimColor;
+                  ctx.lineWidth = bar1Lit ? (isMaxSignal ? 5.5 : 4.5) : 2.5;
+                  ctx.shadowBlur = bar1Lit ? 16 : 0;
+                  ctx.beginPath();
+                  ctx.arc(0, dotY, 16, -Math.PI * 0.82, -Math.PI * 0.18);
+                  ctx.stroke();
+
+                  // Wi-Fi Bar 2 (Middle Arc)
+                  ctx.strokeStyle = bar2Lit ? litColor : dimColor;
+                  ctx.lineWidth = bar2Lit ? (isMaxSignal ? 6 : 5) : 2.5;
+                  ctx.shadowBlur = bar2Lit ? 18 : 0;
+                  ctx.beginPath();
+                  ctx.arc(0, dotY, 28, -Math.PI * 0.78, -Math.PI * 0.22);
+                  ctx.stroke();
+
+                  // Wi-Fi Bar 3 (Top/Largest Arc)
+                  ctx.strokeStyle = bar3Lit ? litColor : dimColor;
+                  ctx.lineWidth = bar3Lit ? (isMaxSignal ? 6.5 : 5.5) : 2.5;
+                  ctx.shadowBlur = bar3Lit ? 22 : 0;
+                  ctx.beginPath();
+                  ctx.arc(0, dotY, 40, -Math.PI * 0.75, -Math.PI * 0.25);
+                  ctx.stroke();
+
+                  // 3. Antenna Pillar Structure
+                  ctx.fillStyle = '#0a1a24';
+                  ctx.strokeStyle = isPoleHyper ? '#d946ef' : '#00f5d4';
+                  ctx.lineWidth = 2;
+                  ctx.shadowBlur = 8;
+                  ctx.beginPath();
+                  ctx.rect(-4, -28, 8, 30);
+                  ctx.fill();
+                  ctx.stroke();
+
+                  // Crossbar router fins
+                  ctx.strokeStyle = isPoleHyper ? '#ff70ff' : '#00ff88';
+                  ctx.lineWidth = 2.5;
+                  ctx.beginPath();
+                  ctx.moveTo(-14, -18);
+                  ctx.lineTo(14, -18);
+                  ctx.moveTo(-10, -10);
+                  ctx.lineTo(10, -10);
+                  ctx.stroke();
+
+                  // Top LED Beacon Diode
+                  const ledBlink = Math.sin(now / (is5G ? 70 : 130)) > 0;
+                  ctx.fillStyle = ledBlink ? (isPoleHyper ? '#ffffff' : (is5G ? '#00ffff' : '#00ff88')) : (isPoleHyper ? '#d946ef' : '#ff4757');
+                  ctx.shadowColor = ctx.fillStyle;
+                  ctx.shadowBlur = 14;
+                  ctx.beginPath();
+                  ctx.arc(0, -31, is5G ? 4.5 : 3.5, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  // 5G Floating Label if 5G active
+                  if (is5G) {
+                      ctx.fillStyle = '#00ffff';
+                      ctx.font = '900 11px sans-serif';
+                      ctx.textAlign = 'center';
+                      ctx.fillText('⚡5G⚡', 0, -42);
+                  }
+
                   ctx.restore();
               }
           }
-
-          // Draw individual Signal Poles
-          for (const pole of weefeePoles) {
-              const pulse = 1 + Math.sin((now - pole.createdAt) / 120) * 0.08;
-              ctx.save();
-              // Base holographic ground ring
-              ctx.strokeStyle = pole.isHyper ? '#d946ef' : '#00f5d4';
-              ctx.shadowColor = ctx.strokeStyle;
-              ctx.shadowBlur = 14;
-              ctx.lineWidth = 2.5;
-              ctx.beginPath();
-              ctx.arc(pole.x, pole.y, 22 * pulse, 0, Math.PI * 2);
-              ctx.stroke();
-
-              // Antenna pillar
-              ctx.fillStyle = '#0f2430';
-              ctx.strokeStyle = '#00f5d4';
-              ctx.lineWidth = 2;
-              ctx.beginPath();
-              ctx.rect(pole.x - 4, pole.y - 28, 8, 28);
-              ctx.fill();
-              ctx.stroke();
-
-              // Crossbar fins
-              ctx.strokeStyle = '#00ff88';
-              ctx.lineWidth = 2.5;
-              ctx.beginPath();
-              ctx.moveTo(pole.x - 14, pole.y - 18);
-              ctx.lineTo(pole.x + 14, pole.y - 18);
-              ctx.moveTo(pole.x - 10, pole.y - 10);
-              ctx.lineTo(pole.x + 10, pole.y - 10);
-              ctx.stroke();
-
-              // Blinking top LED
-              const ledOn = Math.sin(now / 150) > 0;
-              ctx.fillStyle = ledOn ? (pole.isHyper ? '#ff00ff' : '#00ff88') : '#ff4757';
-              ctx.beginPath();
-              ctx.arc(pole.x, pole.y - 30, 3.5, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.restore();
-          }
       }
 
-    // Render Ramage Hypercharge Shadow Clones
+      // Render Ramage Hypercharge Shadow Clones
     const ramageShadowEntities = [player, ...(typeof bots !== 'undefined' && Array.isArray(bots) ? bots : [])].filter(ent => ent && ent.hp > 0 && Array.isArray(ent.ramageShadowClones) && ent.ramageShadowClones.length > 0);
     for (const ent of ramageShadowEntities) {
         for (const clone of ent.ramageShadowClones) {
