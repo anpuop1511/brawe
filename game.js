@@ -10986,6 +10986,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           pieceName: "Bouncin' Balls Signature Piece",
           shortDesc: 'Spend up to 1000 HP: Elasticity keeps its +50% range, and every collector-ball wall bounce adds another +20% base range. Or spend 750 turret HP to command 2 radial waves (10s cooldown).'
       },
+      fightnfire: {
+          type: 'instinct',
+          name: 'Flash Freeze',
+          icon: 'FF',
+          color: '#62ef88',
+          pieceName: "Fight'n'Fire Instinct Piece",
+          shortDesc: 'Every other Super cast, half of the fire projectiles become Sub-Zero Ice Cores that encase enemies in a solid Block of Ice for 1.3s (100% damage reduction, cannot move or attack).'
+      },
       echo: {
           type: 'instinct',
           name: 'Aftershock Reflex',
@@ -16434,14 +16442,18 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
         bullets.push(shot);
 
-        explosions.push({
+        // 360-degree radial nova burst around the brawler
+        triggerFightnFireImpact({
             x: originX,
             y: originY,
-            radius: 65,
-            life: 0,
-            maxLife: 0.28,
-            color: isFlashFreeze ? 'rgba(116, 200, 255, 0.85)' : (isHyper ? 'rgba(255, 75, 10, 0.85)' : 'rgba(255, 140, 50, 0.75)')
-        });
+            damage: burstDamage,
+            ownerId: entity.id,
+            fightnFireShardCount: shardCount,
+            hyperVisual: isHyper,
+            superBurst: true,
+            isFlashFreeze: isFlashFreeze,
+            isFightnfireIceProj: isFlashFreeze
+        }, false);
     }
 
     function pointInTrapperFence(entity, zone) {
@@ -36966,9 +36978,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                     progressSeasonPassQuest('deal_damage', damageAmount);
                     if (ownerBaseBrawler === 'outlit') addSpecialQuestProgress('outlit','deal_damage',damageAmount);
                     if (ownerBaseBrawler === 'echo') addSpecialQuestProgress('echo','deal_damage',damageAmount);
+                    if (ownerBaseBrawler === 'fightnfire') addSpecialQuestProgress('fightnfire','deal_damage',damageAmount);
+                    if (ownerBaseBrawler === 'minigunnin') addSpecialQuestProgress('minigunnin','deal_damage',damageAmount);
+                    if (getSpecialAbilityDef(ownerBaseBrawler) && !b.super && !b.superBurst && !b.isFightnFireShard) addSpecialQuestProgress(ownerBaseBrawler,'main_hit',1);
                     if (ownerBaseBrawler === 'bouncin_balls' && !b.super) addSpecialQuestProgress('bouncin_balls','main_hit',1);
                     if (ownerBaseBrawler === 'echo' && !b.super) addSpecialQuestProgress('echo','main_hit',1);
-                    if (ownerBaseBrawler === 'minigunnin') addSpecialQuestProgress('minigunnin','deal_damage',damageAmount);
                     if (ownerBaseBrawler === 'classy' && b.isClassyNote && !b.isClassySuperShot && !b.classySignatureMirror) addSpecialQuestProgress('classy','main_hit',1);
                     if (ownerBaseBrawler === 'splitter' && !b.super) addSpecialQuestProgress('splitter','main_hit',1);
                 }
@@ -40281,12 +40295,25 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if (b.fightnFireHyperHoming) {
           const fireOwner = getEntityById(b.ownerId);
           let fireTarget = getEntityById(b.fightnFireHomingTargetId);
-          if (!fireTarget || fireTarget.hp <= 0 || (fireOwner && areAlliedEntities(fireOwner, fireTarget))) fireTarget = null;
+          if (!fireTarget || fireTarget.hp <= 0 || (fireOwner && areAlliedEntities(fireOwner, fireTarget))) {
+              const livePool = typeof aliveBots !== 'undefined' ? aliveBots : bots;
+              const candidates = [player, ...livePool].filter(c => c && c.hp > 0 && c.id !== b.ownerId && (!fireOwner || !areAlliedEntities(fireOwner, c)));
+              let closest = null, closestDist = 800;
+              for (const c of candidates) {
+                  const d = Math.hypot(c.x - b.x, c.y - b.y);
+                  if (d < closestDist) {
+                      closestDist = d;
+                      closest = c;
+                  }
+              }
+              fireTarget = closest;
+              if (fireTarget) b.fightnFireHomingTargetId = fireTarget.id;
+          }
           if (fireTarget) {
-              const speed = Math.max(420, Math.hypot(b.vx, b.vy));
+              const speed = Math.max(480, Math.hypot(b.vx, b.vy));
               const currentAngle = Math.atan2(b.vy, b.vx);
               const targetAngle = Math.atan2(fireTarget.y - b.y, fireTarget.x - b.x);
-              const nextAngle = lerpAngle(currentAngle, targetAngle, 5.4 * dt);
+              const nextAngle = lerpAngle(currentAngle, targetAngle, 6.5 * dt);
               b.vx = Math.cos(nextAngle) * speed;
               b.vy = Math.sin(nextAngle) * speed;
           }
@@ -51631,33 +51658,87 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           }
           continue;
       } else if (b.isFightnFireShot) {
-          // Main fireball attack
-          ctx.fillStyle = b.hyperVisual ? 'rgba(238, 0, 255, 0.9)' : 'rgba(255, 107, 45, 0.9)';
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, 12, 0, Math.PI*2);
-          ctx.fill();
-          ctx.strokeStyle = b.hyperVisual ? '#ba00d6' : '#ff6b2d';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          // Add glow
-          ctx.fillStyle = b.hyperVisual ? 'rgba(238, 0, 255, 0.3)' : 'rgba(255, 107, 45, 0.3)';
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, 20, 0, Math.PI*2);
-          ctx.fill();
+          // Main fireball attack / Flash Freeze ice projectile / Blazing solar inferno HC
+          const isIce = !!(b.isFightnfireIceProj || b.isFlashFreeze);
+          const isHyper = !!b.hyperVisual;
+          if (isIce) {
+              // Crystalline Sub-Zero Ice Core
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(72, 219, 251, 0.88)';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 14, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#c8f7ff';
+              ctx.lineWidth = 2.5;
+              ctx.stroke();
+              ctx.fillStyle = 'rgba(72, 219, 251, 0.28)';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 22, 0, Math.PI * 2);
+              ctx.fill();
+          } else if (isHyper) {
+              // Blazing Solar Inferno (White-hot core, fiery crimson body, golden corona)
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 7, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(255, 42, 0, 0.95)';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 15, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#ffc048';
+              ctx.lineWidth = 3;
+              ctx.stroke();
+              ctx.fillStyle = 'rgba(255, 120, 0, 0.32)';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 24, 0, Math.PI * 2);
+              ctx.fill();
+          } else {
+              ctx.fillStyle = 'rgba(255, 107, 45, 0.9)';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 12, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#ff6b2d';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+              ctx.fillStyle = 'rgba(255, 107, 45, 0.3)';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, 20, 0, Math.PI * 2);
+              ctx.fill();
+          }
           continue;
       } else if (b.isFightnFireShard) {
           // Shards from explosion
-          ctx.fillStyle = b.hyperVisual ? 'rgba(238, 0, 255, 0.8)' : 'rgba(255, 180, 100, 0.8)';
-          ctx.beginPath();
+          const isIce = !!(b.isFightnfireIceProj || b.isFlashFreeze);
+          const isHyper = !!b.hyperVisual;
           const angle = Math.atan2(b.vy, b.vx);
-          // Triangle shape pointing in direction of travel
-          ctx.moveTo(b.x + Math.cos(angle) * 10, b.y + Math.sin(angle) * 10);
-          ctx.lineTo(b.x + Math.cos(angle + Math.PI * 0.7) * 7, b.y + Math.sin(angle + Math.PI * 0.7) * 7);
-          ctx.lineTo(b.x + Math.cos(angle - Math.PI * 0.7) * 7, b.y + Math.sin(angle - Math.PI * 0.7) * 7);
-          ctx.fill();
-          ctx.strokeStyle = b.hyperVisual ? '#ba00d6' : '#ff6b2d';
-          ctx.lineWidth = 1;
-          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(b.x + Math.cos(angle) * 11, b.y + Math.sin(angle) * 11);
+          ctx.lineTo(b.x + Math.cos(angle + Math.PI * 0.7) * 7.5, b.y + Math.sin(angle + Math.PI * 0.7) * 7.5);
+          ctx.lineTo(b.x + Math.cos(angle - Math.PI * 0.7) * 7.5, b.y + Math.sin(angle - Math.PI * 0.7) * 7.5);
+          ctx.closePath();
+          
+          if (isIce) {
+              ctx.fillStyle = 'rgba(116, 200, 255, 0.92)';
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+          } else if (isHyper) {
+              ctx.fillStyle = 'rgba(255, 60, 0, 0.95)';
+              ctx.fill();
+              ctx.strokeStyle = '#ffd32a';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+          } else {
+              ctx.fillStyle = 'rgba(255, 180, 100, 0.8)';
+              ctx.fill();
+              ctx.strokeStyle = '#ff6b2d';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+          }
           continue;
       } else if (b.isUnstableContainerThrow) {
           const p=Math.max(0,Math.min(1,b.life/Math.max(.01,b.maxLife))),lift=Math.sin(p*Math.PI)*90;
@@ -53737,7 +53818,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const burstProgress = 1 - (e.fightnFireSuperBurstUntil - performance.now()) / 220;
             const ringRadius = 48 + burstProgress * 54;
             const shardCount = 24;
-            ctx.strokeStyle = e.fightnFireSuperHyper ? 'rgba(238, 0, 255, 0.7)' : 'rgba(255, 107, 45, 0.7)';
+            ctx.strokeStyle = e.fightnFireSuperHyper ? 'rgba(255, 75, 15, 0.92)' : 'rgba(255, 107, 45, 0.7)';
             ctx.lineWidth = 4 - burstProgress * 2;
             ctx.beginPath();
             ctx.arc(e.x, e.y - (e.z || 0), ringRadius, 0, Math.PI * 2);
