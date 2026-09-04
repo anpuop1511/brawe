@@ -15,9 +15,9 @@ assert.match(game, /function getUnclaimedBrickRoadMilestonesCount\(\)/, 'getUncl
 assert.match(game, /function claimBrickRoadMilestone\(/, 'claimBrickRoadMilestone helper exists');
 assert.match(game, /function openBrickRoadModal\(\)/, 'openBrickRoadModal exists');
 
-// 3. Home Screen Event Board Integration
+// 3. Home Screen Events & Dock Integration
 assert.match(html, /id="homeModesSection"/, 'homeModesSection is in HTML');
-assert.match(html, /id="homeLobbyView"[\s\S]*?id="homeModesSection"/, 'homeModesSection is directly inside homeLobbyView');
+assert.match(html, /id="homeEventsView"[\s\S]*?id="homeModesSection"/, 'homeModesSection is in homeEventsView');
 assert.match(game, /brickRoadBtn\.id = 'brickRoadBtn'/, 'brickRoadBtn added to progression dock');
 
-console.log('Brick Road & Home Screen Event Board regression tests passed successfully!');
+console.log('Brick Road & Home Screen regression tests passed successfully!');

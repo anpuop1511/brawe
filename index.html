@@ -109,29 +109,30 @@
           </div>
 
             <aside id="homePersonalPanel" class="home-personal-panel">
-              <div class="home-personal-panel__eyebrow">ACTIVE BATTLE MODE</div>
+              <div class="home-personal-panel__eyebrow">NEXT BATTLE</div>
+              <h2 id="homeGreeting">SOLO SHOWDOWN</h2>
+              <p id="homeDailyBrief">Choose your event and enter the arena.</p>
               <button id="homeSelectedEventCard" class="home-selected-event" type="button">
                 <span id="homeSelectedEventIcon">⚔</span>
                 <b id="homeSelectedEventName">Solo Showdown</b>
                 <small id="homeSelectedEventRule">Last fighter standing wins</small>
-                <i>ACTIVE</i>
+                <i>CHANGE EVENT</i>
               </button>
-
-              <div id="homeModesSection" style="display:flex;flex-direction:column;gap:9px;margin-top:6px;">
-                <div class="home-event-heading"><span>⚔️ EVENT BOARD</span><small>CHOOSE MODE</small></div>
-                <div id="homeModeCompactRow" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;"></div>
-                <div id="showdownModeRow" style="display:none;gap:8px;flex-wrap:wrap;"></div>
-              </div>
-
-              <div id="homeCareerSnapshot" class="home-career-snapshot" style="margin-top:8px;"></div>
-              <button id="homeFeaturedOffer" class="home-featured-offer" type="button" style="margin-top:6px;">
+              <div id="homeCareerSnapshot" class="home-career-snapshot"></div>
+              <button id="homeFeaturedOffer" class="home-featured-offer" type="button">
                 <span>DAILY FORGE OFFER</span><b>Open today’s personalized deal</b><small>SHOP →</small>
               </button>
               <div id="homeSeasonPulse" class="home-season-pulse"></div>
             </aside>
           </section>
 
-          <section id="homeEventsView" class="home-tab-view" aria-label="Events" style="display:none;">
+          <section id="homeEventsView" class="home-tab-view" aria-label="Events">
+          <div id="homeModesSection" style="display:flex;flex-direction:column;gap:9px;">
+            <div class="home-event-heading"><span>EVENTS</span><small>CHOOSE YOUR BATTLE</small></div>
+            <div style="font-weight:900;color:#cfeef7;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.85;">Event Board</div>
+            <div id="homeModeCompactRow" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;"></div>
+            <div id="showdownModeRow" style="display:none;gap:8px;flex-wrap:wrap;"></div>
+          </div>
           </section>
 
         </div>

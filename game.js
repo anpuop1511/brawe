@@ -33524,17 +33524,16 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     styleHomeButton(attachiesBtn, 'purple', true);
     const visibleHomeShortcuts = document.getElementById('homeQuickActions');
 
-    // Brick Road Trophy Progress Banner in Dock
+    // Brick Road Trophy Progress Button in Dock
     const brickRoadBtn = document.createElement('button');
     brickRoadBtn.id = 'brickRoadBtn';
+    brickRoadBtn.textContent = '🏆 Brick Road';
     brickRoadBtn.type = 'button';
-    const totalBricks = typeof getTotalAccountBricks === 'function' ? getTotalAccountBricks() : 0;
-    const league = typeof getBrickRoadLeague === 'function' ? getBrickRoadLeague(totalBricks) : { name: 'Wood', icon: '🪵' };
-    const unclaimed = typeof getUnclaimedBrickRoadMilestonesCount === 'function' ? getUnclaimedBrickRoadMilestonesCount() : 0;
-    brickRoadBtn.innerHTML = `🏆 <b>BRICK ROAD</b> <small style="color:#ffd166;">(${totalBricks} 🧱 · ${league.name})${unclaimed > 0 ? ' <span style="background:#5df2c2;color:#05141b;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:900;">' + unclaimed + '</span>' : ''}</small>`;
+    brickRoadBtn.setAttribute('aria-label', 'Open Brick Road milestones');
     styleHomeButton(brickRoadBtn, 'amber', true);
     brickRoadBtn.addEventListener('click', openBrickRoadModal);
     if (visibleHomeShortcuts) visibleHomeShortcuts.insertBefore(brickRoadBtn, visibleHomeShortcuts.firstChild);
+    else if (homeUtilityRow) homeUtilityRow.appendChild(brickRoadBtn);
 
     if(visibleHomeShortcuts) visibleHomeShortcuts.appendChild(attachiesBtn);
     else if(homeUtilityRow) homeUtilityRow.appendChild(attachiesBtn);
