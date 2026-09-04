@@ -2744,12 +2744,16 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         projectile.hitIds = projectile.hitIds || {};
         if (projectile.hitIds[target.id]) return false;
         projectile.hitIds[target.id] = true;
-        doHeal(target, projectile.healAmt || 1450);
-        spawnFloatingText(target.x, target.y - 24, `+${projectile.healAmt || 1450}`, '#fff0a8');
+        doHeal(target, projectile.healAmt || 1015);
+        spawnFloatingText(target.x, target.y - 24, `+${projectile.healAmt || 1015}`, '#fff0a8');
         if (projectile.angelCanLift && now >= (target.angelLiftCooldownUntil || 0)) {
-            target.angelLiftCooldownUntil = now + 4000; target.angelLiftUntil = now + 800;
-            target.isFlying = true; target.angelLiftOwnerId = owner.id;
-            spawnFloatingText(target.x, target.y - 42, 'LIFT!', '#fff7c7');
+            target.angelLiftCooldownUntil = now + 3500;
+            target.angelLiftDuration = 900;
+            target.angelLiftUntil = now + 900;
+            target.isFlying = true;
+            target.angelLiftOwnerId = owner.id;
+            target.z = 10;
+            spawnFloatingText(target.x, target.y - 42, 'DIVINE LIFT!', '#fff7c7');
         }
         return true;
     }
@@ -21276,7 +21280,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         lockMainAttackSequence(fromEntity,(count-1)*105,now);
         for (let shot=0; shot<count; shot++) setTimeout(()=>{
             if (!playing || gameOver || fromEntity.hp <= 0) return;
-            bullets.push({ownerBrawler:'angel',isAngelLight:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+5),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+5),vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.82,damage:hyper?(isBot?850:1180):(isBot?1120:1600),healAmt:hyper?(isBot?650:900):(isBot?1050:1450),angelCanLift:shot===0,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.0,hyperVisual:hyper});
+            bullets.push({ownerBrawler:'angel',isAngelLight:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+5),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+5),vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.82,damage:hyper?(isBot?850:1180):(isBot?1120:1600),healAmt:hyper?(isBot?455:630):(isBot?735:1015),angelCanLift:shot===0,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.0,hyperVisual:hyper});
         },shot*105);
     } else if (brawler === 'demon') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
@@ -27924,7 +27928,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if(ally&&performance.now()<(player.angelSecondLifeUntil||0)){ally.angelSecondLifeUntil=player.angelSecondLifeUntil;ally.angelSecondLifeUsed=false;player.angelSecondLifeUntil=0;spawnFloatingText(ally.x,ally.y-35,'GUARDIAN SWAP','#fff0a8');}
       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
     } else if (curBrawler === 'angel' && curGadget === 'g2') {
-      for(const ally of [player,...bots].filter(e=>e&&areAlliedEntities(player,e)&&e.angelLiftUntil>now)){ally.angelLiftUntil=0;ally.isFlying=false;doHeal(ally,1600);ally.angelLandingSpeedUntil=now+2000;}
+      for(const ally of [player,...bots].filter(e=>e&&areAlliedEntities(player,e)&&e.angelLiftUntil>now)){ally.angelLiftUntil=0;ally.isFlying=false;ally.z=0;doHeal(ally,1600);ally.angelLandingSpeedUntil=now+2000;}
       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
     } else if (curBrawler === 'demon' && curGadget === 'g1') {
       const blade=bullets.find(b=>b.ownerId===player.id&&b.isDemonBlade&&b.demonGrounded);if(blade){player.x=blade.x;player.y=blade.y;player.invulnerableUntil=now+250;bullets.splice(bullets.indexOf(blade),1);}
@@ -35964,6 +35968,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         // If target has temporary invulnerability (e.g., overlord transform), ignore the hit
         if (target && target.invulnerableUntil && target.invulnerableUntil > performance.now()) return false;
 
+        // Angel Lift flight immunity / untargetability against ground projectiles
+        if (target && (target.angelLiftUntil || 0) > performance.now() && (!b || (!b.super && !b.pierceWalls))) {
+            spawnFloatingText(target.x, target.y - 28, 'LIFT DODGE!', '#ffffff');
+            return false;
+        }
+
         // Ice Block Stasis 100% Damage Reduction
         if (target && target.iceBlockUntil && target.iceBlockUntil > performance.now()) {
             spawnFloatingText(target.x, target.y - 30, '🧊 IMMUNE', '#aef2ff');
@@ -37891,12 +37901,23 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                   entity.homerHomingPct=clamp((entity.homerHomingPct||.15)-.10,.15,.70);
               }else if(entity.hp>0)entity.homerDeathPenaltyApplied=false;
           }
-          if (entity.angelLiftUntil && now >= entity.angelLiftUntil) {
-              entity.angelLiftUntil = 0; entity.isFlying = false;
-              if(entity.angelSushiLandingHeal>0){doHeal(entity,entity.angelSushiLandingHeal);entity.angelSushiLandingHeal=0;}
-              const owner = entity.angelLiftOwnerId === player.id ? player : bots.find(b=>b.id===entity.angelLiftOwnerId);
-              const blessed = owner && (owner.id===player.id ? selectedStar==='slow' : owner.selectedStar==='slow');
-              if (blessed) grantShield(entity,900,2600);
+          if (entity.angelLiftUntil) {
+              if (now < entity.angelLiftUntil) {
+                  const liftDur = entity.angelLiftDuration || 900;
+                  const remaining = Math.max(0, entity.angelLiftUntil - now);
+                  const liftProg = clamp(1 - (remaining / liftDur), 0, 1);
+                  entity.isFlying = true;
+                  entity.z = Math.sin(liftProg * Math.PI) * 58;
+              } else {
+                  entity.angelLiftUntil = 0;
+                  entity.isFlying = false;
+                  entity.z = 0;
+                  if(entity.angelSushiLandingHeal>0){doHeal(entity,entity.angelSushiLandingHeal);entity.angelSushiLandingHeal=0;}
+                  const owner = entity.angelLiftOwnerId === player.id ? player : bots.find(b=>b.id===entity.angelLiftOwnerId);
+                  const blessed = owner && (owner.id===player.id ? selectedStar==='slow' : owner.selectedStar==='slow');
+                  if (blessed) grantShield(entity,900,2600);
+                  spawnFloatingText(entity.x, entity.y - 24, 'LANDED', '#fff7c7');
+              }
           }
           if (entity.hp <= 0 && now < (entity.angelSecondLifeUntil || 0) && !entity.angelSecondLifeUsed) {
               entity.angelSecondLifeUsed = true; entity.angelSecondLifeUntil = 0; entity.isDead = false;
@@ -50236,6 +50257,43 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if(entity?.predatorLatch){
             const prey=entity.predatorLatch.targetId===player.id?player:bots.find(e=>e.id===entity.predatorLatch.targetId);
             if(prey&&prey.hp>0){const pulse=1+Math.sin(performance.now()/65)*.12;ctx.save();ctx.strokeStyle=entity.predatorLatch.hyper?'#e67aff':'#c9f052';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=18;ctx.lineWidth=5;ctx.beginPath();ctx.arc(prey.x,prey.y,(prey.radius+13)*pulse,-.8,.8);ctx.arc(prey.x,prey.y,(prey.radius+13)*pulse,Math.PI-.8,Math.PI+.8);ctx.stroke();ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(prey.x-30,prey.y-30);ctx.lineTo(prey.x+30,prey.y+30);ctx.moveTo(prey.x+30,prey.y-30);ctx.lineTo(prey.x-30,prey.y+30);ctx.stroke();ctx.restore();}
+        }
+        if (entity && entity.hp > 0 && performance.now() < (entity.angelLiftUntil || 0)) {
+            const now = performance.now();
+            const liftDur = entity.angelLiftDuration || 900;
+            const liftProg = clamp(1 - ((entity.angelLiftUntil - now) / liftDur), 0, 1);
+            const wingFlap = Math.sin(now / 55) * 12;
+            const pulse = 1 + Math.sin(now / 75) * 0.10;
+            const dy = entity.y - (entity.z || 0);
+            ctx.save();
+            ctx.strokeStyle = '#fff5a8';
+            ctx.shadowColor = '#ffeaa7';
+            ctx.shadowBlur = 18;
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.ellipse(entity.x, dy - entity.radius - 14, 18 * pulse, 6 * pulse, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255, 245, 175, 0.88)';
+            ctx.shadowColor = '#fff7b2';
+            ctx.shadowBlur = 16;
+            ctx.beginPath();
+            ctx.moveTo(entity.x - 6, dy);
+            ctx.quadraticCurveTo(entity.x - 28, dy - 22 - wingFlap, entity.x - 38, dy - 10 - wingFlap);
+            ctx.quadraticCurveTo(entity.x - 24, dy + 6, entity.x - 4, dy + 6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(entity.x + 6, dy);
+            ctx.quadraticCurveTo(entity.x + 28, dy - 22 - wingFlap, entity.x + 38, dy - 10 - wingFlap);
+            ctx.quadraticCurveTo(entity.x + 24, dy + 6, entity.x + 4, dy + 6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 240, 168, 0.7)';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.ellipse(entity.x, entity.y, (entity.radius + 12) * (1 - liftProg * 0.2), (entity.radius * 0.6) * (1 - liftProg * 0.2), 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
         }
         if (!entity || entity.hp <= 0 || performance.now() >= (entity.angelSecondLifeUntil || 0)) continue;
         const pulse=1+Math.sin(performance.now()/120)*.08;ctx.save();ctx.strokeStyle='#fff0a8';ctx.shadowColor='#fff0a8';ctx.shadowBlur=18;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(entity.x,entity.y-entity.radius-13,18*pulse,6*pulse,0,0,Math.PI*2);ctx.stroke();ctx.restore();

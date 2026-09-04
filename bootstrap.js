@@ -22,7 +22,7 @@ if (legacyCanvas) legacyCanvas.style.display = 'block';
 if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
-const RELEASE_TOKEN = '20260904-fightnfire-v6';
+const RELEASE_TOKEN = '20260904-angel-balance-v1';
 
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {
