@@ -2231,19 +2231,22 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   }
   initMobileControls();
   window.addEventListener('keydown', e=> keys[e.key.toLowerCase()] = true);
+  let steamerPolesPlacedInCurrentAim = 0;
+
   window.addEventListener('keyup', e=> {
     const k = e.key.toLowerCase();
     keys[k] = false;
     if (k === 'e') {
         if (selectedBrawler === 'steamer' && aimingSuper) {
             const holdMs = performance.now() - (superAimStartTime || 0);
-            if (holdMs < 280) {
+            if (holdMs < 280 && steamerPolesPlacedInCurrentAim === 0) {
                 const hasCharges = (typeof player.steamerSuperCharges === 'number') ? player.steamerSuperCharges > 0 : true;
                 if (hasCharges) {
                     const wm = getMouseWorld();
                     startSteamerRailroad(player, wm.x, wm.y, !!isHypercharged);
                 }
             }
+            steamerPolesPlacedInCurrentAim = 0;
             cancelSuperAim();
             updateSuperButton();
             return;
@@ -2263,6 +2266,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           const wm = getMouseWorld();
           const hasCharges = (typeof player.steamerSuperCharges === 'number') ? player.steamerSuperCharges > 0 : true;
           if (hasCharges) {
+              steamerPolesPlacedInCurrentAim++;
               castSteamerPoleThrow(player, wm.x, wm.y, !!isHypercharged);
               updateSuperButton();
           }
@@ -2270,7 +2274,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
       mouse.down = true;
   });
-  window.addEventListener('mouseup', e=> { mouse.down = false; if (e.button === 0 && aimingSuper && superAimCancelState.source === 'desktop') releaseSuper(); });
+  window.addEventListener('mouseup', e=> {
+      mouse.down = false;
+      if (e.button === 0 && aimingSuper && superAimCancelState.source === 'desktop') {
+          if (selectedBrawler === 'steamer') {
+              return;
+          }
+          releaseSuper();
+      }
+  });
   window.addEventListener('contextmenu', e=> { if (aimingSuper) e.preventDefault(); });
 
   // World and Camera
@@ -29432,6 +29444,7 @@ let heistFeverActive = false;
             }
         }
                 aimingSuper = true;
+                steamerPolesPlacedInCurrentAim = 0;
                 superAimStartTime = performance.now();
                 superAimStartScreenX = mouse.screenX;
                 superAimStartScreenY = mouse.screenY;

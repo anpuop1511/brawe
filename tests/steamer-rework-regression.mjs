@@ -9,9 +9,10 @@ test('Steamer starts match with 5 super charges initialized', () => {
   assert.match(gameCode, /if\s*\(typeof entity\.steamerSuperCharges !== 'number'\)\s*entity\.steamerSuperCharges\s*=\s*5/);
 });
 
-test('Steamer controls allow quick tap E to dash and hold E + click to place pole', () => {
-  assert.match(gameCode, /if\s*\(k === 'e'\)[\s\S]*?if\s*\(selectedBrawler === 'steamer' && aimingSuper\)[\s\S]*?startSteamerRailroad/);
-  assert.match(gameCode, /if\s*\(e\.button === 0 && aimingSuper && selectedBrawler === 'steamer'\)[\s\S]*?castSteamerPoleThrow/);
+test('Steamer controls allow quick tap E to dash and hold E + click to place pole without mouseup double-consumption', () => {
+  assert.match(gameCode, /if\s*\(selectedBrawler === 'steamer'\)\s*\{\s*return;\s*\}\s*releaseSuper\(\);/);
+  assert.match(gameCode, /if\s*\(e\.button === 0 && aimingSuper && selectedBrawler === 'steamer'\)[\s\S]*?steamerPolesPlacedInCurrentAim\+\+/);
+  assert.match(gameCode, /if\s*\(holdMs < 280 && steamerPolesPlacedInCurrentAim === 0\)/);
 });
 
 test('Steamer super charge management handles 5 charges and sub-charges', () => {
