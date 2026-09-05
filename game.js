@@ -5853,7 +5853,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       'hyperorigin': { name: 'Hyperorigin', role: 'Tank', desc: 'A seismic tank that stores Origin Energy with each hit and detonates it in a purple shockwave super.', color: '#a66bff', attack: 'Origin Slam', attackDesc: 'After a short delay, slams 4 tiles in a straight line. Each enemy hit grants +1 Origin Energy.', super: 'Purple Unleashed', superDesc: 'Consumes all Origin Energy in a 360 smash. Enemies are suspended for 1s, then slammed down.', hyper: 'Become My Weakling: Main attacks weaken enemy damage by 40% for 1.2s. Super launches 3 mining fissures that each explode twice. Suspend has a brief warning telegraph before lift.', g1: 'Core Clamp (+3 Origin Energy)', g2: 'Fault Step (short dash + shield)', sp1: 'Gravity Core (wider, longer suspend super)', sp2: 'Deep Mantle (damage reduction at 5+ Energy)' },
       'heater_miser': { name: 'Heater Miser', role: 'Support', desc: 'Latches a thermal beam to one target to ramp damage or healing over time.', color: '#ff8a5b', attack: 'Thermal Tether', attackDesc: 'Latch a beam to one ally or enemy. Ticks every 0.30s and ramps through 7 stages while connected.', super: 'Intergalactic Heat', superDesc: 'Launch a furnace that creates a 3.5-tile slow zone for 4s and deals 1200 damage over 3s to enemies inside.', hyper: 'Beam starts at the 300 ramp value. Furnace super also pulls enemies to center.', g1: 'Heat Valve (next tether hit gains burst + fast ramp start)', g2: 'Flux Splitter (tether chains to nearby target)', sp1: 'Thermal Reserve (stronger tether healing)', sp2: 'Combustion Core (larger, stronger furnace zone)' },
       'minigunnin': { name: 'Minigunnin', role: 'Tank', desc: 'Hold to fire a massive cone of bullets. Gains Max HP on hit.', color: '#aaaaaa', attack: 'Minigun', attackDesc: 'Fires 20 larger bullets over 5 seconds in a tighter cone with slightly reduced range. Gets faster while firing.', super: 'Healing Fort', superDesc: 'Deploys a healing device surrounded by breakable walls.', hyper: 'Fort becomes a turret. Attack shoots 30% faster, 20% less spread, +1 bullet per shot.', g1: 'Overclock (Instant reload & burst)', g2: 'Fortify (Sacrifice 1000 Max HP for 3000 HP)', sp1: 'Desperate Measures (+175% HP gain below 30% ammo)', sp2: 'Ramp Up (Move faster while firing)' },
-      'steamer': { name: 'Steamer', role: 'Controller', desc: 'Pressure engineer with a continuous steam bar and precision sweet-spot damage.', color: '#7fd3ff', attack: 'Steam Lance', attackDesc: 'Sprays a pressurized volumetric steam cone. Damage is highest in the sweet spot and slows by 10% at max range.', super: 'Railroad', superDesc: 'Starts match with 5 Super charges. Hold & aim Super to throw Steam Poles (up to 5). Tap Super / press E to Railroad Dash through placed poles in a high-speed circuit.', hyper: 'Overdrive Engine: Steamer charges back and forth 2 times at blinding speed blowing massive billowing steam clouds, while all placed steam poles continuously vent scalding steam jets until he finishes.', g1: 'Pressure Valve (Knockback burst + refill 50% ammo)', g2: 'Express Track (+25% speed and mobile pole placement)', sp1: 'Boiler Room Heat (Scald enemies kept in sweet spot for 1.5s with boiling steam)', sp2: 'Perfect Conductor (30% shield during super, steam trail lasts +1.5s)' },
+      'steamer': { name: 'Steamer', role: 'Controller', desc: 'Pressure engineer with a continuous steam bar and precision sweet-spot damage.', color: '#7fd3ff', attack: 'Steam Lance', attackDesc: 'Sprays a pressurized volumetric steam cone. Damage is highest in the sweet spot and slows by 10% at max range.', super: 'Railroad', superDesc: 'Starts match with 5 Super charges. Hold & aim Super to throw Steam Poles (up to 5). Tap Super / press E to Railroad Dash through placed poles in a high-speed circuit.', hyper: 'Overdrive Engine: Steamer rushes back and forth 2 times across tracks at blinding speed. Placed poles continuously vent boiling steam from their sides and violently explode with steam bursts as Steamer passes through them.', g1: 'Pressure Valve (Knockback burst + refill 50% ammo)', g2: 'Express Track (+25% speed and mobile pole placement)', sp1: 'Boiler Room Heat (Scald enemies kept in sweet spot for 1.5s with boiling steam)', sp2: 'Perfect Conductor (30% shield during super, steam trail lasts +1.5s)' },
       'bowlin_rida': { name: 'The Rida', role: 'Assassin', desc: 'Roll around the map like a bowling ball, gaining speed and knocking down pins!', color: '#ff3300', attack: 'Bowling Roll', attackDesc: 'Using ammo gives you an instant speed boost. Dealing damage by rolling into enemies.', super: 'Pin Strike', superDesc: 'Launch a massive bowling ball attack, becoming untargetable while dropping pins.', hyper: 'Super lasts 8s and drops more pins. Attack gains speed 20% faster.', g1: 'Drift Boost (Instant max speed & reload)', g2: 'Flame Shield (Heal 50% from next hit)', sp1: 'Scorching Trails (Leave fire trail at max speed)', sp2: 'Heavy Landing (Stun and damage when flight ends)' },
       'money_and_tax': { name: 'Money & Tax', role: 'Controller', desc: 'A dual-stance financier who blasts enemies with coins in Money Mode and buries them in DEBT with Tax Notes.', color: '#27ae60', attack: 'Liquid Assets / Audit', attackDesc: 'Money Mode: Fires wider waves of larger coins. At full ammo, the center coin grows 40% larger and hits harder. Tax Mode: Fires 2 larger, tighter banknotes with 45% more damage that apply DEBT, slowing reload for 3 seconds.', super: 'Market Crash / Sticky Bill', superDesc: 'Money: 7 shorter-range boomerang coins, then switch to Tax. Tax: Attach a sticky damage-over-time note that refreshes the 3-second DEBT reload debuff, then switch to Money.', hyper: 'Money Power Move pierces walls. Tax Power Move chains to a second target. Main attacks pierce.', g1: 'Mode Swap (Instantly switch modes)', g2: 'Bailout (Consume 1 ammo, heal 1500 HP & speed boost)', sp1: 'Compound Interest (Consecutive coin hits deal 15% more damage)', sp2: 'Embezzlement (Applying DEBT heals you)' },
       'hunter': { name: 'The Hunter', role: 'Assassin', desc: 'A tracker who isolates targets and hunts them down.', color: '#556b2f', attack: 'Delay Sweep', attackDesc: 'A sweeping sword slash. Knocks back enemies if used at full ammo!', super: 'I Found You', superDesc: 'Marks an enemy for 8s, gaining 25% speed, +25% dmg, and footsteps to them.', hyper: 'Attack delays -50% & double slash. Super gives 40% speed & first hit does 15% Max HP.', g1: 'Grappling Hook (Next attack pulls enemies)', g2: 'Camouflage (Invisibility for 3s)', sp1: 'Thrill of the Hunt (Kill marked target = +35% Super)', sp2: 'Relentless (Take 20% less damage while Super is active)' },
@@ -18559,11 +18559,15 @@ let heistFeverActive = false;
           travelAng = Math.atan2(activeSeg.p1.y - activeSeg.p0.y, activeSeg.p1.x - activeSeg.p0.x);
       }
 
-      // Steam from the poles comes out on the sides until he is done!
+      // Hypercharge mechanics:
+      // 1. Placed poles continuously vent boiling steam from their sides until Steamer is done!
+      // 2. Steamer explodes poles with massive steam bursts as he passes through them!
       if (rail.isHyper) {
+          const ownerPoles = steamerPoles.filter(p => p.ownerId === entity.id);
+
+          // Side-steam venting from poles
           if (!rail.lastPoleSteamAt || now - rail.lastPoleSteamAt >= 50) {
               rail.lastPoleSteamAt = now;
-              const ownerPoles = steamerPoles.filter(p => p.ownerId === entity.id);
               for (const pole of ownerPoles) {
                   const baseAngle = ((pole.createdAt || 0) + now * 0.003) % (Math.PI * 2);
                   const sideAngles = [baseAngle, baseAngle + Math.PI, baseAngle + Math.PI / 2, baseAngle - Math.PI / 2];
@@ -18582,48 +18586,82 @@ let heistFeverActive = false;
                           steamStretch: 1.55
                       });
                   }
-                  // Searing steam side jet damage
+                  // Continuous scalding steam side-jet damage around each pole
                   AOEDamage(pole.x, pole.y, 95, entity.id === player.id ? 80 : 60, entity.id, false);
+              }
+          }
+
+          // Steamer explodes poles with massive steam as he passes through them!
+          if (!rail.poleLastExplodedAt) rail.poleLastExplodedAt = {};
+          for (const pole of rail.poles) {
+              if (!pole) continue;
+              const distToPole = Math.hypot(entity.x - pole.x, entity.y - pole.y);
+              const poleKey = pole.poleRef ? String(pole.poleRef.id) : `${Math.round(pole.x)}_${Math.round(pole.y)}`;
+              const lastExp = rail.poleLastExplodedAt[poleKey] || 0;
+              if (distToPole <= 52 && now - lastExp >= 280) {
+                  rail.poleLastExplodedAt[poleKey] = now;
+                  const expX = pole.x;
+                  const expY = pole.y;
+                  const expRadius = 150;
+                  const blastDmg = entity.id === player.id ? 1400 : 1050;
+
+                  AOEDamage(expX, expY, expRadius, blastDmg, entity.id, false);
+                  explosions.push({
+                      x: expX,
+                      y: expY,
+                      radius: expRadius,
+                      life: 0,
+                      maxLife: 0.32,
+                      color: 'rgba(215, 140, 255, 0.75)',
+                      steamInnerColor: 'rgba(245, 235, 255, 0.9)',
+                      isSteamPuff: true,
+                      steamDir: travelAng,
+                      steamStretch: 1.2
+                  });
+                  spawnFloatingText(expX, expY - 36, 'STEAM OVERPRESSURE! 💥♨️', '#dc72ff');
+
+                  // 8-directional scalding steam burst from the exploded pole
+                  for (let a = 0; a < 8; a++) {
+                      const burstAng = (Math.PI * 2 * a) / 8;
+                      const burstDist = 30 + Math.random() * 50;
+                      explosions.push({
+                          x: expX + Math.cos(burstAng) * burstDist,
+                          y: expY + Math.sin(burstAng) * burstDist,
+                          radius: 18 + Math.random() * 10,
+                          life: 0,
+                          maxLife: 0.28,
+                          color: 'rgba(215, 140, 255, 0.55)',
+                          steamInnerColor: 'rgba(255, 255, 255, 0.85)',
+                          isSteamPuff: true,
+                          steamDir: burstAng,
+                          steamStretch: 1.6
+                      });
+                  }
+
+                  // Lingering steam hazard cloud at the exploded pole
+                  spawnCheeseField(expX, expY, 80, 2500, 1.0, entity.id, true, 360);
               }
           }
       }
 
+      // Normal trail and side sprays (ONLY when not Hypercharged - in HC only poles emit steam!)
       const towerEffect = key => isSlopSushiMode ? getEntitySlopEffectTotal(entity, key) : 0;
       const star = getSteamerStar(entity);
-      const trailDur = 1800 + (star === 'long' ? 1500 : 0) + towerEffect('steamerTrailBonusMs');
-      const trailDelay = rail.isHyper ? 35 : 70;
-      if (!rail.lastTrailAt || now - rail.lastTrailAt >= trailDelay) {
-          rail.lastTrailAt = now;
-          spawnCheeseField(entity.x, entity.y, (rail.isHyper ? 60 : 48) * (1 + towerEffect('steamerTrailRadiusPct')), trailDur, 1.0, entity.id, true, rail.isHyper ? 550 : 420);
-      }
-      
-      // Massive steam blown out by Steamer during dash
-      const sprayDelay = rail.isHyper ? 30 : (rail.towerRunaway ? 45 : 75);
-      if (!rail.lastSprayAt || now - rail.lastSprayAt >= sprayDelay) {
-          rail.lastSprayAt = now;
-          spawnSteamerSteamBurst(entity, travelAng + Math.PI / 2, rail.isHyper, 1, true);
-          spawnSteamerSteamBurst(entity, travelAng - Math.PI / 2, rail.isHyper, -1, true);
-          if (rail.isHyper) {
-              spawnSteamerSteamBurst(entity, travelAng + Math.PI / 4, true, 1, true, 0.85, true);
-              spawnSteamerSteamBurst(entity, travelAng - Math.PI / 4, true, -1, true, 0.85, true);
-              spawnSteamerSteamBurst(entity, travelAng + Math.PI * 0.75, true, 1, true, 0.75, true);
-              spawnSteamerSteamBurst(entity, travelAng - Math.PI * 0.75, true, -1, true, 0.75, true);
-              // Rear locomotive chimney steam plume
-              explosions.push({
-                  x: entity.x - Math.cos(travelAng) * 22,
-                  y: entity.y - Math.sin(travelAng) * 22,
-                  radius: 26,
-                  life: 0,
-                  maxLife: 0.26,
-                  color: 'rgba(215, 140, 255, 0.55)',
-                  steamInnerColor: 'rgba(245, 230, 255, 0.75)',
-                  isSteamPuff: true,
-                  steamDir: travelAng + Math.PI,
-                  steamStretch: 1.8
-              });
-          } else if (towerEffect('steamerCrossVents') > 0) {
-              spawnSteamerSteamBurst(entity, travelAng + Math.PI / 4, false, 1, true, 0.75, true);
-              spawnSteamerSteamBurst(entity, travelAng - Math.PI / 4, false, -1, true, 0.75, true);
+      if (!rail.isHyper) {
+          const trailDur = 1800 + (star === 'long' ? 1500 : 0) + towerEffect('steamerTrailBonusMs');
+          if (!rail.lastTrailAt || now - rail.lastTrailAt >= 70) {
+              rail.lastTrailAt = now;
+              spawnCheeseField(entity.x, entity.y, 48 * (1 + towerEffect('steamerTrailRadiusPct')), trailDur, 1.0, entity.id, true, 420);
+          }
+          const sprayDelay = rail.towerRunaway ? 45 : 75;
+          if (!rail.lastSprayAt || now - rail.lastSprayAt >= sprayDelay) {
+              rail.lastSprayAt = now;
+              spawnSteamerSteamBurst(entity, travelAng + Math.PI / 2, false, 1, true);
+              spawnSteamerSteamBurst(entity, travelAng - Math.PI / 2, false, -1, true);
+              if (towerEffect('steamerCrossVents') > 0) {
+                  spawnSteamerSteamBurst(entity, travelAng + Math.PI / 4, false, 1, true, 0.75, true);
+                  spawnSteamerSteamBurst(entity, travelAng - Math.PI / 4, false, -1, true, 0.75, true);
+              }
           }
       }
   }

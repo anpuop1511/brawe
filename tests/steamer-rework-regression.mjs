@@ -47,9 +47,15 @@ test('Steamer Hypercharge continuously vents boiling side steam from poles until
   assert.match(gameCode, /AOEDamage\(pole\.x,\s*pole\.y,\s*95,/);
 });
 
-test('Steamer blows massive steam during Hypercharge dash', () => {
-  assert.match(gameCode, /spawnSteamerSteamBurst\(entity, travelAng \+ Math\.PI \* 0\.75, true,/);
-  assert.match(gameCode, /steamDir: travelAng \+ Math\.PI/);
+test('Steamer explodes poles with massive steam bursts as he passes through them during Hypercharge', () => {
+  assert.match(gameCode, /if \(distToPole <= 52 && now - lastExp >= 280\)/);
+  assert.match(gameCode, /STEAM OVERPRESSURE! 💥♨️/);
+  assert.match(gameCode, /AOEDamage\(expX,\s*expY,\s*expRadius,\s*blastDmg/);
+});
+
+test('Only poles emit steam during Hypercharge (not around Steamer)', () => {
+  assert.match(gameCode, /if \(!rail\.isHyper\) \{[\s\S]*?spawnCheeseField/);
+  assert.match(gameCode, /if \(!rail\.isHyper\) \{[\s\S]*?spawnSteamerSteamBurst/);
 });
 
 test('Steamer main attack features volumetric billowing steam puffs with zero fire references', () => {
