@@ -22,7 +22,7 @@ if (legacyCanvas) legacyCanvas.style.display = 'block';
 if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
-const RELEASE_TOKEN = '20260904-paradox-buff1';
+const RELEASE_TOKEN = '20260904-heist-overhaul1';
 
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {
@@ -38,6 +38,8 @@ async function startLegacyRuntime() {
   // These are classic scripts rather than ES modules so local file downloads
   // continue working on mobile browsers without a web server.
   const moduleFiles = [
+    './modules/progression/pass-tokens.js',
+    './modules/visuals/roster-2p5d.js',
     './modules/core/registry.js',
     './modules/brawlers/common/roster.js',
     './modules/brawlers/common/outlit.js',

@@ -3392,6 +3392,26 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     // Skin Database with Sets
     const skinsDatabase = {
+        'astral-portalo': {
+            id: 'astral-portalo', name: 'Astral Navigator Portalo', brawler: 'portalo',
+            rarity: 'legendary', set: 'Core Circuit', price: 199, currency: 'gems',
+            description: 'A dimensional astronaut with an orbital halo, ivory armor and starlight portal orbs. Also available in the Pass Token shop.',
+            _displayColor: '#7a9cff', icon: '🪐', isAlwaysAvailable: true,
+            attackEffect: { type: 'astralOrb', color: '#b8d0ff', trailColor: '#7a9cff' },
+            superEffect: { type: 'astralVortex', color: '#7a9cff' },
+            spawnEffect: { type: 'astralSpawn', color: '#b8d0ff' },
+            takedownEffect: { type: 'astralCollapse', color: '#7a9cff' }
+        },
+        'neon-jacktrade': {
+            id: 'neon-jacktrade', name: 'Neon Casino JackTrade', brawler: 'jacktrade',
+            rarity: 'legendary', set: 'Core Circuit', price: 199, currency: 'gems',
+            description: 'A midnight dealer with mint neon lapels and luminous playing cards. Also available in the Pass Token shop.',
+            _displayColor: '#74ffda', icon: '♠', isAlwaysAvailable: true,
+            attackEffect: { type: 'neonCard', color: '#74ffda', trailColor: '#b895ff' },
+            superEffect: { type: 'neonJackpot', color: '#74ffda' },
+            spawnEffect: { type: 'neonArrival', color: '#74ffda' },
+            takedownEffect: { type: 'neonWin', color: '#b895ff' }
+        },
         'possessed-claws-hunter': {
             id: 'possessed-claws-hunter',
             name: 'Possessed Claws Hunter',
@@ -4054,6 +4074,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
           const pass = playerData.seasonPass;
           pass.questSchemaVersion = SEASON_PASS_SCHEMA_VERSION;
+          BrawePassTokens.normalize(pass, SEASON_PASS_MAX_LEVEL);
           if (!Array.isArray(pass.claimedFreeRewards)) pass.claimedFreeRewards = [];
           if (!Array.isArray(pass.claimedPremiumRewards)) pass.claimedPremiumRewards = [];
           if (!pass.quests || typeof pass.quests !== 'object') pass.quests = {};
@@ -4099,10 +4120,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           if (!ENABLE_SEASON_QUESTS) return false;
           if (!isSeason3PassActive()) return false;
           ensureSeasonPassState();
-          if (!amount || amount <= 0) return false;
-          playerData.seasonPass.xp = (playerData.seasonPass.xp || 0) + amount;
-          const level = Math.min(SEASON_PASS_MAX_LEVEL, Math.max(1, Math.floor((playerData.seasonPass.xp - 1) / SEASON_PASS_XP_PER_LEVEL) + 1));
-          playerData.seasonPass.level = level;
+          if (!BrawePassTokens.earn(playerData.seasonPass, amount, SEASON_PASS_MAX_LEVEL)) return false;
           if(!season3AtomicReward)saveProgress();
           updateEventBadge();
           return true;
@@ -4931,11 +4949,30 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           return true;
       }
 
+      function questRewardText(rewards = {}) {
+          const labels = {coins:['Coin','Coins'],gems:['Gem','Gems'],souls:['Soul','Souls'],tappers:['Tapper','Tappers'],superTappers:['Super Tapper','Super Tappers'],hyperTappers:['Hyper Tapper','Hyper Tappers'],questXP:['Contract XP','Contract XP']};
+          const parts = [];
+          for (const [key, names] of Object.entries(labels)) {
+              const amount = Number(rewards?.[key]);
+              if (Number.isFinite(amount) && amount > 0) parts.push(`${amount.toLocaleString()} ${names[amount === 1 ? 0 : 1]}`);
+          }
+          if (rewards?.brawlerUnlock) parts.push(`Unlock ${brawlerData[rewards.brawlerUnlock]?.name || 'Fighter'}`);
+          return parts.join(' · ') || 'No additional reward';
+      }
+
+      function seasonTrackRewardText(reward) {
+          return describeCircuitReward(reward);
+      }
+
       function openQuestBoard(initialTab = 'core') {
           if (!ENABLE_DAILY_WEEKLY_QUESTS) return;
           refreshDailyWeeklyQuests();
           ensureSeasonPassState();
           const overlay = document.createElement('div');
+          overlay.id = 'questBoardOverlay';
+          document.getElementById('questBoardOverlay')?.remove();
+          overlay.setAttribute('role', 'dialog');
+          overlay.setAttribute('aria-label', 'Quest Board');
           overlay.style.position = 'fixed';
           overlay.style.inset = '0';
           overlay.style.background = 'rgba(8, 11, 20, 0.92)';
@@ -4955,6 +4992,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           panel.style.display = 'flex';
           panel.style.flexDirection = 'column';
           panel.style.gap = '12px';
+          panel.style.boxSizing = 'border-box';
+          panel.style.maxHeight = '96dvh';
+          panel.style.overflow = 'hidden';
+          panel.style.color = '#e7f2ff';
 
           const top = document.createElement('div');
           top.style.display = 'flex';
@@ -4974,7 +5015,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           close.style.fontWeight = '700';
           close.style.background = '#5ec4ff';
           close.style.color = '#00111f';
-          close.onclick = () => document.body.removeChild(overlay);
+          close.onclick = () => overlay.remove();
           top.appendChild(title);
           top.appendChild(close);
 
@@ -4999,7 +5040,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               header.innerHTML = `<div style="font-size:18px;font-weight:900;color:#c8ecff;">${columnTitle}</div><div style="font-size:12px;color:#95b8d4;">${subtitle}</div>`;
               column.appendChild(header);
 
-              const orderedQuests = Object.values(bucket).filter((quest) => !filterQuest || filterQuest(quest)).sort((a, b) => {
+              const orderedQuests = Object.values(bucket).filter((quest) => quest && typeof quest === 'object' && (!filterQuest || filterQuest(quest))).sort((a, b) => {
                   if (typeof a.stage === 'number' && typeof b.stage === 'number') return a.stage - b.stage;
                   return 0;
               });
@@ -5307,7 +5348,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               const grid=document.createElement('div');
               grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px';
               for(const fighterId of UNLEASH_POTENTIAL_FIGHTERS){
-                  const def=getSpecialAbilityDef(fighterId),ability=getSpecialAbilityState(def.type,fighterId),quests=SPECIAL_BREAKTHROUGH_QUESTS[fighterId],bucket=state[fighterId];
+                  const def=getSpecialAbilityDef(fighterId);
+                  if (!def) continue;
+                  const ability=getSpecialAbilityState(def.type,fighterId),quests=SPECIAL_BREAKTHROUGH_QUESTS[fighterId] || [],bucket=state[fighterId] || {};
                   const path=document.createElement('section');
                   const readyCount=quests.filter(q=>bucket[q.id]?.completed&&!bucket[q.id]?.rewardClaimed).length;
                   path.style.cssText=`padding:14px;border:2px solid ${def.color};border-radius:16px;background:linear-gradient(155deg,${def.color}1e,#07111d);box-shadow:${readyCount?`0 0 22px ${def.color}55`:'none'}`;
@@ -5315,8 +5358,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                   head.style.cssText='display:flex;gap:11px;align-items:center;margin-bottom:10px';
                   head.innerHTML=`<div style="width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:#07111d;border:2px solid ${def.color};font-size:30px">${getBrawlerPortraitIcon(fighterId)}</div><div style="min-width:0;flex:1"><div style="font-size:18px;font-weight:1000">${brawlerData[fighterId]?.name||fighterId}</div><div style="color:${def.color};font-size:12px;font-weight:1000;letter-spacing:.1em">${def.type.toUpperCase()} — ${def.name.toUpperCase()}</div><div style="margin-top:3px;font-size:12px;color:#d2e3f5">${ability.unlocked?'UNLOCKED':`Pieces: ${ability.pieces} / 3`}</div></div>${readyCount?`<b style="border-radius:999px;background:${def.color};color:#07111d;padding:5px 9px">${readyCount}</b>`:''}`;
                   path.appendChild(head);
+                  if (!quests.length) {
+                      const note=document.createElement('p');
+                      note.textContent='No active quest path for this ability. Your existing pieces and unlock are preserved.';
+                      note.style.cssText='font-size:12px;color:#b8cce1';
+                      path.appendChild(note);
+                  }
                   for(const quest of quests){
-                      const entry=bucket[quest.id],done=!!entry.completed,claimed=!!entry.rewardClaimed,pct=Math.round(Math.min(1,(entry.progress||0)/quest.target)*100);
+                      const entry=bucket[quest.id] || {progress:0,completed:false,rewardClaimed:false},done=!!entry.completed,claimed=!!entry.rewardClaimed,pct=Math.round(Math.min(1,(entry.progress||0)/quest.target)*100);
                       const converted=ability.unlocked&&!claimed;
                       const row=document.createElement('div');
                       row.style.cssText=`margin-top:9px;padding:10px;border:1px solid ${claimed?'#40566d':done?def.color:'#263d56'};border-radius:11px;background:${done&&!claimed?`${def.color}16`:'rgba(4,12,23,.72)'}`;
@@ -6125,12 +6174,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     const CUSTOM_BRAWLER_PORTRAITS = Object.freeze(['evil_doctor', 'bouncin_balls', 'minigunnin', 'mageny', 'trampaheal', 'ramage', 'upgradart', 'rocketeer', 'sir_cheeseburger']);
     function hasCustomBrawlerPortrait(brawlerId) {
-        return CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId)
+        return !!window.BraweRosterVisuals?.has(brawlerId) || CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId)
             || (brawlerId === 'classy' && getActiveSkinForBrawler('classy')?.id === 'back-to-school-classy')
             || (brawlerId === 'fuser' && getActiveSkinForBrawler('fuser')?.id === 'hyperfusion-fuser');
     }
     function getBrawlerPortraitMarkup(brawlerId) {
         if (!hasCustomBrawlerPortrait(brawlerId)) return getBrawlerPortraitIcon(brawlerId);
+        const visualSkin = getActiveSkinForBrawler(brawlerId)?.id;
+        const bespokeSkin = (brawlerId === 'classy' && visualSkin === 'back-to-school-classy') || (brawlerId === 'fuser' && visualSkin === 'hyperfusion-fuser');
+        if (!CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId) && !bespokeSkin) {
+            return window.BraweRosterVisuals?.portrait(brawlerId, visualSkin) || getBrawlerPortraitIcon(brawlerId);
+        }
         const isRankedRocketeer = brawlerId === 'rocketeer' && getActiveSkinForBrawler('rocketeer')?.id === 'ranked-rocketeer';
         const art = {
                         weefee: `<circle cx="50" cy="50" r="34" fill="#0b1e28" stroke="#00f5d4" stroke-width="4"/><rect x="24" y="38" width="52" height="34" rx="7" fill="#132c3a" stroke="#00f5d4" stroke-width="2.5"/><line x1="33" y1="38" x2="27" y2="20" stroke="#00f5d4" stroke-width="3" stroke-linecap="round"/><circle cx="27" cy="20" r="3.5" fill="#00ff88"/><line x1="67" y1="38" x2="73" y2="20" stroke="#00f5d4" stroke-width="3" stroke-linecap="round"/><circle cx="73" cy="20" r="3.5" fill="#00ff88"/><rect x="33" y="46" width="34" height="18" rx="4" fill="#07141c" stroke="#58f0cf" stroke-width="1.5"/><rect x="37" y="56" width="4" height="5" rx="1" fill="#00ff88"/><rect x="44" y="53" width="4" height="8" rx="1" fill="#00ff88"/><rect x="51" y="50" width="4" height="11" rx="1" fill="#00ff88"/><rect x="58" y="47" width="4" height="14" rx="1" fill="#00ff88"/><circle cx="30" cy="65" r="2" fill="#ff4757"/><circle cx="70" cy="65" r="2" fill="#00f5d4"/>`,
@@ -7453,7 +7507,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     const BRICK_VAULT_TEAM_SIZE = 3;
     const BRICK_VAULT_RESPAWN_SECONDS = 5;
     const BRICK_VAULT_MATCH_SECONDS = 180;
-    const BRICK_VAULT_TIERS = [45000, 80000];
+    const BRICK_VAULT_TIERS = [49500, 88000, 55000]; // +10% permanent boost and +1 Princess Tower Safe (55,000 HP)
     const TOWER_POWER_VAULT_HP_MULTIPLIER = 4.5;
     const BRICK_VAULT_MAX_HIT_PCT = 0.12;
     const BRICK_VAULT_MAX_HIT_FLAT = 5000;
@@ -13295,28 +13349,40 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             enemy: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + Math.round(hp * vaultHpMultiplier), 0),
         };
 
-        // Vaults are combat entities now: every brawler damage path can hit
-        // them, while the surrounding geometry remains ordinary solid cover.
+        // Open Battlefield: NO WALLS in Heist mode!
         bots.splice(0, bots.length, ...bots.filter((entity) => !entity?.isBrickVaultEntity));
-        const addWall = (x, y, w, h) => cubes.push({ x, y, w, h, isArenaWall: true, wallType: 'brick_vault_solid' });
-        addWall(WORLD_W * 0.5 - 260, WORLD_H * 0.5 - 24, 170, 48);
-        addWall(WORLD_W * 0.5 + 90, WORLD_H * 0.5 - 24, 170, 48);
+        cubes = cubes.filter(c => !c.wallType || !c.wallType.startsWith('brick_vault'));
+        destructibleWalls.length = 0;
 
         const spawnVaultSet = (team, sideY) => {
-            const xBands = [WORLD_W * 0.36, WORLD_W * 0.64];
+            const xBands = [WORLD_W * 0.22, WORLD_W * 0.78, WORLD_W * 0.50];
+            const princessY = sideY + (team === 'player' ? -140 : 140);
             for (let i = 0; i < BRICK_VAULT_TIERS.length; i++) {
                 const hp = Math.round(BRICK_VAULT_TIERS[i] * vaultHpMultiplier);
-                const dry = findNearestDrySpot(xBands[i], sideY, 60);
+                const isPrincess = i === 2;
+                const posX = xBands[i];
+                const posY = isPrincess ? princessY : sideY;
+                const dry = findNearestDrySpot(posX, posY, 60);
                 bots.push({
-                    id: nextId++, x: dry.x, y: dry.y, z: 0, vx: 0, vy: 0,
+                    id: nextId++,
+                    x: dry.x,
+                    y: dry.y,
+                    z: 0,
+                    vx: 0,
+                    vy: 0,
                     hp,
                     maxHp: hp,
-                    radius: 54,
+                    radius: isPrincess ? 48 : 54,
                     speed: 0,
-                    brawler: 'brick_vault',
+                    brawler: isPrincess ? 'brick_vault_princess' : 'brick_vault',
                     team,
                     isDead: false,
                     isBrickVaultEntity: true,
+                    isPrincessVault: isPrincess,
+                    isPrincessTower: isPrincess,
+                    princessLockTargetId: null,
+                    princessLockConsecutive: 0,
+                    princessLastShotAt: 0,
                     isStructure: true,
                     noRespawn: true,
                     noPowerupDrop: true,
@@ -20038,6 +20104,92 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       spawnFloatingText(owner.x,owner.y-42,'PRINCESSES ENRAGED!','#ff8a55');
       return true;
   }
+
+
+    function updateBrickVaultPrincessSystems(now, dt) {
+        if (!isBrickVaultMode) return;
+        const princessSafes = bots.filter(b => b && b.isBrickVaultEntity && b.isPrincessVault && b.hp > 0);
+        if (!princessSafes.length) return;
+
+        const allCombatants = [player, ...(typeof bots !== 'undefined' && Array.isArray(bots) ? bots : [])].filter(e => e && e.hp > 0 && !e.isDead);
+
+        for (const pv of princessSafes) {
+            const team = pv.vaultTeam;
+
+            // Find enemy candidates within 680px range
+            const candidates = allCombatants.filter(c => {
+                if (!c || c.hp <= 0 || c.isFlying || c.isStructure || c.isBrickVaultEntity) return false;
+                if (c.team === team) return false;
+                if (team === 'player' && c === player) return false;
+                if (team === 'enemy' && areAlliedEntities({ team: 'enemy' }, c)) return false;
+                return Math.hypot(c.x - pv.x, c.y - pv.y) <= 680;
+            });
+
+            // Check if existing locked target is still valid in range
+            let target = null;
+            if (pv.princessLockTargetId) {
+                target = candidates.find(c => c.id === pv.princessLockTargetId);
+            }
+
+            if (target) {
+                pv.princessLockConsecutive = (pv.princessLockConsecutive || 0) + 1;
+            } else {
+                if (candidates.length) {
+                    candidates.sort((a, b) => Math.hypot(a.x - pv.x, a.y - pv.y) - Math.hypot(b.x - pv.x, b.y - pv.y));
+                    target = candidates[0];
+                    pv.princessLockTargetId = target.id;
+                    pv.princessLockConsecutive = 0;
+                    pv.princessLockStartedAt = now;
+                } else {
+                    pv.princessLockTargetId = null;
+                    pv.princessLockConsecutive = 0;
+                }
+            }
+
+            if (!target) continue;
+
+            // Lock-on Fire Rate Ramp: Starts at 480ms -> drops down to 70ms ultra-rapid fire machine gun!
+            const rampLevel = Math.min(12, Math.floor((pv.princessLockConsecutive || 0) / 2));
+            const currentInterval = Math.max(70, 480 - rampLevel * 35);
+
+            if (now - (pv.princessLastShotAt || 0) >= currentInterval) {
+                pv.princessLastShotAt = now;
+                const angle = Math.atan2(target.y - pv.y, target.x - pv.x);
+                const isHyperArrow = rampLevel >= 6;
+                const isUltraArrow = rampLevel >= 9;
+                const baseDmg = Math.round(400 * (1 + rampLevel * 0.04));
+
+                bullets.push({
+                    ownerBrawler: 'king',
+                    ownerId: pv.id,
+                    isKingPrincessArrow: true,
+                    isBrickVaultPrincessArrow: true,
+                    kingBurning: rampLevel >= 4,
+                    x: pv.x + Math.cos(angle) * 32,
+                    y: pv.y + Math.sin(angle) * 32,
+                    vx: Math.cos(angle) * (isUltraArrow ? 950 : 800),
+                    vy: Math.sin(angle) * (isUltraArrow ? 950 : 800),
+                    life: 0,
+                    maxLife: 680 / (isUltraArrow ? 950 : 800),
+                    damage: baseDmg,
+                    pierce: false,
+                    super: true,
+                    hitIds: {},
+                    hitboxMod: isUltraArrow ? 1.35 : 1.15,
+                    hyperVisual: isHyperArrow
+                });
+
+                explosions.push({
+                    x: pv.x + Math.cos(angle) * 32,
+                    y: pv.y + Math.sin(angle) * 32,
+                    radius: isUltraArrow ? 24 : 14,
+                    life: 0,
+                    maxLife: 0.12,
+                    color: isHyperArrow ? '#d946ef' : '#ffd700'
+                });
+            }
+        }
+    }
 
   function updateKingSystems(now, dt) {
       for (const entity of [player,...bots]) {
@@ -34556,7 +34708,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         overlay.style.position = 'fixed'; overlay.style.inset = '0';
         overlay.style.background = 'rgba(8, 17, 31, 0.95)'; overlay.style.zIndex = '100';
         overlay.style.color = '#fff'; overlay.style.fontFamily = 'sans-serif';
-        overlay.className = 'brawler-browser';
+        overlay.className = 'brawler-browser fighter-gallery';
 
         refreshBrawlerList = showList;
 
@@ -34570,7 +34722,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             headerRow.style.width = '1000px'; headerRow.style.maxWidth = '90%'; headerRow.style.marginBottom = '40px';
 
             const title = document.createElement('h1');
-            title.textContent = 'Select Your Fighter'; title.style.margin = '0';
+            title.textContent = 'YOUR FIGHTERS'; title.style.margin = '0';
             title.className = 'brawler-browser__title';
             
              const statsDiv = document.createElement('div');
@@ -34703,7 +34855,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 </div>
                 <div class="brawler-browser__selected-rank"><span>◆ ${selectedBrickLabel}</span><div><i style="width:${Math.min(100,(selectedBrickNext.current/Math.max(1,selectedBrickNext.threshold))*100)}%"></i></div><small>${selectedBrickNext.current}/${selectedBrickNext.threshold}</small></div>
                 <div class="brawler-browser__selected-stats"><span><b>HP</b>${selectedStats.hp}</span><span><b>DAMAGE</b>${selectedStats.dmg}</span><span><b>SPEED</b>${selectedStats.speed}</span></div>
-                <div class="brawler-browser__selected-kit">
+                <details class="fighter-gallery__kit"><summary>VIEW ACTIVE KIT</summary><div class="brawler-browser__selected-kit">
                   <article><small>MAIN ATTACK</small><b>${selectedData.attack || 'Attack'}</b><p>${selectedData.attackDesc || 'Open the loadout for full combat details.'}</p></article>
                   <article><small>POWER MOVE</small><b>${selectedData.super || 'Super'}</b><p>${selectedData.superDesc || 'Charge the Power Move by fighting.'}</p></article>
                   <article class="is-tool"><small>TOOL</small><b>${selectedProgress.gadgetUnlocked ? (selectedProgress.selectedGadget === 'g2' ? selectedData.g2 : selectedData.g1) : 'LOCKED'}</b></article>
@@ -34711,7 +34863,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                   <article class="is-core"><small>CORE SURGE</small><b>${selectedProgress.hyperchargeUnlocked ? selectedData.hyper : 'POWER 11 REQUIRED'}</b></article>
                   ${selectedSpecial ? `<article class="is-signature"><small>${selectedSpecial.type.toUpperCase()}</small><b>${selectedSpecial.icon} ${selectedSpecial.name}</b><p>${selectedSpecial.shortDesc}</p></article>` : ''}
                 </div>
-                <div class="brawler-browser__selected-actions">
+                </details><div class="brawler-browser__selected-actions">
                   <button type="button" class="brawler-browser__selected-open">EDIT LOADOUT</button>
                   <button type="button" class="brawler-browser__selected-use">USE FIGHTER</button>
                 </div>`;
@@ -38678,6 +38830,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     if (isBrickVaultMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         brickVaultTimer += dt;
+        updateBrickVaultPrincessSystems(now, dt);
         const enemyVaultHp = getBrickVaultHealth('enemy');
         const playerVaultHp = getBrickVaultHealth('player');
         if (enemyVaultHp <= 0) {
@@ -43477,28 +43630,63 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               }
           } else if (isBrickVaultMode) {
               const team = (t.team === 'player') ? 'player' : 'enemy';
-              const vaultTarget = getBrickVaultTarget(team);
+              const enemyTeam = (team === 'player') ? 'enemy' : 'player';
               const ownVaults = getBrickVaultWalls(team);
+              const enemyVaults = getBrickVaultWalls(enemyTeam);
+
               const ownVaultCenter = ownVaults.length ? {
                   x: ownVaults.reduce((sum, wall) => sum + wall.x, 0) / ownVaults.length,
                   y: ownVaults.reduce((sum, wall) => sum + wall.y, 0) / ownVaults.length,
               } : null;
-              let vaultThreat = null;
-              let vaultThreatScore = Infinity;
-              if (ownVaultCenter) {
-                  for (const enemy of getBotLivingEnemies(t)) {
-                      if (!canDetectThroughBush(t, enemy) || Math.hypot(enemy.x - ownVaultCenter.x, enemy.y - ownVaultCenter.y) > 500) continue;
-                      const score = getBotEnemyScore(t, enemy, botAi, nowTarget);
-                      if (score < vaultThreatScore) { vaultThreatScore = score; vaultThreat = enemy; }
+
+              // Smarter Defense Detection: Detect high-threat enemies or deployables near any home vault
+              let highThreatEnemy = null;
+              let highThreatScore = Infinity;
+
+              for (const enemy of getBotLivingEnemies(t)) {
+                  if (!enemy || enemy.hp <= 0) continue;
+                  for (const ownV of ownVaults) {
+                      const distToVault = Math.hypot(enemy.x - ownV.x, enemy.y - ownV.y);
+                      if (distToVault <= 580) {
+                          const hpPct = enemy.hp / Math.max(1, enemy.maxHp || enemy.hp);
+                          const isHighDps = enemy.brawler === 'weefee' || enemy.brawler === 'colt' || enemy.brawler === 'chuck' || enemy.isHypercharged;
+                          const threatScore = distToVault + hpPct * 200 - (isHighDps ? 250 : 0);
+                          if (threatScore < highThreatScore) {
+                              highThreatScore = threatScore;
+                              highThreatEnemy = enemy;
+                          }
+                      }
                   }
               }
-              const teamAhead = getBrickVaultDamagePct(team) > getBrickVaultDamagePct(getConstructionOpposingTeam(team)) + 0.05;
-              const assignedDefender = botAi.controller || botAi.support || botAi.slot % 3 === 0;
-              if (vaultThreat) forcedObjectiveTarget = vaultThreat;
-              else if (assignedDefender && teamAhead && ownVaultCenter) {
+
+              // Smarter Objective Selection: Coordinate Attackers on vulnerable or isolated enemy safe
+              let bestEnemySafeTarget = null;
+              if (enemyVaults.length) {
+                  const sortedEnemyVaults = enemyVaults.slice().sort((a, b) => (a.hp / (a.maxHp || 1)) - (b.hp / (b.maxHp || 1)));
+                  const isAssignedFlanker = botAi.slot % 3 === 1;
+
+                  const chosenVault = isAssignedFlanker && sortedEnemyVaults.length > 1
+                      ? sortedEnemyVaults[1]
+                      : sortedEnemyVaults[0];
+
+                  bestEnemySafeTarget = {
+                      x: chosenVault.x,
+                      y: chosenVault.y,
+                      id: chosenVault.id,
+                      isVault: true,
+                      isBrickVaultEntity: true
+                  };
+              }
+
+              const isDefender = botAi.controller || botAi.support || botAi.slot % 3 === 0;
+              if (highThreatEnemy) {
+                  forcedObjectiveTarget = highThreatEnemy;
+              } else if (isDefender && ownVaultCenter && Math.hypot(t.x - ownVaultCenter.x, t.y - ownVaultCenter.y) > 420) {
                   const side = botAi.slot % 2 === 0 ? -1 : 1;
-                  forcedObjectiveTarget = { x: ownVaultCenter.x + side * 120, y: ownVaultCenter.y + (team === 'player' ? -95 : 95), id: 'center' };
-              } else if (vaultTarget) forcedObjectiveTarget = vaultTarget;
+                  forcedObjectiveTarget = { x: ownVaultCenter.x + side * 140, y: ownVaultCenter.y + (team === 'player' ? -120 : 120), id: 'center' };
+              } else if (bestEnemySafeTarget) {
+                  forcedObjectiveTarget = bestEnemySafeTarget;
+              }
           } else if (isArenaForgeMode) {
               const team = (t.team === 'player') ? 'player' : 'enemy';
               const forgeLane = t.arenaForgeLaneIndex ?? botAi.slot;
@@ -44471,8 +44659,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     function drawFeatured2p5DBrawler(entity, drawY, brawlerId, isBoss) {
         if (!hasCustomBrawlerPortrait(brawlerId)) return false;
+        if (!Number.isFinite(entity.x) || !Number.isFinite(drawY)) return false;
+        const visualSkin = getActiveSkinForBrawler(brawlerId)?.id;
+        const bespokeSkin = ['back-to-school-classy', 'hyperfusion-fuser', 'possessed-claws-hunter', 'possessed-claws-malakor', 'possessed-claws-predator'].includes(visualSkin);
+        if (!CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId) && !bespokeSkin) {
+            return window.BraweRosterVisuals?.draw(ctx, entity, drawY, brawlerId, visualSkin, performance.now(), isBoss) || false;
+        }
         const now = performance.now();
-        const radius = Math.max(17, entity.radius || 14) * (isBoss ? 1.3 : 1);
+        const radius = Math.max(17, Number.isFinite(entity.radius) ? entity.radius : 14) * (isBoss ? 1.3 : 1);
         const attackKick = Math.max(0, 1 - (now - (entity.visualAttackAt || -9999)) / 210);
         const superKick = Math.max(0, 1 - (now - (entity.visualSuperAt || -9999)) / 420);
         const aim = Number.isFinite(entity.visualAimAngle) ? entity.visualAimAngle : 0;
@@ -46440,14 +46634,103 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           }
       }
       if (t.isBrickVaultEntity) {
-          const friendly=t.team==='player', color=friendly?'#55c8ff':'#ff657d', pulse=1+Math.sin(performance.now()/190+t.vaultTier)*.035;
-          ctx.save();ctx.translate(t.x,drawY);ctx.scale(pulse,pulse);ctx.shadowColor=color;ctx.shadowBlur=24;
-          ctx.fillStyle=friendly?'#123d61':'#5a1c30';ctx.strokeStyle=friendly?'#bcecff':'#ffd0d8';ctx.lineWidth=5;
-          ctx.beginPath();ctx.roundRect(-49,-49,98,98,20);ctx.fill();ctx.stroke();
-          ctx.shadowBlur=0;ctx.strokeStyle=color;ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,25,0,Math.PI*2);ctx.stroke();
-          ctx.fillStyle='#f6fbff';ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();
-          ctx.font='1000 11px sans-serif';ctx.textAlign='center';ctx.fillText(`VAULT ${t.vaultTier}`,0,69);
-          ctx.restore();ctx.textAlign='left';
+          const friendly = t.team === 'player';
+          const color = friendly ? '#55c8ff' : '#ff657d';
+          const pulse = 1 + Math.sin(performance.now() / 190 + t.vaultTier) * 0.035;
+
+          if (t.isPrincessVault) {
+              const now = performance.now();
+              const lockLevel = Math.min(12, Math.floor((t.princessLockConsecutive || 0) / 2));
+              const isUltra = lockLevel >= 9;
+              const isHyper = lockLevel >= 6;
+              const turretColor = isUltra ? '#ff0055' : (isHyper ? '#d946ef' : (friendly ? '#55c8ff' : '#ff657d'));
+
+              ctx.save();
+              ctx.translate(t.x, drawY);
+              ctx.scale(pulse, pulse);
+
+              // 1. Castle Base Foundation
+              ctx.shadowColor = turretColor;
+              ctx.shadowBlur = 24 + lockLevel * 2;
+              ctx.fillStyle = friendly ? '#123048' : '#4a1524';
+              ctx.strokeStyle = turretColor;
+              ctx.lineWidth = 5;
+              ctx.beginPath();
+              ctx.roundRect(-42, -42, 84, 84, 18);
+              ctx.fill();
+              ctx.stroke();
+
+              // 2. Castle Battlements
+              ctx.fillStyle = friendly ? '#1e4868' : '#6a2236';
+              for (let b = -34; b <= 34; b += 17) {
+                  ctx.fillRect(b - 5, -46, 10, 8);
+              }
+
+              // 3. Golden Royal Crown on Tower
+              ctx.fillStyle = '#ffd700';
+              ctx.strokeStyle = '#ffa500';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(-18, 12);
+              ctx.lineTo(-18, -12);
+              ctx.lineTo(-9, -4);
+              ctx.lineTo(0, -16);
+              ctx.lineTo(9, -4);
+              ctx.lineTo(18, -12);
+              ctx.lineTo(18, 12);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+
+              // 4. Princess Tower Label & Fire Rate Indicator
+              ctx.fillStyle = '#ffffff';
+              ctx.font = '900 10px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('👑 PRINCESS TOWER', 0, 58);
+
+              if (t.princessLockTargetId && lockLevel > 0) {
+                  const ratePct = Math.round((lockLevel / 12) * 100);
+                  ctx.fillStyle = isUltra ? '#ff0055' : '#ffd700';
+                  ctx.font = '900 9px monospace';
+                  ctx.fillText(`⚡ ${ratePct}% RAMP SPEED ⚡`, 0, 70);
+              }
+
+              ctx.restore();
+
+              // Draw Laser Lock-On line to target
+              if (t.princessLockTargetId) {
+                  const lockedTarget = [player, ...(typeof bots !== 'undefined' ? bots : [])].find(c => c && c.id === t.princessLockTargetId && c.hp > 0);
+                  if (lockedTarget) {
+                      ctx.save();
+                      ctx.strokeStyle = isUltra ? 'rgba(255, 0, 85, 0.85)' : (isHyper ? 'rgba(217, 70, 239, 0.75)' : 'rgba(255, 80, 80, 0.55)');
+                      ctx.lineWidth = 2 + Math.min(3, lockLevel * 0.3);
+                      ctx.setLineDash(isUltra ? [4, 4] : [8, 6]);
+                      ctx.lineDashOffset = -now / 20;
+                      ctx.beginPath();
+                      ctx.moveTo(t.x, drawY);
+                      ctx.lineTo(lockedTarget.x, lockedTarget.y);
+                      ctx.stroke();
+                      ctx.setLineDash([]);
+
+                      // Target lock-on reticle
+                      ctx.strokeStyle = isUltra ? '#ff0055' : '#ffd700';
+                      ctx.lineWidth = 2;
+                      ctx.beginPath();
+                      ctx.arc(lockedTarget.x, lockedTarget.y, 22, 0, Math.PI * 2);
+                      ctx.stroke();
+                      ctx.restore();
+                  }
+              }
+              ctx.textAlign = 'left';
+          } else {
+              ctx.save();ctx.translate(t.x,drawY);ctx.scale(pulse,pulse);ctx.shadowColor=color;ctx.shadowBlur=24;
+              ctx.fillStyle=friendly?'#123d61':'#5a1c30';ctx.strokeStyle=friendly?'#bcecff':'#ffd0d8';ctx.lineWidth=5;
+              ctx.beginPath();ctx.roundRect(-49,-49,98,98,20);ctx.fill();ctx.stroke();
+              ctx.shadowBlur=0;ctx.strokeStyle=color;ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,25,0,Math.PI*2);ctx.stroke();
+              ctx.fillStyle='#f6fbff';ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();
+              ctx.font='1000 11px sans-serif';ctx.textAlign='center';ctx.fillText(`VAULT ${t.vaultTier}`,0,69);
+              ctx.restore();ctx.textAlign='left';
+          }
       } else if (t.isArenaForgeCamp) {
           const campColor = t.arenaForgeCampType === 'repair' ? '#79f2c0' : (t.arenaForgeCampType === 'arsenal' ? '#ff8b67' : '#67d8ff');
           const pulse = 1 + Math.sin(performance.now() / 170 + t.id) * .05;
@@ -56614,6 +56897,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 playerData.slopSushi.tappers = (playerData.slopSushi.tappers || 0) + rotationReward.amount;
             }
             const goldEventReward = commitGoldEventMatch(won);
+            // This is the existing once-only, non-training match reward settlement.
+            awardSeasonPassXp(won ? 25 : 15);
             if (goldEventReward > 0) rewardCoins += goldEventReward;
             playerData.coins += rewardCoins;
             addSouls(soulReward);
@@ -57432,159 +57717,100 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       document.body.appendChild(overlay);
   }
 
+  function describeCircuitReward(reward) {
+      if (!reward) return 'Reward';
+      const names = {coins:'Coins',gems:'Gems',souls:'Souls',tapper:'Tapper',superTapper:'Super Tapper',hyperTapper:'Hyper Tapper',towerDrop:'Tower Drop'};
+      if (names[reward.type]) return `${(reward.amount || 1).toLocaleString()} ${names[reward.type]}${reward.amount > 1 && !['coins','gems','souls'].includes(reward.type) ? 's' : ''}`;
+      if (reward.type === 'skin') return skinsDatabase[reward.id]?.name || 'Exclusive Skin';
+      const pretty = String(reward.id || reward.group || '').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
+      if (reward.type === 'packetSignal') return `${reward.amount} ${pretty} Signals`;
+      return pretty || 'Profile Cosmetic';
+  }
+
   function openSeasonPass() {
-      if (!ENABLE_SEASON_PASS) {
-          openQuestBoard();
-          return;
-      }
+      if (!ENABLE_SEASON_PASS) { openQuestBoard(); return; }
+      ensureSeasonPassState();
+      const previousFocus = document.activeElement;
+      document.getElementById('circuitPassOverlay')?.remove();
       const overlay = document.createElement('div');
-      overlay.style.position = 'fixed';
-      overlay.style.inset = '0';
-      overlay.style.background = 'rgba(6,10,20,0.92)';
-      overlay.style.zIndex = '1200';
-      overlay.style.display = 'flex';
-      overlay.style.alignItems = 'center';
-      overlay.style.justifyContent = 'center';
-      overlay.style.fontFamily = 'sans-serif';
-      overlay.style.color = '#fff';
-
-      const panel = document.createElement('div');
-      panel.style.width = 'min(880px, 94vw)';
-      panel.style.height = 'min(760px, 90vh)';
-      panel.style.background = '#08121e';
-      panel.style.border = '3px solid #ff9b42';
-      panel.style.borderRadius = '18px';
-      panel.style.padding = '22px';
-      panel.style.display = 'flex';
-      panel.style.flexDirection = 'column';
-      panel.style.overflow = 'hidden';
-
-      const close = document.createElement('button');
-      close.textContent = 'X';
-      close.style.position = 'absolute';
-      close.style.right = '20px';
-      close.style.top = '20px';
-      close.style.width = '44px';
-      close.style.height = '44px';
-      close.style.border = 'none';
-      close.style.borderRadius = '50%';
-      close.style.background = '#ff9b42';
-      close.style.color = '#08101d';
-      close.style.fontWeight = 'bold';
-      close.style.cursor = 'pointer';
-      close.onclick = () => document.body.removeChild(overlay);
-
-      const title = document.createElement('h1');
-      title.textContent = 'CORE CIRCUIT PASS';
-      title.style.margin = '0 0 6px 0';
-      title.style.color = '#ffb15a';
-
-      const subtitle = document.createElement('div');
-      subtitle.textContent = 'Route Packet signals, break the Core, and climb the Lava Villain ladder before September 20.';
-      subtitle.style.color = '#cfeef7';
-      subtitle.style.fontWeight = '700';
-      subtitle.style.marginBottom = '12px';
-
-      const questBox = document.createElement('div');
-      questBox.style.padding = '12px';
-      questBox.style.border = '1px solid #3d2b18';
-      questBox.style.borderRadius = '12px';
-      questBox.style.background = 'linear-gradient(180deg, #1b100b, #081226)';
-      questBox.style.marginBottom = '12px';
-      questBox.innerHTML = `
-          <div style="font-weight:900;color:#ffb15a;margin-bottom:6px;">MISSION CONTROL MOVED</div>
-          <div style="font-size:12px;color:#ffd9c0;margin-bottom:10px;">Season missions are now integrated into the unified Quest HQ.</div>
-          <button style="padding:8px 14px;border:none;border-radius:8px;background:#ffb15a;color:#08101d;font-weight:900;cursor:pointer;">OPEN MISSION CONTROL</button>
-      `;
-      questBox.querySelector('button').onclick=()=>{overlay.remove();openQuestBoard('season');};
-
-      const seasonBox = document.createElement('div');
-      seasonBox.style.padding = '12px';
-      seasonBox.style.border = '1px solid #ff9b42';
-      seasonBox.style.borderRadius = '12px';
-      seasonBox.style.background = 'linear-gradient(180deg, #2a1208, #081226)';
-      seasonBox.style.flex = '1';
-      seasonBox.style.overflowY = 'auto';
-
-      const seasonLevel = document.createElement('div');
-      seasonLevel.style.fontSize = '12px';
-      seasonLevel.style.color = '#ffd9c0';
-      seasonLevel.style.marginBottom = '8px';
-      seasonLevel.textContent = `Level ${playerData.seasonPass?.level || 1} • ${playerData.seasonPass?.xp || 0}/${SEASON_PASS_MAX_LEVEL * SEASON_PASS_XP_PER_LEVEL} XP`;
-
-      const seasonBar = document.createElement('div');
-      seasonBar.style.height = '8px';
-      seasonBar.style.background = '#20100a';
-      seasonBar.style.borderRadius = '999px';
-      seasonBar.style.overflow = 'hidden';
-      seasonBar.style.marginBottom = '10px';
-
-      const seasonFill = document.createElement('div');
-      seasonFill.style.height = '100%';
-      seasonFill.style.background = 'linear-gradient(90deg, #ff6b2d, #ffb15a)';
-      seasonFill.style.width = `${Math.min(100, ((playerData.seasonPass?.xp || 0) / (SEASON_PASS_MAX_LEVEL * SEASON_PASS_XP_PER_LEVEL)) * 100)}%`;
-      seasonBar.appendChild(seasonFill);
-
-      const seasonQuestHint = document.createElement('div');
-      seasonQuestHint.style.fontSize = '11px';
-      seasonQuestHint.style.color = '#ffd9c0';
-      seasonQuestHint.style.marginBottom = '10px';
-      seasonQuestHint.textContent = 'Complete season quests to earn XP and unlock the track.';
-
-      seasonBox.appendChild(seasonLevel);
-      seasonBox.appendChild(seasonBar);
-      seasonBox.appendChild(seasonQuestHint);
-
-      for (const tier of SEASON_PASS_TIERS) {
-          const rewardRow = document.createElement('div');
-          rewardRow.style.display = 'flex';
-          rewardRow.style.justifyContent = 'space-between';
-          rewardRow.style.alignItems = 'center';
-          rewardRow.style.gap = '8px';
-          rewardRow.style.padding = '8px';
-          rewardRow.style.marginBottom = '8px';
-          rewardRow.style.borderRadius = '10px';
-          const claimed = (playerData.seasonPass?.claimedFreeRewards || []).includes(tier.tier);
-          const unlocked = (playerData.seasonPass?.level || 1) >= tier.tier;
-          rewardRow.style.background = claimed ? 'rgba(93,242,194,0.08)' : (unlocked ? 'rgba(255,177,90,0.12)' : 'rgba(7,17,30,0.7)');
-          rewardRow.style.border = claimed ? '1px solid #5df2c2' : (unlocked ? '1px solid #ffb15a' : '1px solid #304876');
-          const rewardText = document.createElement('div');
-          rewardText.style.flex = '1';
-          const legacyReward = tier.free?.type === 'coins' ? `${tier.free.amount} Coins`
-              : tier.free?.type === 'gems' ? `${tier.free.amount} Gems`
-              : tier.free?.type === 'souls' ? `${tier.free.amount} Souls`
-              : tier.free?.type === 'towerDrop' ? `${tier.free.amount} Tower Drop${tier.free.amount === 1 ? '' : 's'}`
-              : `${tier.free?.amount || 1} Reward`;
-          rewardText.innerHTML = `<div style="font-size:12px;font-weight:900;color:${claimed ? '#5df2c2' : '#ffd9c0'};">Tier ${tier.tier} • ${tier.title}</div><div style="font-size:11px;color:#93a7da;">${legacyReward}</div>`;
-          const rewardBtn = document.createElement('button');
-          rewardBtn.textContent = claimed ? '✓' : (unlocked ? 'Claim' : 'Locked');
-          rewardBtn.style.border = 'none';
-          rewardBtn.style.borderRadius = '8px';
-          rewardBtn.style.padding = '6px 10px';
-          rewardBtn.style.fontWeight = '900';
-          rewardBtn.style.cursor = unlocked && !claimed ? 'pointer' : 'default';
-          rewardBtn.style.background = claimed ? '#888' : (unlocked ? '#ffb15a' : '#304876');
-          rewardBtn.style.color = '#08101d';
-          rewardBtn.onclick = () => {
-              if (!unlocked || claimed) return;
-              claimSeasonPassReward(tier.tier);
-              rewardBtn.textContent = '✓';
-              rewardBtn.style.background = '#888';
-              rewardRow.style.background = 'rgba(93,242,194,0.08)';
-              rewardRow.style.border = '1px solid #5df2c2';
-          };
-          rewardRow.appendChild(rewardText);
-          rewardRow.appendChild(rewardBtn);
-          seasonBox.appendChild(rewardRow);
-      }
-
-      panel.appendChild(close);
-      panel.appendChild(title);
-      panel.appendChild(subtitle);
-      panel.appendChild(questBox);
-      panel.appendChild(seasonBox);
-      overlay.appendChild(panel);
-      document.body.appendChild(overlay);
+      overlay.id = 'circuitPassOverlay';
+      overlay.className = 'circuit-overlay';
+      overlay.setAttribute('role','dialog');
+      overlay.setAttribute('aria-modal','true');
+      overlay.setAttribute('aria-label','Core Circuit Pass');
+      const close = () => { overlay.remove(); document.removeEventListener('keydown',keyboard); previousFocus?.focus?.(); refreshHomeUI(); };
+      const keyboard = event => {
+          if(event.key === 'Escape') { event.stopPropagation(); close(); }
+          if(event.key === 'Tab') {
+              const buttons = [...overlay.querySelectorAll('button:not(:disabled)')];
+              const first=buttons[0], last=buttons[buttons.length-1];
+              if(event.shiftKey && document.activeElement===first){event.preventDefault();last?.focus();}
+              else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first?.focus();}
+          }
+      };
+      document.addEventListener('keydown',keyboard);
+      let tab = 'road', scrollLeft = 0;
+      const render = () => {
+          ensureSeasonPassState();
+          const pass=playerData.seasonPass, active=isSeason3PassActive();
+          const progress=Math.min(100,pass.xp % 100), next=Math.max(0,100-progress);
+          overlay.innerHTML = `<section class="circuit-panel">
+              <header class="circuit-header"><div><small>SEASON 03 / CORE BREAKER</small><h1>CORE CIRCUIT <span>PASS</span></h1></div><button data-action="close" aria-label="Close pass">✕</button></header>
+              <div class="circuit-summary"><div class="circuit-level"><b>${pass.level}</b><span>LEVEL / 25</span></div><div class="circuit-progress"><strong>${pass.level >= 25 ? 'REWARD ROAD COMPLETE' : next+' TOKENS TO NEXT LEVEL'}</strong><progress max="100" value="${pass.level>=25?100:progress}"></progress><small>${active?'15 tokens per completed match · 25 on a win · missions earn more':'Season ended'} · spending never removes progress</small></div><div class="circuit-wallet"><small>PASS TOKENS</small><b>◈ ${pass.tokenWallet.toLocaleString()}</b><span>${pass.tokensEarned.toLocaleString()} earned this season</span></div></div>
+              <nav class="circuit-tabs"><button data-tab="road" aria-pressed="${tab==='road'}">REWARD ROAD</button><button data-tab="shop" aria-pressed="${tab==='shop'}">TOKEN EXCHANGE</button><button data-action="quests">MISSIONS ↗</button></nav>
+              <main class="circuit-content"></main>
+              <footer>Free and Premium rewards share progress. Your existing claims and Premium purchase are preserved.</footer>
+          </section>`;
+          overlay.querySelector('[data-action="close"]').onclick=close;
+          overlay.querySelector('[data-action="quests"]').onclick=()=>{close();openQuestBoard('season');};
+          overlay.querySelectorAll('[data-tab]').forEach(button=>button.onclick=()=>{scrollLeft=overlay.querySelector('.circuit-road')?.scrollLeft||scrollLeft;tab=button.dataset.tab;render();});
+          const content=overlay.querySelector('main');
+          if(tab==='road') {
+              const premium=document.createElement('div');premium.className='circuit-premium';
+              premium.innerHTML=`<div><b>${pass.premiumUnlocked?'PREMIUM ACTIVE':'UPGRADE YOUR CIRCUIT'}</b><small>${pass.premiumUnlocked?'Both reward tracks are yours.':'Unlock the gold track, including every previously reached tier.'}</small></div>`;
+              if(!pass.premiumUnlocked && active) for(const [currency,cost,label] of [['gems',SEASON_PREMIUM_UNLOCK_GEMS,'Gems'],['coins',SEASON_PREMIUM_UNLOCK_COINS,'Coins']]) {
+                  const button=document.createElement('button');button.textContent=`${cost.toLocaleString()} ${label}`;button.disabled=(playerData[currency]||0)<cost;
+                  button.onclick=()=>{if(confirm(`Unlock Premium for ${cost.toLocaleString()} ${label}?`) && unlockSeasonPremium(currency))render();};premium.appendChild(button);
+              }
+              content.appendChild(premium);
+              const road=document.createElement('div');road.className='circuit-road';road.setAttribute('aria-label','Scroll through 25 reward tiers');
+              for(const tier of SEASON_PASS_TIERS){
+                  const column=document.createElement('article');column.className='circuit-tier'+(pass.level>=tier.tier?' unlocked':'');
+                  const heading=document.createElement('h2');heading.textContent=String(tier.tier).padStart(2,'0');column.appendChild(heading);
+                  const title=document.createElement('h3');title.textContent=tier.title;column.appendChild(title);
+                  for(const track of ['premium','free']){
+                      const claimed=pass[track==='free'?'claimedFreeRewards':'claimedPremiumRewards'].includes(tier.tier);
+                      const ready=active && pass.level>=tier.tier && (track==='free'||pass.premiumUnlocked);
+                      const card=document.createElement('div');card.className='circuit-reward '+track+(claimed?' claimed':'');
+                      const tag=document.createElement('small');tag.textContent=track.toUpperCase();card.appendChild(tag);
+                      const name=document.createElement('strong');name.textContent=describeCircuitReward(tier[track]);card.appendChild(name);
+                      const button=document.createElement('button');button.textContent=claimed?'✓ CLAIMED':ready?'CLAIM':track==='premium'&&!pass.premiumUnlocked?'PREMIUM LOCKED':'LEVEL '+tier.tier;
+                      button.disabled=claimed||!ready;
+                      button.onclick=()=>{scrollLeft=road.scrollLeft;if(claimSeasonPassTrackReward(tier.tier,track))render();};
+                      card.appendChild(button);column.appendChild(card);
+                  }road.appendChild(column);
+              }content.appendChild(road);road.scrollLeft=scrollLeft;
+          } else {
+              const note=document.createElement('p');note.className='circuit-shop-note';note.textContent='Choose your rewards. Tokens are earned, not purchased. Offers have seasonal limits; skins are permanent.';content.appendChild(note);
+              const grid=document.createElement('div');grid.className='circuit-shop';
+              for(const offer of BrawePassTokens.offers){
+                  const owned=offer.reward.type==='skin' && (playerData.ownedSkins?.[skinsDatabase[offer.reward.id].brawler]||[]).includes(offer.reward.id);
+                  const bought=pass.tokenPurchases[offer.id]||0;
+                  const card=document.createElement('article');
+                  const skin=offer.reward.type==='skin'?skinsDatabase[offer.reward.id]:null;
+                  if(skin)card.innerHTML=BraweRosterVisuals.portrait(skin.brawler,skin.id);
+                  else {const icon=document.createElement('div');icon.className='circuit-offer-icon';icon.textContent=offer.icon;card.appendChild(icon);}
+                  const title=document.createElement('h3');title.textContent=offer.name;card.appendChild(title);
+                  const detail=document.createElement('p');detail.textContent=describeCircuitReward(offer.reward)+' · '+Math.max(0,offer.limit-bought)+' left';card.appendChild(detail);
+                  const button=document.createElement('button');button.textContent=owned?'OWNED':bought>=offer.limit?'SOLD OUT':'◈ '+offer.cost.toLocaleString();
+                  button.disabled=owned||bought>=offer.limit||pass.tokenWallet<offer.cost||!active;
+                  button.onclick=()=>{if(!confirm(`Spend ${offer.cost} Pass Tokens on ${offer.name}?`))return;
+                      if(BrawePassTokens.purchase(pass,offer.id,reward=>{grantSeasonReward(reward);return true;})){saveProgress();render();}
+                  };card.appendChild(button);grid.appendChild(card);
+              }content.appendChild(grid);
+          }
+      };
+      document.body.appendChild(overlay);render();overlay.querySelector('button')?.focus();
   }
 
   function tagBoomArangEnemy(target, owner, doubleExplode, instantStun) {
