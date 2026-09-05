@@ -18335,6 +18335,25 @@ let heistFeverActive = false;
       const landX = clamp(owner.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
       const landY = clamp(owner.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
 
+      // Max 5 poles: if owner already has >= 5 poles, remove the oldest one
+      const existingOwnerPoles = steamerPoles.filter(p => p.ownerId === owner.id);
+      if (existingOwnerPoles.length >= 5) {
+          const oldestIdx = steamerPoles.findIndex(p => p.ownerId === owner.id);
+          if (oldestIdx !== -1) {
+              const oldPole = steamerPoles.splice(oldestIdx, 1)[0];
+              if (oldPole) {
+                  explosions.push({
+                      x: oldPole.x,
+                      y: oldPole.y,
+                      radius: 35,
+                      life: 0,
+                      maxLife: 0.2,
+                      color: 'rgba(200, 200, 200, 0.4)'
+                  });
+              }
+          }
+      }
+
       const poleObj = {
           id: nextId++,
           ownerId: owner.id,
@@ -18348,7 +18367,7 @@ let heistFeverActive = false;
 
       const remaining = (typeof owner.steamerSuperCharges === 'number') ? owner.steamerSuperCharges : 0;
       const totalPlaced = steamerPoles.filter(p => p.ownerId === owner.id).length;
-      spawnFloatingText(landX, landY - 36, isHyper ? 'HYPER STEAM POLE!' : `STEAM POLE #${totalPlaced}! (${remaining} left)`, isHyper ? '#dc72ff' : '#7fd3ff');
+      spawnFloatingText(landX, landY - 36, isHyper ? 'HYPER STEAM POLE!' : `STEAM POLE #${totalPlaced}/5! (${remaining} left)`, isHyper ? '#dc72ff' : '#7fd3ff');
       explosions.push({
           x: landX,
           y: landY,
@@ -18382,7 +18401,7 @@ let heistFeverActive = false;
               { x: ownerPoles[0].x, y: ownerPoles[0].y, poleRef: ownerPoles[0] }
           ];
       } else {
-          // 0 poles: Direct FREE aimed linear dash forward (NO locked triangle!)
+          // 0 poles: Direct FREE aimed linear dash forward
           isLinearDash = true;
           const ang = Math.atan2((targetY ?? entity.y) - entity.y, (targetX ?? entity.x) - entity.x);
           const dashDist = 480;
@@ -18394,6 +18413,25 @@ let heistFeverActive = false;
           ];
       }
 
+      // Pre-calculate segment lengths and cumulative distances for 100% constant speed throughout the entire dash
+      const segments = [];
+      let totalDist = 0;
+      const poleCount = poles.length;
+      if (isLinearDash) {
+          const d = Math.hypot(poles[1].x - poles[0].x, poles[1].y - poles[0].y);
+          segments.push({ p0: poles[0], p1: poles[1], dist: d, startDist: 0, endDist: d, segIndex: 0 });
+          totalDist = d;
+      } else {
+          for (let i = 0; i < poleCount; i++) {
+              const p0 = poles[i];
+              const p1 = poles[(i + 1) % poleCount];
+              const d = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+              segments.push({ p0, p1, dist: d, startDist: totalDist, endDist: totalDist + d, segIndex: i });
+              totalDist += d;
+          }
+      }
+      if (totalDist <= 0.001) totalDist = 1;
+
       const baseLapMs = isLinearDash ? 420 : 2200;
       const lapMs = hyperActive ? Math.round(baseLapMs / 1.40) : baseLapMs;
       const laps = isLinearDash ? 1 : (runaway ? 4 : (hyperActive ? 3 : (1 + Math.max(0, Math.round(towerEffect('steamerExtraRailLaps'))))));
@@ -18403,6 +18441,8 @@ let heistFeverActive = false;
           lapMs,
           laps,
           poles,
+          segments,
+          totalDist,
           isLinearDash,
           lastTrailAt: 0,
           lastSprayAt: 0,
@@ -18432,16 +18472,16 @@ let heistFeverActive = false;
           return;
       }
       const poleCount = rail.poles.length;
-      if (poleCount === 0) {
+      if (poleCount === 0 || !rail.segments || rail.segments.length === 0) {
           entity.steamerRail = null;
           return;
       }
 
       let travelAng = 0;
       if (rail.isLinearDash) {
+          const progress = clamp(elapsed / rail.lapMs, 0, 1);
           const p0 = rail.poles[0];
           const p1 = rail.poles[1];
-          const progress = clamp(elapsed / rail.lapMs, 0, 1);
           entity.x = p0.x + (p1.x - p0.x) * progress;
           entity.y = p0.y + (p1.y - p0.y) * progress;
           travelAng = Math.atan2(p1.y - p0.y, p1.x - p0.x);
@@ -18450,18 +18490,29 @@ let heistFeverActive = false;
               return;
           }
       } else {
-          const lapT = ((elapsed % rail.lapMs) / rail.lapMs) * poleCount;
-          const seg = Math.floor(lapT) % poleCount;
-          const segT = lapT - Math.floor(lapT);
-          const p0 = rail.poles[seg];
-          const p1 = rail.poles[(seg + 1) % poleCount];
-          entity.x = p0.x + (p1.x - p0.x) * segT;
-          entity.y = p0.y + (p1.y - p0.y) * segT;
-          travelAng = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+          // Constant linear velocity throughout entire multi-pole lap
+          const lapFraction = clamp((elapsed % rail.lapMs) / rail.lapMs, 0, 1);
+          const currentDist = lapFraction * rail.totalDist;
 
-          if (seg !== rail.lastSegment) {
-              rail.lastSegment = seg;
-              const currentPole = rail.poles[seg];
+          // Find which segment corresponds to current distance
+          let activeSeg = rail.segments[0];
+          for (let i = 0; i < rail.segments.length; i++) {
+              const seg = rail.segments[i];
+              if (currentDist >= seg.startDist && (currentDist <= seg.endDist || i === rail.segments.length - 1)) {
+                  activeSeg = seg;
+                  break;
+              }
+          }
+
+          const segDist = activeSeg.endDist - activeSeg.startDist;
+          const segT = segDist > 0.0001 ? clamp((currentDist - activeSeg.startDist) / segDist, 0, 1) : 0;
+          entity.x = activeSeg.p0.x + (activeSeg.p1.x - activeSeg.p0.x) * segT;
+          entity.y = activeSeg.p0.y + (activeSeg.p1.y - activeSeg.p0.y) * segT;
+          travelAng = Math.atan2(activeSeg.p1.y - activeSeg.p0.y, activeSeg.p1.x - activeSeg.p0.x);
+
+          if (activeSeg.segIndex !== rail.lastSegment) {
+              rail.lastSegment = activeSeg.segIndex;
+              const currentPole = rail.poles[activeSeg.segIndex];
               const poleKey = currentPole.poleRef ? String(currentPole.poleRef.id) : `${Math.round(currentPole.x)}_${Math.round(currentPole.y)}`;
 
               // Hypercharge pole explosion & steam vent
@@ -50786,7 +50837,7 @@ let heistFeverActive = false;
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 12px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(`${playerPoles.length} POLES • CLICK TO PLACE • TAP E TO DASH`, landX, landY - 34);
+            ctx.fillText(`${playerPoles.length}/5 POLES • CLICK TO PLACE • TAP E TO DASH`, landX, landY - 34);
             ctx.restore();
         } else if (selectedBrawler === 'hunter') {
             drawStandardAimCone(player.x, player.y, ang, 1000, 0.05, {

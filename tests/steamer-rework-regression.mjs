@@ -21,15 +21,22 @@ test('Steamer super charge management handles 5 charges and sub-charges', () => 
   assert.match(gameCode, /Tap E: Dash • Hold E\+Click: Pole \(\$\{charges\}\/5\)/);
 });
 
-test('Steamer can throw steam poles freely and poles persist without oldest removal', () => {
+test('Steamer caps at max 5 poles and removes oldest when placing past 5', () => {
   assert.match(gameCode, /function castSteamerPoleThrow\(/);
-  assert.match(gameCode, /const maxRange\s*=\s*650/);
+  assert.match(gameCode, /const existingOwnerPoles\s*=\s*steamerPoles\.filter/);
+  assert.match(gameCode, /if\s*\(existingOwnerPoles\.length >= 5\)\s*\{[\s\S]*?steamerPoles\.splice/);
   assert.match(gameCode, /steamerPoles\.push\(/);
-  assert.doesNotMatch(gameCode, /if\s*\(ownerPoles\.length >= 5\)[\s\S]*?steamerPoles\.splice/);
+});
+
+test('Steamer railroad dash maintains 100% constant speed throughout the dash across all segments', () => {
+  assert.match(gameCode, /function startSteamerRailroad\(/);
+  assert.match(gameCode, /const segments\s*=\s*\[\]/);
+  assert.match(gameCode, /const lapFraction\s*=\s*clamp\(\(elapsed % rail\.lapMs\) \/ rail\.lapMs, 0, 1\)/);
+  assert.match(gameCode, /const currentDist\s*=\s*lapFraction \* rail\.totalDist/);
+  assert.match(gameCode, /activeSeg = seg/);
 });
 
 test('Steamer railroad dash connects through custom placed poles or linear dash if 0 poles', () => {
-  assert.match(gameCode, /function startSteamerRailroad\(/);
   assert.match(gameCode, /const ownerPoles\s*=\s*steamerPoles\.filter\(/);
   assert.match(gameCode, /isLinearDash\s*=\s*true/);
   assert.match(gameCode, /STEAM RUSH! 💨/);
