@@ -14087,7 +14087,10 @@ let heistFeverActive = false;
 
     function createArenaForgeStructure(team, kind, lane, x, y) {
         const isCore = kind === 'core';
-        const hp = isCore ? ARENA_FORGE_CORE_HP : ARENA_FORGE_TOWER_HP;
+        const baseHp = isCore ? ARENA_FORGE_CORE_HP : ARENA_FORGE_TOWER_HP;
+        // When Minion Surge modifier is active: Towers & Core get +200% HP (3.0x base HP)!
+        const hpMultiplier = arenaForgeMinionSurgeModifier ? 3.0 : 1.0;
+        const hp = Math.round(baseHp * hpMultiplier);
         return {
             id: nextId++, x, y, baseX: x, baseY: y, z: 0, vx: 0, vy: 0,
             hp, maxHp: hp, forgeBaseMaxHp: hp, radius: isCore ? 62 : 42, speed: 0,
@@ -14311,7 +14314,7 @@ let heistFeverActive = false;
                     if (t.hp <= 0) handleArenaForgeDeath(t);
                 }
             }
-            // Minion Surge Modifier: Every kill spawns 5 minions at the back of the base with 200% attack speed & 250% HP!
+            // Minion Surge Modifier: Every kill spawns 5 minions at the back of the base with +400% HP (5.0x HP), +400% speed (5.0x speed), and 200% attack speed!
             if (arenaForgeMinionSurgeModifier && scoringTeam) {
                 const surgeTeam = scoringTeam;
                 const spawnY = surgeTeam === 'player' ? WORLD_H - 240 : 240;
@@ -14326,16 +14329,19 @@ let heistFeverActive = false;
                         minion.baseX = laneXs[i];
                         minion.baseY = spawnY;
                         minion.isMinionSurgeUnit = true;
-                        // 250% HP (2.5x base minion HP)
-                        minion.hp = Math.round(minion.hp * 2.5);
+                        // 400% more HP (5.0x base minion HP)
+                        minion.hp = Math.round(minion.hp * 5.0);
                         minion.maxHp = minion.hp;
+                        // 400% more speed overall (5.0x movement speed)
+                        minion.speed = minion.speed * 5.0;
+                        minion.speedBoostMult = 5.0;
                         // 200% Attack Speed (2.0x fire rate / half attack cooldown)
                         minion.arenaForgeAttackSpeedMult = 2.0;
-                        minion.radius = Math.round(minion.radius * 1.25);
+                        minion.radius = Math.round(minion.radius * 1.35);
                         explosions.push({
                             x: laneXs[i],
                             y: spawnY,
-                            radius: 48,
+                            radius: 52,
                             life: 0,
                             maxLife: 0.28,
                             color: surgeTeam === 'player' ? '#7fffd4' : '#ff9b9b'
@@ -14343,10 +14349,10 @@ let heistFeverActive = false;
                     }
                 }
 
-                setArenaForgeCallout(`👾 ${surgeTeam === 'player' ? 'YOUR' : 'ENEMY'} BASE SPAWNED 5 SURGE MINIONS (+250% HP / 2X ATK SPD)!`, surgeTeam === 'player' ? '#7fffd4' : '#ff9b9b');
+                setArenaForgeCallout(`👾 ${surgeTeam === 'player' ? 'YOUR' : 'ENEMY'} BASE SPAWNED 5 SURGE MINIONS (+400% HP / 5X SPD / 2X ATK)!`, surgeTeam === 'player' ? '#7fffd4' : '#ff9b9b');
                 const core = getArenaForgeCore(surgeTeam);
                 if (core) {
-                    spawnFloatingText(core.x, core.y - 70, '👾 +5 SURGE REINFORCEMENTS (+250% HP / 2X SPD)!', '#ffd700');
+                    spawnFloatingText(core.x, core.y - 70, '👾 +5 SURGE REINFORCEMENTS (+400% HP / 5X SPEED)!', '#ffd700');
                 }
             }
 
@@ -14502,9 +14508,10 @@ let heistFeverActive = false;
 
     function spawnArenaForgeMinion(team, laneIndex = 1, elite = false) {
         const level = arenaForgeUpgrades[team]?.minions || 0;
-        const active = bots.filter((entity) => entity && entity.hp > 0 && entity.isArenaForgeMinion && !entity.isForgeColossusAlly && entity.team === team);
-        const maxActive = arenaForgeMinionSurgeModifier ? 36 : 18;
-        if (active.length >= maxActive) return null;
+        if (!arenaForgeMinionSurgeModifier) {
+            const active = bots.filter((entity) => entity && entity.hp > 0 && entity.isArenaForgeMinion && !entity.isForgeColossusAlly && entity.team === team);
+            if (active.length >= 18) return null;
+        }
         const laneXs = [WORLD_W * 0.2, WORLD_W * 0.5, WORLD_W * 0.8];
         const spawnY = team === 'player' ? WORLD_H - 330 : 330;
         const spot = findNearestOpenSpot(laneXs[laneIndex] || laneXs[1], spawnY, elite ? 23 : 18);
@@ -46130,6 +46137,29 @@ let heistFeverActive = false;
         ctx.restore();
     }
 
+    // Ambient Surge Particles Everywhere for Minion Surge matches
+    if (isArenaForgeMode && arenaForgeMinionSurgeModifier) {
+        const now = performance.now();
+        ctx.save();
+        for (let i = 0; i < 48; i++) {
+            const seed = i * 137.5;
+            const speedY = 45 + (i % 5) * 15;
+            const px = ((seed * 23 + (now / 30) * (i % 2 === 0 ? 1 : -1)) % WORLD_W + WORLD_W) % WORLD_W;
+            const py = ((seed * 47 + now * (speedY / 1000)) % WORLD_H + WORLD_H) % WORLD_H;
+            if (isWorldVisualVisible(px, py, 20)) {
+                const size = 2 + (i % 3);
+                const isGold = i % 2 === 0;
+                ctx.fillStyle = isGold ? 'rgba(255, 215, 0, 0.78)' : 'rgba(93, 242, 194, 0.78)';
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(px, py, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+    }
+
     // Arena Forge Jump Pads
     for (const pad of (typeof arenaForgeJumpPads !== 'undefined' ? arenaForgeJumpPads : [])) {
         if (!isWorldVisualVisible(pad.x, pad.y, (pad.radius || 34) + 20)) continue;
@@ -47074,6 +47104,7 @@ let heistFeverActive = false;
           ctx.fillStyle = '#fff'; ctx.font = '1000 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('SIEGE GOLEM', 0, 59);
           ctx.restore(); ctx.textAlign = 'left';
       } else if (t.isArenaForgeMinion) {
+          if (!isWorldVisualVisible(t.x, drawY, (t.radius || 18) + 24)) return;
           const friendly = t.team === 'player';
           const melee = t.arenaForgeMinionKind !== 'ranged';
           const isSurge = !!t.isMinionSurgeUnit;
@@ -56076,7 +56107,7 @@ let heistFeverActive = false;
         } else {
             const title = arenaForgeOvertime ? 'OVERTIME' : 'Arena Forge 3v3';
             const timer = `${Math.floor(phaseLeft / 60)}:${String(Math.ceil(phaseLeft % 60)).padStart(2, '0')}`;
-            const modTag = arenaForgeMinionSurgeModifier ? '⚡ [MODIFIER: MINION SURGE] ' : '';
+            const modTag = arenaForgeMinionSurgeModifier ? '⚡ [MODIFIER: MINION SURGE (5X HP / 5X SPD / 3X TOWER HP)] ' : '';
             const extras = arenaForgeOvertime ? 'MEGA SURGE' : `Wave ${arenaForgeWaveNumber + 1} ${waveLeft}s | Breach ${breachLeft}s | Boon ${boonLeft}s`;
             ctx.fillText(`${modTag}${title} | ${timer} | Energy ${arenaForgeSoulBank.player || 0}-${arenaForgeSoulBank.enemy || 0} | ${extras}`, innerWidth / 2, 48);
             if (arenaForgeLastCallout && now < arenaForgeLastCalloutUntil) {
