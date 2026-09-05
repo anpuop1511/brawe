@@ -36,22 +36,27 @@ test('Steamer railroad dash maintains 100% constant speed throughout the dash ac
   assert.match(gameCode, /activeSeg = seg/);
 });
 
-test('Steamer railroad dash connects through custom placed poles or linear dash if 0 poles', () => {
-  assert.match(gameCode, /const ownerPoles\s*=\s*steamerPoles\.filter\(/);
-  assert.match(gameCode, /isLinearDash\s*=\s*true/);
-  assert.match(gameCode, /STEAM RUSH! 💨/);
+test('Steamer Hypercharge executes 2 full back-and-forths across waypoints', () => {
+  assert.match(gameCode, /const forwardPoints = \[\.\.\.waypoints\];/);
+  assert.match(gameCode, /const backwardPoints = \[\.\.\.waypoints\]\.reverse\(\);/);
+  assert.match(gameCode, /laps = hyperActive \? 2 :/);
 });
 
-test('Steamer Hypercharge runs 40% faster with 3 laps (lapMs 1571 / laps 3)', () => {
-  assert.match(gameCode, /const lapMs\s*=\s*hyperActive\s*\?\s*Math\.round\(baseLapMs\s*\/\s*1\.40\)\s*:\s*baseLapMs/);
-  assert.match(gameCode, /laps\s*=\s*isLinearDash\s*\?\s*1\s*:\s*\(runaway\s*\?\s*4\s*:\s*\(hyperActive\s*\?\s*3/);
+test('Steamer Hypercharge continuously vents boiling side steam from poles until finished', () => {
+  assert.match(gameCode, /if \(rail\.isHyper\) \{[\s\S]*?if \(!rail\.lastPoleSteamAt \|\| now - rail\.lastPoleSteamAt >= 50\) \{[\s\S]*?const ownerPoles = steamerPoles\.filter/);
+  assert.match(gameCode, /AOEDamage\(pole\.x,\s*pole\.y,\s*95,/);
 });
 
-test('Steamer Hypercharge explodes poles on passage and vents boiling steam hazard clouds', () => {
-  assert.match(gameCode, /rail\.explodedPoles\[poleKey\]\s*=\s*true/);
-  assert.match(gameCode, /STEAM OVERPRESSURE! 💥/);
-  assert.match(gameCode, /spawnCheeseField\(expX,\s*expY,\s*80,\s*4500/);
-  assert.match(gameCode, /spawnSteamerSteamBurst\(entity,\s*burstAng,\s*true/);
+test('Steamer blows massive steam during Hypercharge dash', () => {
+  assert.match(gameCode, /spawnSteamerSteamBurst\(entity, travelAng \+ Math\.PI \* 0\.75, true,/);
+  assert.match(gameCode, /steamDir: travelAng \+ Math\.PI/);
+});
+
+test('Steamer main attack features volumetric billowing steam puffs with zero fire references', () => {
+  assert.match(gameCode, /const puffCount = isSuperSideShot \? 6 : 16;/);
+  assert.match(gameCode, /isSteamPuff: true/);
+  assert.match(gameCode, /steam trail lasts \+1\.5s/);
+  assert.doesNotMatch(gameCode, /fire trail lasts/);
 });
 
 test('Steamer aim reticle renders throw trajectory, landing preview, and pole counter', () => {

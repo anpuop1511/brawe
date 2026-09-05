@@ -5853,7 +5853,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       'hyperorigin': { name: 'Hyperorigin', role: 'Tank', desc: 'A seismic tank that stores Origin Energy with each hit and detonates it in a purple shockwave super.', color: '#a66bff', attack: 'Origin Slam', attackDesc: 'After a short delay, slams 4 tiles in a straight line. Each enemy hit grants +1 Origin Energy.', super: 'Purple Unleashed', superDesc: 'Consumes all Origin Energy in a 360 smash. Enemies are suspended for 1s, then slammed down.', hyper: 'Become My Weakling: Main attacks weaken enemy damage by 40% for 1.2s. Super launches 3 mining fissures that each explode twice. Suspend has a brief warning telegraph before lift.', g1: 'Core Clamp (+3 Origin Energy)', g2: 'Fault Step (short dash + shield)', sp1: 'Gravity Core (wider, longer suspend super)', sp2: 'Deep Mantle (damage reduction at 5+ Energy)' },
       'heater_miser': { name: 'Heater Miser', role: 'Support', desc: 'Latches a thermal beam to one target to ramp damage or healing over time.', color: '#ff8a5b', attack: 'Thermal Tether', attackDesc: 'Latch a beam to one ally or enemy. Ticks every 0.30s and ramps through 7 stages while connected.', super: 'Intergalactic Heat', superDesc: 'Launch a furnace that creates a 3.5-tile slow zone for 4s and deals 1200 damage over 3s to enemies inside.', hyper: 'Beam starts at the 300 ramp value. Furnace super also pulls enemies to center.', g1: 'Heat Valve (next tether hit gains burst + fast ramp start)', g2: 'Flux Splitter (tether chains to nearby target)', sp1: 'Thermal Reserve (stronger tether healing)', sp2: 'Combustion Core (larger, stronger furnace zone)' },
       'minigunnin': { name: 'Minigunnin', role: 'Tank', desc: 'Hold to fire a massive cone of bullets. Gains Max HP on hit.', color: '#aaaaaa', attack: 'Minigun', attackDesc: 'Fires 20 larger bullets over 5 seconds in a tighter cone with slightly reduced range. Gets faster while firing.', super: 'Healing Fort', superDesc: 'Deploys a healing device surrounded by breakable walls.', hyper: 'Fort becomes a turret. Attack shoots 30% faster, 20% less spread, +1 bullet per shot.', g1: 'Overclock (Instant reload & burst)', g2: 'Fortify (Sacrifice 1000 Max HP for 3000 HP)', sp1: 'Desperate Measures (+175% HP gain below 30% ammo)', sp2: 'Ramp Up (Move faster while firing)' },
-      'steamer': { name: 'Steamer', role: 'Controller', desc: 'Pressure engineer with a continuous steam bar and precision sweet-spot damage.', color: '#7fd3ff', attack: 'Steam Lance', attackDesc: 'Sprays a short narrow cone. Damage is low up close, highest in the middle sweet spot, and medium at max range where it slows by 10%.', super: 'Railroad', superDesc: 'Starts match with 5 Super charges. Hold & aim Super to throw Steam Poles (up to 5). Tap Super / press E to Railroad Dash through placed poles in a high-speed circuit.', hyper: 'Roadkill: Railroad Dash runs 40% faster for 3 full laps, exploding poles upon passing through them and releasing boiling steam hazard zones.', g1: 'Pressure Valve (Knockback burst + refill 50% ammo)', g2: 'Express Track (+25% speed and mobile pole placement)', sp1: 'Boiler Room Heat (Ignite enemies kept in sweet spot for 1.5s)', sp2: 'Perfect Conductor (30% shield during super, fire trail lasts +1.5s)' },
+      'steamer': { name: 'Steamer', role: 'Controller', desc: 'Pressure engineer with a continuous steam bar and precision sweet-spot damage.', color: '#7fd3ff', attack: 'Steam Lance', attackDesc: 'Sprays a pressurized volumetric steam cone. Damage is highest in the sweet spot and slows by 10% at max range.', super: 'Railroad', superDesc: 'Starts match with 5 Super charges. Hold & aim Super to throw Steam Poles (up to 5). Tap Super / press E to Railroad Dash through placed poles in a high-speed circuit.', hyper: 'Overdrive Engine: Steamer charges back and forth 2 times at blinding speed blowing massive billowing steam clouds, while all placed steam poles continuously vent scalding steam jets until he finishes.', g1: 'Pressure Valve (Knockback burst + refill 50% ammo)', g2: 'Express Track (+25% speed and mobile pole placement)', sp1: 'Boiler Room Heat (Scald enemies kept in sweet spot for 1.5s with boiling steam)', sp2: 'Perfect Conductor (30% shield during super, steam trail lasts +1.5s)' },
       'bowlin_rida': { name: 'The Rida', role: 'Assassin', desc: 'Roll around the map like a bowling ball, gaining speed and knocking down pins!', color: '#ff3300', attack: 'Bowling Roll', attackDesc: 'Using ammo gives you an instant speed boost. Dealing damage by rolling into enemies.', super: 'Pin Strike', superDesc: 'Launch a massive bowling ball attack, becoming untargetable while dropping pins.', hyper: 'Super lasts 8s and drops more pins. Attack gains speed 20% faster.', g1: 'Drift Boost (Instant max speed & reload)', g2: 'Flame Shield (Heal 50% from next hit)', sp1: 'Scorching Trails (Leave fire trail at max speed)', sp2: 'Heavy Landing (Stun and damage when flight ends)' },
       'money_and_tax': { name: 'Money & Tax', role: 'Controller', desc: 'A dual-stance financier who blasts enemies with coins in Money Mode and buries them in DEBT with Tax Notes.', color: '#27ae60', attack: 'Liquid Assets / Audit', attackDesc: 'Money Mode: Fires wider waves of larger coins. At full ammo, the center coin grows 40% larger and hits harder. Tax Mode: Fires 2 larger, tighter banknotes with 45% more damage that apply DEBT, slowing reload for 3 seconds.', super: 'Market Crash / Sticky Bill', superDesc: 'Money: 7 shorter-range boomerang coins, then switch to Tax. Tax: Attach a sticky damage-over-time note that refreshes the 3-second DEBT reload debuff, then switch to Money.', hyper: 'Money Power Move pierces walls. Tax Power Move chains to a second target. Main attacks pierce.', g1: 'Mode Swap (Instantly switch modes)', g2: 'Bailout (Consume 1 ammo, heal 1500 HP & speed boost)', sp1: 'Compound Interest (Consecutive coin hits deal 15% more damage)', sp2: 'Embezzlement (Applying DEBT heals you)' },
       'hunter': { name: 'The Hunter', role: 'Assassin', desc: 'A tracker who isolates targets and hunts them down.', color: '#556b2f', attack: 'Delay Sweep', attackDesc: 'A sweeping sword slash. Knocks back enemies if used at full ammo!', super: 'I Found You', superDesc: 'Marks an enemy for 8s, gaining 25% speed, +25% dmg, and footsteps to them.', hyper: 'Attack delays -50% & double slash. Super gives 40% speed & first hit does 15% Max HP.', g1: 'Grappling Hook (Next attack pulls enemies)', g2: 'Camouflage (Invisibility for 3s)', sp1: 'Thrill of the Hunt (Kill marked target = +35% Super)', sp2: 'Relentless (Take 20% less damage while Super is active)' },
@@ -18170,10 +18170,10 @@ let heistFeverActive = false;
       if (!entity || entity.hp <= 0) return;
       const towerEffect = key => isSlopSushiMode ? getEntitySlopEffectTotal(entity,key) : 0;
       const isSuperSideShot = !!fromRail && sideSign !== 0;
-      const rangeScale = fromRail ? 1.0 : 1.3;
-      const maxRange = isSuperSideShot ? 150 : (fromRail ? 220 : Math.round(240 * rangeScale));
-      let sweetStart = isSuperSideShot ? 18 : (fromRail ? 78 : Math.round(74 * rangeScale));
-      let sweetEnd = isSuperSideShot ? 40 : (fromRail ? 148 : Math.round(152 * rangeScale));
+      const rangeScale = fromRail ? 1.0 : 1.35;
+      const maxRange = isSuperSideShot ? 160 : (fromRail ? 240 : Math.round(250 * rangeScale));
+      let sweetStart = isSuperSideShot ? 20 : (fromRail ? 80 : Math.round(78 * rangeScale));
+      let sweetEnd = isSuperSideShot ? 45 : (fromRail ? 155 : Math.round(160 * rangeScale));
       const sweetZonePct = !fromRail ? towerEffect('steamerSweetZonePct') : 0;
       if (sweetZonePct > 0) {
           sweetStart = Math.max(0, sweetStart * (1 - sweetZonePct));
@@ -18195,10 +18195,12 @@ let heistFeverActive = false;
       const minDamage = (entity.id === player.id ? 300 : 230) * pressureMult * towerDamageScale;
       const sweetDamage = (entity.id === player.id ? 500 : 390) * pressureMult * towerDamageScale;
       const farDamage = (entity.id === player.id ? 340 : 260) * pressureMult * towerDamageScale;
-      const halfAngle = isSuperSideShot ? 0.2 : (fromRail ? 0.17 : 0.16);
+      const halfAngle = isSuperSideShot ? 0.22 : (fromRail ? 0.18 : 0.18);
       const dir = baseAng + sideSign * 0.01;
-    const steamOuter = isHyper ? 'rgba(196, 140, 255, 0.56)' : (isSuperSideShot ? 'rgba(175, 239, 255, 0.48)' : 'rgba(170, 236, 255, 0.52)');
-    const steamInner = isHyper ? 'rgba(236, 208, 255, 0.64)' : 'rgba(240, 251, 255, 0.54)';
+      
+      // Pure atmospheric steam colors - pure whites, sky cyan and soft lavender hyper steam (NO fire)
+      const steamOuter = isHyper ? 'rgba(215, 140, 255, 0.58)' : (isSuperSideShot ? 'rgba(180, 240, 255, 0.52)' : 'rgba(195, 242, 255, 0.62)');
+      const steamInner = isHyper ? 'rgba(242, 215, 255, 0.75)' : 'rgba(245, 252, 255, 0.78)';
 
       const victims = [player, ...bots];
       for (const target of victims) {
@@ -18259,8 +18261,9 @@ let heistFeverActive = false;
           applyHeaterBoxDamage(entity, bestWall, desiredBase);
       }
 
-      const puffCount = isSuperSideShot ? 4 : 8;
-      const stepDelay = isSuperSideShot ? 24 : 12;
+      // Rich volumetric billowing steam plumes that actually look and feel like genuine boiling steam!
+      const puffCount = isSuperSideShot ? 6 : 16;
+      const stepDelay = isSuperSideShot ? 20 : 10;
       for (let k = 0; k < puffCount; k++) {
           const t = (k + 1) / puffCount;
           setTimeout(() => {
@@ -18268,32 +18271,36 @@ let heistFeverActive = false;
               const nozzleX = entity.x + Math.cos(dir) * (entity.radius + 8);
               const nozzleY = entity.y + Math.sin(dir) * (entity.radius + 8);
               const puffDist = maxRange * t;
-              const spread = (Math.random() - 0.5) * (isSuperSideShot ? 0.14 : 0.11);
+              const lateralSpread = (Math.random() - 0.5) * (isSuperSideShot ? 0.22 : 0.28) * t;
+              const steamAngle = dir + lateralSpread;
+              const puffRadius = (isSuperSideShot ? 10 : 14) + t * (isSuperSideShot ? 14 : 26);
               explosions.push({
-                  x: nozzleX + Math.cos(dir + spread) * puffDist,
-                  y: nozzleY + Math.sin(dir + spread) * puffDist,
-                  radius: (isSuperSideShot ? 8 : 10) + t * (isSuperSideShot ? 8 : 11),
+                  x: nozzleX + Math.cos(steamAngle) * puffDist,
+                  y: nozzleY + Math.sin(steamAngle) * puffDist,
+                  radius: puffRadius,
                   life: 0,
-                  maxLife: (isSuperSideShot ? 0.16 : 0.19) + t * 0.08,
+                  maxLife: (isSuperSideShot ? 0.20 : 0.28) + t * 0.12,
                   color: steamOuter,
                   steamInnerColor: steamInner,
                   isSteamPuff: true,
-                  steamDir: dir + spread,
-                  steamStretch: (isSuperSideShot ? 1.45 : 1.6) + t * (isSuperSideShot ? 0.45 : 0.62)
+                  steamDir: steamAngle,
+                  steamStretch: (isSuperSideShot ? 1.5 : 1.7) + t * 0.4
               });
           }, k * stepDelay);
       }
+      
+      // Muzzle steam flash / high-density steam burst at the nozzle
       explosions.push({
-          x: entity.x + Math.cos(dir) * (entity.radius + 10),
-          y: entity.y + Math.sin(dir) * (entity.radius + 10),
-          radius: isSuperSideShot ? 12 : 15,
+          x: entity.x + Math.cos(dir) * (entity.radius + 12),
+          y: entity.y + Math.sin(dir) * (entity.radius + 12),
+          radius: isSuperSideShot ? 16 : 24,
           life: 0,
-          maxLife: 0.14,
+          maxLife: 0.18,
           color: steamOuter,
           steamInnerColor: steamInner,
           isSteamPuff: true,
           steamDir: dir,
-          steamStretch: 1.15
+          steamStretch: 1.3
       });
       const backdraftPct=!fromRail&&!towerChild?towerEffect('steamerBackdraftDamagePct'):0;
       if(backdraftPct>0) spawnSteamerSteamBurst(entity,baseAng+Math.PI,isHyper,0,false,backdraftPct,true);
@@ -18387,65 +18394,106 @@ let heistFeverActive = false;
       const towerEffect = key => isSlopSushiMode ? getEntitySlopEffectTotal(entity, key) : 0;
       const runaway = towerEffect('steamerRunawayEngine') > 0;
 
-      const ownerPoles = steamerPoles.filter(p => p.ownerId === entity.id && !p.exploded);
-      let poles = [];
+      const ownerPoles = steamerPoles.filter(p => p.ownerId === entity.id);
+      let waypoints = [];
       let isLinearDash = false;
 
       if (ownerPoles.length >= 2) {
-          // Freeform multi-pole network: connect all placed poles in order!
-          poles = ownerPoles.map(p => ({ x: p.x, y: p.y, poleRef: p }));
+          waypoints = ownerPoles.map(p => ({ x: p.x, y: p.y, poleRef: p }));
       } else if (ownerPoles.length === 1) {
-          // 1 pole: dash from current position to the placed pole and back
-          poles = [
+          waypoints = [
               { x: entity.x, y: entity.y, poleRef: null },
               { x: ownerPoles[0].x, y: ownerPoles[0].y, poleRef: ownerPoles[0] }
           ];
       } else {
-          // 0 poles: Direct FREE aimed linear dash forward
           isLinearDash = true;
           const ang = Math.atan2((targetY ?? entity.y) - entity.y, (targetX ?? entity.x) - entity.x);
           const dashDist = 480;
           const endX = clamp(entity.x + Math.cos(ang) * dashDist, entity.radius, WORLD_W - entity.radius);
           const endY = clamp(entity.y + Math.sin(ang) * dashDist, entity.radius, WORLD_H - entity.radius);
-          poles = [
+          waypoints = [
               { x: entity.x, y: entity.y, poleRef: null },
               { x: endX, y: endY, poleRef: null }
           ];
       }
 
-      // Pre-calculate segment lengths and cumulative distances for 100% constant speed throughout the entire dash
+      // Pre-calculate segment lengths and cumulative distances
       const segments = [];
       let totalDist = 0;
-      const poleCount = poles.length;
-      if (isLinearDash) {
-          const d = Math.hypot(poles[1].x - poles[0].x, poles[1].y - poles[0].y);
-          segments.push({ p0: poles[0], p1: poles[1], dist: d, startDist: 0, endDist: d, segIndex: 0 });
-          totalDist = d;
+      
+      if (hyperActive) {
+          // Hypercharge: 2 full back-and-forth passes across the waypoints!
+          // 1 lap = Forward (W_0 -> W_1 -> ... -> W_n) then Backward (W_n -> W_n-1 -> ... -> W_0)
+          const forwardPoints = [...waypoints];
+          const backwardPoints = [...waypoints].reverse();
+          
+          // Forward segments:
+          for (let i = 0; i < forwardPoints.length - 1; i++) {
+              const p0 = forwardPoints[i];
+              const p1 = forwardPoints[i + 1];
+              const d = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+              segments.push({ p0, p1, dist: d, startDist: totalDist, endDist: totalDist + d, segIndex: i, isForward: true });
+              totalDist += d;
+          }
+          // Backward segments:
+          for (let i = 0; i < backwardPoints.length - 1; i++) {
+              const p0 = backwardPoints[i];
+              const p1 = backwardPoints[i + 1];
+              const d = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+              segments.push({ p0, p1, dist: d, startDist: totalDist, endDist: totalDist + d, segIndex: forwardPoints.length - 1 + i, isForward: false });
+              totalDist += d;
+          }
+      } else if (isLinearDash || waypoints.length <= 2) {
+          const p0 = waypoints[0];
+          const p1 = waypoints[1];
+          const d = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+          if (isLinearDash) {
+              segments.push({ p0, p1, dist: d, startDist: 0, endDist: d, segIndex: 0 });
+              totalDist = d;
+          } else {
+              segments.push({ p0, p1, dist: d, startDist: 0, endDist: d, segIndex: 0 });
+              segments.push({ p0: p1, p1: p0, dist: d, startDist: d, endDist: d * 2, segIndex: 1 });
+              totalDist = d * 2;
+          }
       } else {
+          // Normal multi-pole circuit loop
+          const poleCount = waypoints.length;
           for (let i = 0; i < poleCount; i++) {
-              const p0 = poles[i];
-              const p1 = poles[(i + 1) % poleCount];
+              const p0 = waypoints[i];
+              const p1 = waypoints[(i + 1) % poleCount];
               const d = Math.hypot(p1.x - p0.x, p1.y - p0.y);
               segments.push({ p0, p1, dist: d, startDist: totalDist, endDist: totalDist + d, segIndex: i });
               totalDist += d;
           }
       }
+
       if (totalDist <= 0.001) totalDist = 1;
 
-      const baseLapMs = isLinearDash ? 420 : 2200;
-      const lapMs = hyperActive ? Math.round(baseLapMs / 1.40) : baseLapMs;
-      const laps = isLinearDash ? 1 : (runaway ? 4 : (hyperActive ? 3 : (1 + Math.max(0, Math.round(towerEffect('steamerExtraRailLaps'))))));
+      // Base lap time
+      let baseLapMs;
+      if (hyperActive) {
+          // 1 lap = 1 full back-and-forth. Laps = 2 => 2 full back-and-forths!
+          baseLapMs = Math.max(700, Math.min(1700, Math.round(totalDist * 1.12)));
+      } else if (isLinearDash) {
+          baseLapMs = 420;
+      } else {
+          baseLapMs = 2200;
+      }
+
+      const lapMs = baseLapMs;
+      const laps = hyperActive ? 2 : (isLinearDash ? 1 : (runaway ? 4 : (1 + Math.max(0, Math.round(towerEffect('steamerExtraRailLaps'))))));
 
       entity.steamerRail = {
           startAt: now,
           lapMs,
           laps,
-          poles,
+          poles: waypoints,
           segments,
           totalDist,
           isLinearDash,
           lastTrailAt: 0,
           lastSprayAt: 0,
+          lastPoleSteamAt: 0,
           isHyper: !!hyperActive,
           towerRunaway: runaway,
           lastSegment: -1,
@@ -18458,7 +18506,7 @@ let heistFeverActive = false;
           entity.defenseMult = 0.7;
       }
 
-      spawnFloatingText(entity.x, entity.y - 42, hyperActive ? 'HYPER RAILROAD OVERDRIVE! 🚂💥' : (isLinearDash ? 'STEAM RUSH! 💨' : 'STEAM DASH! 🚂💨'), hyperActive ? '#dc72ff' : '#7fd3ff');
+      spawnFloatingText(entity.x, entity.y - 42, hyperActive ? 'HYPER OVERDRIVE LOCOMOTIVE! 🚂💨💨' : (isLinearDash ? 'STEAM RUSH! 💨' : 'STEAM DASH! 🚂💨'), hyperActive ? '#dc72ff' : '#7fd3ff');
   }
 
   function updateSteamerRail(entity, now) {
@@ -18478,7 +18526,7 @@ let heistFeverActive = false;
       }
 
       let travelAng = 0;
-      if (rail.isLinearDash) {
+      if (rail.isLinearDash && !rail.isHyper) {
           const progress = clamp(elapsed / rail.lapMs, 0, 1);
           const p0 = rail.poles[0];
           const p1 = rail.poles[1];
@@ -18490,11 +18538,11 @@ let heistFeverActive = false;
               return;
           }
       } else {
-          // Constant linear velocity throughout entire multi-pole lap
+          // Constant linear velocity throughout entire lap
           const lapFraction = clamp((elapsed % rail.lapMs) / rail.lapMs, 0, 1);
           const currentDist = lapFraction * rail.totalDist;
 
-          // Find which segment corresponds to current distance
+          // Find active segment
           let activeSeg = rail.segments[0];
           for (let i = 0; i < rail.segments.length; i++) {
               const seg = rail.segments[i];
@@ -18509,41 +18557,33 @@ let heistFeverActive = false;
           entity.x = activeSeg.p0.x + (activeSeg.p1.x - activeSeg.p0.x) * segT;
           entity.y = activeSeg.p0.y + (activeSeg.p1.y - activeSeg.p0.y) * segT;
           travelAng = Math.atan2(activeSeg.p1.y - activeSeg.p0.y, activeSeg.p1.x - activeSeg.p0.x);
+      }
 
-          if (activeSeg.segIndex !== rail.lastSegment) {
-              rail.lastSegment = activeSeg.segIndex;
-              const currentPole = rail.poles[activeSeg.segIndex];
-              const poleKey = currentPole.poleRef ? String(currentPole.poleRef.id) : `${Math.round(currentPole.x)}_${Math.round(currentPole.y)}`;
-
-              // Hypercharge pole explosion & steam vent
-              if (rail.isHyper && !rail.explodedPoles[poleKey]) {
-                  rail.explodedPoles[poleKey] = true;
-                  const expX = currentPole.x;
-                  const expY = currentPole.y;
-                  const expRadius = 160;
-                  const blastDmg = entity.id === player.id ? 1800 : 1350;
-
-                  AOEDamage(expX, expY, expRadius, blastDmg, entity.id, false);
-                  explosions.push({
-                      x: expX,
-                      y: expY,
-                      radius: expRadius,
-                      life: 0,
-                      maxLife: 0.35,
-                      color: 'rgba(235, 120, 255, 0.85)',
-                      legendary: true,
-                      fxKind: 'steamerOverpressure'
-                  });
-                  spawnFloatingText(expX, expY - 36, 'STEAM OVERPRESSURE! 💥', '#dc72ff');
-
-                  // Boiling steam hazard cloud around the exploded pole
-                  spawnCheeseField(expX, expY, 80, 4500, 1.0, entity.id, true, 480);
-
-                  // 8-directional scalding steam burst around the pole
-                  for (let a = 0; a < 8; a++) {
-                      const burstAng = (Math.PI * 2 * a) / 8;
-                      spawnSteamerSteamBurst(entity, burstAng, true, 0, true, 1.25, true);
+      // Steam from the poles comes out on the sides until he is done!
+      if (rail.isHyper) {
+          if (!rail.lastPoleSteamAt || now - rail.lastPoleSteamAt >= 50) {
+              rail.lastPoleSteamAt = now;
+              const ownerPoles = steamerPoles.filter(p => p.ownerId === entity.id);
+              for (const pole of ownerPoles) {
+                  const baseAngle = ((pole.createdAt || 0) + now * 0.003) % (Math.PI * 2);
+                  const sideAngles = [baseAngle, baseAngle + Math.PI, baseAngle + Math.PI / 2, baseAngle - Math.PI / 2];
+                  for (const ang of sideAngles) {
+                      const jetDist = 18 + Math.random() * 45;
+                      explosions.push({
+                          x: pole.x + Math.cos(ang) * jetDist,
+                          y: pole.y + Math.sin(ang) * jetDist,
+                          radius: 14 + Math.random() * 8,
+                          life: 0,
+                          maxLife: 0.22,
+                          color: 'rgba(215, 140, 255, 0.45)',
+                          steamInnerColor: 'rgba(245, 230, 255, 0.70)',
+                          isSteamPuff: true,
+                          steamDir: ang,
+                          steamStretch: 1.55
+                      });
                   }
+                  // Searing steam side jet damage
+                  AOEDamage(pole.x, pole.y, 95, entity.id === player.id ? 80 : 60, entity.id, false);
               }
           }
       }
@@ -18551,18 +18591,39 @@ let heistFeverActive = false;
       const towerEffect = key => isSlopSushiMode ? getEntitySlopEffectTotal(entity, key) : 0;
       const star = getSteamerStar(entity);
       const trailDur = 1800 + (star === 'long' ? 1500 : 0) + towerEffect('steamerTrailBonusMs');
-      if (!rail.lastTrailAt || now - rail.lastTrailAt >= 70) {
+      const trailDelay = rail.isHyper ? 35 : 70;
+      if (!rail.lastTrailAt || now - rail.lastTrailAt >= trailDelay) {
           rail.lastTrailAt = now;
-          spawnCheeseField(entity.x, entity.y, 48 * (1 + towerEffect('steamerTrailRadiusPct')), trailDur, 1.0, entity.id, true, 420);
+          spawnCheeseField(entity.x, entity.y, (rail.isHyper ? 60 : 48) * (1 + towerEffect('steamerTrailRadiusPct')), trailDur, 1.0, entity.id, true, rail.isHyper ? 550 : 420);
       }
-      const sprayDelay = rail.towerRunaway ? 45 : (rail.isHyper ? 50 : 75);
+      
+      // Massive steam blown out by Steamer during dash
+      const sprayDelay = rail.isHyper ? 30 : (rail.towerRunaway ? 45 : 75);
       if (!rail.lastSprayAt || now - rail.lastSprayAt >= sprayDelay) {
           rail.lastSprayAt = now;
           spawnSteamerSteamBurst(entity, travelAng + Math.PI / 2, rail.isHyper, 1, true);
           spawnSteamerSteamBurst(entity, travelAng - Math.PI / 2, rail.isHyper, -1, true);
-          if (rail.isHyper || towerEffect('steamerCrossVents') > 0) {
-              spawnSteamerSteamBurst(entity, travelAng + Math.PI / 4, rail.isHyper, 1, true, 0.75, true);
-              spawnSteamerSteamBurst(entity, travelAng - Math.PI / 4, rail.isHyper, -1, true, 0.75, true);
+          if (rail.isHyper) {
+              spawnSteamerSteamBurst(entity, travelAng + Math.PI / 4, true, 1, true, 0.85, true);
+              spawnSteamerSteamBurst(entity, travelAng - Math.PI / 4, true, -1, true, 0.85, true);
+              spawnSteamerSteamBurst(entity, travelAng + Math.PI * 0.75, true, 1, true, 0.75, true);
+              spawnSteamerSteamBurst(entity, travelAng - Math.PI * 0.75, true, -1, true, 0.75, true);
+              // Rear locomotive chimney steam plume
+              explosions.push({
+                  x: entity.x - Math.cos(travelAng) * 22,
+                  y: entity.y - Math.sin(travelAng) * 22,
+                  radius: 26,
+                  life: 0,
+                  maxLife: 0.26,
+                  color: 'rgba(215, 140, 255, 0.55)',
+                  steamInnerColor: 'rgba(245, 230, 255, 0.75)',
+                  isSteamPuff: true,
+                  steamDir: travelAng + Math.PI,
+                  steamStretch: 1.8
+              });
+          } else if (towerEffect('steamerCrossVents') > 0) {
+              spawnSteamerSteamBurst(entity, travelAng + Math.PI / 4, false, 1, true, 0.75, true);
+              spawnSteamerSteamBurst(entity, travelAng - Math.PI / 4, false, -1, true, 0.75, true);
           }
       }
   }
@@ -37374,9 +37435,11 @@ let heistFeverActive = false;
             if (cur.accum >= 1500 && nowHit > (cur.ignitedUntil || 0)) {
                 cur.accum = 0;
                 cur.ignitedUntil = nowHit + 2200;
-                target.fireUntil = Math.max(target.fireUntil || 0, nowHit + 2400);
-                target.fireStacks = Math.max(target.fireStacks || 0, 1);
-                target.fireTickAt = Math.min(target.fireTickAt || (nowHit + 1000), nowHit + 1000);
+                target.steamerScaldUntil = Math.max(target.steamerScaldUntil || 0, nowHit + 2400);
+                target.steamerScaldOwnerId = b.ownerId;
+                target.steamerScaldDamage = 190;
+                target.steamerScaldTickAt = Math.min(target.steamerScaldTickAt || (nowHit + 600), nowHit + 600);
+                spawnFloatingText(target.x, target.y - 30, 'BOILING SCALD! ♨️', '#7fd3ff');
             }
             target.steamerSweetHits[key] = cur;
         }
@@ -56200,21 +56263,22 @@ let heistFeverActive = false;
             continue;
         }
         if (ex.isSteamPuff) {
-            const alpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const lifeFraction = ex.life / ex.maxLife;
+            const alpha = Math.max(0, 1 - lifeFraction);
             const dir = ex.steamDir || 0;
             const stretch = ex.steamStretch || 1.8;
             ctx.save();
             ctx.translate(ex.x, ex.y);
             ctx.rotate(dir);
             ctx.globalAlpha = alpha;
-            const baseR = Math.max(5, ex.radius || 10);
+            const baseR = Math.max(5, (ex.radius || 10) * (0.8 + lifeFraction * 0.45));
             ctx.fillStyle = ex.color || 'rgba(180, 240, 255, 0.58)';
             ctx.beginPath();
-            ctx.ellipse(baseR * stretch * 0.14, 0, baseR * stretch, baseR * 0.68, 0, 0, Math.PI * 2);
+            ctx.ellipse(baseR * stretch * 0.14, 0, baseR * stretch, baseR * 0.72, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = ex.steamInnerColor || `rgba(245, 252, 255, ${0.55 * alpha})`;
+            ctx.fillStyle = ex.steamInnerColor || `rgba(245, 252, 255, ${0.65 * alpha})`;
             ctx.beginPath();
-            ctx.ellipse(baseR * stretch * 0.2, 0, baseR * (stretch * 0.64), baseR * 0.42, 0, 0, Math.PI * 2);
+            ctx.ellipse(baseR * stretch * 0.2, 0, baseR * (stretch * 0.62), baseR * 0.45, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
             continue;
