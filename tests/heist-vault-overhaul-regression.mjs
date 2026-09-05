@@ -8,33 +8,45 @@ test('Heist / Brick Vault has +10% boosted HP and Princess Tower safe tier', () 
   assert.match(gameCode, /BRICK_VAULT_TIERS\s*=\s*\[49500,\s*88000,\s*55000\]/);
 });
 
-test('Heist / Brick Vault mode clears all walls for open arena battle without reassigning const cubes', () => {
-  assert.match(gameCode, /destructibleWalls\.length\s*=\s*0/);
-  assert.match(gameCode, /for\s*\(let i = cubes\.length - 1; i >= 0; i--\)/);
-  assert.match(gameCode, /cubes\.splice\(i,\s*1\)/);
+test('Heist Tactical Fortress layout provides cover barricades, corner bunkers, and bushes', () => {
+  assert.match(gameCode, /wallType:\s*'heist_fortress'/);
+  assert.match(gameCode, /buildBrickVaultMap/);
+  assert.match(gameCode, /addBush/);
 });
 
-test('Heist spawns 3 safes per team including Princess Tower safe', () => {
-  assert.match(gameCode, /isPrincessVault:\s*isPrincess/);
-  assert.match(gameCode, /princessLockTargetId/);
-  assert.match(gameCode, /princessLockConsecutive/);
+test('Heist initializes 4 High-Speed Flank Jump Pads with launch physics', () => {
+  assert.match(gameCode, /heistJumpPads\s*=\s*\[/);
+  assert.match(gameCode, /heist_pad_p_l/);
+  assert.match(gameCode, /heist_pad_p_r/);
+  assert.match(gameCode, /entity\.heistFlight/);
+  assert.match(gameCode, /🚀 FLANK LAUNCH!/);
 });
 
-test('Heist Princess Tower accelerates fire rate on continuous target lock', () => {
-  assert.match(gameCode, /function updateBrickVaultPrincessSystems/);
-  assert.match(gameCode, /Math\.max\(70,\s*480\s*-\s*rampLevel\s*\*\s*35\)/);
-  assert.match(gameCode, /isBrickVaultPrincessArrow:\s*true/);
-  assert.match(gameCode, /isKingPrincessArrow:\s*true/);
+test('Princess Tower is protected by Citadel Energy Shield (70% damage reduction) while side vaults live', () => {
+  assert.match(gameCode, /function getLivingSideVaultCount/);
+  assert.match(gameCode, /dealtDamage\s*\*=\s*0\.30/);
+  assert.match(gameCode, /🛡️ CITADEL SHIELD/);
 });
 
-test('Heist AI has smart defense priority and target coordination', () => {
-  assert.match(gameCode, /highThreatEnemy/);
-  assert.match(gameCode, /distToVault\s*<=\s*580/);
-  assert.match(gameCode, /isHighDps/);
-  assert.match(gameCode, /bestEnemySafeTarget/);
+test('Safe damage and destruction triggers Heist Gold Crystals & Super Wave Loot Rush', () => {
+  assert.match(gameCode, /kind:\s*'heist_crystal'/);
+  assert.match(gameCode, /💎 HEIST FRENZY!/);
+  assert.match(gameCode, /⚡ \+35% SUPER WAVE!/);
 });
 
-test('Heist Princess Tower renders royal battlements, crown, and lock laser', () => {
-  assert.match(gameCode, /PRINCESS TOWER/);
-  assert.match(gameCode, /RAMP SPEED/);
+test('Princess Tower triggers Castle Enrage (<40% HP) with radial wave and 3-arrow spread volleys', () => {
+  assert.match(gameCode, /isEnraged\s*=\s*pv\.hp\s*<\s*\(pv\.maxHp\s*\*\s*0\.40\)/);
+  assert.match(gameCode, /🏰 CASTLE ENRAGE!/);
+  assert.match(gameCode, /\[baseAngle\s*-\s*0\.16,\s*baseAngle,\s*baseAngle\s*\+\s*0\.16\]/);
+});
+
+test('Heist Fever activates in final 45s with 1.5X vault damage bonus', () => {
+  assert.match(gameCode, /heistFeverActive/);
+  assert.match(gameCode, /🔥 HEIST FEVER/);
+  assert.match(gameCode, /dealtDamage\s*\*=\s*1\.50/);
+});
+
+test('Heist renders dynamic HUD top bar with shield indicators and live status', () => {
+  assert.match(gameCode, /pShielded\s*\?\s*'🛡️ SHIELDED'\s*:\s*'⚡ BREACHED'/);
+  assert.match(gameCode, /eShielded\s*\?\s*'🛡️ SHIELDED'\s*:\s*'⚡ BREACHED'/);
 });

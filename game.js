@@ -7710,6 +7710,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     let arenaForgeAutoUpgradeRound = 0;
     let arenaForgeTeamBuffs = { player: {}, enemy: {} };
     let arenaForgeJumpPads = [];
+let heistJumpPads = [];
+let heistFeverActive = false;
     let arenaForgeNextBreachWaveAt = 0;
     let arenaForgeBreachWaveNumber = 0;
     let arenaForgeLastCallout = '';
@@ -13339,24 +13341,35 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         knockDonateDonationUI = overlay;
     }
 
+    function getLivingSideVaultCount(team) {
+        const sideVaults = bots.filter(b => b && b.isBrickVaultEntity && b.vaultTeam === team && !b.isPrincessVault && b.hp > 0);
+        return sideVaults.length;
+    }
+
     function initBrickVaultModeState() {
         const vaultHpMultiplier = isTowerPowerVaultWeekendMatch ? TOWER_POWER_VAULT_HP_MULTIPLIER : 1;
         brickVaultTimer = 0;
         brickVaultWinnerTeam = null;
+        heistFeverActive = false;
         brickVaultDamage = { player: 0, enemy: 0 };
         brickVaultTotalHp = {
             player: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + Math.round(hp * vaultHpMultiplier), 0),
             enemy: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + Math.round(hp * vaultHpMultiplier), 0),
         };
 
-        // Open Battlefield: NO WALLS in Heist mode!
+        // Rebuild clean fortress layout
+        buildBrickVaultMap();
         bots.splice(0, bots.length, ...bots.filter((entity) => !entity?.isBrickVaultEntity));
-        for (let i = cubes.length - 1; i >= 0; i--) {
-            if (cubes[i]?.wallType && cubes[i].wallType.startsWith('brick_vault')) {
-                cubes.splice(i, 1);
-            }
-        }
-        destructibleWalls.length = 0;
+
+        // Initialize 4 High-Speed Flank Jump Pads
+        heistJumpPads = [
+            // Player side jump pads launching forward into left & right flank pockets
+            { id: 'heist_pad_p_l', x: WORLD_W * 0.16, y: WORLD_H * 0.74, targetX: WORLD_W * 0.20, targetY: WORLD_H * 0.46, radius: 34, team: 'player' },
+            { id: 'heist_pad_p_r', x: WORLD_W * 0.84, y: WORLD_H * 0.74, targetX: WORLD_W * 0.80, targetY: WORLD_H * 0.46, radius: 34, team: 'player' },
+            // Enemy side jump pads launching forward into left & right flank pockets
+            { id: 'heist_pad_e_l', x: WORLD_W * 0.84, y: WORLD_H * 0.26, targetX: WORLD_W * 0.80, targetY: WORLD_H * 0.54, radius: 34, team: 'enemy' },
+            { id: 'heist_pad_e_r', x: WORLD_W * 0.16, y: WORLD_H * 0.26, targetX: WORLD_W * 0.20, targetY: WORLD_H * 0.54, radius: 34, team: 'enemy' }
+        ];
 
         const spawnVaultSet = (team, sideY) => {
             const xBands = [WORLD_W * 0.22, WORLD_W * 0.78, WORLD_W * 0.50];
@@ -13376,7 +13389,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                     vy: 0,
                     hp,
                     maxHp: hp,
-                    radius: isPrincess ? 48 : 54,
+                    radius: isPrincess ? 50 : 54,
                     speed: 0,
                     brawler: isPrincess ? 'brick_vault_princess' : 'brick_vault',
                     team,
@@ -13387,6 +13400,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                     princessLockTargetId: null,
                     princessLockConsecutive: 0,
                     princessLastShotAt: 0,
+                    lastCrystalHpDrop: hp,
+                    enrageWavePopped: false,
                     isStructure: true,
                     noRespawn: true,
                     noPowerupDrop: true,
@@ -15874,32 +15889,34 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         waterZones.length = 0;
         destructibleWalls.length = 0;
 
-        const addWall = (x, y, w, h, hp = 12000) => destructibleWalls.push({ x, y, w, h, hp, maxHp: hp, ownerId: null });
+        const addWall = (x, y, w, h, hp = 8500) => destructibleWalls.push({ x, y, w, h, hp, maxHp: hp, ownerId: null, wallType: 'heist_fortress' });
         const addBush = (x, y, w, h) => bushZones.push({ x, y, w, h });
 
-        // Portrait map: central vertical lane with side flank pockets.
-        addWall(WORLD_W * 0.5 - 280, WORLD_H * 0.5 - 75, 560, 150, 18000);
-        addWall(WORLD_W * 0.5 - 85, WORLD_H * 0.35 - 220, 170, 440, 17000);
-        addWall(WORLD_W * 0.5 - 85, WORLD_H * 0.65 - 220, 170, 440, 17000);
+        // Tactical Fortress: Open battle arena with flank barricades and stealth bushes
+        // 1. Midfield Tactical Cover (Open Center Lane)
+        addWall(WORLD_W * 0.32 - 40, WORLD_H * 0.5 - 35, 80, 70, 10000);
+        addWall(WORLD_W * 0.68 - 40, WORLD_H * 0.5 - 35, 80, 70, 10000);
 
-        addWall(WORLD_W * 0.22 - 70, WORLD_H * 0.48 - 110, 140, 220, 12000);
-        addWall(WORLD_W * 0.78 - 70, WORLD_H * 0.52 - 110, 140, 220, 12000);
-        addWall(WORLD_W * 0.22 - 70, WORLD_H * 0.68 - 70, 140, 140, 11000);
-        addWall(WORLD_W * 0.78 - 70, WORLD_H * 0.32 - 70, 140, 140, 11000);
+        // 2. Flank Barricades guarding side approaches
+        addWall(WORLD_W * 0.15 - 35, WORLD_H * 0.38 - 50, 70, 100, 9000);
+        addWall(WORLD_W * 0.85 - 35, WORLD_H * 0.38 - 50, 70, 100, 9000);
+        addWall(WORLD_W * 0.15 - 35, WORLD_H * 0.62 - 50, 70, 100, 9000);
+        addWall(WORLD_W * 0.85 - 35, WORLD_H * 0.62 - 50, 70, 100, 9000);
 
-        // Vault bunker shields (top + bottom, two lanes each)
-        const xLanes = [WORLD_W * 0.36, WORLD_W * 0.64];
-        for (const lx of xLanes) {
-            addWall(lx - 60, WORLD_H * 0.22 - 48, 120, 96, 15000);
-            addWall(lx - 60, WORLD_H * 0.78 - 48, 120, 96, 15000);
-        }
+        // 3. Vault Bunker Corner Protectors (Gives defenders cover while keeping safes open)
+        addWall(WORLD_W * 0.22 - 60, WORLD_H * 0.82 - 25, 45, 50, 8000);
+        addWall(WORLD_W * 0.78 + 15, WORLD_H * 0.82 - 25, 45, 50, 8000);
+        addWall(WORLD_W * 0.22 - 60, WORLD_H * 0.18 - 25, 45, 50, 8000);
+        addWall(WORLD_W * 0.78 + 15, WORLD_H * 0.18 - 25, 45, 50, 8000);
 
-        addBush(WORLD_W * 0.2 - 90, WORLD_H * 0.24 - 70, 180, 140);
-        addBush(WORLD_W * 0.8 - 90, WORLD_H * 0.24 - 70, 180, 140);
-        addBush(WORLD_W * 0.2 - 90, WORLD_H * 0.76 - 70, 180, 140);
-        addBush(WORLD_W * 0.8 - 90, WORLD_H * 0.76 - 70, 180, 140);
-        addBush(WORLD_W * 0.5 - 80, WORLD_H * 0.44 - 65, 160, 130);
-        addBush(WORLD_W * 0.5 - 80, WORLD_H * 0.56 - 65, 160, 130);
+        // 4. Tactical Bushes along Flanks and Midfield
+        addBush(WORLD_W * 0.12, WORLD_H * 0.42, 140, 160);
+        addBush(WORLD_W * 0.88 - 140, WORLD_H * 0.42, 140, 160);
+        addBush(WORLD_W * 0.5 - 75, WORLD_H * 0.44, 150, 120);
+        addBush(WORLD_W * 0.22 - 60, WORLD_H * 0.68, 120, 100);
+        addBush(WORLD_W * 0.78 - 60, WORLD_H * 0.68, 120, 100);
+        addBush(WORLD_W * 0.22 - 60, WORLD_H * 0.32 - 100, 120, 100);
+        addBush(WORLD_W * 0.78 - 60, WORLD_H * 0.32 - 100, 120, 100);
     }
 
     function buildMirrorMap() {
@@ -20119,6 +20136,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
         for (const pv of princessSafes) {
             const team = pv.vaultTeam;
+            const isEnraged = pv.hp < (pv.maxHp * 0.40);
+
+            // Castle Enrage Radial Knockback Wave (triggers once when dropping under 40% HP)
+            if (isEnraged && !pv.enrageWavePopped) {
+                pv.enrageWavePopped = true;
+                spawnFloatingText(pv.x, pv.y - 50, '🏰 CASTLE ENRAGE!', '#ff0055');
+                AOEDamage(pv.x, pv.y, 160, 1500, pv.id);
+                explosions.push({ x: pv.x, y: pv.y, radius: 160, life: 0, maxLife: 0.35, color: '#ff0055' });
+            }
 
             // Find enemy candidates within 680px range
             const candidates = allCombatants.filter(c => {
@@ -20152,40 +20178,45 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
             if (!target) continue;
 
-            // Lock-on Fire Rate Ramp: Starts at 480ms -> drops down to 70ms ultra-rapid fire machine gun!
+            // Lock-on Fire Rate Ramp: Starts at 480ms -> drops down to 100ms ultra-rapid machine gun
             const rampLevel = Math.min(12, Math.floor((pv.princessLockConsecutive || 0) / 2));
-            const currentInterval = Math.max(70, 480 - rampLevel * 35);
+            const currentInterval = isEnraged ? Math.max(80, 360 - rampLevel * 30) : Math.max(100, 480 - rampLevel * 32);
 
             if (now - (pv.princessLastShotAt || 0) >= currentInterval) {
                 pv.princessLastShotAt = now;
-                const angle = Math.atan2(target.y - pv.y, target.x - pv.x);
-                const isHyperArrow = rampLevel >= 6;
+                const baseAngle = Math.atan2(target.y - pv.y, target.x - pv.x);
+                const isHyperArrow = rampLevel >= 6 || isEnraged;
                 const isUltraArrow = rampLevel >= 9;
-                const baseDmg = Math.round(400 * (1 + rampLevel * 0.04));
+                const baseDmg = Math.round(380 * (1 + rampLevel * 0.04));
 
-                bullets.push({
-                    ownerBrawler: 'king',
-                    ownerId: pv.id,
-                    isKingPrincessArrow: true,
-                    isBrickVaultPrincessArrow: true,
-                    kingBurning: rampLevel >= 4,
-                    x: pv.x + Math.cos(angle) * 32,
-                    y: pv.y + Math.sin(angle) * 32,
-                    vx: Math.cos(angle) * (isUltraArrow ? 950 : 800),
-                    vy: Math.sin(angle) * (isUltraArrow ? 950 : 800),
-                    life: 0,
-                    maxLife: 680 / (isUltraArrow ? 950 : 800),
-                    damage: baseDmg,
-                    pierce: false,
-                    super: true,
-                    hitIds: {},
-                    hitboxMod: isUltraArrow ? 1.35 : 1.15,
-                    hyperVisual: isHyperArrow
-                });
+                // If Enraged, fires a 3-arrow royal volley spread!
+                const angles = isEnraged ? [baseAngle - 0.16, baseAngle, baseAngle + 0.16] : [baseAngle];
+
+                for (const angle of angles) {
+                    bullets.push({
+                        ownerBrawler: 'king',
+                        ownerId: pv.id,
+                        isKingPrincessArrow: true,
+                        isBrickVaultPrincessArrow: true,
+                        kingBurning: rampLevel >= 4 || isEnraged,
+                        x: pv.x + Math.cos(angle) * 32,
+                        y: pv.y + Math.sin(angle) * 32,
+                        vx: Math.cos(angle) * (isUltraArrow ? 950 : 800),
+                        vy: Math.sin(angle) * (isUltraArrow ? 950 : 800),
+                        life: 0,
+                        maxLife: 680 / (isUltraArrow ? 950 : 800),
+                        damage: baseDmg,
+                        pierce: false,
+                        super: true,
+                        hitIds: {},
+                        hitboxMod: isUltraArrow ? 1.35 : 1.15,
+                        hyperVisual: isHyperArrow
+                    });
+                }
 
                 explosions.push({
-                    x: pv.x + Math.cos(angle) * 32,
-                    y: pv.y + Math.sin(angle) * 32,
+                    x: pv.x + Math.cos(baseAngle) * 32,
+                    y: pv.y + Math.sin(baseAngle) * 32,
                     radius: isUltraArrow ? 24 : 14,
                     life: 0,
                     maxLife: 0.12,
@@ -37135,6 +37166,28 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     if (target?.isBrickVaultEntity) {
         const ownerTeam = owner?.team || (b.ownerId === player.id ? 'player' : 'enemy');
         if (!ownerTeam || ownerTeam === target.vaultTeam) return true;
+
+        // 1. Citadel Forcefield: 70% damage reduction on Princess Tower while side safes are alive!
+        if (target.isPrincessVault) {
+            const sideVaultsAlive = getLivingSideVaultCount(target.vaultTeam);
+            if (sideVaultsAlive > 0) {
+                dealtDamage *= 0.30;
+                if (Math.random() < 0.25) {
+                    spawnFloatingText(target.x, target.y - 42, '🛡️ CITADEL SHIELD (-70%)', '#55c8ff');
+                }
+            }
+        }
+
+        // 2. Heist Fever Overtime Bonus (+50% safe damage during Heist Fever)
+        if (heistFeverActive) {
+            dealtDamage *= 1.50;
+        }
+
+        // 3. Attacker Heist Frenzy (+25% damage boost)
+        if (owner && owner.heistFrenzyUntil && performance.now() < owner.heistFrenzyUntil) {
+            dealtDamage *= 1.25;
+        }
+
         dealtDamage = Math.min(Math.max(0, target.hp || 0), getVaultDamagePerHit(dealtDamage, target));
     }
 
@@ -37145,6 +37198,47 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         registerBrickVaultWallDamage(b.ownerId, target, dealtDamage);
         target.lastDamagerId = b.ownerId;
         target.lastDamagedAt = performance.now();
+
+        // Drop Heist Gold Crystals every 10,000 HP lost
+        if (!target.lastCrystalHpDrop) target.lastCrystalHpDrop = target.maxHp;
+        if (target.lastCrystalHpDrop - target.hp >= 10000) {
+            target.lastCrystalHpDrop = target.hp;
+            powerups.push({
+                x: target.x + (Math.random() * 80 - 40),
+                y: target.y + (Math.random() * 80 - 40),
+                kind: 'heist_crystal'
+            });
+        }
+
+        // On Safe Destruction: Drop Loot Wave & Super Charge attackers!
+        if (target.hp <= 0 && !target.destructionLootSpawned) {
+            target.destructionLootSpawned = true;
+            spawnFloatingText(target.x, target.y - 50, '💥 VAULT DESTROYED! SHIELD BROKEN!', '#ffd700');
+            for (let k = 0; k < 5; k++) {
+                powerups.push({
+                    x: target.x + (Math.random() * 120 - 60),
+                    y: target.y + (Math.random() * 120 - 60),
+                    kind: 'heist_crystal'
+                });
+            }
+
+            // Reward destroying team with +35% Super charge
+            const destroyingTeam = owner?.team || (b.ownerId === player.id ? 'player' : 'enemy');
+            for (const ally of [player, ...(typeof bots !== 'undefined' ? bots : [])]) {
+                if (ally && ally.team === destroyingTeam && ally.hp > 0) {
+                    if (ally === player) {
+                        superCharge = clamp(superCharge + 35, 0, 100);
+                        hyperChargeCharge = clamp(hyperChargeCharge + 20, 0, 100);
+                        updateSuperButton();
+                        updateHyperButton();
+                    } else {
+                        ally.superCharge = clamp((ally.superCharge || 0) + 35, 0, 100);
+                        ally.hyperChargeCharge = clamp((ally.hyperChargeCharge || 0) + 20, 0, 100);
+                    }
+                    spawnFloatingText(ally.x, ally.y - 35, '⚡ +35% SUPER WAVE!', '#ffd700');
+                }
+            }
+        }
     }
     if (b.isPortaloShot && owner && rawDmg > 0) handlePortaloMainHit(owner, target, b);
     if (b.isJackTradeCard && owner && rawDmg > 0) {applyJackTradeTowerCardHit(owner,target,b,dealtDamage);registerJackTradeVolleyHit(owner,b);}
@@ -38862,6 +38956,52 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     if (isBrickVaultMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         brickVaultTimer += dt;
         updateBrickVaultPrincessSystems(now, dt);
+
+        // Heist Fever (Overtime / Final 45s)
+        const timeLeft = Math.max(0, Math.ceil(BRICK_VAULT_MATCH_SECONDS - brickVaultTimer));
+        if (timeLeft <= 45 && !heistFeverActive) {
+            heistFeverActive = true;
+            spawnFloatingText(WORLD_W * 0.5, WORLD_H * 0.5, '🔥 HEIST FEVER! 1.5X VAULT DAMAGE! 🔥', '#ff0055');
+        }
+
+        // Heist Jump Pads Flight & Launch Physics
+        for (const entity of [player, ...(typeof aliveBotsInUpdate !== 'undefined' ? aliveBotsInUpdate : (typeof bots !== 'undefined' ? bots : []))]) {
+            if (!entity || entity.hp <= 0 || entity.isStructure || entity.isBrickVaultEntity) continue;
+            if (entity.heistFlight) {
+                const flight = entity.heistFlight;
+                const progress = Math.min(1, (now - flight.startedAt) / flight.duration);
+                entity.x = flight.fromX + (flight.toX - flight.fromX) * progress;
+                entity.y = flight.fromY + (flight.toY - flight.fromY) * progress;
+                entity.z = Math.sin(progress * Math.PI) * 110;
+                entity.isFlying = true;
+                if (progress >= 1) {
+                    entity.x = flight.toX;
+                    entity.y = flight.toY;
+                    entity.z = 0;
+                    entity.isFlying = false;
+                    entity.heistFlight = null;
+                    entity.heistPadCooldownUntil = now + 1800;
+                    explosions.push({ x: flight.toX, y: flight.toY, radius: 56, life: 0, maxLife: 0.25, color: '#ffd700' });
+                    entity.speedBoostUntil = Math.max(entity.speedBoostUntil || 0, now + 2500);
+                    entity.speedBoostMult = 1.25;
+                    spawnFloatingText(flight.toX, flight.toY - 32, '🚀 FLANK LAUNCH!', '#ffd700');
+                }
+                continue;
+            }
+            if (now >= (entity.heistPadCooldownUntil || 0) && !entity.isJumping && !entity.isDashing && !entity.isFlying) {
+                const pad = heistJumpPads.find(p => Math.hypot(entity.x - p.x, entity.y - p.y) <= p.radius + (entity.radius || 14));
+                if (pad) {
+                    entity.heistFlight = {
+                        fromX: entity.x, fromY: entity.y, toX: pad.targetX, toY: pad.targetY,
+                        startedAt: now, duration: 640
+                    };
+                    entity.stunUntil = Math.max(entity.stunUntil || 0, now + 640);
+                    entity.invulnerableUntil = Math.max(entity.invulnerableUntil || 0, now + 640);
+                    explosions.push({ x: pad.x, y: pad.y, radius: 40, life: 0, maxLife: 0.20, color: '#00f5d4' });
+                }
+            }
+        }
+
         const enemyVaultHp = getBrickVaultHealth('enemy');
         const playerVaultHp = getBrickVaultHealth('player');
         if (enemyVaultHp <= 0) {
@@ -39507,6 +39647,23 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 } else {
                     collectedBy.superCharge = 100;
                 }
+            } else if (p.kind === 'heist_crystal') {
+                const now = performance.now();
+                collectedBy.heistFrenzyUntil = now + 6500;
+                collectedBy.speedBoostUntil = Math.max(collectedBy.speedBoostUntil || 0, now + 4500);
+                collectedBy.speedBoostMult = 1.30;
+                grantShield(collectedBy, 1200, 5000);
+                if (collectedBy === player) {
+                    superCharge = clamp(superCharge + 35, 0, 100);
+                    hyperChargeCharge = clamp(hyperChargeCharge + 20, 0, 100);
+                    updateSuperButton();
+                    updateHyperButton();
+                } else {
+                    collectedBy.superCharge = clamp((collectedBy.superCharge || 0) + 35, 0, 100);
+                    collectedBy.hyperChargeCharge = clamp((collectedBy.hyperChargeCharge || 0) + 20, 0, 100);
+                }
+                spawnFloatingText(collectedBy.x, collectedBy.y - 32, '💎 HEIST FRENZY! (+30% SPD / +SUPER)', '#ffd700');
+                explosions.push({ x: collectedBy.x, y: collectedBy.y, radius: 45, life: 0, maxLife: 0.25, color: '#ffd700' });
             } else if (p.kind === 'nova_core') {
                 collectedBy.powerCubes = (collectedBy.powerCubes || 0) + 2;
                 collectedBy.maxHp += 800;
@@ -45895,6 +46052,38 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         ctx.strokeRect(zone.x, zone.y, zone.w, zone.h);
     }
 
+    // Draw Jump Pads for Heist mode
+    for (const pad of (typeof heistJumpPads !== 'undefined' ? heistJumpPads : [])) {
+        if (!isWorldVisualVisible(pad.x, pad.y, (pad.radius || 34) + 20)) continue;
+        const now = performance.now();
+        const pulse = 1 + Math.sin(now / 140 + pad.x) * 0.08;
+        const padCol = pad.team === 'player' ? '#00f5d4' : '#ff718c';
+        ctx.save();
+        ctx.translate(pad.x, pad.y);
+        ctx.shadowColor = padCol;
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = '#081d28';
+        ctx.strokeStyle = padCol;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, pad.radius * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Launch Arrow
+        const launchAng = Math.atan2(pad.targetY - pad.y, pad.targetX - pad.x);
+        ctx.rotate(launchAng);
+        ctx.fillStyle = padCol;
+        ctx.beginPath();
+        ctx.moveTo(14, 0);
+        ctx.lineTo(-8, -10);
+        ctx.lineTo(-4, 0);
+        ctx.lineTo(-8, 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+
     // Arena Forge Jump Pads
     for (const pad of (typeof arenaForgeJumpPads !== 'undefined' ? arenaForgeJumpPads : [])) {
         if (!isWorldVisualVisible(pad.x, pad.y, (pad.radius || 34) + 20)) continue;
@@ -46700,6 +46889,30 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               ctx.save();
               ctx.translate(t.x, drawY);
               ctx.scale(pulse, pulse);
+
+              // Citadel Forcefield Shield Aura (While Side Safes are Alive)
+              const sideSafesAlive = getLivingSideVaultCount(t.vaultTeam);
+              if (sideSafesAlive > 0) {
+                  ctx.save();
+                  ctx.shadowColor = '#55c8ff';
+                  ctx.shadowBlur = 22;
+                  ctx.strokeStyle = 'rgba(85, 200, 255, 0.85)';
+                  ctx.fillStyle = 'rgba(85, 200, 255, 0.18)';
+                  ctx.lineWidth = 3;
+                  ctx.beginPath();
+                  for (let a = 0; a < 6; a++) {
+                      const ang = (a * Math.PI / 3) + now / 900;
+                      const rad = 60 + Math.sin(now / 150 + a) * 3;
+                      const hx = Math.cos(ang) * rad;
+                      const hy = Math.sin(ang) * rad;
+                      if (a === 0) ctx.moveTo(hx, hy);
+                      else ctx.lineTo(hx, hy);
+                  }
+                  ctx.closePath();
+                  ctx.fill();
+                  ctx.stroke();
+                  ctx.restore();
+              }
 
               // 1. Castle Base Foundation
               ctx.shadowColor = turretColor;
@@ -54471,6 +54684,33 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 if (n === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
             }
             ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+        } else if (p.kind === 'heist_crystal') {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            const now = performance.now();
+            const pulse = 1 + Math.sin(now / 120 + p.x) * 0.12;
+            ctx.scale(pulse, pulse);
+            ctx.rotate((now / 600) % (Math.PI * 2));
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 14;
+            ctx.fillStyle = '#ffcc00';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, -12);
+            ctx.lineTo(9, -3);
+            ctx.lineTo(6, 11);
+            ctx.lineTo(-6, 11);
+            ctx.lineTo(-9, -3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Inner sparkle
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, -2, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
         } else {
             ctx.fillStyle = '#64e572'; ctx.fillRect(p.x - 8, p.y - 8, 16, 16);
             ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.strokeRect(p.x - 8, p.y - 8, 16, 16);
@@ -55974,18 +56214,40 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const playerVaultHp = Math.round(getBrickVaultHealth('player'));
         const enemyVaultHp = Math.round(getBrickVaultHealth('enemy'));
         const timeLeft = Math.max(0, Math.ceil(BRICK_VAULT_MATCH_SECONDS - brickVaultTimer));
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.8)';
-        ctx.fillRect(innerWidth / 2 - 300, 78, 600, 58);
-        ctx.strokeStyle = 'rgba(125, 210, 255, 0.78)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(innerWidth / 2 - 300, 78, 600, 58);
-        ctx.fillStyle = '#d8f0ff';
-        ctx.font = 'bold 14px sans-serif';
+        const pShielded = getLivingSideVaultCount('player') > 0;
+        const eShielded = getLivingSideVaultCount('enemy') > 0;
+
+        const panelW = 620, panelH = 64;
+        const panelX = innerWidth / 2 - panelW / 2, panelY = 76;
+
+        ctx.fillStyle = 'rgba(4, 14, 32, 0.88)';
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        ctx.strokeStyle = heistFeverActive ? '#ff0055' : 'rgba(125, 210, 255, 0.78)';
+        ctx.lineWidth = heistFeverActive ? 3 : 2;
+        ctx.strokeRect(panelX, panelY, panelW, panelH);
+
+        // Title & Timer
+        ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`${isTowerPowerVaultWeekendMatch ? 'Tower Power Vault Siege • ALL 8' : 'Vault Siege 3v3'} | Enemy Vault Damage ${yourPct}% | Your Vault Damage ${enemyPct}% | ${timeLeft}s`, innerWidth / 2, 98);
-        ctx.font = '12px sans-serif';
-        ctx.fillStyle = '#9ef6d6';
-        ctx.fillText(`Enemy vault HP: ${enemyVaultHp.toLocaleString()} | Your vault HP: ${playerVaultHp.toLocaleString()}`, innerWidth / 2, 117);
+        ctx.fillStyle = heistFeverActive ? '#ff0055' : '#d8f0ff';
+        const feverTag = heistFeverActive ? '🔥 HEIST FEVER (1.5X DMG) 🔥' : (isTowerPowerVaultWeekendMatch ? 'TOWER POWER VAULT' : 'VAULT SIEGE 3v3');
+        ctx.fillText(`${feverTag}  •  ⏱️ ${timeLeft}s`, innerWidth / 2, panelY + 18);
+
+        // Team Health Bars & Shield Status
+        ctx.font = '900 11px sans-serif';
+        ctx.fillStyle = '#55c8ff';
+        ctx.textAlign = 'left';
+        ctx.fillText(`🟦 BLUE BASE: ${(100 - enemyPct)}% ${pShielded ? '🛡️ SHIELDED' : '⚡ BREACHED'}`, panelX + 16, panelY + 38);
+
+        ctx.fillStyle = '#ff657d';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${eShielded ? '🛡️ SHIELDED' : '⚡ BREACHED'} :RED BASE 🟥 ${(100 - yourPct)}%`, panelX + panelW - 16, panelY + 38);
+
+        // Sub-stats
+        ctx.font = '10px monospace';
+        ctx.fillStyle = '#bce6ff';
+        ctx.textAlign = 'center';
+        ctx.fillText(`YOUR DAMAGE: ${yourPct}%   |   ENEMY DAMAGE: ${enemyPct}%`, innerWidth / 2, panelY + 54);
         ctx.textAlign = 'left';
     } else if (isArenaForgeMode && playing) {
         const ownIntegrity = getArenaForgeCombinedStructureHealth('player');
