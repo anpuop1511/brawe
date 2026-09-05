@@ -13351,7 +13351,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
         // Open Battlefield: NO WALLS in Heist mode!
         bots.splice(0, bots.length, ...bots.filter((entity) => !entity?.isBrickVaultEntity));
-        cubes = cubes.filter(c => !c.wallType || !c.wallType.startsWith('brick_vault'));
+        for (let i = cubes.length - 1; i >= 0; i--) {
+            if (cubes[i]?.wallType && cubes[i].wallType.startsWith('brick_vault')) {
+                cubes.splice(i, 1);
+            }
+        }
         destructibleWalls.length = 0;
 
         const spawnVaultSet = (team, sideY) => {
@@ -38145,26 +38149,30 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       weefeeShockwaves = [];
   }
 
-  function spawnWeeFeeShockwave(x, y, ownerId, is5G = false, isHyper = false, isCenter = false, customDamage = null) {
+  function spawnWeeFeeShockwave(x, y, ownerId, is5G = false, isHyper = false, isCenter = false, customDamage = null, sizeMultiplier = 1.0) {
       const ownerEntity = ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find(bt => bt && bt.id === ownerId) : null);
       const hasSp1 = ownerEntity ? (ownerEntity.id === player.id ? (selectedStar === 'slow' || selectedStar === 'sp1') : (ownerEntity.selectedStar === 'slow' || ownerEntity.selectedStar === 'sp1')) : false;
       const baseDamage = customDamage !== null ? customDamage : (isCenter ? (is5G ? 850 : 750) : (is5G ? 1250 : 1100));
+      const adjustedDamage = Math.round(baseDamage * (1 + (sizeMultiplier - 1) * 0.45));
+      const effectiveMaxRadius = (isCenter ? 145 : 125) * sizeMultiplier;
+      const effectiveSpeed = 360 * Math.max(1, Math.min(1.75, sizeMultiplier * 0.75 + 0.25));
 
       weefeeShockwaves.push({
           x,
           y,
-          radius: 14,
-          maxRadius: isCenter ? 145 : 125,
-          speed: 360,
-          damage: baseDamage,
+          radius: 14 * Math.min(1.6, sizeMultiplier),
+          maxRadius: effectiveMaxRadius,
+          speed: effectiveSpeed,
+          damage: adjustedDamage,
           ownerId,
           is5G,
           isHyper,
           hasSp1,
           isCenter,
+          sizeMultiplier,
           hitIds: {},
           life: 0,
-          maxLife: 0.38
+          maxLife: 0.38 * Math.max(1, Math.min(1.6, sizeMultiplier * 0.5 + 0.5))
       });
   }
 
@@ -38302,13 +38310,36 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           }
 
           // If multiple poles exist, calculate centroid and pulse center interference shockwave in sync
+          // Scales up to 200% larger pulse (+200% / 3.0x size) depending on the size / area of the triangle!
           if (ownerPoles.length >= 2) {
               if (!entity.weefeeNextCenterPulseAt) entity.weefeeNextCenterPulseAt = now + cycleDuration;
               if (now >= entity.weefeeNextCenterPulseAt) {
                   entity.weefeeNextCenterPulseAt = now + cycleDuration;
                   const cx = ownerPoles.reduce((acc, p) => acc + p.x, 0) / ownerPoles.length;
                   const cy = ownerPoles.reduce((acc, p) => acc + p.y, 0) / ownerPoles.length;
-                  spawnWeeFeeShockwave(cx, cy, entity.id, is5G, isHyper, true);
+                  const avgDist = ownerPoles.reduce((acc, p) => acc + Math.hypot(p.x - cx, p.y - cy), 0) / ownerPoles.length;
+
+                  let triangleScale = 1.0;
+                  if (ownerPoles.length >= 3) {
+                      const p = ownerPoles;
+                      // Triangle Area calculation via Shoelace formula
+                      const area = 0.5 * Math.abs(p[0].x * (p[1].y - p[2].y) + p[1].x * (p[2].y - p[0].y) + p[2].x * (p[0].y - p[1].y));
+                      // Scale between 1.0 (small triangle) and 3.0 (+200% larger for large triangle)
+                      const areaRatio = Math.min(1.0, Math.max(0, (area - 6000) / 64000));
+                      const distRatio = Math.min(1.0, Math.max(0, (avgDist - 75) / 240));
+                      const factor = Math.max(areaRatio, distRatio);
+                      triangleScale = 1.0 + factor * 2.0; // 1.0x to 3.0x (+200% larger)
+                  } else {
+                      const dist = Math.hypot(ownerPoles[0].x - ownerPoles[1].x, ownerPoles[0].y - ownerPoles[1].y);
+                      const distRatio = Math.min(1.0, Math.max(0, (dist - 100) / 380));
+                      triangleScale = 1.0 + distRatio * 1.5; // up to +150% for 2 poles
+                  }
+
+                  spawnWeeFeeShockwave(cx, cy, entity.id, is5G, isHyper, true, null, triangleScale);
+                  if (triangleScale >= 1.35) {
+                      const boostPct = Math.round((triangleScale - 1) * 100);
+                      spawnFloatingText(cx, cy - 38, `📶 +${boostPct}% TRIANGLE PULSE!`, isHyper ? '#d946ef' : '#00f5d4');
+                  }
               }
           }
       }
@@ -46357,10 +46388,31 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               const is5G = ownerEntity && now < (ownerEntity.weefeeMobileDataUntil || 0);
               const isHyper = ownerEntity && isEntityHyperchargedNow(ownerEntity, now);
 
-              // Draw interconnected network laser grid
+              // Draw interconnected network laser grid & illuminated triangle zone
               if (poles.length >= 2) {
                   const cx = poles.reduce((acc, p) => acc + p.x, 0) / poles.length;
                   const cy = poles.reduce((acc, p) => acc + p.y, 0) / poles.length;
+                  const avgDist = poles.reduce((acc, p) => acc + Math.hypot(p.x - cx, p.y - cy), 0) / poles.length;
+
+                  let tScale = 1.0;
+                  if (poles.length >= 3) {
+                      const p = poles;
+                      const area = 0.5 * Math.abs(p[0].x * (p[1].y - p[2].y) + p[1].x * (p[2].y - p[0].y) + p[2].x * (p[0].y - p[1].y));
+                      const areaRatio = Math.min(1.0, Math.max(0, (area - 6000) / 64000));
+                      const distRatio = Math.min(1.0, Math.max(0, (avgDist - 75) / 240));
+                      tScale = 1.0 + Math.max(areaRatio, distRatio) * 2.0;
+
+                      // Fill illuminated energetic triangle mesh
+                      ctx.save();
+                      ctx.fillStyle = isHyper ? 'rgba(217, 70, 239, 0.14)' : (is5G ? 'rgba(0, 255, 180, 0.15)' : 'rgba(0, 245, 212, 0.09)');
+                      ctx.beginPath();
+                      ctx.moveTo(poles[0].x, poles[0].y);
+                      ctx.lineTo(poles[1].x, poles[1].y);
+                      ctx.lineTo(poles[2].x, poles[2].y);
+                      ctx.closePath();
+                      ctx.fill();
+                      ctx.restore();
+                  }
 
                   ctx.save();
                   ctx.strokeStyle = isHyper ? 'rgba(217, 70, 239, 0.85)' : (is5G ? 'rgba(0, 255, 180, 0.95)' : 'rgba(0, 245, 212, 0.55)');
@@ -46381,7 +46433,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                   ctx.setLineDash([]);
 
                   // Centroid Network Master Hub with pulsing Wi-Fi symbol
-                  const hubPulse = 1 + Math.sin(now / 160) * 0.12;
+                  const hubPulse = (1 + Math.sin(now / 160) * 0.12) * Math.min(1.8, 0.7 + tScale * 0.3);
                   ctx.fillStyle = isHyper ? 'rgba(217, 70, 239, 0.25)' : (is5G ? 'rgba(0, 255, 180, 0.30)' : 'rgba(0, 245, 212, 0.16)');
                   ctx.beginPath();
                   ctx.arc(cx, cy, 34 * hubPulse, 0, Math.PI * 2);
@@ -46392,7 +46444,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
                   // Hub icon
                   ctx.fillStyle = '#ffffff';
-                  ctx.font = '900 16px sans-serif';
+                  ctx.font = `900 ${Math.round(16 * Math.min(1.8, 0.8 + tScale * 0.2))}px sans-serif`;
                   ctx.textAlign = 'center';
                   ctx.textBaseline = 'middle';
                   ctx.fillText('📶', cx, cy);

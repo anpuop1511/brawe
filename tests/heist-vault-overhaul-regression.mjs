@@ -8,9 +8,10 @@ test('Heist / Brick Vault has +10% boosted HP and Princess Tower safe tier', () 
   assert.match(gameCode, /BRICK_VAULT_TIERS\s*=\s*\[49500,\s*88000,\s*55000\]/);
 });
 
-test('Heist / Brick Vault mode clears all walls for open arena battle', () => {
+test('Heist / Brick Vault mode clears all walls for open arena battle without reassigning const cubes', () => {
   assert.match(gameCode, /destructibleWalls\.length\s*=\s*0/);
-  assert.match(gameCode, /cubes\s*=\s*cubes\.filter\(c\s*=>\s*!c\.wallType/);
+  assert.match(gameCode, /for\s*\(let i = cubes\.length - 1; i >= 0; i--\)/);
+  assert.match(gameCode, /cubes\.splice\(i,\s*1\)/);
 });
 
 test('Heist spawns 3 safes per team including Princess Tower safe', () => {

@@ -43,11 +43,17 @@ assert.match(
   'Wee-Fee replaces oldest pole when reaching cap, and SP2 triggers 1400 AOE Demolition explosion'
 );
 
-// 5. Expanding Wi-Fi Shockwaves, Ground Logos & SP1 Interference
+// 5. Expanding Wi-Fi Shockwaves, Ground Logos & Triangle Pulse Scaling
 assert.match(
   game,
-  /function spawnWeeFeeShockwave\(x,\s*y,\s*ownerId/,
-  'spawnWeeFeeShockwave creates expanding concentric Wi-Fi shockwaves'
+  /function spawnWeeFeeShockwave\(x,\s*y,\s*ownerId[\s\S]*?sizeMultiplier\s*=\s*1.0\)/,
+  'spawnWeeFeeShockwave supports sizeMultiplier'
+);
+
+assert.match(
+  game,
+  /triangleScale\s*=\s*1.0\s*\+\s*factor\s*\*\s*2.0/,
+  'Triangle center pulse scales up to +200% (3.0x size) based on triangle area'
 );
 
 assert.match(
