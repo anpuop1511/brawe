@@ -25587,22 +25587,103 @@ let heistFeverActive = false;
     }
 
     function castOrboSuper(owner, hyper, targetX, targetY) {
-        if (!owner) return;
+        if (!owner || owner.hp <= 0) return;
+        const now = performance.now();
+        const windupMs = 420;
+        owner.orboSuperWindup = {
+            startAt: now,
+            until: now + windupMs,
+            hyper: !!hyper,
+            targetX,
+            targetY,
+            angle: Math.atan2(targetY - owner.y, targetX - owner.x)
+        };
+        owner.stunUntil = Math.max(owner.stunUntil || 0, now + windupMs);
+        spawnFloatingText(owner.x, owner.y - 42, hyper ? 'TOTAL ORBIT GATHERING...' : 'ORBITAL CHARGE...', hyper ? '#dc72ff' : '#8b7dff');
+        for (let p = 0; p < 8; p++) {
+            explosions.push({
+                x: owner.x + (Math.random() - 0.5) * 24,
+                y: owner.y + (Math.random() - 0.5) * 24,
+                radius: hyper ? 28 : 20,
+                life: 0,
+                maxLife: 0.35,
+                color: hyper ? '#dc72ff' : '#8b7dff',
+                isParticle: true
+            });
+        }
+    }
+
+    function spawnOrboSuperProjectiles(owner, hyper, targetX, targetY) {
+        if (!owner || owner.hp <= 0) return;
         const baseAngle = Math.atan2(targetY - owner.y, targetX - owner.x);
-        const angles = hyper ? [-0.17, 0, 0.17] : [0];
+        const angles = hyper ? [-0.38, 0, 0.38] : [0];
         const speed = 980;
         for (const offset of angles) {
             const angle = baseAngle + offset;
             const edgeDistance = getRayDistanceToMapEdge(owner.x, owner.y, angle, 28);
             bullets.push({
-                ownerBrawler:'orbo', isOrboSuper:true, orboReturns:!!hyper, orboReturning:false,
-                x:owner.x + Math.cos(angle)*(owner.radius+36), y:owner.y + Math.sin(angle)*(owner.radius+36),
-                vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, life:0, maxLife:edgeDistance/speed,
-                damage:owner.id===player.id?2100:1500, pierce:true, pierceWalls:true, ownerId:owner.id,
-                hitIds:{}, hitboxMod:11.44, super:true, hyperVisual:!!hyper
+                ownerBrawler: 'orbo',
+                isOrboSuper: true,
+                orboReturns: !!hyper,
+                orboReturning: false,
+                x: owner.x + Math.cos(angle) * (owner.radius + 45),
+                y: owner.y + Math.sin(angle) * (owner.radius + 45),
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 0,
+                maxLife: edgeDistance / speed,
+                damage: owner.id === player.id ? 2100 : 1500,
+                pierce: true,
+                pierceWalls: true,
+                ownerId: owner.id,
+                hitIds: {},
+                hitboxMod: 14.87,
+                super: true,
+                hyperVisual: !!hyper
             });
         }
-        spawnFloatingText(owner.x, owner.y-42, hyper?'TOTAL ORBIT!':'ORBITAL HORIZON!', hyper?'#dc72ff':'#8b7dff');
+        spawnFloatingText(owner.x, owner.y - 42, hyper ? 'TOTAL ORBIT!' : 'ORBITAL HORIZON!', hyper ? '#dc72ff' : '#8b7dff');
+        for (let p = 0; p < 12; p++) {
+            explosions.push({
+                x: owner.x + Math.cos(baseAngle) * (owner.radius + 35) + (Math.random() - 0.5) * 28,
+                y: owner.y + Math.sin(baseAngle) * (owner.radius + 35) + (Math.random() - 0.5) * 28,
+                radius: hyper ? 36 : 28,
+                life: 0,
+                maxLife: 0.3,
+                color: hyper ? '#f4c9ff' : '#d8d5ff',
+                isParticle: true
+            });
+        }
+    }
+
+    function updateOrboStates(dt) {
+        const now = performance.now();
+        for (const owner of [player, ...bots]) {
+            const windup = owner?.orboSuperWindup;
+            if (!windup) continue;
+            if (owner.hp <= 0) {
+                owner.orboSuperWindup = null;
+                continue;
+            }
+            if (now < windup.until) {
+                if (Math.random() < 0.45) {
+                    const sparkAngle = Math.random() * Math.PI * 2;
+                    const dist = 30 + Math.random() * 40;
+                    explosions.push({
+                        x: owner.x + Math.cos(sparkAngle) * dist,
+                        y: owner.y + Math.sin(sparkAngle) * dist,
+                        radius: windup.hyper ? 14 : 10,
+                        life: 0,
+                        maxLife: 0.22,
+                        color: windup.hyper ? '#e9b1ff' : '#a9a0ff',
+                        isParticle: true
+                    });
+                }
+                continue;
+            }
+            owner.orboSuperWindup = null;
+            spawnOrboSuperProjectiles(owner, windup.hyper, windup.targetX, windup.targetY);
+        }
     }
 
     function updateSnapperWaves(dt) {
@@ -38688,6 +38769,7 @@ let heistFeverActive = false;
     updateAngelDemonStates(dt);
       updateWeeFeeSystems(dt);
     updatePredatorStates();
+    updateOrboStates(dt);
     updateSnapperWaves(dt);
 
     if (isSlopSushiMode) {
@@ -48611,7 +48693,7 @@ let heistFeverActive = false;
           const hyperMain=getPlayerHyperMainActive('orbo'),count=hyperMain?6:4,range=790*(hyperMain?2.7:1.35),amplitude=(gadgetArmed&&selectedGadget==='g1')?72:54;
           ctx.save();ctx.lineWidth=2.5;ctx.lineCap='round';
           if (aimingSuper) {
-              const superAngles=isHypercharged?[-.17,0,.17]:[0];
+              const superAngles=isHypercharged?[-0.38,0,0.38]:[0];
               for(const offset of superAngles){const a=ang+offset,d=getRayDistanceToMapEdge(player.x,player.y,a,28);ctx.strokeStyle=isHypercharged?'rgba(220,114,255,.82)':'rgba(139,125,255,.82)';ctx.lineWidth=offset===0?10:6;ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(player.x+Math.cos(a)*d,player.y+Math.sin(a)*d);ctx.stroke();}
           } else {
               const px=-Math.sin(ang),py=Math.cos(ang);
@@ -51578,6 +51660,63 @@ let heistFeverActive = false;
             const pulse=1+Math.sin(performance.now()/95)*.08;ctx.save();ctx.strokeStyle=entity.warriorStandHyper?'#df75ff':'#ffc857';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=18;ctx.lineWidth=4;ctx.beginPath();ctx.arc(entity.x,entity.y,(entity.radius+10)*pulse,0,Math.PI*2);ctx.stroke();
             const pct=Math.max(0,Math.min(1,(entity.warriorStandUntil-performance.now())/3000));ctx.fillStyle='rgba(4,10,18,.75)';ctx.beginPath();ctx.roundRect(entity.x-25,entity.y+entity.radius+7,50,6,3);ctx.fill();ctx.fillStyle=entity.warriorStandHyper?'#df75ff':'#ffc857';ctx.beginPath();ctx.roundRect(entity.x-24,entity.y+entity.radius+8,48*pct,4,2);ctx.fill();ctx.restore();
         }
+        if (entity && entity.hp > 0 && entity.orboSuperWindup) {
+            const windup = entity.orboSuperWindup;
+            const elapsed = performance.now() - windup.startAt;
+            const dur = Math.max(1, windup.until - windup.startAt);
+            const progress = clamp(elapsed / dur, 0, 1);
+            const isHyper = !!windup.hyper;
+            const baseColor = isHyper ? '#dc72ff' : '#8b7dff';
+            const accentColor = isHyper ? '#ff9eff' : '#c8c2ff';
+
+            ctx.save();
+            const ringCount = 3;
+            for (let r = 0; r < ringCount; r++) {
+                const ringProgress = (progress + r / ringCount) % 1;
+                const currentR = (entity.radius + 60) * (1 - ringProgress * 0.75);
+                const spinAngle = performance.now() * 0.006 * (r % 2 === 0 ? 1 : -1) + (r * Math.PI / 1.5);
+                ctx.strokeStyle = r === 0 ? accentColor : baseColor;
+                ctx.shadowColor = baseColor;
+                ctx.shadowBlur = 20 + 15 * progress;
+                ctx.lineWidth = 2.5 + 2.5 * (1 - ringProgress);
+                ctx.beginPath();
+                ctx.ellipse(entity.x, entity.y, currentR, currentR * 0.55, spinAngle, 0, Math.PI * 2);
+                ctx.stroke();
+
+                const noduleX = entity.x + Math.cos(spinAngle) * currentR;
+                const noduleY = entity.y + Math.sin(spinAngle) * (currentR * 0.55);
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(noduleX, noduleY, 3.5 + 2 * progress, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const corePulse = 1 + Math.sin(performance.now() * 0.03) * 0.25;
+            const coreRadius = (16 + progress * 24) * corePulse;
+            const grad = ctx.createRadialGradient(entity.x, entity.y, 0, entity.x, entity.y, coreRadius);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.4, accentColor);
+            grad.addColorStop(0.85, baseColor);
+            grad.addColorStop(1, 'rgba(23,17,63,0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(entity.x, entity.y, coreRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            const aimAngle = windup.angle ?? Math.atan2(windup.targetY - entity.y, windup.targetX - entity.x);
+            const coneAngles = isHyper ? [-0.38, 0, 0.38] : [0];
+            for (const off of coneAngles) {
+                const rayA = aimAngle + off;
+                const beamLen = 90 + progress * 140;
+                ctx.strokeStyle = isHyper ? 'rgba(235,140,255,' + (0.4 + 0.6 * progress) + ')' : 'rgba(160,150,255,' + (0.4 + 0.6 * progress) + ')';
+                ctx.lineWidth = (off === 0 ? 5 : 3) * (0.8 + 0.5 * progress);
+                ctx.beginPath();
+                ctx.moveTo(entity.x, entity.y);
+                ctx.lineTo(entity.x + Math.cos(rayA) * beamLen, entity.y + Math.sin(rayA) * beamLen);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
         if(entity?.predatorLatch){
             const prey=entity.predatorLatch.targetId===player.id?player:bots.find(e=>e.id===entity.predatorLatch.targetId);
             if(prey&&prey.hp>0){const pulse=1+Math.sin(performance.now()/65)*.12;ctx.save();ctx.strokeStyle=entity.predatorLatch.hyper?'#e67aff':'#c9f052';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=18;ctx.lineWidth=5;ctx.beginPath();ctx.arc(prey.x,prey.y,(prey.radius+13)*pulse,-.8,.8);ctx.arc(prey.x,prey.y,(prey.radius+13)*pulse,Math.PI-.8,Math.PI+.8);ctx.stroke();ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(prey.x-30,prey.y-30);ctx.lineTo(prey.x+30,prey.y+30);ctx.moveTo(prey.x+30,prey.y-30);ctx.lineTo(prey.x-30,prey.y+30);ctx.stroke();ctx.restore();}
@@ -51930,11 +52069,66 @@ let heistFeverActive = false;
           const angle=Math.atan2(b.vy,b.vx),hyper=!!b.hyperVisual;
           ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);
           if(b.isOrboSuper){
-              const radius=hyper?70:64;ctx.shadowColor=hyper?'#dc72ff':'#8b7dff';ctx.shadowBlur=hyper?45:36;
-              const gradient=ctx.createRadialGradient(-14,-16,6,0,0,radius);gradient.addColorStop(0,'#ffffff');gradient.addColorStop(.25,hyper?'#e9b1ff':'#c8c2ff');gradient.addColorStop(.68,hyper?'#9b45dc':'#6657d9');gradient.addColorStop(1,'#17113f');
-              ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();ctx.strokeStyle=hyper?'#f4c9ff':'#d8d5ff';ctx.lineWidth=hyper?5:4;ctx.stroke();
-              ctx.globalAlpha=.65;ctx.strokeStyle=hyper?'#d86eff':'#9a8cff';ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(-radius-12,0);ctx.lineTo(-radius-90,0);ctx.stroke();
-              if(b.orboReturning){ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.fillText('RETURN',-24,-radius-12);}
+              const lengthRadius = hyper ? 110 : 96;
+              const widthRadius = hyper ? 44 : 38;
+              ctx.shadowColor = hyper ? '#dc72ff' : '#8b7dff';
+              ctx.shadowBlur = hyper ? 48 : 38;
+
+              ctx.fillStyle = hyper ? 'rgba(220,114,255,0.18)' : 'rgba(139,125,255,0.18)';
+              ctx.beginPath();
+              ctx.ellipse(0, 0, lengthRadius + 14, widthRadius + 10, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              const gradient = ctx.createRadialGradient(-18, 0, 6, 0, 0, lengthRadius);
+              gradient.addColorStop(0, '#ffffff');
+              gradient.addColorStop(0.22, hyper ? '#e9b1ff' : '#c8c2ff');
+              gradient.addColorStop(0.65, hyper ? '#9b45dc' : '#6657d9');
+              gradient.addColorStop(1, '#17113f');
+              ctx.fillStyle = gradient;
+              ctx.beginPath();
+              ctx.ellipse(0, 0, lengthRadius, widthRadius, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.strokeStyle = hyper ? '#f4c9ff' : '#d8d5ff';
+              ctx.lineWidth = hyper ? 5 : 4;
+              ctx.stroke();
+
+              ctx.fillStyle = '#ffffff';
+              ctx.globalAlpha = 0.85;
+              ctx.beginPath();
+              ctx.ellipse(lengthRadius * 0.18, 0, lengthRadius * 0.42, widthRadius * 0.45, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              const spin = performance.now() * 0.005;
+              ctx.strokeStyle = hyper ? '#ffffff' : '#e8e5ff';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.ellipse(0, 0, lengthRadius * 0.72, widthRadius * 0.32, spin, 0, Math.PI * 2);
+              ctx.stroke();
+
+              ctx.globalAlpha = 0.75;
+              ctx.strokeStyle = hyper ? '#d86eff' : '#9a8cff';
+              ctx.lineWidth = hyper ? 18 : 14;
+              ctx.beginPath();
+              ctx.moveTo(-lengthRadius * 0.5, 0);
+              ctx.lineTo(-lengthRadius - 110, 0);
+              ctx.stroke();
+
+              ctx.globalAlpha = 0.5;
+              ctx.lineWidth = hyper ? 6 : 4.5;
+              ctx.beginPath();
+              ctx.moveTo(-lengthRadius * 0.3, -widthRadius * 0.65);
+              ctx.lineTo(-lengthRadius - 75, -widthRadius * 0.9);
+              ctx.moveTo(-lengthRadius * 0.3, widthRadius * 0.65);
+              ctx.lineTo(-lengthRadius - 75, widthRadius * 0.9);
+              ctx.stroke();
+
+              if(b.orboReturning){
+                  ctx.globalAlpha = 1;
+                  ctx.fillStyle = '#ffffff';
+                  ctx.font = 'bold 15px sans-serif';
+                  ctx.fillText('RETURN', -30, -widthRadius - 14);
+              }
           }else{
               const radius=b.orboDense?13:9.1;ctx.shadowColor=hyper?'#d96cff':'#8b7dff';ctx.shadowBlur=hyper?22:16;ctx.fillStyle=hyper?'#dca4ff':'#a9a0ff';
               ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f5f1ff';ctx.lineWidth=2.5;ctx.stroke();

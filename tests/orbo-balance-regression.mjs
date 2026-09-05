@@ -13,11 +13,28 @@ test('Orbo main attack fires with 575 damage and +30% hitbox size (1.56 / 2.34)'
   assert.match(gameCode, /hitboxMod:dense\?2\.34:1\.56/);
 });
 
-test('Orbo Super and Hypercharge have +120% hitbox size (11.44)', () => {
-  assert.match(gameCode, /hitboxMod:11\.44/);
+test('Orbo Super features animated charging windup state and update loop', () => {
+  assert.match(gameCode, /owner\.orboSuperWindup\s*=\s*\{/);
+  assert.match(gameCode, /function updateOrboStates\(/);
+  assert.match(gameCode, /updateOrboStates\(dt\)/);
 });
 
-test('Orbo rendering scales main attack to 9.1/13 and Super/HC to 64/70 radius', () => {
-  assert.match(gameCode, /radius=b\.orboDense\?13:9/);
-  assert.match(gameCode, /radius=hyper\?70:64/);
+test('Orbo Super has +30% hitbox size scaling (hitboxMod 14.87)', () => {
+  assert.match(gameCode, /hitboxMod:\s*14\.87/);
+});
+
+test('Orbo Hypercharge Super has wider separated cone spread ([-0.38, 0, 0.38])', () => {
+  assert.match(gameCode, /angles\s*=\s*hyper\s*\?\s*\[-0\.38,\s*0,\s*0\.38\]\s*:\s*\[0\]/);
+  assert.match(gameCode, /const superAngles=isHypercharged\?\[-0\.38,0,0\.38\]:\[0\]/);
+});
+
+test('Orbo Super rendering draws elongated ellipse (longer length 96/110 vs narrower width 38/44)', () => {
+  assert.match(gameCode, /const lengthRadius\s*=\s*hyper\s*\?\s*110\s*:\s*96/);
+  assert.match(gameCode, /const widthRadius\s*=\s*hyper\s*\?\s*44\s*:\s*38/);
+  assert.match(gameCode, /ctx\.ellipse\(0,\s*0,\s*lengthRadius,\s*widthRadius,\s*0,\s*0,\s*Math\.PI\s*\*\s*2\)/);
+});
+
+test('Orbo Super windup draws cosmic orbital collapsing rings and glowing core', () => {
+  assert.match(gameCode, /entity\.orboSuperWindup/);
+  assert.match(gameCode, /ctx\.ellipse\(entity\.x,\s*entity\.y,\s*currentR,\s*currentR\s*\*\s*0\.55,\s*spinAngle,\s*0,\s*Math\.PI\s*\*\s*2\)/);
 });
