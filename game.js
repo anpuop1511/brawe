@@ -323,7 +323,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
         if (brawlerId === 'orbo') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(6500*scale), dmg:Math.round(460*scale), speed:255 };
+            return { hp:Math.round(6500*scale), dmg:Math.round(575*scale), speed:255 };
         }
         if (brawlerId === 'predator') {
             const scale = 0.55 + (level - 1) * 0.045;
@@ -335,7 +335,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
         if (brawlerId === 'ramage') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(8000*scale), dmg:Math.round(260*scale), speed:300 };
+            return { hp:Math.round(8000*scale), dmg:Math.round(320*scale), speed:300 };
         }
         if (brawlerId === 'angel' || brawlerId === 'demon' || brawlerId === 'warrior' || brawlerId === 'relay' || brawlerId === 'upiedown' || brawlerId === 'chickpig' || brawlerId === 'jetpack' || brawlerId === 'snapper') {
             const scale = 0.55 + (level - 1) * 0.045;
@@ -3762,6 +3762,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     function renderUniversalSkinProjectile(b, skin) {
         if (!b || !skin) return false;
+        // Fire, ice and Spice have dedicated silhouettes below; a catalogue
+        // fallback must not turn these into generic skin-coloured bullets.
+        if (b.isFightnFireShot || b.isFightnFireShard) return false;
         const effect = b.super ? skin.superEffect : skin.attackEffect;
         if (!effect) return false;
 
@@ -5784,7 +5787,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       'peter_pickle': { name:'Peter Pickle', role:'Controller', desc:'A streak-based pickle thrower who fills the battlefield with living pickles.', color:'#79d66f', attack:'Pickle Pitch', attackDesc:'Fire a 1280-damage pickle. Consecutive hits grow its size by 30%, up to 420%; misses remove 2 streaks.', super:"Petah's Pickles", superDesc:'Throw 3 jars. Each jar spawns 4 living pickles, then disappears.', hyper:'Pickle Overflow: main attacks fire at maximum size. Super throws 6 double-HP jars.', g1:'Brine Boost (Next main attack gains one extra size stage)', g2:'Pocket Jar (Place a 1518 HP jar that releases 2 pickles)', sp1:'Perfect Pickle (Maximum-size attacks deal 12% more damage)', sp2:'Preserved Jars (Jars spawn a fifth pickle, with a slower 1.3s interval)' },
       'unstable': { name:'Unstable', role:'Controller', desc:'A genome summoner whose decaying containers release walking DNA.', color:'#52ddb3', attack:'Containment Failure', attackDesc:'Throw an 850 HP container. It loses a fixed 150 HP once per second and releases 3 walking DNA when destroyed. Maximum 3 main containers.', super:'Going Unstable', superDesc:'Spin and throw 6 containers that automatically open after 1.2 seconds. Their DNA has 1500 HP.', hyper:'Genome Overload: main attack throws 2 containers. Super throws 8 containers whose DNA has 1800 HP; DNA effects are doubled.', g1:'Forced Mutation (Destroy your oldest container and release its DNA immediately)', g2:'Loose Sample (Spawn walking DNA beside Unstable; owner pickup grants 8% max HP)', sp1:'Reinforced Containment (Container HP 850 > 1200)', sp2:'Hostile Genome (DNA deals 20% more damage to enemies)' },
       'homer': { name:'Homer', role:'Marksman', desc:'A learning sniper whose shots become better at tracking targets after every Super.', color:'#66d9ff', attack:'Learning Shot', attackDesc:'Fire a long-range 1800-damage sniper shot. Its homing starts at 10% and improves after using Super, up to 70%.', super:'Targeting Pair', superDesc:'Fire 2 fully homing projectiles and permanently improve main-attack homing by 8%.', hyper:'Perfect Lock: main attacks have at least 95% homing and Super fires 4 fully homing projectiles.', g1:'Perfect Read (Next main attack has 100% homing)', g2:'Live Calibration (Gain 20% homing for 6 seconds)', sp1:'Advanced Learning (Super improves homing by 12% instead of 8%; highly trained shots deal 12% more damage)', sp2:'Persistent Memory (Retain more targeting knowledge after being defeated)' },
-      'orbo': { name:'Orbo', role:'Marksman', desc:'A cosmic marksman who braids multiple orbs through one another across extreme range.', color:'#8b7dff', attack:'Crisscross Orbit', attackDesc:'Fire 4 weaving 520-damage orbs that crisscross four times over a very long path.', super:'Orbital Horizon', superDesc:'Launch a massive piercing orb through walls to the edge of the map.', hyper:'Total Orbit: main attack fires 6 orbs with double range. Super fires 3 massive orbs and each returns.', g1:'Dense Orbit (Next volley is wider, larger, and piercing)', g2:'Orbital Skip (Blink 240 units toward your aim and gain a 900 shield)', sp1:'Orb Resonance (Repeated hits from one volley deal 18% more damage)', sp2:'Gravity Horizon (Super slows enemies for 1.2 seconds)' },
+      'orbo': { name:'Orbo', role:'Marksman', desc:'A cosmic marksman who braids multiple orbs through one another across extreme range.', color:'#8b7dff', attack:'Crisscross Orbit', attackDesc:'Fire 4 weaving 575-damage orbs that crisscross four times over a very long path.', super:'Orbital Horizon', superDesc:'Launch a massive piercing orb through walls to the edge of the map.', hyper:'Total Orbit: main attack fires 6 orbs with double range. Super fires 3 massive orbs and each returns.', g1:'Dense Orbit (Next volley is wider, larger, and piercing)', g2:'Orbital Skip (Blink 240 units toward your aim and gain a 900 shield)', sp1:'Orb Resonance (Repeated hits from one volley deal 18% more damage)', sp2:'Gravity Horizon (Super slows enemies for 1.2 seconds)' },
       'predator': { name:'Predator', role:'Assassin', desc:'A close-range hunter who leaps through prey and pins a chosen target with repeated claw strikes.', color:'#a8d63f', attack:'Through the Prey', attackDesc:'Lock onto a nearby enemy and leap through them for 1850 damage. Without a target, leap a short distance.', super:'No Escape', superDesc:'Leap onto a target, stun them, and claw them 4 times while attached.', hyper:'Cross Hunt: main-attack impact also slashes sideways. Super slows its target after locking on.', g1:'Long Hunt (Next main attack has 35% more lock range)', g2:'Shed Skin (Cleanse movement control and recover 1000 HP)', sp1:'Crippling Pounce (Main attack slows its target for 1 second)', sp2:'Extra Claw (Super attacks 5 times instead of 4)' },
       'fuser': { name:'Fuser', role:'Damage Dealer', desc:'Outlit\'s evil twin fires a deliberate eight-round burst down two parallel firing lanes.', color:'#ff4d6d', attack:'Eight-Fuse Salvo', attackDesc:'Fires 8 bullets with 30% larger hitboxes in alternating parallel left and right lanes. There are no center shots and no cone spread.', super:'Wall-Fuser Barrage', superDesc:'Fires 8 piercing bullets that break through walls.', hyper:'Return to Sender: Super bullets return. Main attack unloads 50% faster with its two lanes clamped closer together, but its bullets never return.', g1:'Crossed Wires (Next attack swaps the left/right firing order and deals +20% damage)', g2:'Spare Magazine (Instantly reload 2 ammo)', sp1:'Live Fuse (Straight bullets explode at maximum range)', sp2:'Family Grudge (+12% damage to nearby enemies)' },
       'robber': { name:'Robber', role:'Skirmisher', desc:'A coin thief who snowballs every successful hit into a faster, larger stolen-coin barrage.', color:'#d9b44a', attack:'Stolen Fortune', attackDesc:'Starts with 1 row of coins. Every hit adds another row, up to 6; later rows travel faster.', super:'Grand Theft Ammo', superDesc:'Dash through an enemy and steal all of their ammo. Stealing 3 ammo expands Robber from 3 to as many as 6 ammo.', hyper:'Perfect Heist: Main attack always fires 8 rows. Super siphons 1 ammo per second for 3 seconds and can expand Robber to 7 ammo.', g1:'Smoke Bomb (Gain a 1600 shield after the next Super dash)', g2:'Counterfeit Stack (Instantly add 2 attack rows)', sp1:'Compound Interest (First hit adds 2 rows)', sp2:'Quick Hands (Stolen ammo reloads 25% faster)' },
@@ -5939,15 +5942,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 name: 'Ramage',
                 role: 'Tank',
                 color: '#c0392b',
-                desc: 'An armored battering-ram juggernaut with curling obsidian horns and heavy spiked gauntlets, ramping his attack damage up to 12.0x through close-quarters fist strikes.',
+                desc: 'An armored battering-ram juggernaut with curling obsidian horns and heavy spiked gauntlets, ramping his attack damage up to 10.0x through close-quarters fist strikes.',
                 attack: 'Battering Fist',
-                attackDesc: 'Fires a heavy close-range fist strike in an ultra-short 0.5-range cone for 260 base damage covering the attack area. Each consecutive landed hit increases his active damage multiplier by +0.5x (up to 12.0x max!). On defeat, loses 33% of current multiplier.',
+                attackDesc: 'Fires one heavy close-range fist for 320 base damage. Each consecutive landed hit increases his damage multiplier by +0.5x, up to 10.0x. On defeat, he loses 33% of his current multiplier.',
                 super: 'Boomerang Rampage',
-                superDesc: 'Dashes forward with heavy momentum, plowing through enemies and knocking them outward to the sides for 1400 damage, then rushes back to his starting point while firing a spread of side bullets for 600 damage each.',
-                hyper: 'Shadow Double Rampage: Main attack gains 2.5x range with an immediate 7.0x baseline damage boost. On the Super return, purple regular shots reach normal range, reverse, and cross fully to the other side; green lifesteal shots gain +80% range.',
+                superDesc: 'Dashes forward for 1400 damage and knocks enemies aside, then returns while firing 240-damage side bullets every 0.12s.',
+                hyper: 'Shadow Double Rampage: Main attack gains 2.5x range with an immediate 5.0x baseline. Shadows strike for 500 damage; their green shots gain +80% range and heal 300 HP each, up to 3000 HP per Super. Purple shots reverse and cross fully to the other side.',
                 g1: 'Adrenaline Rush (Instantly gains +3.0x to his damage multiplier ramp and restores 1500 HP)',
                 g2: 'Rebound Magnet (Next Super dash pulls and groups all enemies hit along the forward charge instead of knocking them aside)',
-                sp1: 'Ramp Retention (Loses only 15% damage multiplier on defeat instead of 33%. Reaching 12.0x multiplier grants +20% movement speed and 15% damage reduction)',
+                sp1: 'Ramp Retention (Loses only 15% damage multiplier on defeat instead of 33%. Reaching 10.0x multiplier grants +20% movement speed and 15% damage reduction)',
                 sp2: 'Knuckle Blast (When damage multiplier is 6.0x or higher, fist strikes explode on impact dealing 30% splash damage to nearby enemies)'
             },
             'upgradart': {
@@ -21371,8 +21374,8 @@ let heistFeverActive = false;
                 x:fromEntity.x + Math.cos(ang)*(fromEntity.radius+9) + perpX*offset,
                 y:fromEntity.y + Math.sin(ang)*(fromEntity.radius+9) + perpY*offset,
                 vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed, life:0, maxLife,
-                damage:isBot?330:460, pierce:!!dense, ownerId:fromEntity.id, hitIds:{},
-                hitboxMod:dense?1.8:1.2, hyperVisual:hyperMain, orboDense:!!dense
+                damage:isBot?412:575, pierce:!!dense, ownerId:fromEntity.id, hitIds:{},
+                hitboxMod:dense?2.34:1.56, hyperVisual:hyperMain, orboDense:!!dense
             });
         }
         if (dense) {
@@ -21868,13 +21871,12 @@ let heistFeverActive = false;
         ensureRamageState(fromEntity);
 
         // Main Attack: Heavy Battering Fist (1 giant heavy fist projectile matching full attack range)
-        // In Hypercharge: 2.5x range & 7.0x baseline damage multiplier!
-        const effectiveMultiplier = hyper ? Math.max(7.0, fromEntity.ramageMultiplier || 1.0) : (fromEntity.ramageMultiplier || 1.0);
+        // In Hypercharge: 2.5x range and a 5.0x minimum ramp.
+        const effectiveMultiplier = Math.min(RAMAGE_MAX_MULTIPLIER, hyper ? Math.max(RAMAGE_HYPER_BASE_MULTIPLIER, fromEntity.ramageMultiplier || 1.0) : (fromEntity.ramageMultiplier || 1.0));
         const fistRange = hyper ? 325 : 130;
         const fistSpeed = 880;
-        const baseDmg = 520;
         const levelScale = fromEntity.id === player.id ? getPlayerDamageScale() : 1.0;
-        const fistDamage = Math.round(baseDmg * effectiveMultiplier * levelScale);
+        const fistDamage = getRamagePunchDamage(fromEntity.ramageMultiplier, levelScale, hyper);
 
         // Fire 1 giant heavy fist projectile directly forward matching full attack range
         bullets.push({
@@ -23720,6 +23722,11 @@ let heistFeverActive = false;
               bullets.push({
                   ownerBrawler: 'fightnfire',
                   isFightnFireShard: true,
+                  skinId: projectile.skinId,
+                  skinEffect: projectile.skinEffect,
+                  skinColor: projectile.skinColor,
+                  skinTrailColor: projectile.skinTrailColor,
+                  skinGlow: projectile.skinGlow,
                   isFightnfireIceProj: isIceShard,
                   isFlashFreeze: isFlashFreezeBurst,
                   x: projectile.x,
@@ -24681,6 +24688,26 @@ let heistFeverActive = false;
         }
     }
 
+    const RAMAGE_BASE_DAMAGE = 320;
+    const RAMAGE_RAMP_PER_HIT = 0.5;
+    const RAMAGE_MAX_MULTIPLIER = 10;
+    const RAMAGE_HYPER_BASE_MULTIPLIER = 5;
+    const RAMAGE_RETURN_INTERVAL_MS = 120;
+    const RAMAGE_RETURN_DAMAGE = 240;
+    const RAMAGE_SHADOW_DAMAGE = 500;
+    const RAMAGE_LIFESTEAL_PER_HIT = 300;
+    const RAMAGE_LIFESTEAL_CAP = 3000;
+    function getRamagePunchDamage(multiplier=1, levelScale=1, hyper=false) {
+        const ramp = Math.min(RAMAGE_MAX_MULTIPLIER, Math.max(hyper ? RAMAGE_HYPER_BASE_MULTIPLIER : 1, Number(multiplier) || 1));
+        return Math.round(RAMAGE_BASE_DAMAGE * ramp * Math.max(0, Number(levelScale) || 0));
+    }
+    function getNextRamageMultiplier(multiplier=1) {
+        return Math.min(RAMAGE_MAX_MULTIPLIER, Math.round(((Number(multiplier) || 1) + RAMAGE_RAMP_PER_HIT) * 10) / 10);
+    }
+    function getRamageLifestealAmount(entity) {
+        const healed = Math.max(0, Number(entity?.ramageLifestealHealed) || 0);
+        return Math.min(RAMAGE_LIFESTEAL_PER_HIT, Math.max(0, RAMAGE_LIFESTEAL_CAP - healed));
+    }
     function ensureRamageState(entity) {
         if (!entity) return;
         if (typeof entity.ramageMultiplier !== 'number' || isNaN(entity.ramageMultiplier)) entity.ramageMultiplier = 1.0;
@@ -24701,12 +24728,13 @@ let heistFeverActive = false;
         if (!entity.ramageHitEnemiesThisDash || typeof entity.ramageHitEnemiesThisDash !== 'object') entity.ramageHitEnemiesThisDash = {};
         if (!Array.isArray(entity.ramagePulledTargetIds)) entity.ramagePulledTargetIds = [];
         if (!Array.isArray(entity.ramageShadowClones)) entity.ramageShadowClones = [];
+        if (!Number.isFinite(entity.ramageLifestealHealed)) entity.ramageLifestealHealed = 0;
     }
 
     function activateRamageAdrenaline(entity) {
         if (!entity || entity.hp <= 0) return false;
         ensureRamageState(entity);
-        entity.ramageMultiplier = Math.min(12, Math.round(((entity.ramageMultiplier || 1) + 3) * 10) / 10);
+        entity.ramageMultiplier = Math.min(10, Math.round(((entity.ramageMultiplier || 1) + 3) * 10) / 10);
         doHeal(entity, 1500);
         spawnFloatingText(entity.x, entity.y - 36, `ADRENALINE x${entity.ramageMultiplier.toFixed(1)}  +1500 HP`, '#f39c12');
         explosions.push({ x:entity.x, y:entity.y, radius:75, life:0, maxLife:.28, color:'rgba(243,156,18,.85)' });
@@ -24770,6 +24798,7 @@ let heistFeverActive = false;
         owner.ramageHitEnemiesThisDash = {};
         owner.ramagePulledTargetIds = [];
         owner.ramageLastSideShotAt = 0;
+        owner.ramageLifestealHealed = 0;
 
         // If Hypercharge: Spawn 2 Shadow Clones on left and right flanks
         if (hyper) {
@@ -24816,8 +24845,8 @@ let heistFeverActive = false;
             ensureRamageState(e);
 
             const hasSp1 = e.id === player.id ? (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') : (e.selectedStar === 'slow' || e.selectedStar === 'fast' || e.selectedStar === 'sp1');
-            // SP1: When multiplier reaches 12.0x, gain +20% move speed and 15% damage reduction shield
-            if (hasSp1 && (e.ramageMultiplier || 1.0) >= 12.0) {
+            // SP1: At the 10.0x cap, gain +20% speed and 15% damage reduction.
+            if (hasSp1 && (e.ramageMultiplier || 1.0) >= 10.0) {
                 e.speedUntil = Math.max(e.speedUntil || 0, now + 100);
             }
 
@@ -24896,7 +24925,7 @@ let heistFeverActive = false;
                                 if (Math.hypot(target.x - clone.x, target.y - clone.y) <= hitRadius + (target.radius || 16)) {
                                     if (!clone.hitIds[target.id]) {
                                         clone.hitIds[target.id] = true;
-                                        checkHit(target, { ownerBrawler: 'ramage', damage: 700, super: true, pierce: true, ownerId: e.id, hitIds: {} }, -1);
+                                        checkHit(target, { ownerBrawler: 'ramage', damage: RAMAGE_SHADOW_DAMAGE, super: true, pierce: true, ownerId: e.id, hitIds: {} }, -1);
                                     }
                                 }
                             }
@@ -24941,7 +24970,7 @@ let heistFeverActive = false;
                     }
 
                     // Continuous side-shooting throughout the ENTIRE back dash
-                    if (now - (e.ramageLastSideShotAt || 0) >= 60) {
+                    if (now - (e.ramageLastSideShotAt || 0) >= RAMAGE_RETURN_INTERVAL_MS) {
                         e.ramageLastSideShotAt = now;
                         const returnAng = e.ramageDashAngle + Math.PI;
                         const leftAng = returnAng - Math.PI / 2;
@@ -24963,7 +24992,7 @@ let heistFeverActive = false;
                                         vy: Math.sin(shootAng) * bulletSpeed,
                                         life: 0,
                                         maxLife: 0.32,
-                                        damage: 280,
+                                        damage: RAMAGE_RETURN_DAMAGE,
                                         pierce: false,
                                         ownerId: e.id,
                                         team: e.team,
@@ -24992,7 +25021,7 @@ let heistFeverActive = false;
                                         vy: Math.sin(shootAng) * bulletSpeed,
                                         life: 0,
                                         maxLife: regularRange / bulletSpeed,
-                                        damage: 280,
+                                        damage: RAMAGE_RETURN_DAMAGE,
                                         pierce: false,
                                         ownerId: e.id,
                                         team: e.team,
@@ -25567,10 +25596,10 @@ let heistFeverActive = false;
             const edgeDistance = getRayDistanceToMapEdge(owner.x, owner.y, angle, 28);
             bullets.push({
                 ownerBrawler:'orbo', isOrboSuper:true, orboReturns:!!hyper, orboReturning:false,
-                x:owner.x + Math.cos(angle)*(owner.radius+18), y:owner.y + Math.sin(angle)*(owner.radius+18),
+                x:owner.x + Math.cos(angle)*(owner.radius+36), y:owner.y + Math.sin(angle)*(owner.radius+36),
                 vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, life:0, maxLife:edgeDistance/speed,
                 damage:owner.id===player.id?2100:1500, pierce:true, pierceWalls:true, ownerId:owner.id,
-                hitIds:{}, hitboxMod:5.2, super:true, hyperVisual:!!hyper
+                hitIds:{}, hitboxMod:11.44, super:true, hyperVisual:!!hyper
             });
         }
         spawnFloatingText(owner.x, owner.y-42, hyper?'TOTAL ORBIT!':'ORBITAL HORIZON!', hyper?'#dc72ff':'#8b7dff');
@@ -36369,11 +36398,11 @@ let heistFeverActive = false;
             }
         }
 
-        // Ramage SP1 15% Damage Reduction at max multiplier (12.0x)
+        // Ramage SP1 15% Damage Reduction at the 10.0x cap.
         if (target && (target.brawler === 'ramage' || (target.id === player.id && selectedBrawler === 'ramage'))) {
             ensureRamageState(target);
             const hasSp1 = target.id === player.id ? (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') : (target.selectedStar === 'slow' || target.selectedStar === 'fast' || target.selectedStar === 'sp1');
-            if (hasSp1 && (target.ramageMultiplier || 1.0) >= 12.0) {
+            if (hasSp1 && (target.ramageMultiplier || 1.0) >= 10.0) {
                 b.damage = Math.round((b.damage || 0) * 0.85);
             }
         }
@@ -36625,13 +36654,13 @@ let heistFeverActive = false;
     if (b.isRamageFist && owner) {
         ensureRamageState(owner);
         const oldMult = owner.ramageMultiplier || 1.0;
-        const newMult = Math.min(12.0, Math.round((oldMult + 1.0) * 10) / 10);
+        const newMult = getNextRamageMultiplier(oldMult);
         owner.ramageMultiplier = newMult;
         spawnFloatingText(owner.x, owner.y - 40, `🔥 x${newMult.toFixed(1)} RAMP!`, '#e74c3c');
 
         // SP2: Knuckle Blast (Explosive splash dealing 30% damage when multiplier >= 6.0x)
         if (b.hasSp2 && newMult >= 6.0) {
-            const splashDmg = Math.round((b.damage || 520) * 0.30);
+            const splashDmg = Math.round((b.damage || 320) * 0.30);
             const splashRadius = 95;
             explosions.push({
                 x: target.x,
@@ -36654,10 +36683,14 @@ let heistFeverActive = false;
         }
     }
     if (b.isRamageSideBullet && owner && b.isRamageLifesteal) {
-        // Lifesteal 3% max HP
-        const healAmt = Math.round((owner.maxHp || 8000) * 0.03);
-        doHeal(owner, healAmt);
-        spawnFloatingText(owner.x, owner.y - 28, `+${healAmt} LIFESTEAL`, '#2ed573');
+        // Flat healing keeps high-HP modes from multiplying lifesteal. The cap
+        // is shared by every green projectile fired during this Super.
+        const healAmt = getRamageLifestealAmount(owner);
+        if (healAmt > 0) {
+            owner.ramageLifestealHealed = (owner.ramageLifestealHealed || 0) + healAmt;
+            doHeal(owner, healAmt);
+            spawnFloatingText(owner.x, owner.y - 28, `+${healAmt} LIFESTEAL`, '#2ed573');
+        }
     }
     if (b.isUpgradartDart && owner) {
         if (b.upgradartPoison) {
@@ -40586,7 +40619,7 @@ let heistFeverActive = false;
     if(selectedBrawler==='anti_royal'){ensureAntiRoyalState(player);if(now>=(player.antiRoyalBlockReadyAt||0)&&now>=(player.antiRoyalCounterfeitUntil||0))activeSpeed*=.88;}
     if (selectedBrawler === 'sir_cheeseburger' && (selectedStar === 'long' || selectedStar === 'sp2') && (player.sirCheeseDmgBonus || 0) >= 0.20) activeSpeed *= 1.20;
     if (selectedBrawler === 'cursed' && selectedStar === 'long' && now < (player.cursedStormUntil || 0)) activeSpeed *= 1.15;
-    if (selectedBrawler === 'ramage' && (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') && (player.ramageMultiplier || 1) >= 12) activeSpeed *= 1.20;
+    if (selectedBrawler === 'ramage' && (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') && (player.ramageMultiplier || 1) >= 10) activeSpeed *= 1.20;
     if(now<(player.packetDragonUntil||0))activeSpeed*=1.12;
     if(now<(player.packetSpicySpeedUntil||0))activeSpeed*=1.08;
     if (isArenaForgeMode) activeSpeed *= player.arenaForgeBlueprintSpeedMult || 1;
@@ -41284,6 +41317,11 @@ let heistFeverActive = false;
                         bullets.push({
                             ownerBrawler: 'fightnfire',
                             isFightnFireShard: true,
+                            skinId: b.skinId,
+                            skinEffect: b.skinEffect,
+                            skinColor: b.skinColor,
+                            skinTrailColor: b.skinTrailColor,
+                            skinGlow: b.skinGlow,
                             x: b.x,
                             y: b.y,
                             vx: Math.cos(returnAng) * 700 * 0.6,
@@ -44181,7 +44219,7 @@ let heistFeverActive = false;
           if(t.brawler==='anti_royal'){ensureAntiRoyalState(t);if(nowTarget>=(t.antiRoyalBlockReadyAt||0)&&nowTarget>=(t.antiRoyalCounterfeitUntil||0))activeBotSpeed*=.88;}
           if (t.brawler === 'sir_cheeseburger' && (t.selectedStar === 'long' || t.selectedStar === 'sp2') && (t.sirCheeseDmgBonus || 0) >= 0.20) activeBotSpeed *= 1.20;
           if (t.brawler === 'cursed' && t.selectedStar === 'long' && nowTarget < (t.cursedStormUntil || 0)) activeBotSpeed *= 1.15;
-          if (t.brawler === 'ramage' && (t.selectedStar === 'slow' || t.selectedStar === 'fast' || t.selectedStar === 'sp1') && (t.ramageMultiplier || 1) >= 12) activeBotSpeed *= 1.20;
+          if (t.brawler === 'ramage' && (t.selectedStar === 'slow' || t.selectedStar === 'fast' || t.selectedStar === 'sp1') && (t.ramageMultiplier || 1) >= 10) activeBotSpeed *= 1.20;
           if (isArenaForgeMode) activeBotSpeed *= t.arenaForgeBlueprintSpeedMult || 1;
           if (nowTarget < (t.relaySignalSpeedUntil || 0)) activeBotSpeed *= 1.10;
           if (isSlopSushiMode) {
@@ -45773,15 +45811,15 @@ let heistFeverActive = false;
           superStr = isHyper ? 'Carpet Bomb (HC)' : 'Aerial Carpet Bomb';
       } else if (brawler === 'ramage') {
           const currentMult = entity?.ramageMultiplier || 1.0;
-          main = 260;
+          main = 320;
           mainLabel = 'Battering Fists';
           mainIcon = '🥊';
           superVal = isHyper ? 1400 : 1400;
           superLabel = 'Violent Rebound';
           superIcon = '⚡';
           superColor = isHyper ? '#9b59b6' : '#e74c3c';
-          mainStr = `${Math.round(260 * currentMult * mult * levelScale)} × 2 (x${currentMult.toFixed(1)})`;
-          superStr = isHyper ? '2,800 Rebound (Shadows + Lifesteal)' : '1,400 + 600 Rebound Dash';
+          mainStr = `${Math.round(320 * currentMult * mult * levelScale)} (x${currentMult.toFixed(1)})`;
+          superStr = isHyper ? '1,400 Dash + 500 Shadows + 300 Lifesteal Hits' : '1,400 Dash + 240 Side Shots';
       } else if (brawler === 'predator') {
           main = 1850; mainLabel = 'Pounce'; mainIcon = '🐆';
           superLabel = 'Claw Pin'; superIcon = '🐾'; superColor = isHyper ? '#dc72ff' : '#a8d63f';
@@ -51892,15 +51930,15 @@ let heistFeverActive = false;
           const angle=Math.atan2(b.vy,b.vx),hyper=!!b.hyperVisual;
           ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);
           if(b.isOrboSuper){
-              const radius=hyper?32:29;ctx.shadowColor=hyper?'#dc72ff':'#8b7dff';ctx.shadowBlur=26;
-              const gradient=ctx.createRadialGradient(-6,-7,3,0,0,radius);gradient.addColorStop(0,'#ffffff');gradient.addColorStop(.25,hyper?'#e9b1ff':'#c8c2ff');gradient.addColorStop(.68,hyper?'#9b45dc':'#6657d9');gradient.addColorStop(1,'#17113f');
-              ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();ctx.strokeStyle=hyper?'#f4c9ff':'#d8d5ff';ctx.lineWidth=3;ctx.stroke();
-              ctx.globalAlpha=.65;ctx.strokeStyle=hyper?'#d86eff':'#9a8cff';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(-radius-8,0);ctx.lineTo(-radius-54,0);ctx.stroke();
-              if(b.orboReturning){ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.fillText('RETURN',-18,-radius-8);}
+              const radius=hyper?70:64;ctx.shadowColor=hyper?'#dc72ff':'#8b7dff';ctx.shadowBlur=hyper?45:36;
+              const gradient=ctx.createRadialGradient(-14,-16,6,0,0,radius);gradient.addColorStop(0,'#ffffff');gradient.addColorStop(.25,hyper?'#e9b1ff':'#c8c2ff');gradient.addColorStop(.68,hyper?'#9b45dc':'#6657d9');gradient.addColorStop(1,'#17113f');
+              ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();ctx.strokeStyle=hyper?'#f4c9ff':'#d8d5ff';ctx.lineWidth=hyper?5:4;ctx.stroke();
+              ctx.globalAlpha=.65;ctx.strokeStyle=hyper?'#d86eff':'#9a8cff';ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(-radius-12,0);ctx.lineTo(-radius-90,0);ctx.stroke();
+              if(b.orboReturning){ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.fillText('RETURN',-24,-radius-12);}
           }else{
-              const radius=b.orboDense?10:7;ctx.shadowColor=hyper?'#d96cff':'#8b7dff';ctx.shadowBlur=hyper?18:12;ctx.fillStyle=hyper?'#dca4ff':'#a9a0ff';
-              ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f5f1ff';ctx.lineWidth=2;ctx.stroke();
-              ctx.globalAlpha=.65;ctx.strokeStyle=hyper?'#cb65ff':'#7e70e8';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-radius,0);ctx.lineTo(-radius-18,0);ctx.stroke();
+              const radius=b.orboDense?13:9.1;ctx.shadowColor=hyper?'#d96cff':'#8b7dff';ctx.shadowBlur=hyper?22:16;ctx.fillStyle=hyper?'#dca4ff':'#a9a0ff';
+              ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f5f1ff';ctx.lineWidth=2.5;ctx.stroke();
+              ctx.globalAlpha=.65;ctx.strokeStyle=hyper?'#cb65ff':'#7e70e8';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-radius,0);ctx.lineTo(-radius-24,0);ctx.stroke();
           }
           ctx.restore();continue;
       }
