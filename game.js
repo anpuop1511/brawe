@@ -2234,10 +2234,42 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   window.addEventListener('keyup', e=> {
     const k = e.key.toLowerCase();
     keys[k] = false;
-    if (k === 'e') releaseSuper();
+    if (k === 'e') {
+        if (selectedBrawler === 'steamer' && aimingSuper) {
+            const holdMs = performance.now() - (superAimStartTime || 0);
+            if (holdMs < 280) {
+                const hasCharges = (typeof player.steamerSuperCharges === 'number') ? player.steamerSuperCharges > 0 : true;
+                if (hasCharges) {
+                    const wm = getMouseWorld();
+                    startSteamerRailroad(player, wm.x, wm.y, !!isHypercharged);
+                }
+            }
+            cancelSuperAim();
+            updateSuperButton();
+            return;
+        }
+        releaseSuper();
+    }
   });
   window.addEventListener('mousemove', e=> { mouse.screenX = e.clientX; mouse.screenY = e.clientY; });
-  window.addEventListener('mousedown', e=> { if (e.button === 2 && aimingSuper) { e.preventDefault(); cancelSuperAim(); return; } mouse.down = true; });
+  window.addEventListener('mousedown', e=> {
+      if (e.button === 2 && aimingSuper) {
+          e.preventDefault();
+          cancelSuperAim();
+          return;
+      }
+      if (e.button === 0 && aimingSuper && selectedBrawler === 'steamer') {
+          e.preventDefault();
+          const wm = getMouseWorld();
+          const hasCharges = (typeof player.steamerSuperCharges === 'number') ? player.steamerSuperCharges > 0 : true;
+          if (hasCharges) {
+              castSteamerPoleThrow(player, wm.x, wm.y, !!isHypercharged);
+              updateSuperButton();
+          }
+          return;
+      }
+      mouse.down = true;
+  });
   window.addEventListener('mouseup', e=> { mouse.down = false; if (e.button === 0 && aimingSuper && superAimCancelState.source === 'desktop') releaseSuper(); });
   window.addEventListener('contextmenu', e=> { if (aimingSuper) e.preventDefault(); });
 
@@ -29604,9 +29636,7 @@ let heistFeverActive = false;
         const charges = (typeof player.steamerSuperCharges === 'number') ? player.steamerSuperCharges : 5;
         const poleCount = steamerPoles.filter(p => p.ownerId === player.id).length;
         if (charges > 0) {
-            superBtn.textContent = (poleCount > 0)
-                ? `Power Move: Dash / Hold Pole (${charges}/5)`
-                : `Power Move: Ready (${charges}/5)`;
+            superBtn.textContent = `Tap E: Dash • Hold E+Click: Pole (${charges}/5)`;
             superBtn.disabled = false;
         } else {
             superBtn.textContent = `Power Move: ${Math.floor(player.steamerSubCharge || 0)}%`;
@@ -50743,7 +50773,7 @@ let heistFeverActive = false;
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 12px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(`${playerPoles.length} POLES PLACED`, landX, landY - 34);
+            ctx.fillText(`${playerPoles.length} POLES • CLICK TO PLACE • TAP E TO DASH`, landX, landY - 34);
             ctx.restore();
         } else if (selectedBrawler === 'hunter') {
             drawStandardAimCone(player.x, player.y, ang, 1000, 0.05, {

@@ -22,7 +22,7 @@ if (legacyCanvas) legacyCanvas.style.display = 'block';
 if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
-const RELEASE_TOKEN = '20260905-steamer-unlimitedpoles1';
+const RELEASE_TOKEN = '20260905-steamer-holdeclick1';
 
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {

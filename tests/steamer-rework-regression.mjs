@@ -9,14 +9,15 @@ test('Steamer starts match with 5 super charges initialized', () => {
   assert.match(gameCode, /if\s*\(typeof entity\.steamerSuperCharges !== 'number'\)\s*entity\.steamerSuperCharges\s*=\s*5/);
 });
 
-test('fireSuper preserves superCharge for Steamer to allow all 5 charges to be spent individually', () => {
-  assert.match(gameCode, /if\s*\(selectedBrawler !== 'steamer'\)\s*\{\s*superCharge = 0;/);
+test('Steamer controls allow quick tap E to dash and hold E + click to place pole', () => {
+  assert.match(gameCode, /if\s*\(k === 'e'\)[\s\S]*?if\s*\(selectedBrawler === 'steamer' && aimingSuper\)[\s\S]*?startSteamerRailroad/);
+  assert.match(gameCode, /if\s*\(e\.button === 0 && aimingSuper && selectedBrawler === 'steamer'\)[\s\S]*?castSteamerPoleThrow/);
 });
 
 test('Steamer super charge management handles 5 charges and sub-charges', () => {
   assert.match(gameCode, /function addSteamerSuperCharge\(/);
   assert.match(gameCode, /function consumeSteamerSuperCharge\(/);
-  assert.match(gameCode, /Power Move: (Dash \/ Hold Pole|Ready) \(\$\{charges\}\/5\)/);
+  assert.match(gameCode, /Tap E: Dash • Hold E\+Click: Pole \(\$\{charges\}\/5\)/);
 });
 
 test('Steamer can throw steam poles freely and poles persist without oldest removal', () => {
@@ -47,5 +48,5 @@ test('Steamer Hypercharge explodes poles on passage and vents boiling steam haza
 
 test('Steamer aim reticle renders throw trajectory, landing preview, and pole counter', () => {
   assert.match(gameCode, /const playerPoles\s*=\s*steamerPoles\.filter/);
-  assert.match(gameCode, /POLES PLACED/);
+  assert.match(gameCode, /CLICK TO PLACE • TAP E TO DASH/);
 });
