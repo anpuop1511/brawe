@@ -18291,16 +18291,6 @@ let heistFeverActive = false;
       const landX = clamp(owner.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
       const landY = clamp(owner.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
 
-      const ownerPoles = steamerPoles.filter(p => p.ownerId === owner.id);
-      if (ownerPoles.length >= 5) {
-          const oldest = ownerPoles[0];
-          const idx = steamerPoles.indexOf(oldest);
-          if (idx !== -1) {
-              steamerPoles.splice(idx, 1);
-              explosions.push({ x: oldest.x, y: oldest.y, radius: 45, life: 0, maxLife: 0.22, color: '#7fd3ff', isParticle: true });
-          }
-      }
-
       const poleObj = {
           id: nextId++,
           ownerId: owner.id,
@@ -18312,8 +18302,9 @@ let heistFeverActive = false;
       };
       steamerPoles.push(poleObj);
 
-      const remaining = (typeof owner.steamerSuperCharges === 'number') ? owner.steamerSuperCharges : 4;
-      spawnFloatingText(landX, landY - 36, isHyper ? 'HYPER STEAM POLE!' : `STEAM POLE PLACED! (${remaining} left)`, isHyper ? '#dc72ff' : '#7fd3ff');
+      const remaining = (typeof owner.steamerSuperCharges === 'number') ? owner.steamerSuperCharges : 0;
+      const totalPlaced = steamerPoles.filter(p => p.ownerId === owner.id).length;
+      spawnFloatingText(landX, landY - 36, isHyper ? 'HYPER STEAM POLE!' : `STEAM POLE #${totalPlaced}! (${remaining} left)`, isHyper ? '#dc72ff' : '#7fd3ff');
       explosions.push({
           x: landX,
           y: landY,
@@ -18335,36 +18326,40 @@ let heistFeverActive = false;
 
       const ownerPoles = steamerPoles.filter(p => p.ownerId === entity.id && !p.exploded);
       let poles = [];
+      let isLinearDash = false;
 
       if (ownerPoles.length >= 2) {
+          // Freeform multi-pole network: connect all placed poles in order!
           poles = ownerPoles.map(p => ({ x: p.x, y: p.y, poleRef: p }));
       } else if (ownerPoles.length === 1) {
+          // 1 pole: dash from current position to the placed pole and back
           poles = [
               { x: entity.x, y: entity.y, poleRef: null },
               { x: ownerPoles[0].x, y: ownerPoles[0].y, poleRef: ownerPoles[0] }
           ];
       } else {
-          const ang = Math.atan2((targetY || entity.y) - entity.y, (targetX || entity.x) - entity.x);
-          const poleRadius = 190 * (1 + towerEffect('steamerRailRadiusPct'));
-          for (let i = 0; i < 3; i++) {
-              const a = ang + (Math.PI * 2 * i) / 3;
-              const px = clamp(entity.x + Math.cos(a) * poleRadius, entity.radius, WORLD_W - entity.radius);
-              const py = clamp(entity.y + Math.sin(a) * poleRadius, entity.radius, WORLD_H - entity.radius);
-              const pObj = { id: nextId++, ownerId: entity.id, x: px, y: py, createdAt: now, isHyper: !!hyperActive, exploded: false };
-              steamerPoles.push(pObj);
-              poles.push({ x: px, y: py, poleRef: pObj });
-          }
+          // 0 poles: Direct FREE aimed linear dash forward (NO locked triangle!)
+          isLinearDash = true;
+          const ang = Math.atan2((targetY ?? entity.y) - entity.y, (targetX ?? entity.x) - entity.x);
+          const dashDist = 480;
+          const endX = clamp(entity.x + Math.cos(ang) * dashDist, entity.radius, WORLD_W - entity.radius);
+          const endY = clamp(entity.y + Math.sin(ang) * dashDist, entity.radius, WORLD_H - entity.radius);
+          poles = [
+              { x: entity.x, y: entity.y, poleRef: null },
+              { x: endX, y: endY, poleRef: null }
+          ];
       }
 
-      const baseLapMs = 2200;
+      const baseLapMs = isLinearDash ? 420 : 2200;
       const lapMs = hyperActive ? Math.round(baseLapMs / 1.40) : baseLapMs;
-      const laps = runaway ? 4 : (hyperActive ? 3 : (1 + Math.max(0, Math.round(towerEffect('steamerExtraRailLaps')))));
+      const laps = isLinearDash ? 1 : (runaway ? 4 : (hyperActive ? 3 : (1 + Math.max(0, Math.round(towerEffect('steamerExtraRailLaps'))))));
 
       entity.steamerRail = {
           startAt: now,
           lapMs,
           laps,
           poles,
+          isLinearDash,
           lastTrailAt: 0,
           lastSprayAt: 0,
           isHyper: !!hyperActive,
@@ -18379,7 +18374,7 @@ let heistFeverActive = false;
           entity.defenseMult = 0.7;
       }
 
-      spawnFloatingText(entity.x, entity.y - 42, hyperActive ? 'HYPER RAILROAD OVERDRIVE! 🚂💥' : 'STEAM DASH! 🚂💨', hyperActive ? '#dc72ff' : '#7fd3ff');
+      spawnFloatingText(entity.x, entity.y - 42, hyperActive ? 'HYPER RAILROAD OVERDRIVE! 🚂💥' : (isLinearDash ? 'STEAM RUSH! 💨' : 'STEAM DASH! 🚂💨'), hyperActive ? '#dc72ff' : '#7fd3ff');
   }
 
   function updateSteamerRail(entity, now) {
@@ -18398,16 +18393,67 @@ let heistFeverActive = false;
           return;
       }
 
-      const lapT = ((elapsed % rail.lapMs) / rail.lapMs) * poleCount;
-      const seg = Math.floor(lapT) % poleCount;
-      const segT = lapT - Math.floor(lapT);
-      const p0 = rail.poles[seg];
-      const p1 = rail.poles[(seg + 1) % poleCount];
-      entity.x = p0.x + (p1.x - p0.x) * segT;
-      entity.y = p0.y + (p1.y - p0.y) * segT;
-      const travelAng = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-      const towerEffect = key => isSlopSushiMode ? getEntitySlopEffectTotal(entity, key) : 0;
+      let travelAng = 0;
+      if (rail.isLinearDash) {
+          const p0 = rail.poles[0];
+          const p1 = rail.poles[1];
+          const progress = clamp(elapsed / rail.lapMs, 0, 1);
+          entity.x = p0.x + (p1.x - p0.x) * progress;
+          entity.y = p0.y + (p1.y - p0.y) * progress;
+          travelAng = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+          if (progress >= 1) {
+              entity.steamerRail = null;
+              return;
+          }
+      } else {
+          const lapT = ((elapsed % rail.lapMs) / rail.lapMs) * poleCount;
+          const seg = Math.floor(lapT) % poleCount;
+          const segT = lapT - Math.floor(lapT);
+          const p0 = rail.poles[seg];
+          const p1 = rail.poles[(seg + 1) % poleCount];
+          entity.x = p0.x + (p1.x - p0.x) * segT;
+          entity.y = p0.y + (p1.y - p0.y) * segT;
+          travelAng = Math.atan2(p1.y - p0.y, p1.x - p0.x);
 
+          if (seg !== rail.lastSegment) {
+              rail.lastSegment = seg;
+              const currentPole = rail.poles[seg];
+              const poleKey = currentPole.poleRef ? String(currentPole.poleRef.id) : `${Math.round(currentPole.x)}_${Math.round(currentPole.y)}`;
+
+              // Hypercharge pole explosion & steam vent
+              if (rail.isHyper && !rail.explodedPoles[poleKey]) {
+                  rail.explodedPoles[poleKey] = true;
+                  const expX = currentPole.x;
+                  const expY = currentPole.y;
+                  const expRadius = 160;
+                  const blastDmg = entity.id === player.id ? 1800 : 1350;
+
+                  AOEDamage(expX, expY, expRadius, blastDmg, entity.id, false);
+                  explosions.push({
+                      x: expX,
+                      y: expY,
+                      radius: expRadius,
+                      life: 0,
+                      maxLife: 0.35,
+                      color: 'rgba(235, 120, 255, 0.85)',
+                      legendary: true,
+                      fxKind: 'steamerOverpressure'
+                  });
+                  spawnFloatingText(expX, expY - 36, 'STEAM OVERPRESSURE! 💥', '#dc72ff');
+
+                  // Boiling steam hazard cloud around the exploded pole
+                  spawnCheeseField(expX, expY, 80, 4500, 1.0, entity.id, true, 480);
+
+                  // 8-directional scalding steam burst around the pole
+                  for (let a = 0; a < 8; a++) {
+                      const burstAng = (Math.PI * 2 * a) / 8;
+                      spawnSteamerSteamBurst(entity, burstAng, true, 0, true, 1.25, true);
+                  }
+              }
+          }
+      }
+
+      const towerEffect = key => isSlopSushiMode ? getEntitySlopEffectTotal(entity, key) : 0;
       const star = getSteamerStar(entity);
       const trailDur = 1800 + (star === 'long' ? 1500 : 0) + towerEffect('steamerTrailBonusMs');
       if (!rail.lastTrailAt || now - rail.lastTrailAt >= 70) {
@@ -18422,59 +18468,6 @@ let heistFeverActive = false;
           if (rail.isHyper || towerEffect('steamerCrossVents') > 0) {
               spawnSteamerSteamBurst(entity, travelAng + Math.PI / 4, rail.isHyper, 1, true, 0.75, true);
               spawnSteamerSteamBurst(entity, travelAng - Math.PI / 4, rail.isHyper, -1, true, 0.75, true);
-          }
-      }
-
-      if (seg !== rail.lastSegment) {
-          rail.lastSegment = seg;
-          const currentPole = rail.poles[seg];
-          const poleKey = currentPole.poleRef ? String(currentPole.poleRef.id) : `${Math.round(currentPole.x)}_${Math.round(currentPole.y)}`;
-
-          // Hypercharge pole explosion & steam vent
-          if (rail.isHyper && !rail.explodedPoles[poleKey]) {
-              rail.explodedPoles[poleKey] = true;
-              const expX = currentPole.x;
-              const expY = currentPole.y;
-              const expRadius = 160;
-              const blastDmg = entity.id === player.id ? 1800 : 1350;
-
-              AOEDamage(expX, expY, expRadius, blastDmg, entity.id, false);
-              explosions.push({
-                  x: expX,
-                  y: expY,
-                  radius: expRadius,
-                  life: 0,
-                  maxLife: 0.35,
-                  color: 'rgba(235, 120, 255, 0.85)',
-                  legendary: true,
-                  fxKind: 'steamerOverpressure'
-              });
-              spawnFloatingText(expX, expY - 36, 'STEAM OVERPRESSURE! 💥', '#dc72ff');
-
-              // Boiling steam hazard cloud around the exploded pole
-              spawnCheeseField(expX, expY, 80, 4500, 1.0, entity.id, true, 480);
-
-              // 8-directional scalding steam burst around the pole
-              for (let a = 0; a < 8; a++) {
-                  const burstAng = (Math.PI * 2 * a) / 8;
-                  spawnSteamerSteamBurst(entity, burstAng, true, 0, true, 1.25, true);
-              }
-          }
-
-          const blastDamage = towerEffect('steamerStationBlastDamage');
-          if (blastDamage > 0) {
-              const radius = towerEffect('steamerStationBlastRadius') || 145;
-              const knockback = towerEffect('steamerStationKnockback') || 115;
-              AOEDamage(entity.x, entity.y, radius, blastDamage, entity.id, false);
-              for (const target of [player, ...bots]) {
-                  if (!target || target.hp <= 0 || target.id === entity.id || areAlliedEntities(entity, target)) continue;
-                  const dist = Math.hypot(target.x - entity.x, target.y - entity.y);
-                  if (dist > radius + (target.radius || 16)) continue;
-                  const a = Math.atan2(target.y - entity.y, target.x - entity.x);
-                  target.x = clamp(target.x + Math.cos(a) * knockback, target.radius, WORLD_W - target.radius);
-                  target.y = clamp(target.y + Math.sin(a) * knockback, target.radius, WORLD_H - target.radius);
-              }
-              explosions.push({ x: entity.x, y: entity.y, radius, life: 0, maxLife: 0.28, color: 'rgba(255,190,92,.72)', legendary: true });
           }
       }
   }
@@ -26020,7 +26013,7 @@ let heistFeverActive = false;
         return eligible.length > 0;
     }
 
-    function fireSuper(){
+    function fireSuper(isAimDrag = false){
         normalizeSelectedBrawler();
     if(superCharge < 100 || player.hp <= 0) return;
         if (selectedBrawler === 'beast' && isBeastyBeastActive(player)) {
@@ -26050,7 +26043,9 @@ let heistFeverActive = false;
                     return;
                 }
             }
-    superCharge = 0;
+    if (selectedBrawler !== 'steamer') {
+        superCharge = 0;
+    }
     if (hasTrinket(player, 'super_guard')) grantShield(player, 1000, Math.max(5000, player.shieldMax || 0));
     applySlopSushiOnSuper();
     player.lastAttackAt = performance.now();
@@ -26937,8 +26932,8 @@ let heistFeverActive = false;
             updateSuperButton();
             return;
         }
-        const dist = Math.hypot(wm.x - player.x, wm.y - player.y);
-        if (aimingSuper && dist > 50) {
+        // If the user dragged/held to aim: throw pole! If tapped (press E / quick tap): dash through placed poles (or straight dash)!
+        if (isAimDrag) {
             castSteamerPoleThrow(player, wm.x, wm.y, !!isHypercharged);
         } else {
             startSteamerRailroad(player, wm.x, wm.y, !!isHypercharged);
@@ -27699,7 +27694,9 @@ let heistFeverActive = false;
             ensureCinderionState(bot);
             if (bot.cinderionOrbitFlames.filter(flame => flame.expiresAt > performance.now() && !flame.spent).length < 3) return;
         }
-    bot.superCharge = 0;
+    if (bot.brawler !== 'steamer') {
+        bot.superCharge = 0;
+    }
     bot.lastAttackAt = performance.now();
     if (isSlopSushiMode) {
         const superHeal = getEntitySlopEffectTotal(bot, 'superHeal');
@@ -29385,6 +29382,10 @@ let heistFeverActive = false;
       setSuperAimCancelVisual(false);
       return true;
   }
+  let superAimStartTime = 0;
+  let superAimStartScreenX = 0;
+  let superAimStartScreenY = 0;
+
   function startAimingSuper(source = 'desktop') {
         if (superCharge >= 100 && player.hp > 0) {
                 if (selectedBrawler === 'hyperorigin' && getHyperoriginEnergy(player) < 1) {
@@ -29399,6 +29400,9 @@ let heistFeverActive = false;
             }
         }
                 aimingSuper = true;
+                superAimStartTime = performance.now();
+                superAimStartScreenX = mouse.screenX;
+                superAimStartScreenY = mouse.screenY;
                 superAimCancelState.source = source;
                 superAimCancelState.cancel = false;
         }
@@ -29406,9 +29410,12 @@ let heistFeverActive = false;
   function releaseSuper(cancel = false) {
     if (aimingSuper) {
       if (cancel || superAimCancelState.cancel) { cancelSuperAim(); return; }
+      const holdMs = performance.now() - (superAimStartTime || 0);
+      const mouseDelta = Math.hypot(mouse.screenX - (superAimStartScreenX || 0), mouse.screenY - (superAimStartScreenY || 0));
+      const isAimDrag = holdMs > 180 || mouseDelta > 15 || (superAimCancelState.source === 'mobile' && superAimCancelState.leftDeadZone);
       aimingSuper = false;
       setSuperAimCancelVisual(false);
-      fireSuper();
+      fireSuper(isAimDrag);
     }
   }
   superBtn.addEventListener('mousedown', startAimingSuper);
@@ -29595,8 +29602,11 @@ let heistFeverActive = false;
     if (selectedBrawler !== 'jacktrade') delete superBtn.dataset.lockedOutcome;
     if (selectedBrawler === 'steamer') {
         const charges = (typeof player.steamerSuperCharges === 'number') ? player.steamerSuperCharges : 5;
+        const poleCount = steamerPoles.filter(p => p.ownerId === player.id).length;
         if (charges > 0) {
-            superBtn.textContent = `Power Move: Ready (${charges}/5)`;
+            superBtn.textContent = (poleCount > 0)
+                ? `Power Move: Dash / Hold Pole (${charges}/5)`
+                : `Power Move: Ready (${charges}/5)`;
             superBtn.disabled = false;
         } else {
             superBtn.textContent = `Power Move: ${Math.floor(player.steamerSubCharge || 0)}%`;
@@ -50733,7 +50743,7 @@ let heistFeverActive = false;
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 12px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(`${playerPoles.length}/5 POLES`, landX, landY - 34);
+            ctx.fillText(`${playerPoles.length} POLES PLACED`, landX, landY - 34);
             ctx.restore();
         } else if (selectedBrawler === 'hunter') {
             drawStandardAimCone(player.x, player.y, ang, 1000, 0.05, {

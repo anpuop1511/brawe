@@ -9,26 +9,33 @@ test('Steamer starts match with 5 super charges initialized', () => {
   assert.match(gameCode, /if\s*\(typeof entity\.steamerSuperCharges !== 'number'\)\s*entity\.steamerSuperCharges\s*=\s*5/);
 });
 
+test('fireSuper preserves superCharge for Steamer to allow all 5 charges to be spent individually', () => {
+  assert.match(gameCode, /if\s*\(selectedBrawler !== 'steamer'\)\s*\{\s*superCharge = 0;/);
+});
+
 test('Steamer super charge management handles 5 charges and sub-charges', () => {
   assert.match(gameCode, /function addSteamerSuperCharge\(/);
   assert.match(gameCode, /function consumeSteamerSuperCharge\(/);
-  assert.match(gameCode, /Power Move: Ready \(\$\{charges\}\/5\)/);
+  assert.match(gameCode, /Power Move: (Dash \/ Hold Pole|Ready) \(\$\{charges\}\/5\)/);
 });
 
-test('Steamer can throw steam poles with max range 650 and up to 5 active poles', () => {
+test('Steamer can throw steam poles freely and poles persist without oldest removal', () => {
   assert.match(gameCode, /function castSteamerPoleThrow\(/);
   assert.match(gameCode, /const maxRange\s*=\s*650/);
   assert.match(gameCode, /steamerPoles\.push\(/);
+  assert.doesNotMatch(gameCode, /if\s*\(ownerPoles\.length >= 5\)[\s\S]*?steamerPoles\.splice/);
 });
 
-test('Steamer railroad dash connects through placed poles', () => {
+test('Steamer railroad dash connects through custom placed poles or linear dash if 0 poles', () => {
   assert.match(gameCode, /function startSteamerRailroad\(/);
   assert.match(gameCode, /const ownerPoles\s*=\s*steamerPoles\.filter\(/);
+  assert.match(gameCode, /isLinearDash\s*=\s*true/);
+  assert.match(gameCode, /STEAM RUSH! 💨/);
 });
 
 test('Steamer Hypercharge runs 40% faster with 3 laps (lapMs 1571 / laps 3)', () => {
   assert.match(gameCode, /const lapMs\s*=\s*hyperActive\s*\?\s*Math\.round\(baseLapMs\s*\/\s*1\.40\)\s*:\s*baseLapMs/);
-  assert.match(gameCode, /laps\s*=\s*runaway\s*\?\s*4\s*:\s*\(hyperActive\s*\?\s*3\s*:\s*\(1\s*\+\s*Math\.max/);
+  assert.match(gameCode, /laps\s*=\s*isLinearDash\s*\?\s*1\s*:\s*\(runaway\s*\?\s*4\s*:\s*\(hyperActive\s*\?\s*3/);
 });
 
 test('Steamer Hypercharge explodes poles on passage and vents boiling steam hazard clouds', () => {
@@ -39,6 +46,6 @@ test('Steamer Hypercharge explodes poles on passage and vents boiling steam haza
 });
 
 test('Steamer aim reticle renders throw trajectory, landing preview, and pole counter', () => {
-  assert.match(gameCode, /const playerPoles\s*=\s*steamerPoles\.filter\(p\s*=>\s*p\.ownerId\s*===\s*player\.id\)/);
-  assert.match(gameCode, /\$\{playerPoles\.length\}\/5 POLES/);
+  assert.match(gameCode, /const playerPoles\s*=\s*steamerPoles\.filter/);
+  assert.match(gameCode, /POLES PLACED/);
 });
