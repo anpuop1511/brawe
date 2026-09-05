@@ -7681,6 +7681,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     let brickVaultDamage = { player: 0, enemy: 0 };
     let brickVaultTotalHp = { player: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + hp, 0), enemy: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + hp, 0) };
     let arenaForgeTimer = 0;
+let arenaForgeMinionSurgeModifier = false;
     let arenaForgeSoulBank = { player: 0, enemy: 0 };
     let arenaForgeSouls = [];
     let arenaForgeFlamePuddles = [];
@@ -14115,6 +14116,10 @@ let heistFeverActive = false;
     function initArenaForgeModeState() {
         const now = performance.now();
         arenaForgeTimer = 0;
+        arenaForgeMinionSurgeModifier = Math.random() < 0.50; // 50% chance in any match!
+        if (arenaForgeMinionSurgeModifier) {
+            setArenaForgeCallout('⚡ MODIFIER: MINION SURGE ACTIVE (50% CHANCE)! KILLS SPAWN 5 MEGA MINIONS!', '#ffd700');
+        }
         arenaForgeSoulBank = { player: 0, enemy: 0 };
         arenaForgeSouls = [];
         arenaForgeFlamePuddles = [];
@@ -14306,6 +14311,45 @@ let heistFeverActive = false;
                     if (t.hp <= 0) handleArenaForgeDeath(t);
                 }
             }
+            // Minion Surge Modifier: Every kill spawns 5 minions at the back of the base with 200% attack speed & 250% HP!
+            if (arenaForgeMinionSurgeModifier && scoringTeam) {
+                const surgeTeam = scoringTeam;
+                const spawnY = surgeTeam === 'player' ? WORLD_H - 240 : 240;
+                const laneXs = [WORLD_W * 0.18, WORLD_W * 0.34, WORLD_W * 0.50, WORLD_W * 0.66, WORLD_W * 0.82];
+
+                for (let i = 0; i < 5; i++) {
+                    const laneIndex = i % 3;
+                    const minion = spawnArenaForgeMinion(surgeTeam, laneIndex, true);
+                    if (minion) {
+                        minion.x = laneXs[i];
+                        minion.y = spawnY;
+                        minion.baseX = laneXs[i];
+                        minion.baseY = spawnY;
+                        minion.isMinionSurgeUnit = true;
+                        // 250% HP (2.5x base minion HP)
+                        minion.hp = Math.round(minion.hp * 2.5);
+                        minion.maxHp = minion.hp;
+                        // 200% Attack Speed (2.0x fire rate / half attack cooldown)
+                        minion.arenaForgeAttackSpeedMult = 2.0;
+                        minion.radius = Math.round(minion.radius * 1.25);
+                        explosions.push({
+                            x: laneXs[i],
+                            y: spawnY,
+                            radius: 48,
+                            life: 0,
+                            maxLife: 0.28,
+                            color: surgeTeam === 'player' ? '#7fffd4' : '#ff9b9b'
+                        });
+                    }
+                }
+
+                setArenaForgeCallout(`👾 ${surgeTeam === 'player' ? 'YOUR' : 'ENEMY'} BASE SPAWNED 5 SURGE MINIONS (+250% HP / 2X ATK SPD)!`, surgeTeam === 'player' ? '#7fffd4' : '#ff9b9b');
+                const core = getArenaForgeCore(surgeTeam);
+                if (core) {
+                    spawnFloatingText(core.x, core.y - 70, '👾 +5 SURGE REINFORCEMENTS (+250% HP / 2X SPD)!', '#ffd700');
+                }
+            }
+
             if (!entity.isArenaForgeMinion && !entity.isStructure && !entity.isArenaForgeCamp) {
                 if (killer) {
                     if (killer.arenaForgeHyperDynamo) {
@@ -14459,7 +14503,8 @@ let heistFeverActive = false;
     function spawnArenaForgeMinion(team, laneIndex = 1, elite = false) {
         const level = arenaForgeUpgrades[team]?.minions || 0;
         const active = bots.filter((entity) => entity && entity.hp > 0 && entity.isArenaForgeMinion && !entity.isForgeColossusAlly && entity.team === team);
-        if (active.length >= 18) return null;
+        const maxActive = arenaForgeMinionSurgeModifier ? 36 : 18;
+        if (active.length >= maxActive) return null;
         const laneXs = [WORLD_W * 0.2, WORLD_W * 0.5, WORLD_W * 0.8];
         const spawnY = team === 'player' ? WORLD_H - 330 : 330;
         const spot = findNearestOpenSpot(laneXs[laneIndex] || laneXs[1], spawnY, elite ? 23 : 18);
@@ -14492,7 +14537,8 @@ let heistFeverActive = false;
     function fireArenaForgeMinionAttack(minion, target, now = performance.now()) {
         if (!minion?.isArenaForgeMinion || minion.hp <= 0 || !target || target.hp <= 0 || areAlliedEntities(minion, target)) return false;
         const kind = minion.arenaForgeMinionKind || 'melee';
-        const cooldown = minion.isForgeColossusAlly ? 760 : (kind === 'melee' ? 820 : 980);
+        const atkSpdMult = minion.arenaForgeAttackSpeedMult || 1.0;
+        const cooldown = (minion.isForgeColossusAlly ? 760 : (kind === 'melee' ? 820 : 980)) / atkSpdMult;
         if (now - (minion.lastShot || 0) < cooldown) return false;
 
         const dx = target.x - minion.x;
@@ -47030,28 +47076,39 @@ let heistFeverActive = false;
       } else if (t.isArenaForgeMinion) {
           const friendly = t.team === 'player';
           const melee = t.arenaForgeMinionKind !== 'ranged';
-          const eliteScale = t.isArenaForgeEliteMinion ? 1.18 : 1;
+          const isSurge = !!t.isMinionSurgeUnit;
+          const eliteScale = (t.isArenaForgeEliteMinion ? 1.18 : 1) * (isSurge ? 1.25 : 1);
           ctx.save();
           ctx.translate(t.x, drawY);
           ctx.scale(eliteScale, eliteScale);
-          ctx.fillStyle = friendly ? '#183e45' : '#4b2030';
-          ctx.strokeStyle = t.isArenaForgeEliteMinion ? '#ffd36b' : (friendly ? '#79f2c0' : '#ff7892');
-          ctx.lineWidth = t.isArenaForgeEliteMinion ? 3.5 : 2.5;
+          if (isSurge) {
+              ctx.shadowColor = '#ffd700';
+              ctx.shadowBlur = 18;
+          }
+          ctx.fillStyle = isSurge ? (friendly ? '#1f4838' : '#522026') : (friendly ? '#183e45' : '#4b2030');
+          ctx.strokeStyle = isSurge ? '#ffd700' : (t.isArenaForgeEliteMinion ? '#ffd36b' : (friendly ? '#79f2c0' : '#ff7892'));
+          ctx.lineWidth = isSurge ? 4 : (t.isArenaForgeEliteMinion ? 3.5 : 2.5);
           ctx.beginPath(); ctx.roundRect(-13, -15, 26, 30, 9); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = friendly ? '#79f2c0' : '#ff7892';
+          ctx.fillStyle = isSurge ? '#ffd700' : (friendly ? '#79f2c0' : '#ff7892');
           ctx.beginPath(); ctx.arc(0, -4, 6, 0, Math.PI * 2); ctx.fill();
           if (melee) {
               ctx.save(); ctx.rotate(-0.72);
-              ctx.strokeStyle = '#ecf6ff'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+              ctx.strokeStyle = isSurge ? '#fff' : '#ecf6ff'; ctx.lineWidth = isSurge ? 5 : 4; ctx.lineCap = 'round';
               ctx.beginPath(); ctx.moveTo(3, -4); ctx.lineTo(3, 22); ctx.stroke();
               ctx.strokeStyle = '#ffd36b'; ctx.lineWidth = 3;
               ctx.beginPath(); ctx.moveTo(-4, 13); ctx.lineTo(10, 13); ctx.stroke();
               ctx.restore();
           } else {
-              ctx.fillStyle = '#dbeaff';
+              ctx.fillStyle = isSurge ? '#fff' : '#dbeaff';
               ctx.beginPath(); ctx.roundRect(5, -1, 17, 7, 3); ctx.fill();
-              ctx.fillStyle = friendly ? '#79f2c0' : '#ff7892';
+              ctx.fillStyle = isSurge ? '#ffd700' : (friendly ? '#79f2c0' : '#ff7892');
               ctx.beginPath(); ctx.arc(22, 2.5, 3.5, 0, Math.PI * 2); ctx.fill();
+          }
+          if (isSurge) {
+              ctx.fillStyle = '#ffd700';
+              ctx.font = '900 10px monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText('⚡ 2X SPD', 0, -20);
           }
           ctx.restore();
       } else if (t.isArenaForgeStructure) {
@@ -56019,8 +56076,9 @@ let heistFeverActive = false;
         } else {
             const title = arenaForgeOvertime ? 'OVERTIME' : 'Arena Forge 3v3';
             const timer = `${Math.floor(phaseLeft / 60)}:${String(Math.ceil(phaseLeft % 60)).padStart(2, '0')}`;
+            const modTag = arenaForgeMinionSurgeModifier ? '⚡ [MODIFIER: MINION SURGE] ' : '';
             const extras = arenaForgeOvertime ? 'MEGA SURGE' : `Wave ${arenaForgeWaveNumber + 1} ${waveLeft}s | Breach ${breachLeft}s | Boon ${boonLeft}s`;
-            ctx.fillText(`${title} | ${timer} | Energy ${arenaForgeSoulBank.player || 0}-${arenaForgeSoulBank.enemy || 0} | ${extras}`, innerWidth / 2, 48);
+            ctx.fillText(`${modTag}${title} | ${timer} | Energy ${arenaForgeSoulBank.player || 0}-${arenaForgeSoulBank.enemy || 0} | ${extras}`, innerWidth / 2, 48);
             if (arenaForgeLastCallout && now < arenaForgeLastCalloutUntil) {
                 ctx.fillStyle = '#ffcf66'; ctx.font = '900 15px sans-serif';
                 ctx.fillText(arenaForgeLastCallout, innerWidth / 2, 69);
