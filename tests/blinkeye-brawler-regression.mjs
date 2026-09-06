@@ -68,4 +68,14 @@ test('BlinkEye Super cast and projectile rendering are hooked', () => {
   assert.match(gameCode, /b\.ownerBrawler === 'blinkeye' && b\.isBlinkEyeSteeredEye/);
   assert.match(gameCode, /b\.ownerBrawler === 'blinkeye' && b\.isBlinkEyeMain/);
 });
+test('BlinkEye Super collision logic guards against self/ally collision and wall clipping', () => {
+  assert.match(gameCode, /if \(target && owner && \(target\.id === owner\.id \|\| areAlliedEntities\(owner, target\)\)\) \{\s*return false;\s*\}/);
+  assert.match(gameCode, /if \(hitCube && b\.isBlinkEyeSteeredEye\)/);
+  assert.match(gameCode, /if \(b\.life >= 0\.05\)/);
+});
 
+test('BlinkEye main attack supports Slop Sushi range buffs and 2.0x bounceMultiplier indicator', () => {
+  assert.match(gameCode, /const rangeMult = 1 \+ \(isSlopSushiMode \? getEntitySlopEffectTotal\(fromEntity, 'sushiAttackRangePct'\) : 0\);/);
+  assert.match(gameCode, /traceRicochetPath\(player\.x, player\.y, ang, maxRange, 2, 16, 2\.0\)/);
+  assert.match(gameCode, /const bounceRangeMultiplier = 1 \+ b\.blinkeyeBounceCount;/);
+});

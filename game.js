@@ -20324,7 +20324,7 @@ let heistFeverActive = false;
       explosions.push({ x, y, radius: 120, life: 0, maxLife: 0.24, color: explosionColor });
   }
 
-  function traceRicochetPath(startX, startY, angle, maxDist, maxBounces = 4, step = 16) {
+  function traceRicochetPath(startX, startY, angle, maxDist, maxBounces = 4, step = 16, bounceMultiplier = 1.0) {
       let rx = startX;
       let ry = startY;
       let vx = Math.cos(angle);
@@ -20373,7 +20373,11 @@ let heistFeverActive = false;
               if (refX) vx *= -1;
               if (refY) vy *= -1;
               bounces++;
-              distLeft -= step * 0.5;
+              if (bounceMultiplier > 1.0) {
+                  distLeft = maxDist * (1 + (bounces * (bounceMultiplier - 1.0)));
+              } else {
+                  distLeft -= step * 0.5;
+              }
               continue;
           }
 
@@ -23476,7 +23480,8 @@ let heistFeverActive = false;
         const isHyper = !isBot ? isHypercharged : !!fromEntity.isHypercharged;
         const shotCount = isHyper ? 2 : 1;
         const speed = 1450;
-        const rangeDist = 650;
+        const rangeMult = 1 + (isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity, 'sushiAttackRangePct') : 0);
+        const rangeDist = 650 * rangeMult;
         const maxLife = rangeDist / speed;
         const scaledBaseDmg = isBot ? (isHyper ? 1400 : 1100) : (isHyper ? 2200 : 1850);
         
@@ -37357,6 +37362,10 @@ let heistFeverActive = false;
             return true;
         }
     if (b.isBlinkEyeSteeredEye) {
+        const owner = getEntityById(b.ownerId);
+        if (target && owner && (target.id === owner.id || areAlliedEntities(owner, target))) {
+            return false;
+        }
         triggerBlinkEyeSuperExplosion(b, true);
         return true;
     }
@@ -43580,10 +43589,12 @@ let heistFeverActive = false;
           continue;
       }
 
-            if (b.isBlinkEyeSteeredEye) {
-          triggerBlinkEyeSuperExplosion(b, true);
-          bullets.splice(i, 1);
-          continue;
+            if (hitCube && b.isBlinkEyeSteeredEye) {
+          if (b.life >= 0.05) {
+              triggerBlinkEyeSuperExplosion(b, true);
+              bullets.splice(i, 1);
+              continue;
+          }
       }
 
       if(hitCube && b.canBounce) {
@@ -50379,7 +50390,7 @@ let heistFeverActive = false;
       if (selectedBrawler === 'blinkeye' && !aimingSuper) {
           ctx.save();
           const maxRange = isHypercharged ? 740 : 696;
-          const traced = traceRicochetPath(player.x, player.y, ang, maxRange, 2, 16);
+          const traced = traceRicochetPath(player.x, player.y, ang, maxRange, 2, 16, 2.0);
           ctx.strokeStyle = isHypercharged ? 'rgba(0, 229, 255, 0.92)' : 'rgba(255, 167, 38, 0.90)';
           ctx.lineWidth = isHypercharged ? 3.5 : 2.5;
           ctx.setLineDash([8, 6]);
