@@ -59,3 +59,13 @@ test('BlinkEye body renders custom glowing optic iris and eyelid blink animation
   assert.match(gameCode, /Sleek Optic Frame Base/);
   assert.match(gameCode, /Glowing Sclera & Iris/);
 });
+
+test('BlinkEye Super cast and projectile rendering are hooked', () => {
+  assert.match(gameCode, /if\s*\(combatBrawler === 'blinkeye'\)/);
+  assert.match(gameCode, /if\s*\(botCombatBrawler === 'blinkeye'\)/);
+  assert.match(gameCode, /selectedBrawler === 'blinkeye' && !aimingSuper/);
+  assert.match(gameCode, /selectedBrawler === 'blinkeye' && aimingSuper/);
+  assert.match(gameCode, /b\.ownerBrawler === 'blinkeye' && b\.isBlinkEyeSteeredEye/);
+  assert.match(gameCode, /b\.ownerBrawler === 'blinkeye' && b\.isBlinkEyeMain/);
+});
+

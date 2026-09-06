@@ -26631,6 +26631,15 @@ let heistFeverActive = false;
     if (combatBrawler === 'anti_royal') { if(!castAntiRoyalSuper(player,!!isHypercharged,wm.x,wm.y))superCharge=100; updateSuperButton(); return; }
     if (combatBrawler === 'weefee') { castWeeFeeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'sir_cheeseburger') { castSirCheeseburgerSuper(player, !!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'blinkeye') {
+        if (player.blinkeyeSteering && player.blinkeyeActiveEye) {
+            triggerBlinkEyeSuperExplosion(player.blinkeyeActiveEye, false);
+        } else {
+            startBlinkEyeSuper(player, wm.x, wm.y, !!isHypercharged);
+        }
+        updateSuperButton();
+        return;
+    }
     if (combatBrawler === 'cursed') { castCursedStorm(player,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'darkener') { castDarkagon(player,wm.x,wm.y,!!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'ghoul') { castGhoulSuper(player,!!isHypercharged); updateSuperButton(); return; }
@@ -28301,6 +28310,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'anti_royal') { if(!castAntiRoyalSuper(bot,isHyper,targetX,targetY))bot.superCharge=100; return; }
     if (botCombatBrawler === 'weefee') { castWeeFeeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'sir_cheeseburger') { castSirCheeseburgerSuper(bot, isHyper); return; }
+    if (botCombatBrawler === 'blinkeye') { startBlinkEyeSuper(bot, targetX, targetY, isHyper); return; }
     const dx = targetX - bot.x; const dy = targetY - bot.y; const ang = Math.atan2(dy, dx);
 
         if (botCombatBrawler === 'cursed') { castCursedStorm(bot,isHyper); return; }
@@ -30187,6 +30197,11 @@ let heistFeverActive = false;
   }
 
   function updateSuperButton(){
+    if (selectedBrawler === 'blinkeye' && player.blinkeyeSteering && player.blinkeyeActiveEye) {
+        superBtn.textContent = 'Power Move: Detonate Eye 💥';
+        superBtn.disabled = false;
+        return;
+    }
     if (selectedBrawler !== 'jacktrade') delete superBtn.dataset.lockedOutcome;
     if (selectedBrawler === 'steamer') {
         const charges = (typeof player.steamerSuperCharges === 'number') ? player.steamerSuperCharges : 5;
@@ -37357,6 +37372,10 @@ let heistFeverActive = false;
             spawnFloatingText(target.x, target.y - 30, 'DODGE!', '#9be7ff');
             return true;
         }
+    if (b.isBlinkEyeSteeredEye) {
+        triggerBlinkEyeSuperExplosion(b, true);
+        return true;
+    }
     if (b.isEchoRingProj) return false; // Handled separately so it creates a ring
     if (tryCrystilaGlassReflect(target, b)) return false;
     
@@ -46537,22 +46556,69 @@ let heistFeverActive = false;
                 const blinkProgress = Math.sin(nowMs * 0.003);
                 const eyelidClose = blinkProgress > 0.94 ? (blinkProgress - 0.94) / 0.06 : 0;
                 const isHyper = entity === player ? !!isHypercharged : !!entity?.isHypercharged;
+                const coilGlow = isHyper ? '#00e5ff' : '#ffa726';
                 
                 ctx.translate(entity.x, drawY);
                 ctx.rotate(aim);
 
-                // 1. Sleek Optic Frame Base
+                // 1. Trance Glow Aura if Steering Super
+                if (entity.blinkeyeSteering) {
+                    ctx.save();
+                    const trancePulse = Math.sin(nowMs * 0.01) * 6;
+                    ctx.strokeStyle = isHyper ? '#00e5ff' : '#ffa726';
+                    ctx.lineWidth = 3.5;
+                    ctx.shadowColor = ctx.strokeStyle;
+                    ctx.shadowBlur = 20;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius * 1.3 + trancePulse, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 2. Dual Lateral Laser Focusing Coils
+                for (const side of [-1, 1]) {
+                    ctx.fillStyle = '#1e293b';
+                    ctx.strokeStyle = coilGlow;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(-radius * 0.2, side * radius * 0.72 - radius * 0.15, radius * 0.4, radius * 0.3, 3);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = coilGlow;
+                    ctx.beginPath();
+                    ctx.arc(0, side * radius * 0.72, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 3. Forward Optic Cannon Lens Mount (Reacts to attack kick)
+                const cannonExt = radius * (0.85 + attackKick * 0.45);
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = coilGlow;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(radius * 0.4, -radius * 0.22, Math.max(8, cannonExt - radius * 0.3), radius * 0.44, 4);
+                ctx.fill();
+                ctx.stroke();
+
+                // Optic Focus Ring
+                ctx.strokeStyle = isHyper ? '#ffffff' : '#ffd166';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(cannonExt + 2, 0, radius * 0.25, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 4. Sleek Optic Frame Base
                 ctx.fillStyle = '#0f172a';
                 ctx.strokeStyle = isHyper ? '#00e5ff' : '#ffa726';
                 ctx.lineWidth = 3;
                 ctx.shadowColor = ctx.strokeStyle;
-                ctx.shadowBlur = 12;
+                ctx.shadowBlur = isHyper ? 18 : 12;
                 ctx.beginPath();
                 ctx.ellipse(0, 0, radius * 0.95, radius * 0.82, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
 
-                // 2. Glowing Sclera & Iris
+                // 5. Glowing Sclera & Iris
                 const irisGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, radius * 0.72);
                 irisGrad.addColorStop(0, '#ffffff');
                 irisGrad.addColorStop(0.35, isHyper ? '#00e5ff' : '#ffa726');
@@ -46563,13 +46629,17 @@ let heistFeverActive = false;
                 ctx.ellipse(0, 0, radius * 0.78, radius * 0.65, 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 3. Pupil
+                // 6. Pupil & Reflection
                 ctx.fillStyle = '#050b14';
                 ctx.beginPath();
                 ctx.ellipse(radius * 0.15, 0, radius * 0.28, radius * 0.35, 0, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(radius * 0.08, -radius * 0.12, Math.max(1.5, radius * 0.08), 0, Math.PI * 2);
+                ctx.fill();
 
-                // 4. Optical Focus Crosshairs
+                // 7. Optical Focus Crosshairs
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
@@ -46577,13 +46647,45 @@ let heistFeverActive = false;
                 ctx.moveTo(0, -radius * 0.55); ctx.lineTo(0, radius * 0.55);
                 ctx.stroke();
 
-                // 5. Animated Eyelid Blink
+                // 8. Animated Eyelid Blink
                 if (eyelidClose > 0) {
                     ctx.fillStyle = '#0f172a';
                     ctx.beginPath();
                     ctx.ellipse(0, -radius * (0.65 - eyelidClose * 0.65), radius * 0.85, radius * 0.45, 0, 0, Math.PI * 2);
                     ctx.fill();
                 }
+            } else if (brawlerId === 'prism_bumper' || entity.isPrismBumper) {
+                // Prism Bumper: Glowing Optical Mirror Prism Bumper
+                ctx.translate(entity.x, drawY);
+                const pulse = Math.sin(now * 0.005) * 3;
+                ctx.shadowColor = '#ffa726';
+                ctx.shadowBlur = 14 + pulse;
+
+                // Base Hexagon/Prism Mirror
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = '#ffa726';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const a = (i * Math.PI / 3) + (now * 0.002);
+                    const px = Math.cos(a) * (radius * 0.85);
+                    const py = Math.sin(a) * (radius * 0.85);
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Inner Reflective Glass Core
+                ctx.fillStyle = '#ffe082';
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.45, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ff7043';
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.22, 0, Math.PI * 2);
+                ctx.fill();
             } else if (brawlerId === 'sir_cheeseburger') {
                 // --- SIR CHEESEBURGER KNIGHT 2.5D MODEL ---
                 ctx.translate(entity.x, drawY - attackKick * 3);
@@ -50274,6 +50376,57 @@ let heistFeverActive = false;
           ctx.textBaseline = 'middle';
           ctx.fillText(`🧀 +${Math.round(combo * 100)}% DMG`, range / 2, 0);
 
+          ctx.restore();
+      }
+      if (selectedBrawler === 'blinkeye' && !aimingSuper) {
+          ctx.save();
+          const maxRange = isHypercharged ? 740 : 696;
+          const traced = traceRicochetPath(player.x, player.y, ang, maxRange, 2, 16);
+          ctx.strokeStyle = isHypercharged ? 'rgba(0, 229, 255, 0.92)' : 'rgba(255, 167, 38, 0.90)';
+          ctx.lineWidth = isHypercharged ? 3.5 : 2.5;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(player.x, player.y);
+          for (const pt of traced.points) {
+              ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+          if (traced.points.length > 0) {
+              const lastPt = traced.points[traced.points.length - 1];
+              ctx.fillStyle = isHypercharged ? '#00e5ff' : '#ffa726';
+              ctx.beginPath();
+              ctx.arc(lastPt.x, lastPt.y, 6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.shadowColor = ctx.fillStyle;
+              ctx.shadowBlur = 10;
+              ctx.stroke();
+          }
+          ctx.restore();
+      }
+      if (selectedBrawler === 'blinkeye' && aimingSuper) {
+          ctx.save();
+          const steerDist = isHypercharged ? 460 : 360;
+          const targetPtX = player.x + Math.cos(ang) * steerDist;
+          const targetPtY = player.y + Math.sin(ang) * steerDist;
+          ctx.strokeStyle = isHypercharged ? 'rgba(0, 229, 255, 0.95)' : 'rgba(255, 167, 38, 0.95)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(player.x, player.y);
+          ctx.lineTo(targetPtX, targetPtY);
+          ctx.stroke();
+
+          // Guided Eye spawn reticle
+          ctx.fillStyle = isHypercharged ? 'rgba(0, 229, 255, 0.22)' : 'rgba(255, 167, 38, 0.18)';
+          ctx.beginPath();
+          ctx.arc(targetPtX, targetPtY, 32, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(isHypercharged ? '👁️ OMNIPRESENT SIGHT (10s)' : '👁️ WE ALL SEE (8s)', player.x, player.y - 52);
           ctx.restore();
       }
       if (selectedBrawler === 'sir_cheeseburger' && aimingSuper) {
@@ -55133,6 +55286,124 @@ let heistFeverActive = false;
           continue;
       }
       
+      else if (b.ownerBrawler === 'blinkeye' && b.isBlinkEyeSteeredEye) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const eyeAng = b.angle !== undefined ? b.angle : Math.atan2(b.vy, b.vx);
+          ctx.rotate(eyeAng);
+          const nowMs = performance.now();
+          const pulse = Math.sin(nowMs * 0.008) * 3;
+          const isHc = !!b.hyperVisual;
+          
+          // 1. Optic Energy Halo / Scan Aura
+          ctx.shadowColor = isHc ? '#00e5ff' : '#ffa726';
+          ctx.shadowBlur = isHc ? 24 : 16;
+          ctx.fillStyle = isHc ? 'rgba(0, 229, 255, 0.18)' : 'rgba(255, 167, 38, 0.16)';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 36 + pulse, 28 + pulse, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 2. Main Sclera Shell
+          const scleraGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 28);
+          scleraGrad.addColorStop(0, '#ffffff');
+          scleraGrad.addColorStop(0.4, isHc ? '#c8f7ff' : '#ffe8cc');
+          scleraGrad.addColorStop(0.85, isHc ? '#00e5ff' : '#ff9800');
+          scleraGrad.addColorStop(1, '#0f172a');
+          ctx.fillStyle = scleraGrad;
+          ctx.strokeStyle = isHc ? '#00e5ff' : '#ffa726';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 26, 20, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // 3. Iris
+          const irisGrad = ctx.createRadialGradient(4, 0, 1, 4, 0, 14);
+          irisGrad.addColorStop(0, isHc ? '#00e5ff' : '#ffa726');
+          irisGrad.addColorStop(0.6, isHc ? '#7c4dff' : '#ea580c');
+          irisGrad.addColorStop(1, '#050b14');
+          ctx.fillStyle = irisGrad;
+          ctx.beginPath();
+          ctx.ellipse(4, 0, 13, 11, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 4. Pupil & Reflection
+          ctx.fillStyle = '#050b14';
+          ctx.beginPath();
+          ctx.ellipse(5, 0, 6, 7, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(3, -3, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 5. Crosshair Lines
+          ctx.strokeStyle = isHc ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.75)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(-20, 0); ctx.lineTo(20, 0);
+          ctx.moveTo(0, -14); ctx.lineTo(0, 14);
+          ctx.stroke();
+
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'blinkeye' && b.isBlinkEyeMain) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const laserAng = Math.atan2(b.vy, b.vx);
+          ctx.rotate(laserAng);
+          const isHc = !!b.hyperVisual;
+          const bounceCount = b.blinkeyeBounceCount || 0;
+          
+          ctx.shadowColor = isHc ? '#00e5ff' : (bounceCount > 0 ? '#ff7043' : '#ffa726');
+          ctx.shadowBlur = 14 + bounceCount * 4;
+
+          // Optic Laser Bolt
+          const beamGrad = ctx.createLinearGradient(-24, 0, 24, 0);
+          beamGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+          beamGrad.addColorStop(0.4, isHc ? '#00e5ff' : '#ffa726');
+          beamGrad.addColorStop(0.8, '#ffffff');
+          beamGrad.addColorStop(1, isHc ? '#7c4dff' : '#ff7043');
+          ctx.fillStyle = beamGrad;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 22 + bounceCount * 4, 4.5 + bounceCount * 1.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Bright Laser Core
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.ellipse(4, 0, 14, 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Lens Flare Ring
+          ctx.strokeStyle = isHc ? '#00e5ff' : '#ffa726';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(8, 0, 6 + bounceCount * 2, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'blinkeye' && (b.isBlinkEyeMissile || b.isBlinkEyeCounterBeam)) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const ang = Math.atan2(b.vy, b.vx);
+          ctx.rotate(ang);
+          ctx.shadowColor = '#00e5ff';
+          ctx.shadowBlur = 10;
+          ctx.fillStyle = '#00e5ff';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 10, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(2, 0, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          continue;
+      }
       else if (b.ownerBrawler === 'sir_cheeseburger' && b.isSirCheeseburgerSlice) {
           ctx.save();
           ctx.translate(b.x, b.y);
