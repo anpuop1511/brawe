@@ -37458,19 +37458,7 @@ let heistFeverActive = false;
             spawnFloatingText(target.x, target.y - 30, 'DODGE!', '#9be7ff');
             return true;
         }
-    if (b.isBlinkEyeMissile && b.targetId) {
-          const tgt = getEntityById(b.targetId);
-          if (tgt && tgt.hp > 0) {
-              const desiredAng = Math.atan2(tgt.y - b.y, tgt.x - b.x);
-              const curAng = Math.atan2(b.vy, b.vx);
-              const diff = Math.atan2(Math.sin(desiredAng - curAng), Math.cos(desiredAng - curAng));
-              const steerRate = 8.5 * dt;
-              const newAng = curAng + clamp(diff, -steerRate, steerRate);
-              const spd = b.speed || 850;
-              b.vx = Math.cos(newAng) * spd;
-              b.vy = Math.sin(newAng) * spd;
-          }
-      }
+
 
       if (b.isBlinkEyeSteeredEye) {
         const owner = getEntityById(b.ownerId);
@@ -41664,7 +41652,7 @@ let heistFeverActive = false;
           vx += mobileInput.moveX;
           vy += mobileInput.moveY;
       }
-    if (playerIsStunned || isEntityRooted(player, now)) { vx = 0; vy = 0; }
+    if (playerIsStunned || isEntityRooted(player, now) || player.blinkeyeSteering) { vx = 0; vy = 0; }
       const len = Math.hypot(vx,vy) || 1;
       const isMoving = Math.hypot(vx, vy) > 0;
       player.isMovingNow = isMoving;
@@ -42090,7 +42078,22 @@ let heistFeverActive = false;
           AOEDamage(b.x,b.y,b.towerTrailRadius||60,(b.damage||0)*b.towerTrailDamagePct,b.ownerId,false);
           explosions.push({x:b.x,y:b.y,radius:b.towerTrailRadius||60,life:0,maxLife:.18,color:'rgba(114,226,255,.48)'});
       }
-            if (b.isBlinkEyeSteeredEye) {
+
+      if (b.isBlinkEyeMissile && b.targetId) {
+          const tgt = getEntityById(b.targetId);
+          if (tgt && tgt.hp > 0) {
+              const desiredAng = Math.atan2(tgt.y - b.y, tgt.x - b.x);
+              const curAng = Math.atan2(b.vy, b.vx);
+              const diff = Math.atan2(Math.sin(desiredAng - curAng), Math.cos(desiredAng - curAng));
+              const steerRate = 8.5 * dt;
+              const newAng = curAng + clamp(diff, -steerRate, steerRate);
+              const spd = b.speed || 850;
+              b.vx = Math.cos(newAng) * spd;
+              b.vy = Math.sin(newAng) * spd;
+          }
+      }
+
+      if (b.isBlinkEyeSteeredEye) {
           const owner = getEntityById(b.ownerId);
           if (!owner || owner.hp <= 0 || !owner.blinkeyeSteering) {
               triggerBlinkEyeSuperExplosion(b, false);

@@ -32,12 +32,13 @@ test('BlinkEye main attack fires fast sniper shot with +100% range per bounce (m
   assert.match(gameCode, /if\s*\(b\.blinkeyeBounceCount > 2\)/);
 });
 
-test('BlinkEye Super We All See launches steerable eye with camera tracking, 40% DR, and larger solid top-center PiP monitor', () => {
+test('BlinkEye Super We All See launches steerable eye with camera tracking, 40% DR, player rooting, and larger solid top-center PiP monitor', () => {
   assert.match(gameCode, /function startBlinkEyeSuper\(/);
   assert.match(gameCode, /isBlinkEyeSteeredEye:\s*true/);
   assert.match(gameCode, /const baseEyeSpeed = 352;/);
   assert.match(gameCode, /maxDur = isHyper \? 20000 : 16000;/);
   assert.match(gameCode, /entity\.defenseMult = isHyper \? 0\.30 : 0\.60/);
+  assert.match(gameCode, /isEntityRooted\(player, now\) \|\| player\.blinkeyeSteering/);
   assert.match(gameCode, /function drawBlinkEyePiPScreen\(/);
   assert.match(gameCode, /drawBlinkEyePiPScreen\(ctx\);/);
   assert.match(gameCode, /const pipW = 240;\s*const pipH = 140;/);
