@@ -33863,6 +33863,7 @@ let heistFeverActive = false;
             player.x = spawnPos.x;
             player.y = spawnPos.y;
       player.team = 'player';
+    player.brawler = selectedBrawler;
     player.isDead = false;
     player.respawnTimer = 0;
     player.showdownRespawnArmed = false;
@@ -39857,7 +39858,7 @@ let heistFeverActive = false;
     const now = performance.now();
     if (isPowerPlayShowdownMode) {
         // Rocketeer: Permanent active Hypercharge state
-        if (player.brawler === 'rocketeer' && player.hp > 0) {
+        if ((selectedBrawler === 'rocketeer' || player.brawler === 'rocketeer') && player.hp > 0) {
             isHypercharged = true;
             hyperchargeUntil = now + 999999;
             hyperChargeCharge = 100;
@@ -39870,21 +39871,26 @@ let heistFeverActive = false;
             }
         }
         // Orbo: Auto-charge super over 8s (12.5% per second)
-        const orboEntities = [player, ...bots].filter(e => e && e.hp > 0 && e.brawler === 'orbo');
-        for (const orboEnt of orboEntities) {
+        if ((selectedBrawler === 'orbo' || player.brawler === 'orbo') && player.hp > 0) {
             const chargeDelta = (100 / 8) * dt;
-            if (orboEnt.id === player.id) {
-                if (superCharge < 100) {
-                    superCharge = clamp(superCharge + chargeDelta, 0, 100);
-                    updateSuperButton();
-                }
-            } else {
-                if ((orboEnt.superCharge || 0) < 100) {
-                    orboEnt.superCharge = clamp((orboEnt.superCharge || 0) + chargeDelta, 0, 100);
+            if (superCharge < 100) {
+                superCharge = clamp(superCharge + chargeDelta, 0, 100);
+                updateSuperButton();
+            }
+        }
+        for (const bt of bots) {
+            if (bt && bt.hp > 0 && bt.brawler === 'orbo') {
+                const chargeDelta = (100 / 8) * dt;
+                if ((bt.superCharge || 0) < 100) {
+                    bt.superCharge = clamp((bt.superCharge || 0) + chargeDelta, 0, 100);
                 }
             }
         }
-        const echoEntities = [player, ...bots].filter(e => e && e.hp > 0 && e.brawler === 'echo');
+        const echoEntities = [];
+        if ((selectedBrawler === 'echo' || player.brawler === 'echo') && player.hp > 0) echoEntities.push(player);
+        for (const bt of bots) {
+            if (bt && bt.hp > 0 && bt.brawler === 'echo') echoEntities.push(bt);
+        }
         for (const echoEnt of echoEntities) {
             echoEnt.lastEcho360Burst = echoEnt.lastEcho360Burst || now;
             if (now - echoEnt.lastEcho360Burst >= 5000) {

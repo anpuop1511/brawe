@@ -27,7 +27,7 @@ const checks = [
   // Rocketeer 3 Powers
   ['Rocketeer Power 1: Fire zone size +200% (3x radius)', /function spawnRocketeerFireZone[\s\S]*?if \(isPowerPlayShowdownMode\) radius \*= 3;/],
   ['Rocketeer Power 2: Super +4 extra fire zones', /const strikeCount = 3 \+ \(isPowerPlayShowdownMode \? 4 : 0\)/],
-  ['Rocketeer Power 3: permanent active hypercharge in Power Play Showdown', /player\.brawler === 'rocketeer' && player\.hp > 0[\s\S]*?isHypercharged = true;[\s\S]*?hyperchargeUntil = now \+ 999999;/],
+  ['Rocketeer Power 3: permanent active hypercharge in Power Play Showdown', /\(selectedBrawler === 'rocketeer' \|\| player\.brawler === 'rocketeer'\) && player\.hp > 0[\s\S]*?isHypercharged = true;[\s\S]*?hyperchargeUntil = now \+ 999999;/],
 
   // Bouncin Balls 3 Powers
   ['Bouncin Balls Power 1: 2x ball speed in Power Play Showdown', /\* \(isPowerPlayShowdownMode \? 2\.0 : 1\.0\)/],
