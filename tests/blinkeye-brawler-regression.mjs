@@ -29,7 +29,7 @@ test('BlinkEye main attack fires fast sniper shot with +100% range per bounce (m
   assert.match(gameCode, /isBlinkEyeMain:\s*true/);
   assert.match(gameCode, /if\s*\(b\.ownerBrawler === 'blinkeye' && b\.isBlinkEyeMain\)/);
   assert.match(gameCode, /b\.blinkeyeBounceCount\s*=\s*\(b\.blinkeyeBounceCount \|\| 0\) \+ 1/);
-  assert.match(gameCode, /if\s*\(b\.blinkeyeBounceCount > 2\)/);
+  assert.match(gameCode, /if\s*\((?:!isPowerPlayShowdownMode && )?b\.blinkeyeBounceCount > 2\)/);
 });
 
 test('BlinkEye Super We All See launches steerable eye with camera tracking, 40% DR, player rooting, and larger solid top-center PiP monitor', () => {
@@ -47,7 +47,7 @@ test('BlinkEye Super We All See launches steerable eye with camera tracking, 40%
 test('BlinkEye Hypercharge launches homing and piercing purple eye missiles that detonate on primary target', () => {
   assert.match(gameCode, /const shotCount = isHyper \? 2 : 1/);
   assert.match(gameCode, /maxLife: isHyper \? 20\.0 : 16\.0/);
-  assert.match(gameCode, /now - b\.lastMissileAt >= 600/);
+  assert.match(gameCode, /now - b\.lastMissileAt >= (?:600|interval)/);
   assert.match(gameCode, /function hasBlinkEyeSight\(/);
   assert.match(gameCode, /hasBlinkEyeSight\(b\.x, b\.y, victim\.x, victim\.y\)/);
   assert.match(gameCode, /isBlinkEyeMissile:\s*true/);

@@ -7,7 +7,7 @@ const checks = [
   ['Fuser main attack fires 18 bullets', /for \(let shot = 0; shot < 18; shot\+\+\)/],
   ['Fuser main attack sequence locks for 17*delay', /lockMainAttackSequence\(fromEntity, 17 \* delay, now\)/],
   ['Fuser main attack delay is 96ms base and 41ms hyper', /const delay = hyper \? 41 : 96;/],
-  ['Fuser main attack projectile speed is 1140 (+50%)', /vx: Math\.cos\(ang\) \* 1140, vy: Math\.sin\(ang\) \* 1140/],
+  ['Fuser main attack projectile speed is 1140 (+50%) with Power Play mode scaling', /const fuserSpd = isPowerPlayShowdownMode \? 180 : 1140;[\s\S]*?vx: Math\.cos\(ang\) \* fuserSpd, vy: Math\.sin\(ang\) \* fuserSpd/],
   ['Fuser main attack damage is 245 player / 165 bot (-30%)', /damage: Math\.round\(\(isBot \? 165 : 245\) \* \(reverse \? 1\.2 : 1\)\)/],
   ['Fuser player super fires 14 bullets', /selectedBrawler === 'fuser'[\s\S]*?for\(let shot=0;shot<14;shot\+\+\)/],
   ['Fuser bot super fires 14 bullets', /bot\.brawler === 'fuser'[\s\S]*?for\(let shot=0;shot<14;shot\+\+\)/],

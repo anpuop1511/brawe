@@ -1,0 +1,46 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
+
+const checks = [
+  ['Power Play Showdown registered in HOME_MODE_CARDS', /\['power_play_showdown',\s*'⚡',\s*'Power Play Showdown'/],
+  ['Power Play Showdown registered in HOME_PERMANENT_MODE_IDS', /HOME_PERMANENT_MODE_IDS\s*=\s*\[[^\]]*'power_play_showdown'/],
+  ['Power Play Showdown rules defined in HOME_MODE_RULES', /power_play_showdown:\s*\[[\s\S]*?10-player Solo Battle Royale with Power Cubes/],
+  ['Power Play Showdown rewards defined in HOME_EVENT_REWARDS', /power_play_showdown:\s*\{\s*type:'coins',\s*amount:60/],
+  ['Curated 5 brawlers set defined', /const POWER_PLAY_BRAWLERS = new Set\(\['blinkeye',\s*'fuser',\s*'rocketeer',\s*'bouncin_balls',\s*'echo'\]\);/],
+  ['Mode runtime flag isPowerPlayShowdownMode initialized', /let isPowerPlayShowdownMode = false;/],
+  ['launchShowdownMatch activates isPowerPlayShowdownMode and enforces curated brawler', /isPowerPlayShowdownMode = showdownMode === 'power_play_showdown';[\s\S]*?!POWER_PLAY_BRAWLERS\.has\(selectedBrawler\)/],
+  ['Bot pool restricted to curated 5 brawlers in power play showdown', /if \(isPowerPlayShowdownMode\) \{[\s\S]*?const ppPool = \[\.\.\.POWER_PLAY_BRAWLERS\]/],
+  
+  // BlinkEye 3 Powers
+  ['BlinkEye Power 1: infinite bounces in Power Play Showdown', /!isPowerPlayShowdownMode && b\.blinkeyeBounceCount > 2/],
+  ['BlinkEye Power 2: 2x missile fire rate (300ms) in Power Play Showdown', /const interval = isPowerPlayShowdownMode \? 300 : 600;/],
+  ['BlinkEye Power 3: main attack homing in Power Play Showdown', /isPowerPlayShowdownMode && b\.ownerBrawler === 'blinkeye' && b\.isBlinkEyeMain/],
+
+  // Fuser 3 Powers
+  ['Fuser Power 1: size +200% (hitboxMod 3.0) and slow creeping speed (180)', /const fuserSpd = isPowerPlayShowdownMode \? 180 : 1140;[\s\S]*?const fuserHitbox = isPowerPlayShowdownMode \? 3\.0 :/],
+  ['Fuser Power 2: Super infinite range (maxLife 10.0)', /maxLife:isPowerPlayShowdownMode\?10\.0:1\.08/],
+  ['Fuser Power 3: universal phasing pierce on main attack', /const fuserPierce = isPowerPlayShowdownMode \? true : false;[\s\S]*?pierce: fuserPierce, pierceWalls: fuserPierce/],
+
+  // Rocketeer 3 Powers
+  ['Rocketeer Power 1: Fire zone size +200% (3x radius)', /function spawnRocketeerFireZone[\s\S]*?if \(isPowerPlayShowdownMode\) radius \*= 3;/],
+  ['Rocketeer Power 2: Super +4 extra fire zones', /const strikeCount = 3 \+ \(isPowerPlayShowdownMode \? 4 : 0\)/],
+  ['Rocketeer Power 3: permanent active hypercharge in Power Play Showdown', /const hyperMain=\(isPowerPlayShowdownMode && fromEntity\.brawler === 'rocketeer'\)/],
+
+  // Bouncin Balls 3 Powers
+  ['Bouncin Balls Power 1: 2x ball speed in Power Play Showdown', /\* \(isPowerPlayShowdownMode \? 2\.0 : 1\.0\)/],
+  ['Bouncin Balls Power 2: Super +8 extra balls (16 total)', /\+ \(isPowerPlayShowdownMode \? 8 : 0\)/],
+  ['Bouncin Balls Power 3: Turret fire interval 0.3s (300ms)', /const turretInterval = isPowerPlayShowdownMode \? 300 : 1800;/],
+
+  // Echo 3 Powers
+  ['Echo Power 1: traveling sonic pulse rings every 0.6s', /if \(isPowerPlayShowdownMode && b\.ownerBrawler === 'echo' && b\.isEchoRingProj && !b\.isEchoSuperRing\) \{[\s\S]*?now - b\.lastEchoRingPulse >= 600/],
+  ['Echo Power 2: 5-second 360-degree sonic burst', /now - echoEnt\.lastEcho360Burst >= 5000[\s\S]*?360° SONIC BURST!/],
+  ['Echo Power 3: Super rings 200% bigger (4.5x size mod)', /ringSizeMod: isPowerPlayShowdownMode \? 4\.5 : 1\.5/],
+];
+
+for (const [label, pattern] of checks) {
+  assert.match(game, pattern, label);
+}
+
+console.log(`Power Play Showdown regression: ${checks.length}/${checks.length} checks passed.`);
