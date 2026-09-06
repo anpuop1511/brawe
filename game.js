@@ -17047,7 +17047,8 @@ let heistFeverActive = false;
   }
 
   generateCubes();
-  generatePowerBoxes();
+  if (!isBlinkEyeDodgeMode) generatePowerBoxes();
+      if (isBlinkEyeDodgeMode) initBlinkEyeDodgeState();
   spawnBots();
 
   function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
@@ -33854,6 +33855,9 @@ let heistFeverActive = false;
       } else if (isSoloTdMode) {
           WORLD_W = 2000;
           WORLD_H = 2000;
+      } else if (isBlinkEyeDodgeMode) {
+          WORLD_W = 2000;
+          WORLD_H = 2000;
       } else if (isImpossibleMode) {
           WORLD_W = 1800;
           WORLD_H = 1300;
@@ -33890,7 +33894,9 @@ let heistFeverActive = false;
             slopSushiActiveCards = [];
         }
         let spawnPos;
-        if (isImpossibleMode) {
+        if (isBlinkEyeDodgeMode) {
+            spawnPos = { x: 1000, y: 1000 };
+        } else if (isImpossibleMode) {
             spawnPos = { x: WORLD_W * 0.5, y: WORLD_H - 170 };
         } else if (isSoloTdMode) {
             spawnPos = { x: 1000, y: 1600 };
@@ -39916,6 +39922,7 @@ let heistFeverActive = false;
   function update(dt){
     if(!playing || gameOver) return;
     const now = performance.now();
+    if (isBlinkEyeDodgeMode) updateBlinkEyeDodge(dt, now);
     if (isPowerPlayShowdownMode) {
         // Rocketeer: Permanent active Hypercharge state
         if ((selectedBrawler === 'rocketeer' || player.brawler === 'rocketeer') && player.hp > 0) {
@@ -40500,9 +40507,7 @@ let heistFeverActive = false;
         if (!isHypercharged) hyperChargeCharge = 100;
         updateSuperButton(); updateHyperButton();
         updateTrainingCaveMode(dt, now);
-    if (isBlinkEyeDodgeMode) updateBlinkEyeDodge(dt, now);
-        
-        if (player.hp <= 0) {
+    if (player.hp <= 0) {
             player.respawnTimer = (player.respawnTimer || 0) + dt;
             if (player.respawnTimer >= 1.0) {
                 restoreRespawningEntity(player, { x: 1900, y: 1900 }, true, 1000);
@@ -60413,6 +60418,12 @@ function buildBlinkEyeDodgeMap() {
 
 function initBlinkEyeDodgeState() {
     const now = performance.now();
+    const cx = WORLD_W * 0.5;
+    const cy = WORLD_H * 0.5;
+    player.x = cx;
+    player.y = cy;
+    player.vx = 0;
+    player.vy = 0;
     blinkEyeDodgeState = {
         startedAt: now,
         timeSurvived: 0,
@@ -60422,17 +60433,16 @@ function initBlinkEyeDodgeState() {
         closeCalls: 0,
         streak: 0,
         bestStreak: 0,
-        giantEyes: [],
+        giantEyes: [
+            { id: 'eye_init_1', x: cx - 420, y: cy - 350, vx: 260, vy: 180, speed: 310, radius: 44, irisColor: '#8e44ad', pupilSize: 0.38, blinkUntil: 0, nextBlinkAt: now + 2000, squish: 1.0, squishAngle: 0, damage: 420 },
+            { id: 'eye_init_2', x: cx + 420, y: cy + 350, vx: -240, vy: -200, speed: 310, radius: 46, irisColor: '#e74c3c', pupilSize: 0.38, blinkUntil: 0, nextBlinkAt: now + 3200, squish: 1.0, squishAngle: 0, damage: 420 }
+        ],
         funnyMissiles: [],
-        nextEyeSpawnAt: now + 600,
-        nextMissileVolleyAt: now + 1500,
+        nextEyeSpawnAt: now + 3000,
+        nextMissileVolleyAt: now + 1200,
         nextFunnyTextAt: 0,
         won: false
     };
-    player.x = WORLD_W * 0.5;
-    player.y = WORLD_H * 0.5;
-    player.vx = 0;
-    player.vy = 0;
     setTimeout(() => {
         spawnFloatingText(player.x, player.y - 70, '👁️ BLINK EYE DODGE 👁️', '#caa6ff');
         setTimeout(() => spawnFloatingText(player.x, player.y - 45, 'DODGE EYES & CURVING HOMING SHOTS!', '#ff6bb5'), 400);
