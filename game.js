@@ -238,11 +238,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         document.head.appendChild(styleSheet);
 
     function getScaledStats(brawlerId, levelOverride) {
-        const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
-        if (brawlerId === 'the_deleter') {
+        if (brawlerId === 'blinkeye') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6600 * scale), dmg: Math.round(1750 * scale), speed: 260 };
+            return { hp: Math.round(5600 * scale), dmg: Math.round(1850 * scale), speed: 265 };
         }
+
+        const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
         if (brawlerId === 'weefee') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6800 * scale), dmg: Math.round(1200 * scale), speed: 270 };
@@ -1851,7 +1852,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   
   function getNativeAmmoCapacity(brawlerId){
       if(brawlerId==='minigunnin'||brawlerId==='steamer'||brawlerId==='beam')return 100;
-      if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack'||brawlerId==='the_deleter')return 1;
+      if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack')return 1;
       if(brawlerId==='demon'||brawlerId==='fastpass')return 2;
       if(brawlerId==='rocketeer')return 4;
       return 3;
@@ -2281,13 +2282,241 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   window.addEventListener('mouseup', e=> {
       mouse.down = false;
       if (e.button === 0 && aimingSuper && superAimCancelState.source === 'desktop') {
-          if (selectedBrawler === 'steamer') {
+              if (selectedBrawler === 'blinkeye') {
+        if (player.blinkeyeSteering && player.blinkeyeActiveEye) {
+            triggerBlinkEyeSuperExplosion(player.blinkeyeActiveEye, false);
+            return;
+        }
+        startBlinkEyeSuper(player, targetX, targetY, isHypercharged);
+        return;
+    }
+    if (selectedBrawler === 'blinkeye') {
+        if (player.blinkeyeSteering && player.blinkeyeActiveEye) {
+            superBtn.textContent = 'We All See: DETONATE (E)';
+            superBtn.disabled = false;
+        } else if (superCharge >= 100) {
+            superBtn.textContent = isHypercharged ? 'Power Move: Omnipresent Sight' : 'Power Move: We All See';
+            superBtn.disabled = false;
+        } else {
+            superBtn.textContent = 'Power Move: ' + Math.floor(superCharge) + '%';
+            superBtn.disabled = true;
+        }
+        return;
+    }
+    if (selectedBrawler === 'steamer') {
               return;
           }
           releaseSuper();
       }
   });
   window.addEventListener('contextmenu', e=> { if (aimingSuper) e.preventDefault(); });
+
+  
+  // ==========================================
+  // BLINKEYE (THE REBOUND BRANCH) HELPERS
+  // ==========================================
+  function startBlinkEyeSuper(entity, targetX, targetY, isHyper = false) {
+      if (!entity || entity.hp <= 0) return;
+      const now = performance.now();
+      const ang = Math.atan2((targetY ?? entity.y) - entity.y, (targetX ?? entity.x) - entity.x);
+      const maxDur = isHyper ? 10000 : 8000;
+      
+      entity.blinkeyeSteering = true;
+      entity.blinkeyeSteerStart = now;
+      entity.blinkeyeSteerMaxDuration = maxDur;
+      entity.defenseMult = isHyper ? 0.0 : 0.10; // 100% immune in HC, 90% in normal
+      entity.defenseUntil = now + maxDur;
+
+      const eyeBullet = {
+          id: nextId++,
+          ownerBrawler: 'blinkeye',
+          isBlinkEyeSteeredEye: true,
+          x: entity.x + Math.cos(ang) * (entity.radius + 18),
+          y: entity.y + Math.sin(ang) * (entity.radius + 18),
+          vx: Math.cos(ang) * 440 * (isHyper ? 1.25 : 1.0),
+          vy: Math.sin(ang) * 440 * (isHyper ? 1.25 : 1.0),
+          speed: 440 * (isHyper ? 1.25 : 1.0),
+          angle: ang,
+          life: 0,
+          maxLife: isHyper ? 10.0 : 8.0,
+          damage: entity.id === player.id ? (isHyper ? 2800 : 2400) : (isHyper ? 2100 : 1800),
+          aoeDamage: entity.id === player.id ? 1400 : 1050,
+          aoeRadius: 140,
+          pierce: false,
+          ownerId: entity.id,
+          hyperVisual: !!isHyper,
+          hitIds: {},
+          lastMissileAt: 0,
+          lastTrailAt: 0
+      };
+      bullets.push(eyeBullet);
+      entity.blinkeyeActiveEye = eyeBullet;
+
+      spawnFloatingText(entity.x, entity.y - 42, isHyper ? 'OMNIPRESENT SIGHT! 👁️✨' : 'WE ALL SEE! 👁️', isHyper ? '#00e5ff' : '#ffa726');
+      explosions.push({
+          x: entity.x,
+          y: entity.y,
+          radius: 65,
+          life: 0,
+          maxLife: 0.28,
+          color: isHyper ? '#00e5ff' : '#ffa726'
+      });
+  }
+
+  function triggerBlinkEyeSuperExplosion(eyeBullet, directHit = false) {
+      if (!eyeBullet || eyeBullet.blinkeyeExploded) return;
+      eyeBullet.blinkeyeExploded = true;
+      const owner = getEntityById(eyeBullet.ownerId);
+      if (owner) {
+          owner.blinkeyeSteering = false;
+          owner.blinkeyeActiveEye = null;
+          owner.defenseMult = 1.0;
+          owner.defenseUntil = 0;
+      }
+      const expRadius = eyeBullet.aoeRadius || 140;
+      const blastDamage = eyeBullet.damage || 2400;
+      AOEDamage(eyeBullet.x, eyeBullet.y, expRadius, blastDamage, eyeBullet.ownerId, false);
+      explosions.push({
+          x: eyeBullet.x,
+          y: eyeBullet.y,
+          radius: expRadius,
+          life: 0,
+          maxLife: 0.35,
+          color: eyeBullet.hyperVisual ? '#00e5ff' : '#ffa726',
+          legendary: true
+      });
+      spawnFloatingText(eyeBullet.x, eyeBullet.y - 35, directHit ? 'DIRECT SIGHT IMPACT! 👁️💥' : 'OPTIC DETONATION! 💥', eyeBullet.hyperVisual ? '#00e5ff' : '#ffa726');
+  }
+
+  function triggerBlinkEyeRetinalFlash(entity) {
+      if (!entity || entity.hp <= 0) return;
+      const radius = 220;
+      const knockback = 180;
+      const now = performance.now();
+      for (const target of [player, ...bots]) {
+          if (!target || target.hp <= 0 || target.id === entity.id) continue;
+          if (areAlliedEntities(entity, target)) continue;
+          const dist = Math.hypot(target.x - entity.x, target.y - entity.y);
+          if (dist > radius + (target.radius || 16)) continue;
+          const ang = Math.atan2(target.y - entity.y, target.x - entity.x);
+          const kb = knockback * getEntityKnockbackMultiplier(target, now);
+          target.x = clamp(target.x + Math.cos(ang) * kb, target.radius, WORLD_W - target.radius);
+          target.y = clamp(target.y + Math.sin(ang) * kb, target.radius, WORLD_H - target.radius);
+          target.slowUntil = Math.max(target.slowUntil || 0, now + 1800);
+          showDamageNumber(target.x, target.y - 20, 600, '#ffa726');
+          target.hp -= 600;
+          if (target.hp <= 0) handleDeath(target, entity);
+      }
+      explosions.push({ x: entity.x, y: entity.y, radius, life: 0, maxLife: 0.25, color: 'rgba(255, 167, 38, 0.75)', legendary: true });
+      spawnFloatingText(entity.x, entity.y - 38, 'RETINAL FLASH! ⚡👁️', '#ffa726');
+  }
+
+  function drawBlinkEyePiPScreen(ctx) {
+      if (!player || player.hp <= 0 || !player.blinkeyeSteering) return;
+      const now = performance.now();
+      const elapsed = now - (player.blinkeyeSteerStart || 0);
+      const remainingMs = Math.max(0, (player.blinkeyeSteerMaxDuration || 8000) - elapsed);
+      const secondsLeft = (remainingMs / 1000).toFixed(1);
+
+      // Check proximity threat around BlinkEye's body
+      let nearbyThreat = false;
+      for (const b of bots) {
+          if (b && b.hp > 0 && !areAlliedEntities(player, b)) {
+              if (Math.hypot(b.x - player.x, b.y - player.y) <= 300) {
+                  nearbyThreat = true;
+                  break;
+              }
+          }
+      }
+
+      ctx.save();
+      const pipW = 160;
+      const pipH = 160;
+      const pipX = innerWidth - pipW - 20;
+      const pipY = innerHeight - pipH - 85;
+
+      // Outer bezel & glow
+      ctx.fillStyle = 'rgba(7, 17, 31, 0.88)';
+      ctx.strokeStyle = nearbyThreat ? '#ff3b56' : '#ffa726';
+      ctx.lineWidth = nearbyThreat ? 3.5 : 2.5;
+      ctx.shadowColor = ctx.strokeStyle;
+      ctx.shadowBlur = nearbyThreat ? 16 : 10;
+      ctx.beginPath();
+      ctx.roundRect(pipX, pipY, pipW, pipH, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      // Clip inside screen
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(pipX + 4, pipY + 4, pipW - 8, pipH - 8, 8);
+      ctx.clip();
+
+      // Mini world background centered on player
+      const cx = pipX + pipW / 2;
+      const cy = pipY + pipH / 2;
+      const zoom = 0.22;
+
+      ctx.fillStyle = '#0c1a2e';
+      ctx.fillRect(pipX, pipY, pipW, pipH);
+
+      // Mini Grid
+      ctx.strokeStyle = 'rgba(255, 167, 38, 0.15)';
+      ctx.lineWidth = 1;
+      for (let g = -300; g <= 300; g += 60) {
+          ctx.beginPath();
+          ctx.moveTo(cx + g * zoom, pipY);
+          ctx.lineTo(cx + g * zoom, pipY + pipH);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(pipX, cy + g * zoom);
+          ctx.lineTo(pipX + pipW, cy + g * zoom);
+          ctx.stroke();
+      }
+
+      // Draw mini BlinkEye at center
+      ctx.fillStyle = '#ffa726';
+      ctx.shadowColor = '#ffa726';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Draw mini threat entities
+      for (const b of bots) {
+          if (!b || b.hp <= 0) continue;
+          const dx = (b.x - player.x) * zoom;
+          const dy = (b.y - player.y) * zoom;
+          if (Math.abs(dx) < pipW / 2 && Math.abs(dy) < pipH / 2) {
+              const isEnemy = !areAlliedEntities(player, b);
+              ctx.fillStyle = isEnemy ? '#ff4757' : '#2ed573';
+              ctx.beginPath();
+              ctx.arc(cx + dx, cy + dy, isEnemy ? 5 : 4, 0, Math.PI * 2);
+              ctx.fill();
+          }
+      }
+
+      // Scanlines
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      for (let y = pipY; y < pipY + pipH; y += 4) {
+          ctx.fillRect(pipX, y, pipW, 2);
+      }
+      ctx.restore();
+
+      // HUD overlay text on PiP
+      ctx.fillStyle = nearbyThreat ? '#ff4757' : '#ffa726';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(nearbyThreat ? '⚠️ ENEMY PROXIMITY!' : '👁️ BODY RADAR (PiP)', cx, pipY + 16);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText('⏱️ ' + secondsLeft + 's', cx, pipY + pipH - 8);
+      ctx.restore();
+  }
 
   // World and Camera
   let WORLD_W = 4000;
@@ -2393,6 +2622,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       return nativeBulletPush.apply(this, entries);
   };
   const destructibleWalls = [];
+  const outlitWallChains = [];
+  const OUTLIT_SUPER_WALL_CHAIN_MULTIPLIERS = Object.freeze([0.90, 0.80, 0.70, 0.60, 0.50]);
+  const OUTLIT_SUPER_WALL_CHAIN_RANGE = 300;
   const ARENA_WALL_TILE = 48;
   let nextDestructibleWallHitId = 1;
   const floatingTexts = [];
@@ -2665,6 +2897,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             sir_cheeseburger: 1.0
         },
         reloadMsByBrawler: {
+            blinkeye: 1350,
             warrior: 1650,
             weefee: 1400,
             sir_cheeseburger: 1300,
@@ -2715,6 +2948,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             ,predator: 1500
         },
         fireDelayMsByBrawler: {
+            blinkeye: 200,
             weefee: 240,
             sir_cheeseburger: 220,
             warrior: 260,
@@ -2887,6 +3121,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         spawnFloatingText(target.x, target.y - 34, `+${Math.round(amount)} SHIELD`, '#67e8ff');
         return true;
     }
+        const fighterFamilies = Object.freeze([
+        {name:'The Rebound Branch',color:'#ff9f59',motto:'Everything comes back—usually with an explosion.',members:['bouncin_balls','boomer','boom_arang','splitter','blinkeye']}
+    ]);
     const allBrawlers = [
         'outlit', 'fuser', 'echo', 'cheseypuff', 'decayer', 'unopcoloco', 'dashaholic',
         'trapper', 'classy', 'hyperorigin', 'heater_miser', 'minigunnin', 'steamer',
@@ -2896,7 +3133,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'the_deleter'
+        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -2958,6 +3195,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             axeywaxy: 'Epic',
             ramage: 'Epic',
             sir_cheeseburger: 'Epic',
+            blinkeye: 'Epic',
 
             // Mythic (26)
             dashaholic: 'Mythic',
@@ -2998,7 +3236,6 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             cinderion: 'Exotic',
             cursed: 'Exotic',
             anti_royal: 'Exotic',
-            the_deleter: 'Exotic',
 
             // Unique (19)
             decayer: 'Unique',
@@ -5714,21 +5951,22 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
 
     const brawlerData = {
-      'the_deleter': {
-          name: 'The Deleter',
-          role: 'Controller / Assassin',
-          desc: 'A reality-editing villain who bends a single deletion cursor in flight, then mirrors every move through disposable copies.',
-          color: '#ff315f',
-          attack: 'Rewrite',
-          attackDesc: 'Launch one slow cursor, then aim and attack again to redirect it smoothly. It instantly deletes fighters already below 20% HP. Only one Rewrite can exist at once.',
-          super: 'Delete From Existence',
-          superDesc: 'Create 2 copies for 8 seconds. They move beside The Deleter and mirror Rewrite at 30% damage, but their shots cannot execute.',
-          hyper: 'Total Erasure: Rewrite deletes fighters below 35% HP. Delete From Existence creates 3 copies dealing 50% damage. +25% damage, +15% speed, +10% shield.',
-          g1: 'Hard Redirect (The next in-flight Rewrite turns instantly and gains 20% more remaining range)',
-          g2: 'Undo (Erase the active Rewrite volley and immediately restore 1 ammo)',
-          sp1: 'Tracking Error (Redirected Rewrite projectiles accelerate by 20%)',
-          sp2: 'Shared Memory (Normal copies deal 35% damage instead of 30%)'
+      'blinkeye': {
+          name: 'BlinkEye',
+          role: 'Marksman',
+          desc: 'All-seeing optic sniper whose hyper-fast laser gaze ricochets off walls with massive range boosts.',
+          color: '#ffa726',
+          attack: 'Ricochet Gaze',
+          attackDesc: 'Fires an ultra-fast optic sniper shot. Bouncing off a wall grants +100% range per bounce (up to 2 bounces for +200% max range).',
+          super: 'We All See',
+          superDesc: 'Gains 90% damage reduction and steers a slower All-Seeing Eye projectile with camera tracking and a mini threat-radar screen for 8s. Ends upon hit or impact.',
+          hyper: 'Omnipresent Sight: Main attack fires 2 rapid shots. Super grants 100% invulnerability, lasts 10s, and automatically launches eye missiles at spotted enemies every 0.9s.',
+          g1: 'Retinal Flash (Optic shockwave that knocks back nearby enemies and blinds them for 1.8s)',
+          g2: 'Prism Bumper (Deploys an eye bumper that reflects any sniper shot with guaranteed +100% range)',
+          sp1: 'Rebound Focus (Bounced shots deal +25% bonus damage on 1st bounce and +50% on 2nd bounce)',
+          sp2: 'Watchful Iris (While steering Super, threats near BlinkEye trigger automatic defensive counter-beams)'
       },
+
       'weefee': {
           name: 'Wee-Fee',
           role: 'Controller',
@@ -5901,7 +6139,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       'demon': { name:'Demon', role:'Assassin', desc:'A demonic blade assassin who recalls his weapon or glides to its landing point.', color:'#d44763', attack:'Hellblade', attackDesc:'Throw a blade. For 1 second after it lands, move toward it to glide and retrieve it; otherwise it recalls and damages again.', super:'Demonic Doom', superDesc:'Create three blade clones that hook up to three enemies and pull them toward Demon.', hyper:'Doom’s Embrace: Fire a second spectral blade. During Demonic Doom’s pull, Demon gains 60% damage reduction.', g1:'Blade Swap (Instantly teleport to the grounded blade)', g2:'Barbed Recall (Next recall slows and heals on hit)', sp1:'Cut Both Ways (Outgoing plus returning hit deals 700 bonus)', sp2:'Hellbound Landing (Gliding grants a 1400 shield)' },
       'paradox': { name: 'Paradox', role: 'Controller', desc: 'A legendary Time Weaver who tunnels space-time, slows enemy fire, and rewinds position.', color: '#a8a2ff', attack: 'Temporal Skip', attackDesc: 'Fires a skip shot. Disappears instantly and teleports to max range, detonating in a splash explosion.', super: 'Relativity Zone', superDesc: 'Aim and place a large dome. Allied shots fly 10% faster; enemy shots fly 30% slower and track 30% less accurately.', hyper: 'Double Paradox: Places a stationary dome at the aim point and attaches a second mobile dome to Paradox. Attack skips twice as fast and stuns for 0.5s.', g1: 'Chronoshift (Rewind position 2 seconds ago and heal 1500 HP)', g2: 'Paradox Charge (Next attack sweeps full path for double damage)', sp1: 'Quantum Tangle (Skipped middle path pulls enemies towards explosion)', sp2: 'Temporal Fracture (Using Super grants 8s of side shots and a piercing middle sweep)' },
       'beam': { name: 'Beam', role: 'Damage Dealer', desc: 'A continuous laser weapon that ramps up damage the longer it hits.', color: '#ffd700', attack: 'Focus Beam', attackDesc: 'Fires a continuous laser. Damage ramps up through 6 stages while firing.', super: 'The Golden Beam', superDesc: 'Turns the beam golden! Enemies hit are stunned for 0.75s.', hyper: 'Purple Ray of Roar: +23% range, faster ramp, last 25% ammo does +50% dmg.', g1: 'Prism Split (Wide 3-laser cone)', g2: 'Emergency Cooling (Consume 30% ammo to heal 2000 HP)', sp1: 'Thermal Resonance (25% shield at max ramp)', sp2: 'Overload Residue (Super leaves a burning trail)' },
-      'outlit': { name: 'Outlit', role: 'Close-range', desc: 'Shotgun blast with strong point-blank damage.', color: '#ff9b42', attack: 'Scatter Pump', attackDesc: 'A compact shotgun blast with a tight spread and strong point-blank damage.', super: 'Boom Break', superDesc: 'Fires 2 heavy shells that destroy walls and crack open escape routes.', hyper: 'Super pierces, tighter & faster main attacks.', g1: 'Next Shot Pierce', g2: 'Healing Pod', sp1: 'Shell Chill (Slows)', sp2: 'Long Boom (+35% Super Range)' },
+      'outlit': { name: 'Outlit', role: 'Close-range', desc: 'Shotgun blast with strong point-blank damage.', color: '#ff9b42', attack: 'Scatter Pump', attackDesc: 'A compact shotgun blast with a tight spread and strong point-blank damage.', super: 'Boom Break', superDesc: 'Fires 3 oversized shock pellets that smoothly knock enemies back. Hitting metal arcs through up to 5 walls for 90%, 80%, 70%, 60%, then 50% damage.', hyper: 'Boom Break pierces enemies; Scatter Pump becomes tighter and faster.', g1: 'Next Shot Pierce', g2: 'Healing Pod', sp1: 'Shell Chill (Slows)', sp2: 'Long Boom (+35% Super Range)' },
       'echo': { name: 'Echo', role: 'Controller', desc: 'Fires expanding sound rings that control the battlefield.', color: '#ccaaff', attack: 'Sound Wave', attackDesc: 'Shoots a ring that grows in size as it travels.', super: 'Resonance', superDesc: 'Unleashes massive sound waves that pierce through enemies.', hyper: 'Super sound rings expand twice for double hits.', g1: 'Amplify (Bigger ring, less dmg)', g2: 'Shielding (Take reduced damage)', sp1: 'Reverb Heal (Heal 334 HP on hit)', sp2: 'Double Wave (Super shoots backwards too)' },
       'cheseypuff': { name: 'Cheseypuff', role: 'Marksman', desc: 'Long-range sniper that evolves projectiles.', color: '#ffdc78', attack: 'Cheese Ball', attackDesc: 'Fires a multi-stage projectile with 35% more range and 30% larger stages.', super: 'Cheese Aura', superDesc: 'Gains 30% damage reduction and damages nearby enemies over time.', hyper: 'Extra Aged: Cheese Ball no longer shrinks and its final stage bursts for 650 damage. Super lasts longer with 50% damage reduction and a trailing aura.', g1: 'Big Puff (Empowered shot)', g2: 'Cheese Trap (Slow field)', sp1: 'Sticky Cheese (Super drops fields)', sp2: 'Aged Cheese (Third attack stage)' },
       'decayer': { name: 'Decayer', role: 'Controller', desc: 'Build…2803 tokens truncated…esperation Bounce (Extra shiny ball when low HP)', sp2: 'Momentum (Bullets 10% faster after bounce)' },
@@ -6176,13 +6414,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
         boomer:'Artillery', cluster:'Artillery', evil_doctor:'Artillery', fightnfire:'Artillery', rocketeer:'Artillery', skeleflying:'Artillery', splitter:'Artillery', trapper:'Artillery', upiedown:'Artillery',
         amplifier:'Support', angel:'Support', echo:'Support', fastpass:'Support', freestyle:'Support', hope:'Support', relay:'Support', trampaheal:'Support', sera_eclipse:'Support',
-        adlof:'Controller', awakenator:'Controller', cursed:'Controller', king:'Controller', anti_royal:'Controller', the_deleter:'Controller', daggershard:'Controller', darkener:'Controller', decayer:'Controller', forest:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller', mageny:'Controller',
+        adlof:'Controller', awakenator:'Controller', cursed:'Controller', king:'Controller', anti_royal:'Controller', daggershard:'Controller', darkener:'Controller', decayer:'Controller', forest:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller', mageny:'Controller',
         beam:'Damage Dealer', fuser:'Damage Dealer', heater_miser:'Damage Dealer', jacktrade:'Damage Dealer', minigunnin:'Damage Dealer', money_and_tax:'Damage Dealer', outlit:'Damage Dealer', steamer:'Damage Dealer', axeywaxy:'Damage Dealer', upgradart:'Damage Dealer',
-        bouncin_balls:'Skirmisher', chickpig:'Skirmisher', classy:'Skirmisher', copyphase:'Skirmisher', goonbob:'Skirmisher', hoop:'Skirmisher', hyperorigin:'Skirmisher', robber:'Skirmisher', cinderion:'Controller', weefee:'Controller'
+        bouncin_balls:'Skirmisher', chickpig:'Skirmisher', classy:'Skirmisher', copyphase:'Skirmisher', goonbob:'Skirmisher', hoop:'Skirmisher', hyperorigin:'Skirmisher', robber:'Skirmisher', cinderion:'Controller', weefee:'Controller', blinkeye:'Marksman'
     };
     for (const [id, role] of Object.entries(PRIMARY_ROLE_BY_BRAWLER)) if (brawlerData[id]) brawlerData[id].role = role;
     const brawlerPortraitIcons = {
-        the_deleter: '⌫',
+        blinkeye: '👁️',
         weefee: '📶',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -6275,7 +6513,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return brawlerPortraitIcons[brawlerId] || '⭐';
     }
 
-    const CUSTOM_BRAWLER_PORTRAITS = Object.freeze(['evil_doctor', 'bouncin_balls', 'minigunnin', 'mageny', 'trampaheal', 'ramage', 'upgradart', 'rocketeer', 'sir_cheeseburger']);
+    const CUSTOM_BRAWLER_PORTRAITS = Object.freeze(['evil_doctor', 'bouncin_balls', 'minigunnin', 'mageny', 'trampaheal', 'ramage', 'upgradart', 'rocketeer', 'sir_cheeseburger', 'blinkeye']);
     function hasCustomBrawlerPortrait(brawlerId) {
         return !!window.BraweRosterVisuals?.has(brawlerId) || CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId)
             || (brawlerId === 'classy' && getActiveSkinForBrawler('classy')?.id === 'back-to-school-classy')
@@ -6290,6 +6528,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
         const isRankedRocketeer = brawlerId === 'rocketeer' && getActiveSkinForBrawler('rocketeer')?.id === 'ranked-rocketeer';
         const art = {
+            blinkeye: `<circle cx="50" cy="50" r="34" fill="#141a29" stroke="#ffa726" stroke-width="4"/><path d="M15 50 Q50 20 85 50 Q50 80 15 50 Z" fill="#222b40" stroke="#ffb74d" stroke-width="2.5"/><circle cx="50" cy="50" r="16" fill="#fff" stroke="#ffa726" stroke-width="2"/><circle cx="50" cy="50" r="10" fill="#ff7043"/><circle cx="50" cy="50" r="5" fill="#0d1117"/><circle cx="53" cy="47" r="2" fill="#fff"/><line x1="50" y1="26" x2="50" y2="74" stroke="#ffa726" stroke-width="1.5" stroke-dasharray="2,2"/><line x1="26" y1="50" x2="74" y2="50" stroke="#ffa726" stroke-width="1.5" stroke-dasharray="2,2"/>`,
+
                         weefee: `<circle cx="50" cy="50" r="34" fill="#0b1e28" stroke="#00f5d4" stroke-width="4"/><rect x="24" y="38" width="52" height="34" rx="7" fill="#132c3a" stroke="#00f5d4" stroke-width="2.5"/><line x1="33" y1="38" x2="27" y2="20" stroke="#00f5d4" stroke-width="3" stroke-linecap="round"/><circle cx="27" cy="20" r="3.5" fill="#00ff88"/><line x1="67" y1="38" x2="73" y2="20" stroke="#00f5d4" stroke-width="3" stroke-linecap="round"/><circle cx="73" cy="20" r="3.5" fill="#00ff88"/><rect x="33" y="46" width="34" height="18" rx="4" fill="#07141c" stroke="#58f0cf" stroke-width="1.5"/><rect x="37" y="56" width="4" height="5" rx="1" fill="#00ff88"/><rect x="44" y="53" width="4" height="8" rx="1" fill="#00ff88"/><rect x="51" y="50" width="4" height="11" rx="1" fill="#00ff88"/><rect x="58" y="47" width="4" height="14" rx="1" fill="#00ff88"/><circle cx="30" cy="65" r="2" fill="#ff4757"/><circle cx="70" cy="65" r="2" fill="#00f5d4"/>`,
             sir_cheeseburger: `<circle cx="50" cy="50" r="34" fill="#2b2d42" stroke="#ffb830" stroke-width="4"/><path d="M22 36Q50 14 78 36L72 74Q50 86 28 74Z" fill="#3d405b" stroke="#f4a261" stroke-width="2.5"/><path d="M24 35Q50 16 76 35L74 46Q50 36 26 46Z" fill="#e07a5f"/><circle cx="38" cy="28" r="1.5" fill="#ffffff"/><circle cx="50" cy="24" r="1.5" fill="#ffffff"/><circle cx="62" cy="28" r="1.5" fill="#ffffff"/><circle cx="44" cy="34" r="1.5" fill="#ffffff"/><circle cx="56" cy="34" r="1.5" fill="#ffffff"/><rect x="28" y="44" width="44" height="7" rx="2" fill="#ffb830" stroke="#d48b00" stroke-width="1.5"/><rect x="32" y="54" width="36" height="5" rx="2" fill="#1b1d2b"/><line x1="42" y1="54" x2="42" y2="59" stroke="#3d405b" stroke-width="2"/><line x1="50" y1="54" x2="50" y2="59" stroke="#3d405b" stroke-width="2"/><line x1="58" y1="54" x2="58" y2="59" stroke="#3d405b" stroke-width="2"/><path d="M14 48L24 44L24 64L14 60Z" fill="#f4a261" stroke="#ffb830" stroke-width="1.5"/><path d="M86 48L76 44L76 64L86 60Z" fill="#f4a261" stroke="#ffb830" stroke-width="1.5"/><path d="M72 16L82 6L86 10L76 20Z" fill="#ffb830" stroke="#ffffff" stroke-width="1.5"/><polygon points="76,20 70,26 74,30 80,24" fill="#3d405b"/><polygon points="78,10 88,20 74,34 64,24" fill="none"/>`,
             evil_doctor: `<circle cx="50" cy="47" r="30" fill="#183c38" stroke="#51ffad" stroke-width="4"/><path d="M24 37Q50 10 76 37L70 48H30Z" fill="#e8fff7"/><path d="M43 24h14v8H43zM46 21h8v14h-8z" fill="#ff4f74"/><circle cx="39" cy="49" r="6" fill="#87ffcf"/><circle cx="61" cy="49" r="6" fill="#87ffcf"/><path d="M36 65Q50 75 64 65" fill="none" stroke="#b7ffe1" stroke-width="5"/><path d="M19 71Q50 57 81 71L88 96H12Z" fill="#522c75" stroke="#9d68db" stroke-width="3"/><path d="M47 73h6v18h-6zM41 79h18v6H41z" fill="#54ffac"/>`,
@@ -6966,7 +7206,6 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       xray: { g1: 13000, g2: 15000 },
       king: { g1: 14000, g2: 12000 },
       anti_royal: { g1: 13000, g2: 15000 },
-      the_deleter: { g1: 13000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 }
   };
   function normalizeGadgetSlot(slot) {
@@ -9210,7 +9449,2076 @@ let heistFeverActive = false;
       const currentReward=getTowerTroubleFloorReward(floor,run.losses||0);
       board.innerHTML=`<section class="tower-run-board__panel"><header><div><small>SEASON 2 • BATTLE OF THE TOWERS</small><h1>TOWER TROUBLE</h1><p>Choose one of 12 random maxed guest brawlers, including fighters you have not unlocked. Every fighter can battle only once per run, whether they win or lose. A loss also halves later floor rewards.</p></div><button class="tower-run-board__close" aria-label="Close">×</button></header><div class="tower-run-board__status"><b>FLOOR ${floor}/10</b><span>${challenge.name} • ${TOWER_FLOOR_BIOMES[floor-1]} • ${currentReward.toLocaleString()} COINS</span><strong>${run.losses||0}/3 KNOCKOUTS • ${Math.round(getTowerTroubleRewardMultiplier(run.losses)*100)}% PAYOUT</strong></div><div class="tower-run-board__body"><div class="tower-run-board__tower"></div><div class="tower-run-board__roster"><h2>YOUR 12-BRAWLER CREW</h2><p>${challenge.desc} Every guest fighter is Power 11 with a complete kit whether owned or locked. Win or lose, that fighter retires for the rest of this Tower run.</p><div class="tower-run-board__fighters"></div></div></div></section>`;
       const tower=board.querySelector('.tower-run-board__tower');
-      for(let i=TOWER_TROUBLE_FLOORS;i>=1;i--){const rule=TOWER_FLOOR_CHALLENGES[i-1],state=i<floor?'is-cleared':(i===floor?'is-current':'is-locked'),level=document.createElement('div');level.className=`tower-run-floor ${state}`;level.innerHTML=`<i>${i<floor?'✓':i}</i><span><b>${rule.name}</b><small>${TOWER_FLOOR_BIOMES[i-1]} • ${getTowerTroubleFloorYtyQuestEvent || playerData.specialAbilityQuestEvent.eventId !== UNLEASH_POTENTIAL_EVENT_ID) {
+      for(let i=TOWER_TROUBLE_FLOORS;i>=1;i--){const rule=TOWER_FLOOR_CHALLENGES[i-1],state=i<floor?'is-cleared':(i===floor?'is-current':'is-locked'),level=document.createElement('div');level.className=`tower-run-floor ${state}`;level.innerHTML=`<i>${i<floor?'✓':i}</i><span><b>${rule.name}</b><small>${TOWER_FLOOR_BIOMES[i-1]} • ${getTowerTroubleFloorReward(i,run.losses).toLocaleString()} coins</small></span>`;tower.appendChild(level);}
+      const fighters=board.querySelector('.tower-run-board__fighters');
+      for(const id of run.roster){const used=eliminated.has(id),button=document.createElement('button');button.className=`tower-run-fighter${used?' is-eliminated':''}`;button.disabled=used;const data=brawlerData[id]||{};button.innerHTML=`<span>${getBrawlerPortraitMarkup(id)}</span><b>${data.name||id}</b><small>${used?'USED THIS RUN':'POWER 11 • READY'}</small>`;if(!used)button.onclick=()=>{run.brawler=id;run.cards=[];selectedBrawler=id;saveProgress();board.remove();draftTowerTroubleBrawler(run,floor);};fighters.appendChild(button);}
+      board.querySelector('.tower-run-board__close').onclick=()=>board.remove();document.body.appendChild(board);
+  }
+
+  function openTowerGauntletCrewDraft(run){
+      const overlay=document.createElement('div');overlay.className='tower-run-board tower-gauntlet-crew-draft';
+      const picked=new Set(run.crew||[]);
+      overlay.innerHTML=`<section class="tower-run-board__panel"><header><div><small>LIMITED EVENT • GRAND TOUR</small><h1>CHOOSE FOUR EXTRA-LIFE BRAWLERS</h1><p>All 20 random maxed guests can fight. Choose four to receive three knockout lives; every other guest receives one life.</p></div><button class="tower-run-board__close" aria-label="Close">×</button></header><div class="tower-run-board__status"><b class="crew-count">${picked.size}/4 BOOSTED</b><span>Wins preserve lives • losses consume one life</span><strong>TOP 15 CLEARS SHOWDOWN</strong></div><div class="tower-run-board__fighters" style="grid-template-columns:repeat(auto-fit,minmax(125px,1fr));padding:18px"></div><button class="tower-gauntlet-confirm" disabled style="margin:0 18px 18px;padding:14px;border:0;border-radius:12px;font-weight:1000">LOCK EXTRA LIVES</button></section>`;
+      const fighters=overlay.querySelector('.tower-run-board__fighters'),count=overlay.querySelector('.crew-count'),confirm=overlay.querySelector('.tower-gauntlet-confirm');
+      const refresh=()=>{count.textContent=`${picked.size}/4 BOOSTED`;confirm.disabled=picked.size!==TOWER_GAUNTLET_CREW_SIZE;fighters.querySelectorAll('[data-brawler]').forEach(btn=>btn.classList.toggle('is-selected',picked.has(btn.dataset.brawler)));};
+      for(const id of run.roster){const d=brawlerData[id]||{},btn=document.createElement('button');btn.className='tower-run-fighter';btn.dataset.brawler=id;btn.innerHTML=`<span>${getBrawlerPortraitMarkup(id)}</span><b>${d.name||id}</b><small>POWER 11 GUEST</small>`;btn.onclick=()=>{if(picked.has(id))picked.delete(id);else if(picked.size<TOWER_GAUNTLET_CREW_SIZE)picked.add(id);refresh();};fighters.appendChild(btn);}
+      confirm.onclick=()=>{if(picked.size!==TOWER_GAUNTLET_CREW_SIZE)return;run.crew=[...picked];run.usesLeft=Object.fromEntries(run.roster.map(id=>[id,picked.has(id)?TOWER_GAUNTLET_LIVES_PER_BRAWLER:1]));saveProgress();overlay.remove();openTowerGauntletBoard(run);};
+      overlay.querySelector('.tower-run-board__close').onclick=()=>overlay.remove();refresh();document.body.appendChild(overlay);
+  }
+
+  function openTowerGauntletBoard(run){
+      const floor=Math.max(1,Math.min(TOWER_GAUNTLET_FLOORS,run.floor||1));
+      const mode=getTowerGauntletFloorMode(floor),modeName=TOWER_GAUNTLET_MODE_NAMES[mode]||mode;
+      const available=(run.roster||[]).filter(id=>(run.usesLeft?.[id]||0)>0);
+      if(!available.length){run.active=false;saveProgress();alert('All 20 guest brawlers are out of knockout lives. Start a new Grand Tour.');return;}
+      const board=document.createElement('div');board.className='tower-run-board tower-gauntlet-board';
+      board.innerHTML=`<section class="tower-run-board__panel"><header><div><small>LIMITED EVENT • 20-FLOOR MULTI-MODE CLIMB</small><h1>TOWER TROUBLE: GRAND TOUR</h1><p>All 20 guests can fight. Your four boosted choices have three lives; the other guests have one. Wins cost no lives.</p></div><button class="tower-run-board__close" aria-label="Close">×</button></header><div class="tower-run-board__status"><b>FLOOR ${floor}/20</b><span>${modeName} • ${getTowerGauntletFloorReward(floor).toLocaleString()} COINS</span><strong>${run.losses||0} KNOCKOUTS • TITLE REQUIRES 0–2</strong></div><div class="tower-run-board__body"><div class="tower-run-board__tower"></div><div class="tower-run-board__roster"><h2>YOUR 20-BRAWLER ROSTER</h2><p>${isTowerShowdownMode(mode)?'Finish 15th or higher to clear this Showdown floor.':'Win the objective to clear this floor.'}</p><div class="tower-run-board__fighters"></div></div></div></section>`;
+      const tower=board.querySelector('.tower-run-board__tower');
+      for(let i=TOWER_GAUNTLET_FLOORS;i>=1;i--){const floorMode=getTowerGauntletFloorMode(i),state=i<floor?'is-cleared':i===floor?'is-current':'is-locked',node=document.createElement('div');node.className=`tower-run-floor ${state}`;node.innerHTML=`<i>${i<floor?'✓':i}</i><span><b>${TOWER_GAUNTLET_MODE_NAMES[floorMode]||floorMode}</b><small>${getTowerGauntletFloorReward(i)} coins</small></span>`;tower.appendChild(node);}
+      const fighters=board.querySelector('.tower-run-board__fighters');
+      for(const id of run.roster){const lives=run.usesLeft?.[id]||0,boosted=(run.crew||[]).includes(id),maxLives=boosted?TOWER_GAUNTLET_LIVES_PER_BRAWLER:1,d=brawlerData[id]||{},btn=document.createElement('button');btn.className=`tower-run-fighter${lives<=0?' is-eliminated':''}${boosted?' is-selected':''}`;btn.disabled=lives<=0;btn.innerHTML=`<span>${getBrawlerPortraitMarkup(id)}</span><b>${d.name||id}</b><small>${lives}/${maxLives} ${boosted?'BOOSTED ':''}LIVES</small>`;if(lives>0)btn.onclick=()=>{run.brawler=id;run.cards=[];selectedBrawler=id;towerTroubleVariant='gauntlet';saveProgress();board.remove();draftTowerTroubleBrawler(run,floor);};fighters.appendChild(btn);}
+      board.querySelector('.tower-run-board__close').onclick=()=>board.remove();document.body.appendChild(board);
+  }
+
+  function prepareTowerGauntletRun(){
+      ensureSlopSushiState();
+      const sushi=playerData.slopSushi,run=sushi.gauntletRun,pool=getTowerTroubleBrawlerPool();
+      if(pool.length<TOWER_GAUNTLET_ROSTER_SIZE){alert(`Grand Tour needs at least ${TOWER_GAUNTLET_ROSTER_SIZE} playable brawlers.`);return;}
+      const rosterValid=run.active&&run.roster?.length===TOWER_GAUNTLET_ROSTER_SIZE&&run.roster.every(id=>pool.includes(id));
+      if(!rosterValid){Object.assign(run,{active:true,variant:'gauntlet',originalBrawler:allBrawlers.includes(selectedBrawler)?selectedBrawler:'outlit',roster:createTowerTroubleRoster(pool,TOWER_GAUNTLET_ROSTER_SIZE),crew:[],usesLeft:{},losses:0,brawler:null,floor:1,stage:1,cards:[],fusionLevel:0,coinsEarned:0,inMatch:false,runId:`grand_tour_${Date.now()}_${Math.floor(Math.random()*100000)}`});saveProgress();}
+      towerTroubleVariant='gauntlet';
+      if(run.crew.length!==TOWER_GAUNTLET_CREW_SIZE||run.crew.some(id=>!run.roster.includes(id))){openTowerGauntletCrewDraft(run);return;}
+      for(const id of run.roster)if(run.usesLeft[id]==null)run.usesLeft[id]=run.crew.includes(id)?TOWER_GAUNTLET_LIVES_PER_BRAWLER:1;
+      openTowerGauntletBoard(run);
+  }
+
+  function prepareTowerTroubleMatch() {
+      return prepareTowerTroubleRunV2();
+      ensureSlopSushiState();
+      const season=playerData.slopSushi;
+      const run=season.run;
+      const validPool=getTowerTroubleBrawlerPool();
+      if(!validPool.length){alert('Tower Trouble needs at least one complete Transformation deck.');return;}
+      if(!run.active||!validPool.includes(run.brawler)){
+          run.active=true;
+          run.brawler=validPool[Math.floor(Math.random()*validPool.length)];
+          run.floor=1;
+          run.stage=1;
+          run.cards=[];
+          run.fusionLevel=0;
+      }
+      selectedBrawler=run.brawler;
+      slopSushiActiveCards=[];
+      sushiMatchArmed=true;
+      isTowerTroubleMode=true;
+      const deck=getActiveSlopSushiDeck(run.brawler);
+      const floor=Math.max(1,Math.min(TOWER_TROUBLE_FLOORS,run.floor||1));
+      towerFusionStrength=1.55+floor*.10;
+      const chosen=[];
+      const pick=(pickNumber)=>{
+          if(pickNumber>TOWER_FUSION_CARD_COUNT){
+              run.cards=[...chosen];run.stage=floor;run.fusionLevel=floor;
+              slopSushiActiveCards=[...chosen];
+              saveProgress();
+              launchShowdownMatch();
+              return;
+          }
+          const candidates=deck.filter(card=>!chosen.includes(card.id)).sort(()=>Math.random()-.5);
+          const choices=candidates.slice(0,3);
+          const overlay=document.createElement('div');
+          overlay.className='sushi-mobile-overlay tower-trouble-draft';
+          overlay.style.cssText='position:fixed;inset:0;z-index:2800;background:radial-gradient(circle at 50% 20%,#44306d,#10152c 55%,#050813);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif';
+          const brawlerName=brawlerData[run.brawler]?.name||run.brawler;
+          overlay.innerHTML=`<div style="font-size:12px;font-weight:1000;letter-spacing:.18em;color:#8ee9ff">SEASON 2 • BATTLE OF THE TOWERS</div><h1 style="margin:8px 0;color:#ffd66b">TOWER TROUBLE — FLOOR ${floor}/${TOWER_TROUBLE_FLOORS}</h1><p style="margin:0 0 6px"><b>${brawlerName}</b> is maxed for this run • ${TOWER_FLOOR_BIOMES[floor-1]}</p><p style="color:#d4b5ff">Choose Transformation ${pickNumber}/4. All four fuse at <b>${Math.round(towerFusionStrength*100)}% power</b>.</p><div class="sushi-match-picks" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"></div><div style="margin-top:16px;color:#95a8c7">FUSION: ${chosen.length?chosen.map(id=>deck.find(c=>c.id===id)?.name).filter(Boolean).join(' + '):'waiting for first power'}</div>`;
+          const wrap=overlay.querySelector('.sushi-match-picks');
+          choices.forEach(card=>{
+              const color=card.rarity==='Exotic'?'#55f7ff':(card.rarity==='Legendary'?'#ffb347':(card.rarity==='Mythic'?'#ff5ba7':'#9b8cff'));
+              const button=document.createElement('button');button.className='sushi-mobile-card tower-transformation-card';
+              button.style.cssText=`width:230px;min-height:260px;padding:20px;border:2px solid ${color};border-radius:22px;background:linear-gradient(155deg,#251b47,#102b3b);color:white;cursor:pointer;box-shadow:0 0 28px ${color}55`;
+              button.innerHTML=`<div style="font-size:11px;font-weight:1000;color:${color};letter-spacing:.12em">${card.rarity.toUpperCase()} • TOWER TRANSFORMATION</div><div style="font-size:52px">${card.icon}</div><h2>${card.name}</h2><p>${card.desc}</p>`;
+              button.onclick=()=>{chosen.push(card.id);overlay.remove();pick(pickNumber+1);};wrap.appendChild(button);
+          });
+          document.body.appendChild(overlay);
+      };
+      pick(1);
+  }
+
+  function prepareSlopSushiMatch() {
+      if(showdownMode==='slop_sushi'){prepareTowerTroubleMatch();return;}
+      if(showdownMode==='slop_sushi_gauntlet'){prepareTowerGauntletRun();return;}
+      if(!isSlopSushiEventLive()){alert('This legacy event rotation is unavailable during Battle of the Towers.');return;}
+      ensureSlopSushiState();
+      if(!hasSlopSushiDeck(selectedBrawler)){alert('Unlock this brawler’s full Transformation deck with a Tower Drop first.');return;}
+      const deck=getActiveSlopSushiDeck(selectedBrawler);
+      if(deck.length<2){alert('This brawler needs at least 2 Tower Transformations.');return;}
+      slopSushiActiveCards=[];sushiMatchArmed=true;
+      const totalPicks=showdownMode==='slop_sushi_plus'?Math.min(7,deck.length):2;
+      const pickCard=(pickNumber)=>{
+          if(pickNumber>totalPicks){saveProgress();launchShowdownMatch();return;}
+          const owned=new Set(slopSushiActiveCards);
+          const choices=deck.filter(card=>!owned.has(card.id)).sort(()=>Math.random()-.5).slice(0,3);
+          const overlay=document.createElement('div');overlay.className='sushi-mobile-overlay';
+          overlay.style.cssText='position:fixed;inset:0;z-index:2800;background:radial-gradient(circle,#302d59,#07111d 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif';
+          overlay.innerHTML=`<h1 style="color:#ffcf72">🏰 CHOOSE TRANSFORMATION ${pickNumber}/${totalPicks}</h1><p>Build a fused Tower loadout for this match.</p><div class="sushi-match-picks" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"></div>`;
+          const wrap=overlay.querySelector('.sushi-match-picks');
+          choices.forEach(card=>{
+              const color=card.rarity==='Exotic'?'#55f7ff':(card.rarity==='Legendary'?'#ffb347':(card.rarity==='Mythic'?'#ff5ba7':'#9b8cff'));
+              const level=getSlopPowerLevel(card.id),button=document.createElement('button');button.className='sushi-mobile-card';
+              button.style.cssText=`width:220px;min-height:250px;padding:22px;border:2px solid ${color};border-radius:20px;background:linear-gradient(160deg,#30204f,#10263a);color:white;cursor:pointer;box-shadow:0 0 25px ${color}55`;
+              button.innerHTML=`<div style="font-size:12px;font-weight:900;color:${color}">${card.rarity.toUpperCase()}${level?` • POWER +${level*10}%`:''}</div><div style="font-size:60px">${card.icon}</div><h2>${card.name}</h2><p>${card.desc}</p>`;
+              button.onclick=()=>{slopSushiActiveCards.push(card.id);overlay.remove();pickCard(pickNumber+1);};wrap.appendChild(button);
+          });
+          document.body.appendChild(overlay);
+      };
+      pickCard(1);
+  }
+
+  let slopSushiCardHud=null;
+  function removeSlopSushiCardHud(){if(slopSushiCardHud)slopSushiCardHud.remove();slopSushiCardHud=null;}
+  function renderSlopSushiCardHud(){
+      removeSlopSushiCardHud();if(!isSlopSushiMode||!slopSushiActiveCards.length)return;
+      const tray=document.createElement('div');tray.style.cssText='position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:95;display:flex;gap:7px;align-items:flex-end;pointer-events:none;font-family:sans-serif';
+      getSlopCards().forEach(card=>{
+          const level=getSlopPowerLevel(card.id),color=card.rarity==='Exotic'?'#55f7ff':(card.rarity==='Legendary'?'#ffb347':(card.rarity==='Mythic'?'#ff5ba7':'#9b8cff'));
+          const item=document.createElement('div');item.style.cssText=`position:relative;width:48px;height:48px;border:2px solid ${color};border-radius:12px;background:#141526;display:flex;align-items:center;justify-content:center;font-size:25px;box-shadow:0 0 14px ${color}55;cursor:help;pointer-events:auto;transition:transform .15s`;
+          item.innerHTML=`${card.icon}${level?`<span style="position:absolute;right:-5px;top:-7px;background:#5df2c2;color:#07151a;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:900">+${level*10}%</span>`:''}`;
+          const tip=document.createElement('div');tip.style.cssText=`display:none;position:absolute;left:50%;bottom:58px;transform:translateX(-50%);width:230px;padding:11px;border:1px solid ${color};border-radius:12px;background:rgba(8,12,25,.97);color:#fff;font-size:12px;line-height:1.35;text-align:left;box-shadow:0 8px 30px #000;pointer-events:none`;
+          tip.innerHTML=`<b style="color:${color}">${card.name}</b><div style="margin-top:5px">${card.desc}</div><div style="margin-top:5px;color:#9fb4c7">${card.rarity}${level?` • Power Level ${level}`:''}</div>`;
+          item.appendChild(tip);item.onmouseenter=()=>{tip.style.display='block';item.style.transform='translateY(-5px) scale(1.06)'};item.onmouseleave=()=>{tip.style.display='none';item.style.transform='none'};tray.appendChild(item);
+      });
+      document.body.appendChild(tray);slopSushiCardHud=tray;
+  }
+
+  function openSushiEventHub(){
+      ensureSlopSushiState();const tower=playerData.slopSushi,deckCount=allBrawlers.filter(id=>hasSlopSushiDeck(id)).length,stats=tower.eventStats;
+      const quests=[
+          {id:'matches5',icon:'⚔️',title:'Climb the Tower',desc:'Play 5 Transformation matches.',value:stats.matches,target:5,reward:'1 Tower Drop',tappers:1},
+          {id:'wins3',icon:'🏆',title:'Floor Sweeper',desc:'Win 3 Transformation matches.',value:stats.wins,target:3,reward:'2 Tower Drops',tappers:2},
+          {id:'decks10',icon:'🏰',title:'Deck Architect',desc:'Own 10 complete brawler Transformation decks.',value:deckCount,target:10,reward:'500 Coins',coins:500},
+          {id:'powers20',icon:'✨',title:'Fusion Engineer',desc:'Choose 20 Tower Transformations.',value:stats.powersPicked,target:20,reward:'1 Tower Drop + 5 Gems',tappers:1,gems:5}
+      ];
+      const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;z-index:2400;background:radial-gradient(circle at 20% 0,#34255f,#07111d 68%);display:flex;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;padding:20px';
+      const panel=document.createElement('div');panel.style.cssText='width:min(1040px,96vw);max-height:92vh;overflow:auto;border:2px solid #8e8cff;border-radius:24px;background:rgba(8,17,29,.96);box-shadow:0 0 55px #8e8cff55;padding:24px';
+      const top=document.createElement('div');top.style.cssText='display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:18px';
+      top.innerHTML=`<div><div style="font-size:12px;color:#9be7ff;font-weight:1000;letter-spacing:.15em">SEASON 2 • BATTLE OF THE TOWERS</div><h1 style="margin:4px 0">🏰 TOWER EVENT HUB</h1><div style="color:#b8cce3">${deckCount}/${allBrawlers.length} full decks • ${tower.tappers} Tower Drops • Best floor ${tower.bestTowerFloor||0}/10</div></div>`;
+      const close=document.createElement('button');close.textContent='✕';close.style.cssText='width:44px;height:44px;border:0;border-radius:50%;background:#8e8cff;color:#100c28;font-weight:1000;font-size:20px;cursor:pointer';close.onclick=()=>overlay.remove();top.appendChild(close);panel.appendChild(top);
+      const heading=document.createElement('h2');heading.textContent='TOWER QUESTS';heading.style.cssText='font-size:16px;color:#ffcf72;letter-spacing:.1em';panel.appendChild(heading);
+      const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px';
+      quests.forEach(q=>{const claimed=!!tower.questClaims[q.id],done=q.value>=q.target,pct=Math.min(100,q.value/q.target*100),card=document.createElement('div');card.style.cssText=`padding:16px;border:1px solid ${done?'#5df2c2':'#334966'};border-radius:16px;background:${done?'#12352f':'#0d1a2c'}`;card.innerHTML=`<div style="font-size:34px">${q.icon}</div><h3 style="margin:7px 0">${q.title}</h3><div style="font-size:12px;color:#a9bdd2;min-height:32px">${q.desc}</div><div style="height:8px;background:#07101d;border-radius:9px;overflow:hidden;margin:12px 0 6px"><div style="height:100%;width:${pct}%;background:${done?'#5df2c2':'#8e8cff'}"></div></div><div style="font-size:12px;color:#dbe9f7">${Math.min(q.value,q.target)}/${q.target} • <b style="color:#ffcf72">${q.reward}</b></div>`;const btn=document.createElement('button');btn.textContent=claimed?'CLAIMED':(done?'CLAIM':'IN PROGRESS');btn.disabled=!done||claimed;btn.style.cssText=`width:100%;margin-top:12px;padding:9px;border:0;border-radius:9px;background:${done&&!claimed?'#5df2c2':'#27384e'};color:${done&&!claimed?'#06150f':'#8496a9'};font-weight:1000`;btn.onclick=()=>{if(!done||tower.questClaims[q.id])return;tower.questClaims[q.id]=true;tower.tappers+=(q.tappers||0);tower.towerDrops=tower.tappers;playerData.coins+=(q.coins||0);playerData.gems+=(q.gems||0);saveProgress();updateEventBadge();overlay.remove();openSushiEventHub();refreshHomeUI();};card.appendChild(btn);grid.appendChild(card);});
+      panel.appendChild(grid);overlay.appendChild(panel);document.body.appendChild(overlay);
+  }
+
+  function loadProgress() {
+      try {
+          let savedSelectedBrawler = null;
+          const newSave = localStorage.getItem('brawl_arena_save');
+          if (newSave) {
+              const data = JSON.parse(newSave);
+              if (data.persistent) {
+                  playerData.coins = data.persistent.coins ?? playerData.coins;
+                  playerData.gems = data.persistent.gems ?? playerData.gems;
+                  playerData.souls = data.persistent.souls ?? playerData.souls;
+                  playerData.winStreak = data.persistent.winStreak ?? playerData.winStreak;
+                  playerData.bestWinStreak = data.persistent.bestWinStreak ?? playerData.bestWinStreak;
+                  if (data.persistent.tapperPity) playerData.tapperPity = data.persistent.tapperPity;
+                  playerData.starrDrops = data.persistent.starrDrops ?? playerData.starrDrops;
+                  playerData.starrDropsToday = data.persistent.starrDropsToday ?? playerData.starrDropsToday;
+                  playerData.lastDropDate = data.persistent.lastDate;
+                  playerData.superTapperCount = data.persistent.superTapperCount ?? playerData.superTapperCount;
+                  playerData.hyperTapperCount = data.persistent.hyperTapperCount ?? playerData.hyperTapperCount;
+                  playerData.beastBossTokens = data.persistent.beastBossTokens ?? playerData.beastBossTokens;
+                  playerData.beastBossDifficulty = data.persistent.beastBossDifficulty ?? playerData.beastBossDifficulty;
+                  playerData.firstWinSuperAwarded = data.persistent.firstWinSuperAwarded ?? playerData.firstWinSuperAwarded;
+                  playerData.shopChainStage = data.persistent.shopChainStage ?? playerData.shopChainStage;
+                  if (data.persistent.shopChains) playerData.shopChains = data.persistent.shopChains;
+                  playerData.shopDailyDate = data.persistent.shopDailyDate || playerData.shopDailyDate;
+                  playerData.shopDailyOffer = data.persistent.shopDailyOffer || playerData.shopDailyOffer;
+                  playerData.shopClaims = data.persistent.shopClaims || playerData.shopClaims;
+                  if (data.persistent.ownedSkins) playerData.ownedSkins = data.persistent.ownedSkins;
+                  if (data.persistent.selectedSkins) playerData.selectedSkins = data.persistent.selectedSkins;
+                  if (data.persistent.skinFeaturedRotationStart != null) playerData.skinFeaturedRotationStart = data.persistent.skinFeaturedRotationStart;
+                  if (data.persistent.event) playerData.event = data.persistent.event;
+                  if (data.persistent.seasonPassHistory) playerData.seasonPassHistory = data.persistent.seasonPassHistory;
+                  if (data.persistent.seasonPass) playerData.seasonPass = data.persistent.seasonPass;
+                  if (data.persistent.eventTappers) playerData.eventTappers = data.persistent.eventTappers;
+                  if (data.persistent.questBoard) playerData.questBoard = data.persistent.questBoard;
+                  if (data.persistent.tutorialCompleted != null) playerData.tutorialCompleted = !!data.persistent.tutorialCompleted;
+                  if (data.persistent.unlockedBrawlers) playerData.unlockedBrawlers = data.persistent.unlockedBrawlers;
+                  if (data.persistent.soulSummoner) playerData.soulSummoner = data.persistent.soulSummoner;
+                  if (data.persistent.evilDoctorUnlockEndAt != null) playerData.evilDoctorUnlockEndAt = data.persistent.evilDoctorUnlockEndAt;
+                  if (data.persistent.ranked) playerData.ranked = data.persistent.ranked;
+                  if (data.persistent.attachies) playerData.attachies = data.persistent.attachies;
+                  if (data.persistent.slopSushi) playerData.slopSushi = data.persistent.slopSushi;
+                  mergeProfileProgressionSave(data.persistent.profile, data.persistent.brickBonV2);
+                  if (data.persistent.specialAbilities) playerData.specialAbilities = data.persistent.specialAbilities;
+                  if (data.persistent.specialAbilityQuests) playerData.specialAbilityQuests = data.persistent.specialAbilityQuests;
+                  if (data.persistent.specialAbilityQuestEvent) playerData.specialAbilityQuestEvent = data.persistent.specialAbilityQuestEvent;
+                   if (data.persistent.majorUpdateVNext) playerData.majorUpdateVNext = data.persistent.majorUpdateVNext;
+                   if (data.persistent.weeklyTrials) playerData.weeklyTrials = data.persistent.weeklyTrials;
+                   ensureSeason3State(data.persistent.packets, data.persistent.season3);
+                  if (typeof data.persistent.selectedBrawler === 'string') savedSelectedBrawler = data.persistent.selectedBrawler;
+                  if (data.persistent.event && data.persistent.event.questSchemaVersion !== EVENT_QUEST_SCHEMA_VERSION) {
+                      playerData.event = data.persistent.event;
+                      if (ENABLE_EVENT_HUB) resetEventQuests();
+                  }
+                  ensureSeasonPassState();
+                  for (const bid of allBrawlers) {
+                      const progress = data.persistent.brawlerProgress?.[bid];
+                      if (progress) {
+                          playerData.brawlers[bid] = {
+                              level: Math.max(1, Math.min(11, Math.floor(progress.level || 1))),
+                              bricks: Math.max(0, Math.floor(progress.bricks || 0)),
+                              prestige: Math.max(0, Math.floor(progress.prestige || 0)),
+                              gadgetUnlocked: !!progress.gadgetUnlocked,
+                              starPowerUnlocked: !!progress.starPowerUnlocked,
+                              hyperchargeUnlocked: !!progress.hyperchargeUnlocked,
+                              hyperchargeDiscountPct: normalizeHyperchargeDiscountPct(progress.hyperchargeDiscountPct),
+                              selectedStar: progress.selectedStar || 'slow',
+                              selectedGadget: progress.selectedGadget || 'g1',
+                              ownedTrinkets: Array.isArray(progress.ownedTrinkets) ? [...new Set(progress.ownedTrinkets)] : [],
+                              equippedTrinkets: Array.isArray(progress.equippedTrinkets) ? [...new Set(progress.equippedTrinkets)] : []
+                          };
+                          ensureProgressTrinkets(playerData.brawlers[bid]);
+                      }
+                  }
+              }
+          } else {
+              const saved = localStorage.getItem('brawlGameProgress');
+              if (saved) {
+                  const data = JSON.parse(saved);
+                  playerData = { ...playerData, ...data };
+                  if (typeof data.selectedBrawler === 'string') savedSelectedBrawler = data.selectedBrawler;
+              }
+          }
+          const today = new Date().toDateString();
+          if (playerData.lastDropDate !== today) {
+              playerData.lastDropDate = today;
+              playerData.starrDropsToday = 0;
+          }
+          for (const bid of allBrawlers) {
+              const existing = playerData.brawlers[bid] || {};
+              playerData.brawlers[bid] = {
+                  ...existing,
+                  level: Math.max(1, Math.min(11, Math.floor(existing.level || 1))),
+                  bricks: Math.max(0, Math.floor(existing.bricks || 0)),
+                  prestige: Math.max(0, Math.floor(existing.prestige || 0)),
+                  gadgetUnlocked: !!existing.gadgetUnlocked,
+                  starPowerUnlocked: !!existing.starPowerUnlocked,
+                  hyperchargeUnlocked: !!existing.hyperchargeUnlocked,
+                  hyperchargeDiscountPct: normalizeHyperchargeDiscountPct(existing.hyperchargeDiscountPct),
+                  selectedStar: existing.selectedStar || 'slow',
+                  selectedGadget: existing.selectedGadget || 'g1',
+                  ownedTrinkets: Array.isArray(existing.ownedTrinkets) ? [...new Set(existing.ownedTrinkets)] : [],
+                  equippedTrinkets: Array.isArray(existing.equippedTrinkets) ? [...new Set(existing.equippedTrinkets)] : []
+              };
+              ensureProgressTrinkets(playerData.brawlers[bid]);
+          }
+          if (!playerData.shopClaims) {
+              playerData.shopClaims = {
+                  outlitPower11:false, outlitHypercharge:false, outlitGadget:false,
+                  coinsPack:false, starPowerSale:false, echoHyperchargeSale:false,
+                  smallCoinPack:false, bigCoinPack:false, power7Boost:false, power9Boost:false
+              };
+          }
+          playerData.shopClaims.smallCoinPack = !!playerData.shopClaims.smallCoinPack;
+          playerData.shopClaims.bigCoinPack = !!playerData.shopClaims.bigCoinPack;
+          playerData.shopClaims.power7Boost = !!playerData.shopClaims.power7Boost;
+          playerData.shopClaims.power9Boost = !!playerData.shopClaims.power9Boost;
+          if (playerData.shopChainStage == null) playerData.shopChainStage = 0;
+          if (playerData.gems == null) playerData.gems = 0;
+          if (playerData.souls == null) playerData.souls = 0;
+          if (playerData.winStreak == null) playerData.winStreak = 0;
+          if (playerData.bestWinStreak == null) playerData.bestWinStreak = 0;
+          if (!playerData.tapperPity) playerData.tapperPity = { noPremium:0, noHyper:0 };
+          playerData.tapperPity.noPremium = Number(playerData.tapperPity.noPremium || 0);
+          playerData.tapperPity.noHyper = Number(playerData.tapperPity.noHyper || 0);
+          if (playerData.beastBossTokens == null) playerData.beastBossTokens = 0;
+          if (playerData.beastBossDifficulty == null) playerData.beastBossDifficulty = 0;
+          if (!playerData.ranked || typeof playerData.ranked !== 'object') playerData.ranked = { points:0, rewardsClaimed:[] };
+          playerData.ranked.points = Math.max(0, Math.floor(playerData.ranked.points || 0));
+          if (!Array.isArray(playerData.ranked.rewardsClaimed)) playerData.ranked.rewardsClaimed = [];
+          if (!playerData.ownedSkins) playerData.ownedSkins = {};
+          if (!playerData.selectedSkins) playerData.selectedSkins = {};
+          if (!playerData.skinFeaturedRotationStart) playerData.skinFeaturedRotationStart = 0;
+          ensureSeasonPassState();
+          if (ENABLE_EVENT_HUB && (!playerData.event || playerData.event.questSchemaVersion !== EVENT_QUEST_SCHEMA_VERSION)) resetEventQuests();
+          ensureSoulSummonerData();
+          ensureSlopSushiState();
+           ensureProfileProgressionState();
+           ensureSeason3State();
+           ensureWeeklyTrialState();
+          if (savedSelectedBrawler && allBrawlers.includes(savedSelectedBrawler)) selectedBrawler = savedSelectedBrawler;
+          normalizeSelectedBrawler();
+          ensureDailyWeeklyQuestData();
+          refreshDailyWeeklyQuests();
+      } catch(e) {
+          console.error('Failed to load progress safely:', e);
+      }
+  }
+  
+  function saveProgress() {
+      try {
+          ensureProfileProgressionState();
+          ensureSeason3State();
+          // Save to new format that TypeScript uses
+          const save = {
+              persistent: {
+                  coins: playerData.coins,
+                  gems: playerData.gems,
+                  souls: playerData.souls,
+                  winStreak: playerData.winStreak,
+                  bestWinStreak: playerData.bestWinStreak,
+                  tapperPity: playerData.tapperPity,
+                  starrDrops: playerData.starrDrops,
+                  starrDropsToday: playerData.starrDropsToday,
+                  lastDate: playerData.lastDropDate,
+                  superTapperCount: playerData.superTapperCount,
+                  hyperTapperCount: playerData.hyperTapperCount,
+                  beastBossTokens: playerData.beastBossTokens,
+                  beastBossDifficulty: playerData.beastBossDifficulty,
+                  firstWinSuperAwarded: playerData.firstWinSuperAwarded,
+                  shopChainStage: playerData.shopChainStage,
+                  shopDailyDate: playerData.shopDailyDate,
+                  shopDailyOffer: playerData.shopDailyOffer,
+                  shopClaims: playerData.shopClaims,
+                  shopChains: playerData.shopChains || {},
+                  ownedSkins: playerData.ownedSkins || {},
+                  selectedSkins: playerData.selectedSkins || {},
+                  questBoard: playerData.questBoard,
+                   tutorialCompleted: !!playerData.tutorialCompleted,
+                   evilDoctorUnlockEndAt: playerData.evilDoctorUnlockEndAt || 0,
+                   unlockedBrawlers: playerData.unlockedBrawlers,
+                   soulSummoner: playerData.soulSummoner,
+                    ranked: playerData.ranked,
+                    attachies: playerData.attachies,
+                    slopSushi: playerData.slopSushi,
+                    profile: playerData.profile,
+                    brickBonV2: playerData.brickBonV2,
+                    specialAbilities: playerData.specialAbilities,
+                    specialAbilityQuests: playerData.specialAbilityQuests,
+                    specialAbilityQuestEvent: playerData.specialAbilityQuestEvent,
+                    majorUpdateVNext: playerData.majorUpdateVNext,
+                     packets: playerData.packets,
+                     season3: playerData.season3,
+                     weeklyTrials: playerData.weeklyTrials,
+                     seasonPassHistory: playerData.seasonPassHistory || {},
+                    selectedBrawler,
+                    brawlerProgress: {}
+                }
+            };
+          for (const bid of Object.keys(playerData.brawlers)) {
+              const progress = playerData.brawlers[bid];
+              save.persistent.brawlerProgress[bid] = {
+                  level: progress.level,
+                  bricks: progress.bricks || 0,
+                  prestige: progress.prestige || 0,
+                  gadgetUnlocked: progress.gadgetUnlocked,
+                  starPowerUnlocked: progress.starPowerUnlocked,
+                  hyperchargeUnlocked: progress.hyperchargeUnlocked,
+                  hyperchargeDiscountPct: normalizeHyperchargeDiscountPct(progress.hyperchargeDiscountPct),
+                  selectedStar: progress.selectedStar || 'slow',
+                  selectedGadget: progress.selectedGadget || 'g1',
+                  ownedTrinkets: [...ensureProgressTrinkets(progress).ownedTrinkets],
+                  equippedTrinkets: [...ensureProgressTrinkets(progress).equippedTrinkets]
+              };
+          }
+          // Persist featured rotation start so it doesn't reset on every open
+          save.persistent.skinFeaturedRotationStart = playerData.skinFeaturedRotationStart || 0;
+          save.persistent.seasonPass = playerData.seasonPass || {
+              seasonId: SEASON_PASS_ID,
+              xp: 0,
+              level: 1,
+              premiumUnlocked: false,
+              premiumUnlockedWith: '',
+              claimedFreeRewards: [],
+              claimedPremiumRewards: [],
+              quests: {},
+              questSchemaVersion: SEASON_PASS_SCHEMA_VERSION
+          };
+          // Persist event data
+           save.persistent.event = playerData.event || { questsCompleted:0, quests:{}, milestonesClaimed:[], drops:[], dropHistory:[], startDropClaimed:false, pendingDropOpen:false };
+           save.persistent.eventTappers = playerData.eventTappers || { common:0, rare:0, epic:0, mythic:0 };
+           localStorage.setItem('brawl_arena_save', JSON.stringify(save));
+           // Also save old format for backwards compat
+           localStorage.setItem('brawlGameProgress', JSON.stringify({ ...playerData, selectedBrawler }));
+       } catch(e) {
+           console.error('Failed to save progress safely:', e);
+       }
+   }
+  
+  loadProgress();
+    // One-time grant for non-TypeScript runs: give 3 super tappers if not already granted
+    try {
+        if (!localStorage.getItem('super_granted')) {
+            playerData.superTapperCount = (playerData.superTapperCount || 0) + 3;
+            localStorage.setItem('super_granted', '1');
+            saveProgress();
+        }
+        // Additional one-time compensation: give 5 more super tappers
+        if (!localStorage.getItem('super_granted2')) {
+            playerData.superTapperCount = (playerData.superTapperCount || 0) + 5;
+            localStorage.setItem('super_granted2', '1');
+            saveProgress();
+        }
+    } catch(e) {}
+
+    // Show badge for Hyper Tapper if present
+    try {
+        if (homeScreen && playerData.hyperTapperCount && playerData.hyperTapperCount > 0) {
+            const hb = document.createElement('div');
+            hb.id = 'hyperBadge';
+            hb.textContent = `HYPER TAPPERS: ${playerData.hyperTapperCount}`;
+            hb.style.position = 'absolute'; hb.style.right = '18px'; hb.style.top = '58px';
+            hb.style.background = '#ff8800'; hb.style.color = '#08101d'; hb.style.padding = '8px 12px';
+            hb.style.borderRadius = '10px'; hb.style.fontWeight = '700'; hb.style.zIndex = '40';
+            hb.style.boxShadow = '0 6px 18px rgba(255,136,0,0.2)';
+            hb.style.cursor = 'pointer';
+            hb.onclick = () => openHyperStarrDrop();
+            if (homeScreen.firstElementChild) homeScreen.firstElementChild.appendChild(hb);
+        }
+        if (homeScreen) {
+            const existingGemBadge = document.getElementById('gemBadge');
+            if (existingGemBadge) existingGemBadge.remove();
+            const gb = document.createElement('div');
+            gb.id = 'gemBadge';
+            gb.textContent = `GEMS: ${playerData.gems || 0}`;
+            gb.style.position = 'absolute'; gb.style.right = '18px'; gb.style.top = '102px';
+            gb.style.background = '#e0f'; gb.style.color = '#08101d'; gb.style.padding = '8px 12px';
+            gb.style.borderRadius = '10px'; gb.style.fontWeight = '700'; gb.style.zIndex = '40';
+            gb.style.boxShadow = '0 6px 18px rgba(238,0,255,0.25)';
+            if (homeScreen.firstElementChild) homeScreen.firstElementChild.appendChild(gb);
+        }
+        if (homeScreen) {
+            const existingSoulBadge = document.getElementById('soulBadge');
+            if (existingSoulBadge) existingSoulBadge.remove();
+            const sb = document.createElement('div');
+            sb.id = 'soulBadge';
+            sb.textContent = `SOULS: ${playerData.souls || 0}`;
+            sb.style.position = 'absolute'; sb.style.right = '18px'; sb.style.top = '146px';
+            sb.style.background = '#8a5cff'; sb.style.color = '#f7f2ff'; sb.style.padding = '8px 12px';
+            sb.style.borderRadius = '10px'; sb.style.fontWeight = '700'; sb.style.zIndex = '40';
+            sb.style.boxShadow = '0 6px 18px rgba(138,92,255,0.25)';
+            if (homeScreen.firstElementChild) homeScreen.firstElementChild.appendChild(sb);
+        }
+    } catch(e) {}
+
+    // Show a small badge on the home overlay if super tappers exist
+    try {
+        if (homeScreen && playerData.superTapperCount && playerData.superTapperCount > 0) {
+            const badge = document.createElement('div');
+            badge.id = 'superBadge';
+            badge.textContent = `SUPER TAPPERS: ${playerData.superTapperCount}`;
+            badge.style.position = 'absolute'; badge.style.right = '18px'; badge.style.top = '18px';
+            badge.style.background = '#ff00ff'; badge.style.color = '#08101d'; badge.style.padding = '8px 12px';
+            badge.style.borderRadius = '10px'; badge.style.fontWeight = '700'; badge.style.zIndex = '40';
+            badge.style.boxShadow = '0 6px 18px rgba(255,0,255,0.2)';
+            if (homeScreen.firstElementChild) homeScreen.firstElementChild.appendChild(badge);
+        }
+    } catch(e) {}
+
+    try {
+        if (homeScreen && homeScreen.firstElementChild) {
+            const prog = getSelectedProgress();
+            const roadBadge = document.createElement('div');
+            roadBadge.id = 'brickBonBadge';
+            roadBadge.textContent = `BRICK BON: ${getTotalBrickBonBricks()} TOTAL BRICKS`;
+            roadBadge.style.margin = '10px 0 0 0';
+            roadBadge.style.padding = '8px 12px';
+            roadBadge.style.borderRadius = '10px';
+            roadBadge.style.background = 'rgba(18,33,62,0.88)';
+            roadBadge.style.border = '1px solid #6ee7ff';
+            roadBadge.style.color = '#c0d4ff';
+            roadBadge.style.fontWeight = '900';
+            roadBadge.style.fontSize = '13px';
+            roadBadge.style.letterSpacing = '0.02em';
+            if (!document.getElementById('trophyRoadBadge')) {
+                homeScreen.firstElementChild.appendChild(roadBadge);
+            }
+
+            // Event Hub Button and Badge
+            if (!document.getElementById('eventHubBtn')) {
+                const quickActions = document.getElementById('homeQuickActions') || document.getElementById('homeHeader') || homeScreen.firstElementChild;
+                const evBtn = document.createElement('button');
+                evBtn.id = 'eventHubBtn';
+                evBtn.textContent = 'CORE BREAKER • SEASON 3';
+                evBtn.style.position = 'relative';
+                evBtn.style.padding = '8px 12px';
+                evBtn.style.borderRadius = '10px';
+                evBtn.style.border = '1px solid #ffd700';
+                evBtn.style.background = 'linear-gradient(90deg,#101827,#1a2542)';
+                evBtn.style.color = '#ffd700';
+                evBtn.style.fontWeight = '900';
+                evBtn.style.cursor = 'pointer';
+                evBtn.style.zIndex = '40';
+                evBtn.onclick = () => openSeason3Hub();
+
+                const evCount = document.createElement('div');
+                evCount.id = 'eventQuestCount';
+                evCount.textContent = `${Object.keys(ensureSeason3State().packets.unlocked).filter(id=>playerData.packets.unlocked[id]).length}`;
+                evCount.title = 'Packets discovered';
+                evCount.style.position = 'absolute';
+                evCount.style.right = '-8px';
+                evCount.style.top = '-8px';
+                evCount.style.background = '#ff6b6b';
+                evCount.style.color = '#08101d';
+                evCount.style.borderRadius = '50%';
+                evCount.style.padding = '6px 8px';
+                evCount.style.fontWeight = '900';
+                evCount.style.boxShadow = '0 6px 18px rgba(255,107,107,0.16)';
+                evBtn.appendChild(evCount);
+
+                quickActions.appendChild(evBtn);
+            }
+
+            if (ENABLE_SEASON_PASS && !document.getElementById('seasonPassBtn')) {
+                const quickActions = document.getElementById('homeQuickActions') || document.getElementById('homeHeader') || homeScreen.firstElementChild;
+                const spBtn = document.createElement('button');
+                spBtn.id = 'seasonPassBtn';
+                spBtn.textContent = 'SEASON PASS';
+                spBtn.style.position = 'relative';
+                spBtn.style.padding = '8px 12px';
+                spBtn.style.borderRadius = '10px';
+                spBtn.style.border = '1px solid #ff9b42';
+                spBtn.style.background = 'linear-gradient(90deg,#1a1020,#3a1f12)';
+                spBtn.style.color = '#ffb15a';
+                spBtn.style.fontWeight = '900';
+                spBtn.style.cursor = 'pointer';
+                spBtn.style.zIndex = '40';
+                spBtn.onclick = () => openSeasonPass();
+
+                const spCount = document.createElement('div');
+                spCount.id = 'seasonPassLevel';
+                spCount.textContent = `${playerData.seasonPass?.level || 1}`;
+                spCount.style.position = 'absolute';
+                spCount.style.right = '-8px';
+                spCount.style.top = '-8px';
+                spCount.style.background = '#ffb15a';
+                spCount.style.color = '#08101d';
+                spCount.style.borderRadius = '50%';
+                spCount.style.padding = '6px 8px';
+                spCount.style.fontWeight = '900';
+                spCount.style.boxShadow = '0 6px 18px rgba(255,177,90,0.16)';
+                spBtn.appendChild(spCount);
+
+                quickActions.appendChild(spBtn);
+            }
+
+            if (ENABLE_DAILY_WEEKLY_QUESTS && !document.getElementById('dailyWeeklyQuestBtn')) {
+                const quickActions = document.getElementById('homeQuickActions') || document.getElementById('homeHeader') || homeScreen.firstElementChild;
+                const questBtn = document.createElement('button');
+                questBtn.id = 'dailyWeeklyQuestBtn';
+                questBtn.textContent = 'QUESTS';
+                questBtn.style.position = 'relative';
+                questBtn.style.padding = '8px 12px';
+                questBtn.style.borderRadius = '10px';
+                questBtn.style.border = '1px solid #73d1ff';
+                questBtn.style.background = 'linear-gradient(90deg,#08192c,#14324e)';
+                questBtn.style.color = '#bde8ff';
+                questBtn.style.fontWeight = '900';
+                questBtn.style.cursor = 'pointer';
+                questBtn.style.zIndex = '40';
+                questBtn.onclick = () => openQuestBoard();
+
+                const questCount = document.createElement('div');
+                questCount.id = 'dailyWeeklyQuestCount';
+                questCount.textContent = '0';
+                questCount.style.position = 'absolute';
+                questCount.style.right = '-8px';
+                questCount.style.top = '-8px';
+                questCount.style.background = '#58e4b6';
+                questCount.style.color = '#04111a';
+                questCount.style.borderRadius = '50%';
+                questCount.style.padding = '6px 8px';
+                questCount.style.fontWeight = '900';
+                questCount.style.boxShadow = '0 6px 18px rgba(88,228,182,0.2)';
+                questBtn.appendChild(questCount);
+
+                quickActions.appendChild(questBtn);
+                updateQuestBadge();
+            }
+
+        }
+    } catch(e) {}
+  function syncAbilityInputs() {
+      normalizeSelectedBrawler();
+      const prog = getSelectedProgress();
+      const gadgetUnlocked = isTraining || !!prog.gadgetUnlocked;
+      const spUnlocked = isTraining || !!prog.starPowerUnlocked;
+
+      if (gadgetUnlocked) {
+          selectedGadget = prog.selectedGadget || selectedGadget || 'g1';
+          syncSelectedGadgetCooldown();
+      }
+
+      if (gadgetInputs) {
+          gadgetInputs.forEach(inp => {
+              inp.disabled = !gadgetUnlocked;
+              inp.checked = inp.value === selectedGadget;
+          });
+      }
+
+      if (!spUnlocked) {
+          selectedStar = 'none';
+      } else {
+          selectedStar = prog.selectedStar || selectedStar;
+          if (selectedStar !== 'slow' && selectedStar !== 'long') selectedStar = 'slow';
+      }
+
+      starInputs.forEach(inp => {
+          inp.disabled = !spUnlocked;
+          inp.checked = spUnlocked && inp.value === selectedStar;
+      });
+  }
+
+  function grantTapperBonusWithPity(sourceTier = 'regular') {
+      playerData.tapperPity = playerData.tapperPity || { noPremium: 0, noHyper: 0 };
+      const pity = playerData.tapperPity;
+      let bonusText = '';
+      let bonusColor = '#8a2be2';
+
+      const forceHyper = pity.noHyper >= 19;
+      const forcePremium = pity.noPremium >= 7;
+      if (forceHyper) {
+          playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
+          pity.noHyper = 0;
+          pity.noPremium = 0;
+          return { text: 'PITY BONUS: +1 Hyper Tapper!', color: '#e000ff' };
+      }
+      if (forcePremium) {
+          playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
+          pity.noPremium = 0;
+          pity.noHyper += 1;
+          return { text: 'PITY BONUS: +1 Super Tapper!', color: '#ff66ff' };
+      }
+
+      const r = Math.random();
+      const table = sourceTier === 'super'
+          ? [
+              { cap: 0.12, kind: 'hyper' },
+              { cap: 0.42, kind: 'super' },
+              { cap: 0.72, kind: 'tapper' }
+            ]
+          : [
+              { cap: 0.04, kind: 'hyper' },
+              { cap: 0.18, kind: 'super' },
+              { cap: 0.32, kind: 'tapper' }
+            ];
+      let kind = 'none';
+      for (const row of table) {
+          if (r < row.cap) {
+              kind = row.kind;
+              break;
+          }
+      }
+
+      if (kind === 'hyper') {
+          playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
+          pity.noHyper = 0;
+          pity.noPremium = 0;
+          bonusText = '+1 Hyper Tapper';
+          bonusColor = '#e000ff';
+      } else if (kind === 'super') {
+          playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
+          pity.noPremium = 0;
+          pity.noHyper += 1;
+          bonusText = '+1 Super Tapper';
+          bonusColor = '#ff66ff';
+      } else if (kind === 'tapper') {
+          playerData.starrDrops = (playerData.starrDrops || 0) + 1;
+          pity.noPremium += 1;
+          pity.noHyper += 1;
+          bonusText = '+1 Tapper Upper';
+          bonusColor = '#9f7aff';
+      } else {
+          pity.noPremium += 1;
+          pity.noHyper += 1;
+      }
+      return bonusText ? { text: bonusText, color: bonusColor } : null;
+  }
+
+  
+  function openAllTappers() {
+      const regCount = playerData.starrDrops || 0;
+      const superCount = playerData.superTapperCount || 0;
+      const hyperCount = playerData.hyperTapperCount || 0;
+      const totalTappers = regCount + superCount + hyperCount;
+      if (totalTappers <= 0) return;
+
+      let totalCoins = 0;
+      let totalGems = 0;
+      let totalSouls = 0;
+      const unlockedHypers = [];
+      const pityBonusTexts = [];
+
+      const regRarities = [
+          { name: 'Rare', coinMin: 15, coinMax: 30 },
+          { name: 'Super Rare', coinMin: 40, coinMax: 80 },
+          { name: 'Epic', coinMin: 100, coinMax: 200 },
+          { name: 'Mythic', coinMin: 250, coinMax: 400 },
+          { name: 'Legendary', coinMin: 500, coinMax: 1000 },
+          { name: 'Ultra', coinMin: 1500, coinMax: 2500 }
+      ];
+
+      for (let i = 0; i < regCount; i++) {
+          let rarityScore = 0;
+          for (let t = 0; t < 4; t++) {
+              if (Math.random() < 0.48) rarityScore++;
+          }
+          rarityScore = Math.min(rarityScore, regRarities.length - 1);
+          const rInfo = regRarities[rarityScore];
+          const coins = Math.floor(Math.random() * (rInfo.coinMax - rInfo.coinMin + 1)) + rInfo.coinMin;
+          const gems = Math.max(1, Math.floor(coins / 400));
+          const souls = rollSoulReward(8, 18);
+          totalCoins += coins;
+          totalGems += gems;
+          totalSouls += souls;
+      }
+
+      const superRarities = [
+          { name: 'Rare', coinMin: 50, coinMax: 80 },
+          { name: 'Super Rare', coinMin: 100, coinMax: 160 },
+          { name: 'Epic', coinMin: 200, coinMax: 350 },
+          { name: 'Mythic', coinMin: 400, coinMax: 700 },
+          { name: 'Legendary', coinMin: 800, coinMax: 1500 },
+          { name: 'Ultra', coinMin: 2000, coinMax: 3500 }
+      ];
+
+      for (let i = 0; i < superCount; i++) {
+          const splits = Math.floor(Math.random() * 7) + 2;
+          let superCoins = 0;
+          for (let s = 0; s < splits; s++) {
+              const r = Math.random() * 100;
+              let choice;
+              if (r < 3) choice = superRarities[5];
+              else if (r < 12) choice = superRarities[4];
+              else if (r < 30) choice = superRarities[3];
+              else if (r < 55) choice = superRarities[2];
+              else if (r < 80) choice = superRarities[1];
+              else choice = superRarities[0];
+              superCoins += Math.floor(Math.random() * (choice.coinMax - choice.coinMin + 1)) + choice.coinMin;
+          }
+          const gems = Math.max(2, Math.floor(superCoins / 250));
+          const souls = rollSoulReward(20, 40);
+          totalCoins += superCoins;
+          totalGems += gems;
+          totalSouls += souls;
+
+          const pity = grantTapperBonusWithPity('super');
+          if (pity) pityBonusTexts.push(pity.text);
+      }
+
+      for (let i = 0; i < hyperCount; i++) {
+          const isHyper = Math.random() < 0.65;
+          const souls = rollSoulReward(45, 80);
+          totalSouls += souls;
+
+          if (isHyper) {
+              const lockedHyperBrawlers = allBrawlers.filter((bid) => {
+                  const prog = getOrCreateProgress(bid);
+                  const isDisabled = (brawlerData && brawlerData[bid] && brawlerData[bid].disabled) || disabledBrawlers.has(bid);
+                  return !isDisabled && !prog.hyperchargeUnlocked;
+              });
+              if (lockedHyperBrawlers.length > 0) {
+                  const chosenId = lockedHyperBrawlers[Math.floor(Math.random() * lockedHyperBrawlers.length)];
+                  const chosenProg = getOrCreateProgress(chosenId);
+                  chosenProg.hyperchargeUnlocked = true;
+                  totalGems += 8;
+                  const chosenName = (brawlerData[chosenId] && brawlerData[chosenId].name) || chosenId;
+                  unlockedHypers.push(chosenName);
+              } else {
+                  totalCoins += 1000;
+              }
+          } else {
+              totalCoins += 1000;
+          }
+      }
+
+      playerData.starrDrops = 0;
+      playerData.superTapperCount = 0;
+      playerData.hyperTapperCount = 0;
+      playerData.coins += totalCoins;
+      playerData.gems += totalGems;
+      addSouls(totalSouls);
+      saveProgress();
+
+      if (selectedBrawler && typeof updateHyperButton === 'function') updateHyperButton();
+      if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
+      if (typeof refreshHomeUI === 'function') refreshHomeUI();
+
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed'; overlay.style.inset = '0';
+      overlay.style.background = 'rgba(4, 9, 22, 0.96)'; overlay.style.zIndex = '2500';
+      overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
+      overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center';
+      overlay.style.color = '#fff'; overlay.style.fontFamily = 'sans-serif';
+      overlay.style.padding = '24px';
+      
+      const title = document.createElement('h1');
+      title.textContent = '🌟 BULK OPEN COMPLETE 🌟';
+      title.style.color = '#ffd166';
+      title.style.textShadow = '0 0 24px rgba(255, 209, 102, 0.4)';
+      overlay.appendChild(title);
+
+      const subtitle = document.createElement('p');
+      subtitle.textContent = `Opened: ${regCount} Tappers, ${superCount} Supers, ${hyperCount} Hypers`;
+      subtitle.style.color = '#89aed2';
+      overlay.appendChild(subtitle);
+
+      const results = document.createElement('div');
+      results.style.background = 'rgba(255,255,255,0.03)';
+      results.style.border = '1px solid rgba(255,255,255,0.08)';
+      results.style.borderRadius = '16px';
+      results.style.padding = '20px 32px';
+      results.style.marginTop = '16px';
+      results.style.fontSize = '18px';
+      results.style.lineHeight = '1.8';
+      results.style.textAlign = 'center';
+
+      let hypersText = '';
+      if (unlockedHypers.length > 0) {
+          hypersText = `<div style="color: #d282ff; font-weight: bold; margin-top: 10px;">⚡ HYPERCHARGES UNLOCKED:<br>${unlockedHypers.join(', ')}</div>`;
+      }
+
+      let pityText = '';
+      if (pityBonusTexts.length > 0) {
+          pityText = `<div style="color: #ffd166; font-size: 14px; margin-top: 10px;">🎁 PITY REWARDS:<br>${[...new Set(pityBonusTexts)].join(', ')}</div>`;
+      }
+
+      results.innerHTML = `
+          <div style="font-size: 24px; font-weight: bold; color: #5df2c2; margin-bottom: 8px;">TOTAL REWARDS</div>
+          <div style="color: #ffd166; font-weight: 800;">🪙 +${totalCoins.toLocaleString()} COINS</div>
+          <div style="color: #6ee7ff; font-weight: 800;">💎 +${totalGems.toLocaleString()} GEMS</div>
+          <div style="color: #b983ff; font-weight: 800;">🧪 +${totalSouls.toLocaleString()} SOULS</div>
+          ${hypersText}
+          ${pityText}
+      `;
+      overlay.appendChild(results);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'AWESOME!';
+      closeBtn.style.marginTop = '24px';
+      closeBtn.style.padding = '12px 28px';
+      closeBtn.style.borderRadius = '12px';
+      closeBtn.style.border = 'none';
+      closeBtn.style.background = 'linear-gradient(135deg, #5df2c2, #29c996)';
+      closeBtn.style.color = '#041810';
+      closeBtn.style.fontWeight = '900';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.onclick = () => overlay.remove();
+      overlay.appendChild(closeBtn);
+
+      document.body.appendChild(overlay);
+  }
+
+  function openStarrDrop() {
+      if (playerData.starrDrops <= 0) return;
+      playerData.starrDrops--;
+      saveProgress();
+      
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed'; overlay.style.inset = '0';
+      overlay.style.background = 'rgba(0, 0, 0, 0.95)'; overlay.style.zIndex = '1000';
+      overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
+      overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center';
+    overlay.style.color = '#fff'; overlay.style.fontFamily = 'sans-serif';
+    overlay.style.userSelect = 'none';
+    overlay.style.touchAction = 'manipulation';
+
+    let taps = 0;
+      const maxTaps = 4;
+      let rarityScore = 0; 
+    let rewardRevealed = false;
+      const rarities = [
+          { name: 'Rare', color: '#5df2c2', coinMin: 15, coinMax: 30 },
+          { name: 'Super Rare', color: '#00aaff', coinMin: 40, coinMax: 80 },
+          { name: 'Epic', color: '#ccaaff', coinMin: 100, coinMax: 200 },
+          { name: 'Mythic', color: '#ff6b6b', coinMin: 250, coinMax: 400 },
+          { name: 'Legendary', color: '#ffd700', coinMin: 500, coinMax: 1000 },
+          { name: 'Ultra', color: '#ff00ff', coinMin: 1500, coinMax: 2500 }
+      ];
+
+      const title = document.createElement('h1');
+    title.textContent = 'TAPPER UPPER';
+      title.style.fontSize = '48px';
+      title.style.color = rarities[0].color;
+      title.style.textShadow = '0 0 20px ' + rarities[0].color;
+      title.style.transition = 'all 0.3s';
+      
+      const instruction = document.createElement('p');
+    instruction.textContent = 'TAP TO REVEAL!';
+      instruction.style.fontSize = '24px';
+      instruction.style.marginTop = '20px';
+      instruction.style.animation = 'pulse 1s infinite alternate';
+      
+      if (!document.getElementById('pulse-style')) {
+        const style = document.createElement('style');
+        style.id = 'pulse-style';
+        style.innerHTML = `@keyframes pulse { from { opacity: 0.5; transform: scale(0.95); } to { opacity: 1; transform: scale(1.05); } }`;
+        document.head.appendChild(style);
+      }
+
+      overlay.appendChild(title);
+      overlay.appendChild(instruction);
+      document.body.appendChild(overlay);
+
+      const handleTap = () => {
+          if (rewardRevealed) {
+              document.body.removeChild(overlay);
+              return;
+          }
+
+          if (taps >= maxTaps) {
+              const rInfo = rarities[rarityScore];
+              const rewardCoins = Math.floor(Math.random() * (rInfo.coinMax - rInfo.coinMin + 1)) + rInfo.coinMin;
+              const gemReward = Math.max(1, Math.floor(rewardCoins / 400));
+              const soulReward = rollSoulReward(8, 18);
+              const pityBonus = grantTapperBonusWithPity('regular');
+              playerData.coins += rewardCoins;
+              playerData.gems += gemReward;
+              addSouls(soulReward);
+              saveProgress();
+              if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
+              rewardRevealed = true;
+
+              // Create coin splash visual
+              const splash = document.createElement('div'); splash.style.display='flex'; splash.style.flexDirection='column'; splash.style.alignItems='center';
+              const coinsGroup = document.createElement('div'); coinsGroup.style.position='relative'; coinsGroup.style.width='280px'; coinsGroup.style.height='120px';
+              splash.appendChild(coinsGroup);
+              const coinsN = Math.min(10, Math.max(3, Math.floor(rewardCoins/80)));
+              for(let j=0;j<coinsN;j++){
+                  const el = document.createElement('div'); el.style.position='absolute'; el.style.width='28px'; el.style.height='28px'; el.style.borderRadius='50%';
+                  el.style.background='linear-gradient(180deg,#ffd766,#ffb300)'; el.style.left='50%'; el.style.top='50%'; el.style.transform='translate(-50%,-50%) scale(0.6)'; el.style.opacity='0'; el.style.boxShadow='0 6px 12px rgba(0,0,0,0.25)';
+                  coinsGroup.appendChild(el);
+                  (function(e,idx){ setTimeout(()=>{ e.style.transition='all 550ms cubic-bezier(.2,.9,.3,1)'; const ang=(Math.PI*2)*(idx/coinsN)+(Math.random()-0.5); const dist=60+Math.random()*80; e.style.transform=`translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px) scale(1)`; e.style.opacity='1'; }, idx*50); })(el,j);
+              }
+              const tot = document.createElement('div'); tot.textContent = `+${rewardCoins} COINS! +${gemReward} GEMS! +${soulReward} SOULS!`; tot.style.color='#ffd700'; tot.style.fontSize='42px'; tot.style.marginTop='10px'; tot.style.textShadow='0 0 20px #ffd700';
+              splash.appendChild(tot);
+              if (pityBonus) {
+                  const bonus = document.createElement('div');
+                  bonus.textContent = pityBonus.text;
+                  bonus.style.color = pityBonus.color;
+                  bonus.style.fontSize = '24px';
+                  bonus.style.fontWeight = '900';
+                  bonus.style.marginTop = '8px';
+                  splash.appendChild(bonus);
+              }
+              overlay.appendChild(splash);
+              instruction.textContent = 'TAP ANYWHERE TO CLOSE'; instruction.style.animation='none';
+              return;
+          }
+          
+          taps++;
+          if (Math.random() < 0.48) {
+              rarityScore = Math.min(rarityScore + 1, rarities.length - 1);
+          }
+          
+          const rInfo = rarities[rarityScore];
+          title.textContent = rInfo.name.toUpperCase();
+          title.style.color = rInfo.color;
+          title.style.textShadow = '0 0 30px ' + rInfo.color;
+          title.style.transform = 'scale(1.2)';
+          setTimeout(() => title.style.transform = 'scale(1)', 100);
+
+          if (taps >= maxTaps) {
+              instruction.textContent = 'TAP TO REVEAL REWARD!';
+          }
+      };
+      overlay.onpointerdown = (event) => {
+          event.preventDefault();
+          handleTap();
+      };
+      overlay.onclick = () => {
+          handleTap();
+      };
+  }
+
+  function openSuperStarrDrop() {
+      if (!playerData.superTapperCount || playerData.superTapperCount <= 0) return;
+      playerData.superTapperCount = Math.max(0, playerData.superTapperCount - 1);
+      saveProgress();
+    if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
+
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed'; overlay.style.inset = '0';
+      overlay.style.background = 'rgba(0,0,0,0.98)'; overlay.style.zIndex = '1000';
+      overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
+      overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center';
+      overlay.style.color = '#fff'; overlay.style.fontFamily = 'sans-serif'; overlay.style.userSelect = 'none';
+
+      const title = document.createElement('h1');
+      title.textContent = 'SUPER TAPPER UPPER';
+      title.style.fontSize = '48px'; title.style.color = '#ff00ff'; title.style.textShadow = '0 0 30px #ff00ff';
+      overlay.appendChild(title);
+
+      const info = document.createElement('p');
+    info.textContent = 'Opening split rewards... Odds: Rare 20% / Super Rare 25% / Epic 25% / Mythic 18% / Legendary 9% / Ultra 3%'; info.style.marginTop = '12px'; info.style.fontSize = '20px';
+      overlay.appendChild(info);
+
+      document.body.appendChild(overlay);
+
+      const rarities = [
+          { name: 'Rare', color: '#5df2c2', coinMin: 50, coinMax: 80 },
+          { name: 'Super Rare', color: '#00aaff', coinMin: 100, coinMax: 160 },
+          { name: 'Epic', color: '#ccaaff', coinMin: 200, coinMax: 350 },
+          { name: 'Mythic', color: '#ff6b6b', coinMin: 400, coinMax: 700 },
+          { name: 'Legendary', color: '#ffd700', coinMin: 800, coinMax: 1500 },
+          { name: 'Ultra', color: '#ff00ff', coinMin: 2000, coinMax: 3500 }
+      ];
+
+      function pickWeighted() {
+          const r = Math.random() * 100;
+          if (r < 3) return rarities[5];
+          if (r < 12) return rarities[4];
+          if (r < 30) return rarities[3];
+          if (r < 55) return rarities[2];
+          if (r < 80) return rarities[1];
+          return rarities[0];
+      }
+
+      const splits = Math.floor(Math.random() * 7) + 2; // 2..8
+      let total = 0;
+      let i = 0;
+
+      function revealNext() {
+          if (i >= splits) {
+              const totalTxt = document.createElement('h2');
+              const gemReward = Math.max(2, Math.floor(total / 250));
+              const soulReward = rollSoulReward(20, 40);
+              const pityBonus = grantTapperBonusWithPity('super');
+              totalTxt.textContent = `+${total} COINS! +${gemReward} GEMS! +${soulReward} SOULS!`;
+              totalTxt.style.color = '#ffd700'; totalTxt.style.textShadow = '0 0 20px #ffd700';
+              overlay.appendChild(totalTxt);
+              if (pityBonus) {
+                  const bonusTxt = document.createElement('div');
+                  bonusTxt.textContent = pityBonus.text;
+                  bonusTxt.style.color = pityBonus.color;
+                  bonusTxt.style.fontSize = '24px';
+                  bonusTxt.style.fontWeight = '900';
+                  bonusTxt.style.marginTop = '8px';
+                  overlay.appendChild(bonusTxt);
+              }
+              setTimeout(() => { document.body.removeChild(overlay); }, 1400);
+              playerData.gems += gemReward;
+              addSouls(soulReward);
+              playerData.coins += total; saveProgress();
+              if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
+              return;
+          }
+          const choice = pickWeighted();
+          const coin = Math.floor(Math.random() * (choice.coinMax - choice.coinMin + 1)) + choice.coinMin;
+          total += coin;
+
+          // Visual coin splash for this split
+          const group = document.createElement('div');
+          group.style.position = 'relative'; group.style.width = '320px'; group.style.height = '120px'; group.style.marginTop = '12px';
+          overlay.appendChild(group);
+          const coins = Math.min(12, Math.max(4, Math.floor(coin / 100)));
+          for (let k=0;k<coins;k++){
+              const c = document.createElement('div');
+              c.style.position='absolute'; c.style.width='32px'; c.style.height='32px'; c.style.borderRadius='50%';
+              c.style.background = 'linear-gradient(180deg,#ffd766,#ffb300)'; c.style.boxShadow='0 6px 18px rgba(0,0,0,0.3)';
+              c.style.left = '50%'; c.style.top = '50%'; c.style.transform = 'translate(-50%,-50%) scale(0.6)'; c.style.opacity='0';
+              group.appendChild(c);
+              (function(el,idx){
+                  setTimeout(()=>{
+                      el.style.transition = 'all 600ms cubic-bezier(.2,.9,.3,1)';
+                      const ang = (Math.PI*2) * (idx/coins) + (Math.random()-0.5);
+                      const dist = 60 + Math.random()*100;
+                      el.style.transform = `translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px) scale(1)`;
+                      el.style.opacity = '1';
+                  }, 60*idx);
+              })(c,k);
+          }
+
+          const label = document.createElement('div');
+          label.textContent = `${choice.name}: +${coin}`;
+          label.style.color = choice.color; label.style.fontSize='18px'; label.style.marginTop='6px'; overlay.appendChild(label);
+
+          i++;
+          setTimeout(revealNext, 450);
+      }
+
+      revealNext();
+  }
+
+  function openHyperStarrDrop() {
+      if (!playerData.hyperTapperCount || playerData.hyperTapperCount <= 0) return;
+      playerData.hyperTapperCount = Math.max(0, playerData.hyperTapperCount - 1);
+      saveProgress();
+      if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
+
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed'; overlay.style.inset = '0';
+      overlay.style.background = 'rgba(0,0,0,0.98)'; overlay.style.zIndex = '1000';
+      overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
+      overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center';
+      overlay.style.color = '#fff'; overlay.style.fontFamily = 'sans-serif'; overlay.style.userSelect = 'none';
+      overlay.style.fontWeight = 'bold';
+
+      const title = document.createElement('h1');
+      title.textContent = '⚡ HYPERCHARGE TAPPER UPPER ⚡';
+      title.style.fontSize = '52px'; title.style.color = '#e0f'; title.style.textShadow = '0 0 40px #e0f';
+      title.style.marginBottom = '24px'; title.style.animation = 'pulse 1s infinite';
+      overlay.appendChild(title);
+
+      const infoText = document.createElement('p');
+    infoText.textContent = 'TAP TO REVEAL YOUR REWARD! (65% Hypercharge / 35% Coins)';
+      infoText.style.fontSize = '24px'; infoText.style.marginBottom = '36px'; infoText.style.color = '#aef';
+      overlay.appendChild(infoText);
+
+      let tapped = false;
+      overlay.onclick = (e) => {
+          if (tapped) { document.body.removeChild(overlay); return; }
+          tapped = true;
+          e.preventDefault();
+          
+          // 65% chance: free hypercharge, 35% chance: 1k coins
+          const isHyper = Math.random() < 0.65;
+          
+          // Clear existing text
+          infoText.remove();
+          
+          const resultDiv = document.createElement('div');
+          resultDiv.style.fontSize = '32px'; resultDiv.style.marginTop = '36px';
+          resultDiv.style.textAlign = 'center'; resultDiv.style.lineHeight = '1.5';
+          const soulReward = rollSoulReward(45, 80);
+          addSouls(soulReward);
+          
+          if (isHyper) {
+              // Grant a random locked hypercharge permanently (outside-match reward).
+              const lockedHyperBrawlers = allBrawlers.filter((bid) => {
+                  const prog = getOrCreateProgress(bid);
+                  const isDisabled = (brawlerData && brawlerData[bid] && brawlerData[bid].disabled) || disabledBrawlers.has(bid);
+                  return !isDisabled && !prog.hyperchargeUnlocked;
+              });
+              if (lockedHyperBrawlers.length > 0) {
+                  const chosenId = lockedHyperBrawlers[Math.floor(Math.random() * lockedHyperBrawlers.length)];
+                  const chosenProg = getOrCreateProgress(chosenId);
+                  chosenProg.hyperchargeUnlocked = true;
+                  playerData.gems += 8;
+                  if (selectedBrawler === chosenId) updateHyperButton();
+                  const chosenName = (brawlerData[chosenId] && brawlerData[chosenId].name) || chosenId;
+                  resultDiv.innerHTML = `✨ FREE HYPERCHARGE UNLOCKED! ✨<br><span style="font-size: 20px; color: #e0f; margin-top: 12px; display: block;">${chosenName} Hypercharge is now unlocked! +8 GEMS! +${soulReward} SOULS!</span>`;
+                  resultDiv.style.color = '#e0f';
+                  resultDiv.style.textShadow = '0 0 20px #e0f';
+              } else {
+                  // If all hypercharges are already unlocked, convert reward to bonus coins.
+                  playerData.coins += 1000;
+                  playerData.gems += 8;
+                  resultDiv.innerHTML = `✨ ALL HYPERCHARGES ALREADY UNLOCKED! ✨<br><span style="font-size: 20px; color: #ffd700; margin-top: 12px; display: block;">Converted to +1000 COINS and +8 GEMS. +${soulReward} SOULS!</span>`;
+                  resultDiv.style.color = '#ffd700';
+                  resultDiv.style.textShadow = '0 0 20px #ffd700';
+              }
+          } else {
+              // Fallback: 1k coins
+              playerData.coins += 1000;
+              playerData.gems += 8;
+              resultDiv.innerHTML = `💰 +1000 COINS! 💰<br><span style="font-size: 20px; color: #ffd700; margin-top: 12px; display: block;">Better luck next time! +8 GEMS! +${soulReward} SOULS!</span>`;
+              resultDiv.style.color = '#ffd700';
+              resultDiv.style.textShadow = '0 0 20px #ffd700';
+          }
+          
+          overlay.appendChild(resultDiv);
+          const closeMsg = document.createElement('p');
+          closeMsg.textContent = 'TAP ANYWHERE TO CLOSE';
+          closeMsg.style.fontSize = '16px'; closeMsg.style.marginTop = '48px'; closeMsg.style.color = '#aaf'; closeMsg.style.opacity = '0.7';
+          overlay.appendChild(closeMsg);
+          saveProgress();
+          if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
+      };
+      
+      // Add CSS animation for pulse effect
+      if (!document.getElementById('hyperTapperPulse')) {
+          const style = document.createElement('style');
+          style.id = 'hyperTapperPulse';
+          style.textContent = '@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }';
+          document.head.appendChild(style);
+      }
+      
+      document.body.appendChild(overlay);
+  }
+
+  // Helper to open either UI from new DOM buttons
+  function openStarrDropUI(isSuper) {
+      if (isSuper) return openSuperStarrDrop();
+      return openStarrDrop();
+  }
+
+  function sanitizeSummonerPlanEntry(plan) {
+      if (!plan || typeof plan !== 'object') return null;
+      const type = plan.type === 'choice' ? 'choice' : 'single';
+      const rarity = typeof plan.rarity === 'string' ? plan.rarity : 'Common';
+      const options = Array.isArray(plan.options) ? plan.options : [];
+      const cleanOptions = [...new Set(options.filter((bid) => typeof bid === 'string' && allBrawlers.includes(bid) && bid !== 'outlit'))]
+          .filter((bid) => !isBrawlerUnlocked(bid) && !disabledBrawlers.has(bid));
+      if (type === 'choice' && cleanOptions.length < 2) return null;
+      if (type === 'single' && cleanOptions.length < 1) return null;
+      return {
+          type,
+          rarity,
+          cost: getSoulUnlockCostForRarity(rarity),
+          options: type === 'choice' ? cleanOptions.slice(0, 2) : [cleanOptions[0]],
+          fromDeferred: !!plan.fromDeferred
+      };
+  }
+
+  
+  const SOUL_CONSTELLATIONS = Object.freeze([
+      {
+          id: 'Rare',
+          name: 'Verdant Canopy',
+          subtitle: 'The Starter Constellation',
+          icon: '🌿',
+          color: '#5df2c2',
+          glow: 'rgba(93, 242, 194, 0.4)',
+          cost: 70,
+          milestoneReward: { coins: 300, gems: 30, label: '300 Coins + 30 Gems' },
+          brawlers: ['echo', 'cheseypuff', 'unopcoloco', 'minigunnin', 'bowlin_rida', 'chaird', 'forest', 'goonbob']
+      },
+      {
+          id: 'Epic',
+          name: 'Blazing Forge',
+          subtitle: 'The Champions Constellation',
+          icon: '⚡',
+          color: '#f1c40f',
+          glow: 'rgba(241, 196, 15, 0.4)',
+          cost: 170,
+          milestoneReward: { coins: 600, gems: 60, label: '600 Coins + 60 Gems' },
+          brawlers: ['trapper', 'heater_miser', 'money_and_tax', 'hunter', 'bouncin_balls', 'fightnfire', 'splitter', 'scuba_diver', 'hoop', 'beam', 'teether', 'fuel', 'warrior', 'peter_pickle', 'axeywaxy', 'ramage', 'sir_cheeseburger']
+      },
+      {
+          id: 'Mythic',
+          name: 'Astral Tempest',
+          subtitle: 'The Arcane Constellation',
+          icon: '🌀',
+          color: '#ff7bd1',
+          glow: 'rgba(255, 123, 209, 0.4)',
+          cost: 270,
+          milestoneReward: { coins: 1000, gems: 100, label: '1,000 Coins + 100 Gems' },
+          brawlers: ['dashaholic', 'classy', 'steamer', 'tempo_maker', 'amplifier', 'skeleflying', 'evil_doctor', 'boom_arang', 'upiedown', 'chickpig', 'jetpack', 'fastpass', 'freestyle', 'drainbow', 'draflygon', 'homer', 'predator', 'ice_cream', 'swimmer', 'boomer', 'blade_vane', 'daggershard', 'cluster', 'witch', 'trampaheal', 'upgradart']
+      },
+      {
+          id: 'Exotic',
+          name: 'Dimensional Rift',
+          subtitle: 'The Hyper-Spatial Constellation',
+          icon: '🔮',
+          color: '#b983ff',
+          glow: 'rgba(185, 131, 255, 0.4)',
+          cost: 420,
+          milestoneReward: { coins: 1500, gems: 150, label: '1,500 Coins + 150 Gems' },
+          brawlers: ['copyphase', 'snapper', 'portalo', 'ghoul', 'jacktrade', 'mageny', 'cinderion', 'cursed', 'anti_royal']
+      },
+      {
+          id: 'Unique',
+          name: 'Sovereign Crown',
+          subtitle: 'The Apex Constellation',
+          icon: '👑',
+          color: '#ff9b42',
+          glow: 'rgba(255, 155, 66, 0.4)',
+          cost: 600,
+          milestoneReward: { coins: 2500, gems: 250, label: '2,500 Coins + 250 Gems' },
+          brawlers: ['decayer', 'hyperorigin', 'overlord', 'beast', 'hope', 'screener', 'kage', 'malakor', 'paradox', 'sera_eclipse', 'xray', 'angel', 'demon', 'relay', 'robber', 'unstable', 'orbo', 'adlof', 'king']
+      },
+      {
+          id: 'Anomaly',
+          name: 'Primordial Singularity',
+          subtitle: 'The Genesis Constellation',
+          icon: '🌌',
+          color: '#a855f7',
+          glow: 'rgba(168, 85, 247, 0.4)',
+          cost: 850,
+          milestoneReward: { coins: 4000, gems: 400, label: '4,000 Coins + 400 Gems' },
+          brawlers: ['crystila', 'darkener', 'awakenator']
+      }
+  ]);
+
+  function getConstellationProgress(constellationId) {
+      const c = SOUL_CONSTELLATIONS.find(x => x.id === constellationId);
+      if (!c) return { total: 0, unlocked: 0, pct: 0, completed: false, brawlers: [] };
+      const valid = c.brawlers.filter(b => !disabledBrawlers.has(b) && !brawlerData?.[b]?.disabled);
+      const unlocked = valid.filter(b => isBrawlerUnlocked(b));
+      const total = valid.length;
+      return {
+          total,
+          unlocked: unlocked.length,
+          pct: total > 0 ? Math.round((unlocked.length / total) * 100) : 100,
+          completed: total > 0 && unlocked.length >= total,
+          brawlers: valid
+      };
+  }
+
+  function getActiveConstellationTier() {
+      for (const c of SOUL_CONSTELLATIONS) {
+          const prog = getConstellationProgress(c.id);
+          if (!prog.completed) return c.id;
+      }
+      return 'Anomaly';
+  }
+
+  function getOrGenerateCurrentChoices(count = 3) {
+      ensureSoulSummonerData();
+      const ss = playerData.soulSummoner;
+      const activeTier = getActiveConstellationTier();
+      const c = SOUL_CONSTELLATIONS.find(x => x.id === activeTier);
+      if (!c) return [];
+
+      const availableInTier = c.brawlers.filter(b => !disabledBrawlers.has(b) && !brawlerData?.[b]?.disabled && !isBrawlerUnlocked(b));
+      if (availableInTier.length === 0) return [];
+
+      // Validate existing choices
+      if (Array.isArray(ss.currentChoices) && ss.currentChoices.length > 0) {
+          const validChoices = ss.currentChoices.filter(b => availableInTier.includes(b));
+          if (validChoices.length > 0) {
+              // Fill up to count if more available
+              if (validChoices.length < Math.min(count, availableInTier.length)) {
+                  const remaining = availableInTier.filter(b => !validChoices.includes(b));
+                  while (validChoices.length < Math.min(count, availableInTier.length) && remaining.length > 0) {
+                      const pickIdx = Math.floor(Math.random() * remaining.length);
+                      validChoices.push(remaining.splice(pickIdx, 1)[0]);
+                  }
+              }
+              ss.currentChoices = validChoices;
+              if (!ss.targetBrawler || !validChoices.includes(ss.targetBrawler)) {
+                  ss.targetBrawler = validChoices[0];
+              }
+              return validChoices;
+          }
+      }
+
+      // Generate fresh choices (2 or 3)
+      const pool = [...availableInTier];
+      const selected = [];
+      const targetCount = Math.min(count, pool.length);
+      while (selected.length < targetCount && pool.length > 0) {
+          const idx = Math.floor(Math.random() * pool.length);
+          selected.push(pool.splice(idx, 1)[0]);
+      }
+      ss.currentChoices = selected;
+      if (!ss.targetBrawler || !selected.includes(ss.targetBrawler)) {
+          ss.targetBrawler = selected[0] || null;
+      }
+      saveProgress();
+      return selected;
+  }
+
+  function rerollCurrentChoices() {
+      ensureSoulSummonerData();
+      const ss = playerData.soulSummoner;
+      ss.currentChoices = null;
+      return getOrGenerateCurrentChoices(3);
+  }
+
+  function claimConstellationMilestone(constellationId) {
+      ensureSoulSummonerData();
+      if (!playerData.soulSummoner.claimedMilestones) playerData.soulSummoner.claimedMilestones = {};
+      const c = SOUL_CONSTELLATIONS.find(x => x.id === constellationId);
+      if (!c) return false;
+      const prog = getConstellationProgress(constellationId);
+      if (!prog.completed) return false;
+      if (playerData.soulSummoner.claimedMilestones[constellationId]) return false;
+
+      playerData.soulSummoner.claimedMilestones[constellationId] = true;
+      if (c.milestoneReward) {
+          if (c.milestoneReward.coins) playerData.coins = (playerData.coins || 0) + c.milestoneReward.coins;
+          if (c.milestoneReward.gems) playerData.gems = (playerData.gems || 0) + c.milestoneReward.gems;
+      }
+      saveProgress();
+      return true;
+  }
+
+  function openSoulSummoner() {
+      ensureSoulSummonerData();
+      if (!playerData.soulSummoner.claimedMilestones) playerData.soulSummoner.claimedMilestones = {};
+
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:radial-gradient(ellipse at 50% 10%, rgba(15, 23, 48, 0.98), rgba(3, 6, 14, 0.98));z-index:1500;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;padding:clamp(8px, 2vh, 16px);box-sizing:border-box;backdrop-filter:blur(14px);';
+
+      const panel = document.createElement('div');
+      panel.style.cssText = 'width:min(880px, 98vw);max-height:calc(100dvh - 24px);max-height:calc(100vh - 24px);background:linear-gradient(180deg, #0d172e 0%, #060b17 100%);border:2px solid rgba(138,92,255,0.45);border-radius:20px;box-shadow:0 25px 80px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.1);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;position:relative;';
+
+      function render() {
+          panel.innerHTML = '';
+          ensureSoulSummonerData();
+
+          const ss = playerData.soulSummoner;
+          const activeTier = getActiveConstellationTier();
+          const activeConstellation = SOUL_CONSTELLATIONS.find(x => x.id === activeTier) || SOUL_CONSTELLATIONS[0];
+          const choices = getOrGenerateCurrentChoices(3);
+          const lockedBrawlers = allBrawlers.filter(b => getBrawlerRarity(b) !== 'Starter' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
+          const allUnlocked = lockedBrawlers.length === 0;
+
+          // ── Sticky Header Bar (Never gets cut off) ──
+          const header = document.createElement('div');
+          header.style.cssText = 'padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(138,92,255,0.2);background:rgba(8,14,28,0.9);flex-shrink:0;z-index:10;box-sizing:border-box;';
+
+          const titleBox = document.createElement('div');
+          titleBox.innerHTML = `
+              <div style="font-size:clamp(16px, 2.4vw, 20px);font-weight:900;letter-spacing:0.04em;background:linear-gradient(90deg,#caa6ff,#6ee7ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:6px;">
+                  🌌 SOUL SUMMONER · STARR ROAD
+              </div>
+              <div style="font-size:11px;color:#8eaad0;margin-top:1px;">Choose your fighter or summon randomly</div>
+          `;
+
+          const headerRight = document.createElement('div');
+          headerRight.style.cssText = 'display:flex;align-items:center;gap:8px;flex-shrink:0;';
+
+          const soulChip = document.createElement('div');
+          soulChip.style.cssText = 'background:rgba(255,209,102,0.15);border:1.5px solid #ffd166;padding:6px 12px;border-radius:999px;font-weight:900;color:#ffd166;font-size:13px;display:flex;align-items:center;gap:5px;box-shadow:0 0 12px rgba(255,209,102,0.2);';
+          soulChip.innerHTML = `<span>🪄</span> <span>${playerData.souls || 0} SOULS</span>`;
+
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = '✕';
+          closeBtn.setAttribute('aria-label', 'Close');
+          closeBtn.style.cssText = 'width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#dbe8ff;font-size:15px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.18s;flex-shrink:0;';
+          closeBtn.onmouseenter = () => { closeBtn.style.background = 'rgba(255,70,70,0.35)'; closeBtn.style.borderColor = '#ff6b6b'; };
+          closeBtn.onmouseleave = () => { closeBtn.style.background = 'rgba(255,255,255,0.08)'; closeBtn.style.borderColor = 'rgba(255,255,255,0.2)'; };
+          closeBtn.onclick = () => document.body.removeChild(overlay);
+
+          headerRight.appendChild(soulChip);
+          headerRight.appendChild(closeBtn);
+          header.appendChild(titleBox);
+          header.appendChild(headerRight);
+          panel.appendChild(header);
+
+          // ── Scrollable Body ──
+          const body = document.createElement('div');
+          body.style.cssText = 'padding:16px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:14px;box-sizing:border-box;flex:1;';
+
+          if (!allUnlocked) {
+              const curCost = getSoulUnlockCostForRarity(activeTier);
+              const curSouls = playerData.souls || 0;
+              const canAfford = curSouls >= curCost;
+              const targetId = (ss.targetBrawler && choices.includes(ss.targetBrawler)) ? ss.targetBrawler : (choices[0] || null);
+              if (targetId && ss.targetBrawler !== targetId) {
+                  ss.targetBrawler = targetId;
+                  saveProgress();
+              }
+
+              // ── Active Choice Section ──
+              const choiceSection = document.createElement('div');
+              choiceSection.style.cssText = `background:linear-gradient(135deg, rgba(16,28,56,0.85), rgba(8,14,30,0.92));border:2px solid ${activeConstellation.color};border-radius:18px;padding:16px;box-shadow:0 8px 30px rgba(0,0,0,0.4), inset 0 0 20px ${activeConstellation.color}15;box-sizing:border-box;`;
+
+              const stepHeader = document.createElement('div');
+              stepHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;';
+              stepHeader.innerHTML = `
+                  <div>
+                      <div style="font-size:11px;font-weight:900;letter-spacing:0.08em;color:${activeConstellation.color};text-transform:uppercase;">
+                          ${activeConstellation.icon} CURRENT STARR ROAD STEP · ${activeTier.toUpperCase()} CHOICE
+                      </div>
+                      <div style="font-size:13px;color:#d0e2ff;font-weight:700;margin-top:2px;">
+                          Pick 1 of ${choices.length} fighters to channel souls, or summon randomly!
+                      </div>
+                  </div>
+                  <div style="font-size:12px;font-weight:800;color:#ffd166;background:rgba(255,209,102,0.1);padding:4px 10px;border-radius:8px;border:1px solid rgba(255,209,102,0.3);">
+                      Cost: ${curCost} Souls (${curSouls}/${curCost})
+                  </div>
+              `;
+              choiceSection.appendChild(stepHeader);
+
+              // ── 2-3 Choice Fighter Cards Grid ──
+              const cardsRow = document.createElement('div');
+              cardsRow.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:14px;box-sizing:border-box;';
+
+              choices.forEach((bid) => {
+                  const meta = brawlerData[bid] || { name: bid, role: 'Fighter', color: activeConstellation.color };
+                  const isSelected = ss.targetBrawler === bid;
+                  const pct = Math.min(100, Math.round((curSouls / Math.max(1, curCost)) * 100));
+
+                  const card = document.createElement('div');
+                  card.style.cssText = `background:${isSelected ? 'linear-gradient(135deg, rgba(28,48,88,0.95), rgba(14,24,48,0.95))' : 'rgba(10,18,36,0.7)'};border:2px solid ${isSelected ? '#ffd166' : 'rgba(255,255,255,0.12)'};border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;position:relative;transition:all 0.2s;box-shadow:${isSelected ? '0 0 20px rgba(255,209,102,0.35), inset 0 0 15px rgba(255,209,102,0.1)' : 'none'};box-sizing:border-box;`;
+
+                  card.onmouseenter = () => { if (!isSelected) { card.style.borderColor = meta.color || activeConstellation.color; card.style.transform = 'translateY(-2px)'; } };
+                  card.onmouseleave = () => { if (!isSelected) { card.style.borderColor = 'rgba(255,255,255,0.12)'; card.style.transform = 'translateY(0)'; } };
+
+                  const tag = document.createElement('div');
+                  tag.style.cssText = `font-size:10px;font-weight:900;color:${isSelected ? '#ffd166' : '#8eaad0'};margin-bottom:6px;letter-spacing:0.04em;`;
+                  tag.textContent = isSelected ? '🎯 ACTIVE TARGET' : '👉 CLICK TO CHOOSE';
+
+                  const portraitBox = document.createElement('div');
+                  portraitBox.style.cssText = `width:56px;height:56px;border-radius:14px;background:radial-gradient(circle,${meta.color||'#6ee7ff'}44,#0b1426);border:2px solid ${meta.color||'#6ee7ff'};display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:6px;box-shadow:0 0 14px ${meta.color||'#6ee7ff'}33;`;
+                  portraitBox.innerHTML = getBrawlerPortraitMarkup(bid);
+
+                  const nameEl = document.createElement('div');
+                  nameEl.style.cssText = 'font-size:15px;font-weight:900;color:#fff;margin-bottom:2px;';
+                  nameEl.textContent = meta.name || bid;
+
+                  const roleEl = document.createElement('div');
+                  roleEl.style.cssText = 'font-size:11px;color:#8eaad0;margin-bottom:8px;';
+                  roleEl.textContent = meta.role || 'Fighter';
+
+                  // Progress bar on active card
+                  const bar = document.createElement('div');
+                  bar.style.cssText = 'width:100%;height:8px;background:#060d1b;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);';
+                  const fill = document.createElement('div');
+                  fill.style.cssText = `width:${isSelected ? pct : 0}%;height:100%;background:linear-gradient(90deg, ${meta.color || '#6ee7ff'}, #ffd166);border-radius:999px;transition:width 0.3s;`;
+                  bar.appendChild(fill);
+
+                  card.appendChild(tag);
+                  card.appendChild(portraitBox);
+                  card.appendChild(nameEl);
+                  card.appendChild(roleEl);
+                  card.appendChild(bar);
+
+                  card.onclick = () => {
+                      ss.targetBrawler = bid;
+                      saveProgress();
+                      render();
+                  };
+
+                  cardsRow.appendChild(card);
+              });
+              choiceSection.appendChild(cardsRow);
+
+              // ── Action Buttons Row: Random Pick, Reroll, Summon Now ──
+              const actionRow = document.createElement('div');
+              actionRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;';
+
+              const leftActions = document.createElement('div');
+              leftActions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+              // Random Pick Button
+              const randomBtn = document.createElement('button');
+              randomBtn.innerHTML = '🎲 <b>RANDOM PICK</b>';
+              randomBtn.style.cssText = 'padding:10px 16px;border-radius:10px;border:1.5px solid #6ee7ff;background:rgba(110,231,255,0.12);color:#6ee7ff;font-size:12px;font-weight:800;cursor:pointer;transition:all 0.2s;';
+              randomBtn.onmouseenter = () => { randomBtn.style.background = 'rgba(110,231,255,0.25)'; };
+              randomBtn.onmouseleave = () => { randomBtn.style.background = 'rgba(110,231,255,0.12)'; };
+              randomBtn.onclick = () => {
+                  if (choices.length > 0) {
+                      const randomChoice = choices[Math.floor(Math.random() * choices.length)];
+                      ss.targetBrawler = randomChoice;
+                      saveProgress();
+                      render();
+                  }
+              };
+              leftActions.appendChild(randomBtn);
+
+              // Reroll Choices Button
+              const rerollBtn = document.createElement('button');
+              rerollBtn.innerHTML = '🔄 <b>REROLL OPTIONS</b>';
+              rerollBtn.style.cssText = 'padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#d0e2ff;font-size:12px;font-weight:700;cursor:pointer;';
+              rerollBtn.onclick = () => {
+                  rerollCurrentChoices();
+                  render();
+              };
+              leftActions.appendChild(rerollBtn);
+              actionRow.appendChild(leftActions);
+
+              // Summon / Unlock Button
+              const rightActions = document.createElement('div');
+              if (canAfford && targetId) {
+                  const targetMeta = brawlerData[targetId] || { name: targetId };
+                  const summonBtn = document.createElement('button');
+                  summonBtn.textContent = `⚡ SUMMON ${(targetMeta.name || targetId).toUpperCase()} (${curCost} SOULS)`;
+                  summonBtn.style.cssText = 'padding:11px 20px;border-radius:12px;border:none;background:linear-gradient(135deg, #5df2c2 0%, #00b894 100%);color:#05141b;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 0 20px rgba(93,242,194,0.6);';
+                  summonBtn.onclick = () => {
+                      autoSpendSoulsOnTarget();
+                      getOrGenerateCurrentChoices(3);
+                      render();
+                  };
+                  rightActions.appendChild(summonBtn);
+              } else {
+                  const needed = curCost - curSouls;
+                  const needInfo = document.createElement('div');
+                  needInfo.style.cssText = 'font-size:12px;color:#ffd166;font-weight:800;background:rgba(0,0,0,0.3);padding:8px 14px;border-radius:10px;border:1px solid rgba(255,209,102,0.2);';
+                  needInfo.textContent = `🪄 ${needed} more Souls needed to unlock`;
+                  rightActions.appendChild(needInfo);
+              }
+              actionRow.appendChild(rightActions);
+              choiceSection.appendChild(actionRow);
+              body.appendChild(choiceSection);
+          } else {
+              // All Unlocked Cosmic Overflow Fountain
+              const fountainCard = document.createElement('div');
+              fountainCard.style.cssText = 'background:linear-gradient(135deg, rgba(30,20,60,0.8), rgba(10,30,50,0.8));border:2px solid #5df2c2;border-radius:18px;padding:20px;box-shadow:0 0 30px rgba(93,242,194,0.3);text-align:center;box-sizing:border-box;';
+              fountainCard.innerHTML = `
+                  <div style="font-size:32px;">🏆 🌌</div>
+                  <div style="font-size:20px;font-weight:900;color:#5df2c2;margin:6px 0;">ALL FIGHTERS SUMMONED!</div>
+                  <div style="font-size:12px;color:#9dc0ea;max-width:560px;margin:0 auto 14px auto;">
+                      You have mastered every constellation in the galaxy. Souls you earn now divide into the <b>Soul Bank</b> (25% for upcoming fighters) and <b>Soul Water</b> (75% for celestial reward drops).
+                  </div>
+              `;
+
+              const fountainStats = document.createElement('div');
+              fountainStats.style.cssText = 'display:flex;gap:12px;justify-content:center;flex-wrap:wrap;';
+              fountainStats.innerHTML = `
+                  <div style="padding:10px 18px;background:#0b1730;border:1.5px solid #a78bfa;border-radius:12px;font-weight:800;color:#a78bfa;font-size:13px;">🏦 Soul Bank: ${ss.soulBank || 0}</div>
+                  <div style="padding:10px 18px;background:#0b1730;border:1.5px solid #38bdf8;border-radius:12px;font-weight:800;color:#38bdf8;font-size:13px;">💧 Soul Water: ${ss.soulWater || 0}</div>
+              `;
+              fountainCard.appendChild(fountainStats);
+
+              if (ss.pendingWaterReward) {
+                  const r = ss.pendingWaterReward;
+                  const rewardLabel = r.type === 'coins' ? `💰 ${r.amount} Coins` : r.type === 'gems' ? `💎 ${r.amount} Gems` : `✨ Starr Drop`;
+                  const claimBtn = document.createElement('button');
+                  claimBtn.textContent = `🎁 Claim Ready Reward: ${rewardLabel}`;
+                  claimBtn.style.cssText = 'margin-top:14px;padding:11px 22px;border-radius:12px;border:none;background:linear-gradient(135deg, #38bdf8, #818cf8);color:#05141b;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 0 20px rgba(56,189,248,0.5);';
+                  claimBtn.onclick = () => {
+                      claimSoulWaterReward();
+                      render();
+                  };
+                  fountainCard.appendChild(claimBtn);
+              }
+              body.appendChild(fountainCard);
+          }
+
+          // ── Starr Road Constellation Path Overview ──
+          const roadCard = document.createElement('div');
+          roadCard.style.cssText = 'background:rgba(8,14,28,0.75);border:1px solid rgba(138,92,255,0.25);border-radius:16px;padding:14px;box-sizing:border-box;';
+          roadCard.innerHTML = `<div style="font-size:13px;font-weight:900;color:#caa6ff;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🛤️ STARR ROAD CHAPTERS & MILESTONES</div>`;
+
+          const roadList = document.createElement('div');
+          roadList.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+
+          SOUL_CONSTELLATIONS.forEach((c, idx) => {
+              const prog = getConstellationProgress(c.id);
+              const isCurrent = activeTier === c.id;
+              const isDone = prog.completed;
+              const isClaimed = playerData.soulSummoner.claimedMilestones?.[c.id];
+
+              const row = document.createElement('div');
+              row.style.cssText = `display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:10px 14px;border-radius:12px;background:${isCurrent ? 'rgba(255,209,102,0.08)' : isDone ? 'rgba(93,242,194,0.06)' : 'rgba(255,255,255,0.02)'};border:1px solid ${isCurrent ? '#ffd166' : isDone ? '#5df2c2' : 'rgba(255,255,255,0.06)'};box-sizing:border-box;`;
+
+              const rowLeft = document.createElement('div');
+              rowLeft.style.cssText = 'display:flex;align-items:center;gap:10px;min-width:0;';
+              rowLeft.innerHTML = `
+                  <span style="font-size:20px;">${c.icon}</span>
+                  <div style="min-width:0;">
+                      <div style="font-size:13px;font-weight:900;color:${c.color};display:flex;align-items:center;gap:6px;">
+                          Chapter ${idx + 1}: ${c.name} (${c.id})
+                          ${isDone ? '<span style="color:#5df2c2;font-size:11px;">✓ COMPLETED</span>' : isCurrent ? '<span style="color:#ffd166;font-size:11px;">● CURRENT</span>' : ''}
+                      </div>
+                      <div style="font-size:11px;color:#8eaad0;">${c.cost} Souls/fighter • ${prog.unlocked}/${prog.total} fighters unlocked (${prog.pct}%)</div>
+                  </div>
+              `;
+
+              const rowRight = document.createElement('div');
+              rowRight.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+              if (isDone) {
+                  if (isClaimed) {
+                      rowRight.innerHTML = `<span style="font-size:11px;color:#5df2c2;font-weight:800;">✓ Milestone Claimed</span>`;
+                  } else {
+                      const claimMilestoneBtn = document.createElement('button');
+                      claimMilestoneBtn.textContent = `🎁 Claim (${c.milestoneReward.label})`;
+                      claimMilestoneBtn.style.cssText = 'padding:6px 12px;border-radius:8px;border:none;background:linear-gradient(135deg,#ffd166,#ff9f43);color:#0a1428;font-weight:900;font-size:11px;cursor:pointer;';
+                      claimMilestoneBtn.onclick = () => {
+                          claimConstellationMilestone(c.id);
+                          render();
+                      };
+                      rowRight.appendChild(claimMilestoneBtn);
+                  }
+              } else {
+                  rowRight.innerHTML = `<span style="font-size:11px;color:#8eaad0;">Milestone: ${c.milestoneReward.label}</span>`;
+              }
+
+              row.appendChild(rowLeft);
+              row.appendChild(rowRight);
+              roadList.appendChild(row);
+          });
+          roadCard.appendChild(roadList);
+          body.appendChild(roadCard);
+
+          // ── Evil Doctor Research Banner (if locked) ──
+          if (!isBrawlerUnlocked('evil_doctor')) {
+              const edEndAt = playerData.evilDoctorUnlockEndAt || 0;
+              const edCard = document.createElement('div');
+              edCard.style.cssText = 'background:rgba(0,204,102,0.08);border:1px solid #2f8f5b;border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;box-sizing:border-box;';
+              if (edEndAt > Date.now()) {
+                  const remDays = Math.ceil((edEndAt - Date.now()) / (1000 * 60 * 60 * 24));
+                  edCard.innerHTML = `
+                      <div>
+                          <div style="font-weight:900;color:#8ff6bb;font-size:13px;">🧬 Evil Doctor Biological Research In Progress</div>
+                          <div style="font-size:11px;color:#c9ffe0;">Auto-unlocks for free in ${remDays} day(s).</div>
+                      </div>
+                  `;
+              } else {
+                  edCard.innerHTML = `
+                      <div>
+                          <div style="font-weight:900;color:#8ff6bb;font-size:13px;">🧬 Optional Research: Evil Doctor</div>
+                          <div style="font-size:11px;color:#c9ffe0;">Begin 4-day research to unlock Evil Doctor for free without spending Souls.</div>
+                      </div>
+                  `;
+                  const edBtn = document.createElement('button');
+                  edBtn.textContent = 'Start 4-Day Research';
+                  edBtn.style.cssText = 'padding:6px 14px;border-radius:8px;border:1px solid #76f0ac;background:#103328;color:#76f0ac;font-weight:800;cursor:pointer;font-size:11px;';
+                  edBtn.onclick = () => {
+                      playerData.evilDoctorUnlockEndAt = Date.now() + 4 * 24 * 60 * 60 * 1000;
+                      saveProgress();
+                      render();
+                  };
+                  edCard.appendChild(edBtn);
+              }
+              body.appendChild(edCard);
+          }
+
+          panel.appendChild(body);
+      }
+
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+      render();
+  }
+
+  const BRICK_ROAD_MILESTONES = Object.freeze([
+      { bricks: 50, reward: { coins: 100 }, label: '100 Coins', icon: '💰' },
+      { bricks: 100, reward: { gems: 25 }, label: '25 Gems', icon: '💎' },
+      { bricks: 200, reward: { souls: 50 }, label: '50 Souls', icon: '🪄' },
+      { bricks: 300, reward: { coins: 150 }, label: '150 Coins', icon: '💰' },
+      { bricks: 400, reward: { coins: 200, gems: 15 }, label: '200 Coins + 15 Gems', icon: '✨' },
+      { bricks: 500, league: 'Bronze', reward: { coins: 300, gems: 30, souls: 50 }, label: '🏆 Bronze League Reward', icon: '🥉' },
+      { bricks: 750, reward: { souls: 100 }, label: '100 Souls', icon: '🪄' },
+      { bricks: 1000, reward: { gems: 50 }, label: '50 Gems', icon: '💎' },
+      { bricks: 1250, reward: { coins: 400 }, label: '400 Coins', icon: '💰' },
+      { bricks: 1500, league: 'Silver', reward: { coins: 500, gems: 50, souls: 100 }, label: '🏆 Silver League Reward', icon: '🥈' },
+      { bricks: 2000, reward: { souls: 150 }, label: '150 Souls', icon: '🪄' },
+      { bricks: 2500, reward: { gems: 75 }, label: '75 Gems', icon: '💎' },
+      { bricks: 3000, reward: { coins: 600 }, label: '600 Coins', icon: '💰' },
+      { bricks: 3500, reward: { souls: 200 }, label: '200 Souls', icon: '🪄' },
+      { bricks: 4000, league: 'Gold', reward: { coins: 800, gems: 80, souls: 200 }, label: '🏆 Gold League Reward', icon: '🥇' },
+      { bricks: 5000, reward: { souls: 250 }, label: '250 Souls', icon: '🪄' },
+      { bricks: 6000, reward: { gems: 100 }, label: '100 Gems', icon: '💎' },
+      { bricks: 7500, reward: { coins: 1000 }, label: '1,000 Coins', icon: '💰' },
+      { bricks: 9000, reward: { souls: 300 }, label: '300 Souls', icon: '🪄' },
+      { bricks: 10000, league: 'Diamond', reward: { coins: 1500, gems: 150, souls: 350 }, label: '🏆 Diamond League Reward', icon: '💎' },
+      { bricks: 12500, reward: { coins: 1200 }, label: '1,200 Coins', icon: '💰' },
+      { bricks: 15000, reward: { souls: 400 }, label: '400 Souls', icon: '🪄' },
+      { bricks: 17500, reward: { gems: 150 }, label: '150 Gems', icon: '💎' },
+      { bricks: 20000, league: 'Mythic', reward: { coins: 2500, gems: 200, souls: 500 }, label: '🏆 Mythic League Reward', icon: '🔮' },
+      { bricks: 25000, reward: { souls: 600 }, label: '600 Souls', icon: '🪄' },
+      { bricks: 30000, reward: { gems: 250 }, label: '250 Gems', icon: '💎' },
+      { bricks: 35000, league: 'Master', reward: { coins: 4000, gems: 300, souls: 800 }, label: '🏆 Master League Reward', icon: '👑' },
+      { bricks: 40000, reward: { souls: 1000 }, label: '1,000 Souls', icon: '🪄' },
+      { bricks: 45000, reward: { gems: 400 }, label: '400 Gems', icon: '💎' },
+      { bricks: 50000, league: 'Grand Champion', reward: { coins: 8000, gems: 500, souls: 1500 }, label: '🌌 Grand Champion Apex Reward', icon: '🌌' }
+  ]);
+
+  function getTotalAccountBricks() {
+      let total = 0;
+      if (playerData && playerData.brawlers && typeof playerData.brawlers === 'object') {
+          for (const bid of allBrawlers) {
+              if (playerData.brawlers[bid]) {
+                  total += getLifetimeBricks(playerData.brawlers[bid]);
+              }
+          }
+      }
+      return total;
+  }
+
+  function getBrickRoadLeague(totalBricks = getTotalAccountBricks()) {
+      if (totalBricks >= 50000) return { name: 'Grand Champion', icon: '🌌', color: '#a855f7', min: 50000 };
+      if (totalBricks >= 35000) return { name: 'Master', icon: '👑', color: '#ff9b42', min: 35000 };
+      if (totalBricks >= 20000) return { name: 'Mythic', icon: '🔮', color: '#ff7bd1', min: 20000 };
+      if (totalBricks >= 10000) return { name: 'Diamond', icon: '💎', color: '#6ee7ff', min: 10000 };
+      if (totalBricks >= 4000) return { name: 'Gold', icon: '🥇', color: '#ffd166', min: 4000 };
+      if (totalBricks >= 1500) return { name: 'Silver', icon: '🥈', color: '#c0d4ff', min: 1500 };
+      if (totalBricks >= 500) return { name: 'Bronze', icon: '🥉', color: '#d38b5d', min: 500 };
+      return { name: 'Wood', icon: '🪵', color: '#8eaad0', min: 0 };
+  }
+
+  function getUnclaimedBrickRoadMilestonesCount() {
+      ensurePlayerDataDefaults();
+      if (!playerData.claimedBrickRoadMilestones) playerData.claimedBrickRoadMilestones = {};
+      const total = getTotalAccountBricks();
+      return BRICK_ROAD_MILESTONES.filter(m => total >= m.bricks && !playerData.claimedBrickRoadMilestones[m.bricks]).length;
+  }
+
+  function claimBrickRoadMilestone(bricksThreshold) {
+      ensurePlayerDataDefaults();
+      if (!playerData.claimedBrickRoadMilestones) playerData.claimedBrickRoadMilestones = {};
+      const m = BRICK_ROAD_MILESTONES.find(x => x.bricks === bricksThreshold);
+      if (!m) return false;
+      const total = getTotalAccountBricks();
+      if (total < m.bricks) return false;
+      if (playerData.claimedBrickRoadMilestones[bricksThreshold]) return false;
+
+      playerData.claimedBrickRoadMilestones[bricksThreshold] = true;
+      if (m.reward.coins) playerData.coins = (playerData.coins || 0) + m.reward.coins;
+      if (m.reward.gems) playerData.gems = (playerData.gems || 0) + m.reward.gems;
+      if (m.reward.souls) {
+          if (typeof addSouls === 'function') addSouls(m.reward.souls);
+          else playerData.souls = (playerData.souls || 0) + m.reward.souls;
+      }
+      saveProgress();
+      if (typeof updateHomeCurrencyDisplay === 'function') updateHomeCurrencyDisplay();
+      if (typeof syncHomeProgressDock === 'function') syncHomeProgressDock();
+      return true;
+  }
+
+  function openBrickRoadModal() {
+      ensurePlayerDataDefaults();
+      if (!playerData.claimedBrickRoadMilestones) playerData.claimedBrickRoadMilestones = {};
+
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:radial-gradient(ellipse at 50% 10%, rgba(18, 28, 58, 0.98), rgba(3, 6, 14, 0.98));z-index:1600;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;padding:clamp(8px, 2vh, 16px);box-sizing:border-box;backdrop-filter:blur(14px);';
+
+      const panel = document.createElement('div');
+      panel.style.cssText = 'width:min(860px, 98vw);max-height:calc(100dvh - 24px);max-height:calc(100vh - 24px);background:linear-gradient(180deg, #0d172e 0%, #060b17 100%);border:2px solid rgba(255,209,102,0.45);border-radius:20px;box-shadow:0 25px 80px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.1);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;position:relative;';
+
+      function render() {
+          panel.innerHTML = '';
+          const totalBricks = getTotalAccountBricks();
+          const league = getBrickRoadLeague(totalBricks);
+          const nextMilestone = BRICK_ROAD_MILESTONES.find(m => totalBricks < m.bricks) || BRICK_ROAD_MILESTONES[BRICK_ROAD_MILESTONES.length - 1];
+          const unclaimedCount = getUnclaimedBrickRoadMilestonesCount();
+
+          // ── Sticky Header ──
+          const header = document.createElement('div');
+          header.style.cssText = 'padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(255,209,102,0.2);background:rgba(8,14,28,0.92);flex-shrink:0;z-index:10;box-sizing:border-box;';
+
+          const titleBox = document.createElement('div');
+          titleBox.innerHTML = `
+              <div style="font-size:clamp(16px, 2.4vw, 20px);font-weight:900;letter-spacing:0.04em;background:linear-gradient(90deg,#ffd166,#ff9f43);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:6px;">
+                  🏆 BRICK ROAD · TROPHY LEAGUES
+              </div>
+              <div style="font-size:11px;color:#8eaad0;margin-top:1px;">Earn Bricks with any fighter to unlock epic milestone rewards</div>
+          `;
+
+          const headerRight = document.createElement('div');
+          headerRight.style.cssText = 'display:flex;align-items:center;gap:8px;flex-shrink:0;';
+
+          const leagueBadge = document.createElement('div');
+          leagueBadge.style.cssText = `background:${league.color}22;border:1.5px solid ${league.color};padding:6px 12px;border-radius:999px;font-weight:900;color:${league.color};font-size:13px;display:flex;align-items:center;gap:5px;box-shadow:0 0 12px ${league.color}33;`;
+          leagueBadge.innerHTML = `<span>${league.icon}</span> <span>${league.name.toUpperCase()} LEAGUE</span>`;
+
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = '✕';
+          closeBtn.style.cssText = 'width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#dbe8ff;font-size:15px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.18s;flex-shrink:0;';
+          closeBtn.onclick = () => document.body.removeChild(overlay);
+
+          headerRight.appendChild(leagueBadge);
+          headerRight.appendChild(closeBtn);
+          header.appendChild(titleBox);
+          header.appendChild(headerRight);
+          panel.appendChild(header);
+
+          // ── Scrollable Body ──
+          const body = document.createElement('div');
+          body.style.cssText = 'padding:16px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:14px;box-sizing:border-box;flex:1;';
+
+          // Current Progress Summary Card
+          const summaryCard = document.createElement('div');
+          summaryCard.style.cssText = `background:linear-gradient(135deg, rgba(28,40,75,0.8), rgba(12,20,42,0.9));border:2px solid ${league.color};border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:0 0 24px ${league.color}22;box-sizing:border-box;`;
+          
+          const prevThreshold = league.min || 0;
+          const nextThreshold = nextMilestone ? nextMilestone.bricks : totalBricks;
+          const progressInTier = Math.max(0, totalBricks - prevThreshold);
+          const span = Math.max(1, nextThreshold - prevThreshold);
+          const pct = Math.min(100, Math.round((progressInTier / span) * 100));
+
+          summaryCard.innerHTML = `
+              <div style="min-width:0;">
+                  <div style="font-size:11px;font-weight:900;color:${league.color};text-transform:uppercase;letter-spacing:0.06em;">TOTAL ACCOUNT BRICKS</div>
+                  <div style="font-size:26px;font-weight:900;color:#fff;margin-top:2px;">
+                      🧱 ${totalBricks.toLocaleString()} <span style="font-size:14px;color:#8eaad0;font-weight:600;">Bricks</span>
+                  </div>
+                  <div style="font-size:12px;color:#ffd166;margin-top:2px;">
+                      Next Milestone at ${nextThreshold.toLocaleString()} Bricks (${Math.max(0, nextThreshold - totalBricks).toLocaleString()} needed)
+                  </div>
+              </div>
+              <div style="text-align:right;">
+                  ${unclaimedCount > 0 ? `<span style="font-size:12px;font-weight:900;color:#041810;background:linear-gradient(135deg,#5df2c2,#29c996);padding:6px 12px;border-radius:8px;box-shadow:0 0 14px rgba(93,242,194,0.5);">🎉 ${unclaimedCount} REWARD${unclaimedCount > 1 ? 'S' : ''} READY TO CLAIM</span>` : '<span style="font-size:12px;color:#8eaad0;">All unlocked rewards claimed</span>'}
+              </div>
+          `;
+          body.appendChild(summaryCard);
+
+          // Milestones Vertical Road Track
+          const trackContainer = document.createElement('div');
+          trackContainer.style.cssText = 'display:flex;flex-direction:column;gap:10px;box-sizing:border-box;';
+
+          BRICK_ROAD_MILESTONES.forEach((m, idx) => {
+              const isReached = totalBricks >= m.bricks;
+              const isClaimed = !!playerData.claimedBrickRoadMilestones[m.bricks];
+              const canClaim = isReached && !isClaimed;
+
+              const mCard = document.createElement('div');
+              mCard.style.cssText = `display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 16px;border-radius:14px;background:${canClaim ? 'linear-gradient(135deg,rgba(30,60,95,0.9),rgba(14,30,55,0.9))' : isClaimed ? 'rgba(10,20,38,0.5)' : 'rgba(8,14,28,0.7)'};border:1.5px solid ${canClaim ? '#5df2c2' : isClaimed ? 'rgba(93,242,194,0.3)' : isReached ? '#ffd166' : 'rgba(255,255,255,0.08)'};transition:all 0.2s;box-sizing:border-box;`;
+
+              const mLeft = document.createElement('div');
+              mLeft.style.cssText = 'display:flex;align-items:center;gap:12px;min-width:0;';
+
+              const iconBadge = document.createElement('div');
+              iconBadge.style.cssText = `width:46px;height:46px;border-radius:12px;background:radial-gradient(circle,rgba(255,209,102,0.2),rgba(8,16,32,0.9));border:1.5px solid ${canClaim ? '#5df2c2' : '#ffd166'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;`;
+              iconBadge.textContent = m.icon;
+
+              const info = document.createElement('div');
+              info.innerHTML = `
+                  <div style="font-size:11px;font-weight:900;color:${isReached ? '#ffd166' : '#8eaad0'};">
+                      ${m.bricks.toLocaleString()} BRICKS ${m.league ? '· ' + m.league.toUpperCase() + ' LEAGUE' : ''}
+                  </div>
+                  <div style="font-size:14px;font-weight:800;color:#fff;margin-top:2px;">
+                      ${m.label}
+                  </div>
+              `;
+              mLeft.appendChild(iconBadge);
+              mLeft.appendChild(info);
+
+              const mRight = document.createElement('div');
+              if (canClaim) {
+                  const claimBtn = document.createElement('button');
+                  claimBtn.textContent = '🎁 CLAIM';
+                  claimBtn.style.cssText = 'padding:8px 18px;border-radius:10px;border:none;background:linear-gradient(135deg,#5df2c2,#00b894);color:#05141b;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 0 16px rgba(93,242,194,0.6);';
+                  claimBtn.onclick = () => {
+                      claimBrickRoadMilestone(m.bricks);
+                      render();
+                  };
+                  mRight.appendChild(claimBtn);
+              } else if (isClaimed) {
+                  mRight.innerHTML = '<span style="font-size:12px;color:#5df2c2;font-weight:800;">✓ Claimed</span>';
+              } else {
+                  mRight.innerHTML = `<span style="font-size:11px;color:#8eaad0;">🔒 ${(m.bricks - totalBricks).toLocaleString()} more bricks</span>`;
+              }
+
+              mCard.appendChild(mLeft);
+              mCard.appendChild(mRight);
+              trackContainer.appendChild(mCard);
+          });
+
+          body.appendChild(trackContainer);
+          panel.appendChild(body);
+      }
+
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+      render();
+  }
+
+  function getUpgradeCost(level) {
+      const costs = [0, 50, 100, 175, 300, 500, 750, 1050, 1400, 2000, 3000];
+      return costs[Math.max(0, Math.floor(level || 0))] || 99999;
+  }
+
+  function getShopTodayKey() {
+      return new Date().toDateString();
+  }
+
+
+  const SPECIAL_ABILITY_DEFS = Object.freeze({
+      outlit: {
+          type: 'mutation',
+          name: 'Overpressure',
+          icon: 'OP',
+          color: '#ff4b55',
+          pieceName: 'Outlit Mutation Piece',
+          shortDesc: 'Every 9 main attacks, the next 4 Scatter Pumps get +100% range and 50% faster unload.'
+      },
+      bouncin_balls: {
+          type: 'signature',
+          name: 'Pinball Command',
+          icon: 'PC',
+          color: '#ffd34f',
+          pieceName: "Bouncin' Balls Signature Piece",
+          shortDesc: 'Spend up to 1000 HP: Elasticity keeps its +50% range, and every collector-ball wall bounce adds another +20% base range. Or spend 750 turret HP to command 2 radial waves (10s cooldown).'
+      },
+      fightnfire: {
+          type: 'instinct',
+          name: 'Flash Freeze',
+          icon: 'FF',
+          color: '#62ef88',
+          pieceName: "Fight'n'Fire Instinct Piece",
+          shortDesc: 'Every other Super cast, half of the fire projectiles become Sub-Zero Ice Cores that encase enemies in a solid Block of Ice for 1.3s (100% damage reduction, cannot move or attack).'
+      },
+      echo: {
+          type: 'instinct',
+          name: 'Aftershock Reflex',
+          icon: 'AR',
+          color: '#62ef88',
+          pieceName: 'Echo Instinct Piece',
+          shortDesc: 'Every 8s, the next Sound Wave is larger, travels farther, and repeats once after 800ms.'
+      },
+      minigunnin: {
+          type: 'mutation',
+          name: 'Incendiary Belt',
+          icon: 'IB',
+          color: '#ff4b55',
+          pieceName: 'Minigunnin Mutation Piece',
+          shortDesc: 'After firing 50 bullets, the next 20 explode at maximum range and place 1.2-second fire near launch, midway, or at impact.'
+      },
+      classy: {
+          type: 'signature',
+          name: 'Marching Encore',
+          icon: 'ME',
+          color: '#ffd34f',
+          pieceName: 'Classy Signature Piece',
+          shortDesc: 'Spend up to 1000 HP while Bass Drop is active to command its speaker to walk for 6 seconds and mirror every Classy attack in the same direction.'
+      },
+      beast: {
+          type: 'signature',
+          name: 'BeastyBeast',
+          icon: 'BB',
+          color: '#ffd34f',
+          pieceName: 'Beast Signature Piece',
+          shortDesc: 'Consume a full ammo bar in regular form: for 5 seconds, stay above 1 HP, gain 40% speed, and auto-claw left/right every 0.01s for 40% less damage.'
+      },
+      splitter: {
+          type: 'instinct',
+          name: 'Fractal Reflex',
+          icon: 'FR',
+          color: '#62ef88',
+          pieceName: 'Splitter Instinct Piece',
+          shortDesc: 'Every 4 seconds, each of Fivecracker’s 5 fragments divides into a clean two-shot forward cone.'
+      },
+      money_and_tax: {
+          type: 'mutation',
+          name: 'Hostile Takeover',
+          icon: 'HT',
+          color: '#ff4b55',
+          pieceName: 'Money & Tax Mutation Piece',
+          shortDesc: 'After 12 Money attacks, the next 4 gain two extra coins and an enlarged center coin. Tax adds a returning pair that steals 0.25 ammo per note.'
+      },
+      mageny: {
+          type: 'signature',
+          name: 'Permanent Attraction',
+          icon: 'PA',
+          color: '#ffd34f',
+          pieceName: 'Mageny Signature Piece',
+          shortDesc: 'Spend 2000 HP to sustain the active Magnetic Vortex for up to 14s. Detonate it manually, or overload 2s after its shared projectile cap is reached.'
+      }
+  });
+  const SPECIAL_ABILITY_TYPES = Object.freeze(['mutation', 'signature', 'instinct']);
+  const UNLEASH_POTENTIAL_EVENT_ID = 'unleash-potential-2026-08-all-specials-v3';
+  const UNLEASH_POTENTIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+  const UNLEASH_POTENTIAL_FIGHTERS = Object.freeze(Object.keys(SPECIAL_ABILITY_DEFS));
+  const SPECIAL_BREAKTHROUGH_QUESTS = Object.freeze({
+      outlit: [
+          {id:'pressure_building',title:'Pressure Building',desc:'Play 3 matches with Outlit.',kind:'play_match',target:3},
+          {id:'nine_round_rhythm',title:'Nine Round Rhythm',desc:'Fire 45 main attacks with Outlit.',kind:'main_attack',target:45},
+          {id:'break_the_limit',title:'Break the Limit',desc:'Deal 20,000 damage with Outlit.',kind:'deal_damage',target:20000}
+      ],
+      bouncin_balls: [
+          {id:'elastic_test',title:'Elastic Test',desc:'Use G1 Elasticity 5 times.',kind:'use_g1',target:5},
+          {id:'ricochet_research',title:'Ricochet Research',desc:"Land 40 Bouncin' Balls main-attack ball hits.",kind:'main_hit',target:40},
+          {id:'build_the_house',title:'Build the House',desc:'Use G2 Bouncy Turret 3 times.',kind:'use_g2',target:3}
+      ],
+      echo: [
+          {id:'sound_check',title:'Sound Check',desc:'Play 3 matches with Echo.',kind:'play_match',target:3},
+          {id:'frequency_test',title:'Frequency Test',desc:'Land 30 Echo main-ring hits.',kind:'main_hit',target:30},
+          {id:'resonance',title:'Resonance',desc:'Deal 15,000 damage with Echo.',kind:'deal_damage',target:15000}
+      ],
+            fightnfire: [
+          {id:'fire_and_ice',title:'Fire & Ice',desc:"Play 3 matches with Fight'n'Fire.",kind:'play_match',target:3},
+          {id:'flash_freeze_drill',title:'Flash Freeze Drill',desc:"Land 25 Super hits or freeze 8 enemies with Fight'n'Fire.",kind:'super_or_freeze',target:25},
+          {id:'thermal_regulation',title:'Thermal Regulation',desc:"Deal 20,000 damage with Fight'n'Fire.",kind:'deal_damage',target:20000}
+      ],
+      minigunnin: [
+          {id:'feed_the_belt',title:'Feed the Belt',desc:'Fire 300 Minigunnin bullets.',kind:'main_bullet',target:300},
+          {id:'suppressing_fire',title:'Suppressing Fire',desc:'Deal 20,000 damage with Minigunnin.',kind:'deal_damage',target:20000},
+          {id:'fortress_foreman',title:'Fortress Foreman',desc:'Deploy Minigunnin\'s Fortress 3 times.',kind:'use_super',target:3}
+      ],
+      classy: [
+          {id:'opening_act',title:'Opening Act',desc:'Fire 18 complete Classy Note Bursts.',kind:'main_attack',target:18},
+          {id:'perfect_notes',title:'Perfect Notes',desc:'Land 45 Classy note hits.',kind:'main_hit',target:45},
+          {id:'drop_the_bass',title:'Drop the Bass',desc:'Use Bass Drop 3 times.',kind:'use_super',target:3}
+      ],
+      splitter: [
+          {id:'fracture_practice',title:'Fracture Practice',desc:'Land 40 Splitter grenade or fragment hits.',kind:'main_hit',target:40},
+          {id:'five_way_fire',title:'Five-Way Fire',desc:'Fire 35 Split Grenades.',kind:'main_attack',target:35},
+          {id:'infinite_division',title:'Infinite Division',desc:'Use Splitin Off 5 times.',kind:'use_super',target:5}
+      ]
+  });
+  let specialQuestLastSaveAt = 0;
+  function ensureSpecialAbilityQuestState() {
+      if (!playerData.specialAbilityQuests || typeof playerData.specialAbilityQuests !== 'object') playerData.specialAbilityQuests = {};
+      if (!playerData.specialAbilityQuestEvent || playerData.specialAbilityQuestEvent.eventId !== UNLEASH_POTENTIAL_EVENT_ID) {
           playerData.specialAbilityQuestEvent={eventId:UNLEASH_POTENTIAL_EVENT_ID,startAt:Date.now(),endAt:Date.now()+UNLEASH_POTENTIAL_DURATION_MS};
       }
       for (const [fighterId, quests] of Object.entries(SPECIAL_BREAKTHROUGH_QUESTS)) {
@@ -13686,6 +15994,78 @@ let heistFeverActive = false;
         return created;
     }
 
+    function isOutlitChainWall(wall) {
+        return !!(wall && wall.hp > 0 && wall.isArenaWall && !wall.indestructible && !wall.unbreakable && !wall.isVault && !wall.isPowerBox);
+    }
+
+    function damageOutlitWallChain(projectile, firstWall, owner, powerMultiplier = 1) {
+        if (!projectile || !isOutlitChainWall(firstWall)) return;
+        const visited = new Set();
+        let current = firstWall;
+        let fromX = projectile.x;
+        let fromY = projectile.y;
+        for (let step = 0; step < OUTLIT_SUPER_WALL_CHAIN_MULTIPLIERS.length && current; step++) {
+            const wallId = getDestructibleWallHitId(current);
+            if (visited.has(wallId)) break;
+            visited.add(wallId);
+            const cx = current.x + current.w / 2;
+            const cy = current.y + current.h / 2;
+            const wallDamage = Math.max(1, (projectile.damage || 0) * powerMultiplier * OUTLIT_SUPER_WALL_CHAIN_MULTIPLIERS[step]);
+            recordFullOnDamageToTarget(current, Math.min(current.hp, wallDamage));
+            current.hp -= wallDamage;
+            outlitWallChains.push({
+                x1: fromX, y1: fromY, x2: cx, y2: cy,
+                bornAt: performance.now(), until: performance.now() + 380,
+                hyper: !!projectile.hyperVisual, step
+            });
+            explosions.push({ x: cx, y: cy, radius: 25 + step * 2, life: 0, maxLife: 0.2, color: projectile.hyperVisual ? 'rgba(220,90,255,.66)' : 'rgba(70,235,255,.62)', fxKind: 'outlitWallArc' });
+            if (current.hp <= 0) {
+                const index = destructibleWalls.indexOf(current);
+                if (index >= 0) destructibleWalls.splice(index, 1);
+                if (owner?.id === player.id) {
+                    addEventQuestProgress('destroy_walls');
+                    progressSeasonPassQuest('destroy_walls');
+                }
+            }
+            fromX = cx;
+            fromY = cy;
+            let nearest = null;
+            let nearestDistance = OUTLIT_SUPER_WALL_CHAIN_RANGE;
+            for (const candidate of destructibleWalls) {
+                if (!isOutlitChainWall(candidate) || visited.has(getDestructibleWallHitId(candidate))) continue;
+                const nx = candidate.x + candidate.w / 2;
+                const ny = candidate.y + candidate.h / 2;
+                const distance = Math.hypot(nx - cx, ny - cy);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearest = candidate;
+                }
+            }
+            current = nearest;
+        }
+    }
+
+    function fireOutlitBoomBreak(owner, angle, hyper = false, rangeMultiplier = 1) {
+        const speed = 660;
+        const range = 440 * Math.max(0.1, rangeMultiplier || 1);
+        for (const offset of [-0.115, 0, 0.115]) {
+            const shotAngle = angle + offset;
+            bullets.push({
+                ownerBrawler: 'outlit', ownerId: owner.id,
+                x: owner.x + Math.cos(shotAngle) * 24,
+                y: owner.y + Math.sin(shotAngle) * 24,
+                vx: Math.cos(shotAngle) * speed,
+                vy: Math.sin(shotAngle) * speed,
+                life: 0, maxLife: range / speed,
+                damage: 1420, pierce: !!hyper, pierceWalls: false,
+                hitIds: {}, hitboxMod: 2.05, super: true,
+                hyperVisual: !!hyper, outlitHyperGlow: !!hyper,
+                outlitSuperRework: true, outlitWallChain: true,
+                outlitStopOnWall: true
+            });
+        }
+    }
+
     function buildNextShowdownMap(mapIndex) {
         cubes.length = 0; bushZones.length = 0; waterZones.length = 0; destructibleWalls.length = 0;
         const idx=((mapIndex%SHOWDOWN_MAP_THEMES.length)+SHOWDOWN_MAP_THEMES.length)%SHOWDOWN_MAP_THEMES.length;
@@ -13913,12 +16293,12 @@ let heistFeverActive = false;
         cubes.length = 0;
         // central impassable gap
         destructibleWalls.length = 0;
-        destructibleWalls.push({ x: WORLD_W/2 - 220, y: WORLD_H/2 - 220, w: 440, h: 440, hp: 999999, maxHp: 999999, ownerId: null, isImpassable: true });
+        destructibleWalls.push({ x: WORLD_W/2 - 220, y: WORLD_H/2 - 220, w: 440, h: 440, hp: 999999, maxHp: 999999, ownerId: null, isImpassable: true, indestructible: true });
         // four side platforms
-        destructibleWalls.push({ x: 80, y: 80, w: 400, h: 200, hp: 4000, maxHp: 4000, ownerId: null });
-        destructibleWalls.push({ x: WORLD_W - 480, y: 80, w: 400, h: 200, hp: 4000, maxHp: 4000, ownerId: null });
-        destructibleWalls.push({ x: 80, y: WORLD_H - 280, w: 400, h: 200, hp: 4000, maxHp: 4000, ownerId: null });
-        destructibleWalls.push({ x: WORLD_W - 480, y: WORLD_H - 280, w: 400, h: 200, hp: 4000, maxHp: 4000, ownerId: null });
+        addArenaWallStrip(80, 80, 400, 200, { wallType: 'metal', hp: 4000 });
+        addArenaWallStrip(WORLD_W - 480, 80, 400, 200, { wallType: 'metal', hp: 4000 });
+        addArenaWallStrip(80, WORLD_H - 280, 400, 200, { wallType: 'metal', hp: 4000 });
+        addArenaWallStrip(WORLD_W - 480, WORLD_H - 280, 400, 200, { wallType: 'metal', hp: 4000 });
         // small clusters of cubes near platforms
         const pads = [
             { x: WORLD_W/2 - 320, y: WORLD_H/2, w: 80, h: 80 },
@@ -13926,7 +16306,7 @@ let heistFeverActive = false;
             { x: WORLD_W/2, y: WORLD_H/2 - 320, w: 80, h: 80 },
             { x: WORLD_W/2, y: WORLD_H/2 + 320, w: 80, h: 80 }
         ];
-        for (const c of pads) cubes.push({ x: c.x - c.w/2, y: c.y - c.h/2, w: c.w, h: c.h });
+        for (const c of pads) addArenaWallStrip(c.x - c.w/2, c.y - c.h/2, c.w, c.h, { wallType: 'metal', hp: 4200 });
     }
 
     function buildDamageFillerMap() {
@@ -13935,7 +16315,7 @@ let heistFeverActive = false;
         waterZones.length = 0;
         destructibleWalls.length = 0;
 
-        const addWall = (x, y, w, h, hp = 9000) => destructibleWalls.push({ x, y, w, h, hp, maxHp: hp, ownerId: null });
+        const addWall = (x, y, w, h, hp = 9000) => addArenaWallStrip(x, y, w, h, { wallType: 'metal', hp });
         const addBush = (x, y, w, h) => bushZones.push({ x, y, w, h });
         const addWater = (x, y, w, h) => waterZones.push({ x, y, w, h });
 
@@ -13957,10 +16337,10 @@ let heistFeverActive = false;
             addWater(WORLD_W * 0.5 - 70, WORLD_H * 0.32 - 120, 140, 240);
             addWater(WORLD_W * 0.5 - 70, WORLD_H * 0.68 - 120, 140, 240);
 
-            cubes.push({ x: WORLD_W * 0.32 - 50, y: WORLD_H * 0.3 - 50, w: 100, h: 100 });
-            cubes.push({ x: WORLD_W * 0.68 - 50, y: WORLD_H * 0.3 - 50, w: 100, h: 100 });
-            cubes.push({ x: WORLD_W * 0.32 - 50, y: WORLD_H * 0.7 - 50, w: 100, h: 100 });
-            cubes.push({ x: WORLD_W * 0.68 - 50, y: WORLD_H * 0.7 - 50, w: 100, h: 100 });
+            addArenaWallStrip(WORLD_W * 0.32 - 50, WORLD_H * 0.3 - 50, 100, 100, { wallType: 'metal', hp: 4200 });
+            addArenaWallStrip(WORLD_W * 0.68 - 50, WORLD_H * 0.3 - 50, 100, 100, { wallType: 'metal', hp: 4200 });
+            addArenaWallStrip(WORLD_W * 0.32 - 50, WORLD_H * 0.7 - 50, 100, 100, { wallType: 'metal', hp: 4200 });
+            addArenaWallStrip(WORLD_W * 0.68 - 50, WORLD_H * 0.7 - 50, 100, 100, { wallType: 'metal', hp: 4200 });
             return;
         }
 
@@ -13975,8 +16355,8 @@ let heistFeverActive = false;
         addWater(WORLD_W * 0.42 - 85, WORLD_H * 0.2 - 45, 170, 90);
         addWater(WORLD_W * 0.42 - 85, WORLD_H * 0.8 - 45, 170, 90);
 
-        cubes.push({ x: WORLD_W * 0.5 - 40, y: WORLD_H * 0.26 - 40, w: 80, h: 80 });
-        cubes.push({ x: WORLD_W * 0.5 - 40, y: WORLD_H * 0.74 - 40, w: 80, h: 80 });
+        addArenaWallStrip(WORLD_W * 0.5 - 40, WORLD_H * 0.26 - 40, 80, 80, { wallType: 'metal', hp: 4200 });
+        addArenaWallStrip(WORLD_W * 0.5 - 40, WORLD_H * 0.74 - 40, 80, 80, { wallType: 'metal', hp: 4200 });
     }
 
     function buildBrickVaultMap() {
@@ -14104,7 +16484,7 @@ let heistFeverActive = false;
       { x: 470, y: 900, w: 180, h: 75 },
       { x: 1150, y: 900, w: 180, h: 75 }
     ];
-    for (const wall of cover) cubes.push({ ...wall, wallType: 'impossible_arena' });
+    for (const wall of cover) addArenaWallStrip(wall.x, wall.y, wall.w, wall.h, { wallType: 'impossible_arena', hp: 5200 });
   }
 
     function buildArenaForgeMap() {
@@ -14931,8 +17311,7 @@ let heistFeverActive = false;
         let base = Number.isFinite(BALANCE_PROFILE.reloadMsByBrawler[brawler])
             ? BALANCE_PROFILE.reloadMsByBrawler[brawler]
             : 1740 * 1.15;
-        if (brawler === 'the_deleter') base = 1900;
-        else if (brawler === 'fastpass') base = 1550;
+        if (brawler === 'fastpass') base = 1550;
         else if (brawler === 'anti_royal') base = 1800;
         else if (brawler === 'cursed') base = 1750;
         else if (brawler === 'king') base = 1750;
@@ -14971,7 +17350,6 @@ let heistFeverActive = false;
   // same projectile cannot grant twice. Non-projectile attacks count once per
   // activation. Rapid-fire and large-volley kits use higher hit requirements.
   const SUPER_CHARGE_HITS_BY_BRAWLER = Object.freeze({
-      the_deleter: 5,
       beast:20, chaird:5, forest:4, overlord:6, unopcoloco:6, warrior:10,
       blade_vane:5, kage:12, drainbow:12, bowlin_rida:4, dashaholic:2, demon:5, jetpack:4, malakor:5, predator:5, swimmer:5, teether:6,
       boom_arang:4, cheseypuff:6, crystila:5, homer:4, hunter:5, orbo:16, snapper:7, xray:5,
@@ -14980,7 +17358,7 @@ let heistFeverActive = false;
       adlof:6, daggershard:10, decayer:6, fuel:6, ice_cream:6, paradox:6, peter_pickle:6, scuba_diver:5, screener:6, tempo_maker:14, unstable:5, witch:7,
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
-      portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, sir_cheeseburger:4
+      portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, sir_cheeseburger:4, blinkeye:4
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -15244,6 +17622,7 @@ let heistFeverActive = false;
   }
 
   function startDuelsRound() {
+    outlitWallChains.length = 0;
     bullets.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
@@ -19250,122 +21629,6 @@ let heistFeverActive = false;
         owner.mainAttackSequenceUntil=Math.max(owner.mainAttackSequenceUntil||0,startedAt+durationMs);
     }
 
-    const DELETER_REWRITE_SPEED = 325;
-    const DELETER_REWRITE_RANGE = 760;
-    const DELETER_CLONE_DURATION_MS = 8000;
-    let nextDeleterVolleyId = 1;
-
-    function ensureDeleterState(entity) {
-        if (!entity) return;
-        if (!Number.isFinite(entity.deleterClonesUntil)) entity.deleterClonesUntil = 0;
-        if (!Number.isFinite(entity.deleterCloneCount)) entity.deleterCloneCount = 0;
-        if (!Number.isFinite(entity.deleterCloneDamageMult)) entity.deleterCloneDamageMult = .30;
-        if (typeof entity.deleterHardRedirectArmed !== 'boolean') entity.deleterHardRedirectArmed = false;
-    }
-
-    function getActiveDeleterMaster(owner) {
-        if (!owner) return null;
-        return bullets.find(projectile => projectile && projectile.ownerId === owner.id &&
-            projectile.isDeleterRewrite && projectile.deleterMaster && projectile.life < projectile.maxLife) || null;
-    }
-
-    function getDeleterCloneOffsets(owner, now = performance.now()) {
-        ensureDeleterState(owner);
-        if (!owner || owner.hp <= 0 || now >= owner.deleterClonesUntil) return [];
-        const count = Math.max(0, Math.min(3, Math.floor(owner.deleterCloneCount || 0)));
-        const facing = Number.isFinite(owner.visualAimAngle) ? owner.visualAimAngle : (owner.dir || 0);
-        const sideX = -Math.sin(facing), sideY = Math.cos(facing);
-        const backX = -Math.cos(facing), backY = -Math.sin(facing);
-        if (count === 2) return [
-            { x: sideX * 62 + backX * 10, y: sideY * 62 + backY * 10 },
-            { x: -sideX * 62 + backX * 10, y: -sideY * 62 + backY * 10 }
-        ];
-        if (count === 3) return [
-            { x: sideX * 66, y: sideY * 66 },
-            { x: -sideX * 66, y: -sideY * 66 },
-            { x: backX * 70, y: backY * 70 }
-        ];
-        return [];
-    }
-
-    function createDeleterRewriteProjectile(owner, startX, startY, angle, damage, volleyId, options = {}) {
-        const speed = DELETER_REWRITE_SPEED;
-        const projectile = {
-            ownerBrawler: 'the_deleter', ownerId: owner.id,
-            isDeleterRewrite: true, deleterMaster: !!options.master,
-            deleterCloneShot: !!options.clone, deleterVolleyId: volleyId,
-            deleterExecuteThreshold: options.master ? (options.hyper ? .35 : .20) : 0,
-            x: startX, y: startY, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-            life: 0, maxLife: DELETER_REWRITE_RANGE / speed, damage,
-            pierce: false, hitIds: {}, hitboxMod: options.clone ? 1.1 : 1.55,
-            hyperVisual: !!options.hyper, deleterTargetAngle: angle,
-            deleterTrailAt: 0
-        };
-        bullets.push(projectile);
-        return projectile;
-    }
-
-    function launchDeleterRewrite(owner, angle, isBot, hyper) {
-        ensureDeleterState(owner);
-        const level = owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || owner.powerLevel || 11);
-        const damage = getScaledStats('the_deleter', level).dmg;
-        const volleyId = `${owner.id}:delete:${nextDeleterVolleyId++}`;
-        const muzzle = (owner.radius || 16) + 11;
-        createDeleterRewriteProjectile(owner, owner.x + Math.cos(angle) * muzzle, owner.y + Math.sin(angle) * muzzle,
-            angle, damage, volleyId, { master:true, hyper });
-        const cloneMult = hyper ? .50 : (getEntityStarChoice(owner) === 'long' ? .35 : .30);
-        for (const offset of getDeleterCloneOffsets(owner)) {
-            createDeleterRewriteProjectile(owner, owner.x + offset.x, owner.y + offset.y,
-                angle, Math.round(damage * cloneMult), volleyId, { clone:true, hyper });
-        }
-        explosions.push({x:owner.x+Math.cos(angle)*muzzle,y:owner.y+Math.sin(angle)*muzzle,radius:30,life:0,maxLife:.18,color:hyper?'rgba(217,82,255,.72)':'rgba(255,49,95,.66)',fxKind:'deleterMuzzle'});
-    }
-
-    function redirectDeleterVolley(owner, master, targetX, targetY, isBot) {
-        if (!owner || !master) return false;
-        const desired = Math.atan2(targetY - master.y, targetX - master.x);
-        const hard = !!owner.deleterHardRedirectArmed;
-        const accelerate = getEntityStarChoice(owner) === 'slow';
-        for (const projectile of bullets) {
-            if (!projectile?.isDeleterRewrite || projectile.ownerId !== owner.id || projectile.deleterVolleyId !== master.deleterVolleyId) continue;
-            projectile.deleterTargetAngle = desired;
-            projectile.deleterTurnRate = hard ? 99 : 3.4;
-            if (hard) {
-                const speed = Math.hypot(projectile.vx, projectile.vy) || DELETER_REWRITE_SPEED;
-                projectile.vx = Math.cos(desired) * speed;
-                projectile.vy = Math.sin(desired) * speed;
-                projectile.maxLife += Math.max(.10, (projectile.maxLife - projectile.life) * .20);
-            }
-            if (accelerate && !projectile.deleterTrackingAccelerated) {
-                projectile.vx *= 1.20; projectile.vy *= 1.20;
-                projectile.deleterTrackingAccelerated = true;
-            }
-            projectile.deleterRedirectFlashUntil = performance.now() + 220;
-        }
-        if (hard) {
-            owner.deleterHardRedirectArmed = false;
-            if (!isBot && owner.id === player.id) {
-                gadgetArmed = false;
-                gadgetCooldownUntil = performance.now() + getGadgetCooldownMsForBrawler('the_deleter','g1');
-                setPlayerGadgetCooldownUntil(gadgetCooldownUntil,'g1');
-                updateGadgetButton();
-            }
-        }
-        explosions.push({x:master.x,y:master.y,radius:38,life:0,maxLife:.18,color:hard?'rgba(255,214,81,.78)':'rgba(255,71,114,.64)',fxKind:'deleterRedirect'});
-        return true;
-    }
-
-    function castDeleterSuper(owner, hyper) {
-        if (!owner) return;
-        const now = performance.now();
-        ensureDeleterState(owner);
-        owner.deleterClonesUntil = now + DELETER_CLONE_DURATION_MS;
-        owner.deleterCloneCount = hyper ? 3 : 2;
-        owner.deleterCloneDamageMult = hyper ? .50 : (getEntityStarChoice(owner) === 'long' ? .35 : .30);
-        explosions.push({x:owner.x,y:owner.y,radius:hyper?155:120,life:0,maxLife:.46,color:hyper?'rgba(111,16,151,.86)':'rgba(255,49,95,.68)',legendary:true,fxKind:'deleterSuper'});
-        spawnFloatingText(owner.x, owner.y - 45, hyper ? 'TOTAL ERASURE ×3' : 'DELETE FROM EXISTENCE ×2', hyper ? '#ed9cff' : '#ff7595');
-    }
-
     function fire(fromEntity, targetX, targetY, isBot=false, isMoving=false){
         const aliveBots = (typeof bots !== 'undefined' && Array.isArray(bots)) ? bots.filter(b => b && b.hp > 0) : [];
         normalizeSelectedBrawler();
@@ -21231,6 +23494,45 @@ let heistFeverActive = false;
                 updateGadgetButton();
             }
         }
+        } else if (brawler === 'blinkeye') {
+        const isHyper = !isBot ? isHypercharged : !!fromEntity.isHypercharged;
+        const shotCount = isHyper ? 2 : 1;
+        const speed = 1450;
+        const rangeDist = 650;
+        const maxLife = rangeDist / speed;
+        const scaledBaseDmg = isBot ? (isHyper ? 1400 : 1100) : (isHyper ? 2200 : 1850);
+        
+        for (let j = 0; j < shotCount; j++) {
+            const spread = (j === 0 ? 0 : 0.05 * (j % 2 === 0 ? 1 : -1));
+            const shotAng = ang + spread;
+            bullets.push({
+                ownerBrawler: 'blinkeye',
+                isBlinkEyeMain: true,
+                x: fromEntity.x + Math.cos(shotAng) * (fromEntity.radius + 8),
+                y: fromEntity.y + Math.sin(shotAng) * (fromEntity.radius + 8),
+                vx: Math.cos(shotAng) * speed,
+                vy: Math.sin(shotAng) * speed,
+                life: 0,
+                maxLife: maxLife,
+                damage: scaledBaseDmg,
+                blinkeyeBaseDmg: scaledBaseDmg,
+                blinkeyeBounceCount: 0,
+                canBounce: true,
+                bounceDmgLoss: 0,
+                pierce: false,
+                hyperVisual: isHyper,
+                ownerId: fromEntity.id,
+                hitIds: {}
+            });
+        }
+        explosions.push({
+            x: fromEntity.x + Math.cos(ang) * 22,
+            y: fromEntity.y + Math.sin(ang) * 22,
+            radius: isHyper ? 24 : 18,
+            life: 0,
+            maxLife: 0.15,
+            color: isHyper ? '#00e5ff' : '#ffa726'
+        });
     } else if (brawler === 'steamer') {
         const isHyper = !isBot ? isHypercharged : !!fromEntity.isHypercharged;
         const baseAng = ang;
@@ -25289,13 +27591,8 @@ let heistFeverActive = false;
                   color: isNextFreeze ? '#62ef88' : '#ff8c42' 
               };
           }
-          if (selectedBrawler === 'outlit') {
-        for(let s=-0.08;s<=0.08;s+=0.16){
-          const a = ang + s;
-          // Outlit hypercharge: super now pierces enemies
-          // nerf super range by 50%: reduce maxLife
-          bullets.push({ ownerBrawler: 'outlit', x: player.x + Math.cos(a)*24, y: player.y + Math.sin(a)*24, vx: Math.cos(a)*1100*mult*0.6, vy: Math.sin(a)*1100*mult*0.6, life:0, maxLife:(1.6*mult)*0.25, damage:2120, pierce:true, hitIds: {}, pierceWalls:true, breakWallsInstantly:true, hyperVisual: isHypercharged, ownerId: player.id, super:true, outlitHyperGlow: true });
-        }
+      if (selectedBrawler === 'outlit') {
+        fireOutlitBoomBreak(player, ang, !!isHypercharged, mult);
         if (selectedStar === 'slow' && hasSelectedAttachie('star', 'slow', 'outlit')) {
             ammo = Math.min(maxAmmo, ammo + 2);
             ammoReloadTimer = 0;
@@ -25411,12 +27708,28 @@ let heistFeverActive = false;
       const hitIds = options.hitIds || null;
       const maxTargets = Math.max(1, options.maxTargets || Number.MAX_SAFE_INTEGER);
       let hits = 0;
-      for (const wall of destructibleWalls) {
-          if (!wall || wall.hp <= 0 || !isHeaterLockableBox(wall) || !canHeaterTargetWall(owner, wall)) continue;
+      for (let wallIndex = destructibleWalls.length - 1; wallIndex >= 0; wallIndex--) {
+          const wall = destructibleWalls[wallIndex];
+          const metalWall = !!(wall?.isArenaWall && !wall.indestructible && !wall.unbreakable);
+          if (!wall || wall.hp <= 0 || (!metalWall && (!isHeaterLockableBox(wall) || !canHeaterTargetWall(owner, wall)))) continue;
           const hitId = getDestructibleWallHitId(wall);
           if (hitIds && hitIds[hitId]) continue;
           if (!rectCircleCollides(wall.x, wall.y, wall.w, wall.h, x, y, radius)) continue;
-          applyHeaterBoxDamage(owner, wall, damage);
+          if (metalWall) {
+              const wallDamage = damage * (1 + Math.max(0, owner.powerCubes || 0) * .1);
+              recordFullOnDamageToTarget(wall, Math.min(wall.hp, wallDamage));
+              wall.hp -= wallDamage;
+              if (wall.hp <= 0) {
+                  destructibleWalls.splice(wallIndex, 1);
+                  explosions.push({ x: wall.x + wall.w / 2, y: wall.y + wall.h / 2, radius: 34, life: 0, maxLife: .22, color: 'rgba(255,190,82,.52)' });
+                  if (owner.id === player.id) {
+                      addEventQuestProgress('destroy_walls');
+                      progressSeasonPassQuest('destroy_walls');
+                  }
+              }
+          } else {
+              applyHeaterBoxDamage(owner, wall, damage);
+          }
           if (hitIds) hitIds[hitId] = true;
           hits++;
           if (hits >= maxTargets) break;
@@ -26555,6 +28868,12 @@ let heistFeverActive = false;
             heaterZoneHyper: isHyper
         });
         return;
+        } else if (bot.brawler === 'blinkeye') {
+        startBlinkEyeSuper(bot, targetX, targetY, !!bot.isHypercharged);
+        return;
+        } else if (bot.brawler === 'blinkeye') {
+        triggerBlinkEyeRetinalFlash(bot);
+        bot.gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
     } else if (bot.brawler === 'steamer') {
         const hasCharges = (typeof bot.steamerSuperCharges === 'number') ? bot.steamerSuperCharges > 0 : true;
         if (!hasCharges) return;
@@ -26578,10 +28897,7 @@ let heistFeverActive = false;
           return;
       }
 
-      for(let s=-0.08;s<=0.08;s+=0.16){
-        const a = ang + s;
-        bullets.push({ ownerBrawler:'outlit', x: bot.x + Math.cos(a)*24, y: bot.y + Math.sin(a)*24, vx: Math.cos(a)*1100*0.6*mult, vy: Math.sin(a)*1100*0.6*mult, life:0, maxLife:(1.6*mult)*0.25, damage:2120, pierce:true, hitIds: {}, pierceWalls:true, breakWallsInstantly:true, hyperVisual: isHyper, ownerId: bot.id, super:true });
-      }
+      fireOutlitBoomBreak(bot, ang, !!isHyper, mult);
       if (bot.isBoss) {
           for(let i=0; i<12; i++) {
               const ba = (i/12) * Math.PI * 2;
@@ -26976,6 +29292,22 @@ let heistFeverActive = false;
     } else if (curBrawler === 'paradox' && curGadget === 'g2') {
       gadgetArmed = true;
       updateGadgetButton();
+        } else if (curBrawler === 'blinkeye') {
+        if (curGadget === 'g1') {
+            triggerBlinkEyeRetinalFlash(player);
+        } else {
+            const wm = getMouseWorld();
+            const bx = clamp(wm.x, 50, WORLD_W - 50);
+            const by = clamp(wm.y, 50, WORLD_H - 50);
+            destructibleWalls.push({
+                x: bx - 22, y: by - 22, w: 44, h: 44, hp: 3500, maxHp: 3500,
+                color: '#ffa726', isPrismBumper: true, ownerId: player.id
+            });
+            explosions.push({ x: bx, y: by, radius: 45, life: 0, maxLife: 0.22, color: '#ffa726' });
+            spawnFloatingText(bx, by - 30, 'PRISM BUMPER! 💎👁️', '#ffa726');
+        }
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
     } else if (curBrawler === 'boom_arang' && curGadget === 'g1') {
       bullets.forEach(b => {
           if (b.ownerBrawler === 'boom_arang' && b.ownerId === player.id && b.isBoomArang) {
@@ -35136,6 +37468,18 @@ let heistFeverActive = false;
             explosions.push({x:target.x,y:target.y,radius:42,life:0,maxLife:.24,color:'rgba(255,55,75,.76)',fxKind:'outlitMutationHit'});
         }
     }
+    if (b.outlitSuperRework && owner && target && !areAlliedEntities(owner, target) && !target.isArenaForgeStructure && !target.isVault) {
+        const dx = Number.isFinite(b.vx) ? b.vx : target.x - owner.x;
+        const dy = Number.isFinite(b.vy) ? b.vy : target.y - owner.y;
+        const length = Math.hypot(dx, dy) || 1;
+        const pushMultiplier = getEntityKnockbackMultiplier(target, hitNow);
+        if (pushMultiplier > 0) {
+            target.ghoulPushVX = dx / length * 360 * pushMultiplier;
+            target.ghoulPushVY = dy / length * 360 * pushMultiplier;
+            target.ghoulPushUntil = Math.max(target.ghoulPushUntil || 0, hitNow + 420);
+        }
+        explosions.push({ x: target.x, y: target.y, radius: 38, life: 0, maxLife: .22, color: b.hyperVisual ? 'rgba(220,90,255,.68)' : 'rgba(70,235,255,.64)', fxKind: 'outlitSuperImpact' });
+    }
     if (b.isUpiedownCorePie && b.upiedownFresh && owner) {
         doHeal(owner, 1200);
         b.upiedownFresh = false;
@@ -36334,6 +38678,32 @@ let heistFeverActive = false;
   }
   
   function processBounce(b, reflectX, reflectY) {
+      if (b.ownerBrawler === 'blinkeye' && b.isBlinkEyeMain) {
+          b.blinkeyeBounceCount = (b.blinkeyeBounceCount || 0) + 1;
+          if (b.blinkeyeBounceCount > 2) {
+              b.life = b.maxLife + 1;
+              return;
+          }
+          // +100% range per bounce!
+          b.life = 0;
+          b.maxLife = 650 / 1450;
+          const owner = getEntityById(b.ownerId);
+          if (owner && getEntityStarChoice(owner) === 'slow') {
+              // SP1: Rebound Focus
+              b.damage = Math.round((b.blinkeyeBaseDmg || b.damage) * (b.blinkeyeBounceCount === 1 ? 1.25 : 1.50));
+          }
+          explosions.push({
+              x: b.x,
+              y: b.y,
+              radius: 30,
+              life: 0,
+              maxLife: 0.20,
+              color: b.hyperVisual ? '#00e5ff' : '#ffa726',
+              legendary: true
+          });
+          spawnFloatingText(b.x, b.y - 20, '+100% RANGE! (x' + b.blinkeyeBounceCount + ')', b.hyperVisual ? '#00e5ff' : '#ffa726');
+      }
+
       if (reflectX) b.vx *= -1;
       if (reflectY) b.vy *= -1;
       if (b.isCrystalBounce) {
@@ -39584,6 +41954,120 @@ let heistFeverActive = false;
           AOEDamage(b.x,b.y,b.towerTrailRadius||60,(b.damage||0)*b.towerTrailDamagePct,b.ownerId,false);
           explosions.push({x:b.x,y:b.y,radius:b.towerTrailRadius||60,life:0,maxLife:.18,color:'rgba(114,226,255,.48)'});
       }
+            if (b.isBlinkEyeSteeredEye) {
+          const owner = getEntityById(b.ownerId);
+          if (!owner || owner.hp <= 0 || !owner.blinkeyeSteering) {
+              triggerBlinkEyeSuperExplosion(b, false);
+              bullets.splice(i, 1);
+              continue;
+          }
+
+          // Steer towards target direction
+          if (owner.id === player.id) {
+              const mouseW = getMouseWorld();
+              const desiredAng = Math.atan2(mouseW.y - b.y, mouseW.x - b.x);
+              const diff = Math.atan2(Math.sin(desiredAng - b.angle), Math.cos(desiredAng - b.angle));
+              b.angle += clamp(diff, -3.5 * dt, 3.5 * dt);
+          } else {
+              let bestTarget = null;
+              let bestDist = 1200;
+              for (const victim of [player, ...bots]) {
+                  if (!victim || victim.hp <= 0 || victim.id === owner.id || areAlliedEntities(owner, victim)) continue;
+                  const d = Math.hypot(victim.x - b.x, victim.y - b.y);
+                  if (d < bestDist) { bestDist = d; bestTarget = victim; }
+              }
+              if (bestTarget) {
+                  const desiredAng = Math.atan2(bestTarget.y - b.y, bestTarget.x - b.x);
+                  const diff = Math.atan2(Math.sin(desiredAng - b.angle), Math.cos(desiredAng - b.angle));
+                  b.angle += clamp(diff, -3.0 * dt, 3.0 * dt);
+              }
+          }
+
+          b.vx = Math.cos(b.angle) * b.speed;
+          b.vy = Math.sin(b.angle) * b.speed;
+
+          // Trail
+          if (!b.lastTrailAt || now - b.lastTrailAt >= 45) {
+              b.lastTrailAt = now;
+              explosions.push({
+                  x: b.x,
+                  y: b.y,
+                  radius: b.hyperVisual ? 22 : 16,
+                  life: 0,
+                  maxLife: 0.22,
+                  color: b.hyperVisual ? 'rgba(0, 229, 255, 0.45)' : 'rgba(255, 167, 38, 0.45)'
+              });
+          }
+
+          // Hypercharge: launch detached eye missile every 0.9s
+          if (b.hyperVisual && (!b.lastMissileAt || now - b.lastMissileAt >= 900)) {
+              let spotTarget = null;
+              let spotDist = 500;
+              for (const victim of [player, ...bots]) {
+                  if (!victim || victim.hp <= 0 || victim.id === owner.id || areAlliedEntities(owner, victim)) continue;
+                  const d = Math.hypot(victim.x - b.x, victim.y - b.y);
+                  if (d < spotDist) { spotDist = d; spotTarget = victim; }
+              }
+              if (spotTarget) {
+                  b.lastMissileAt = now;
+                  const mAng = Math.atan2(spotTarget.y - b.y, spotTarget.x - b.x);
+                  bullets.push({
+                      id: nextId++,
+                      ownerBrawler: 'blinkeye',
+                      isBlinkEyeMissile: true,
+                      x: b.x,
+                      y: b.y,
+                      vx: Math.cos(mAng) * 750,
+                      vy: Math.sin(mAng) * 750,
+                      life: 0,
+                      maxLife: 1.2,
+                      damage: owner.id === player.id ? 850 : 650,
+                      pierce: false,
+                      ownerId: owner.id,
+                      hyperVisual: true,
+                      hitIds: {}
+                  });
+                  spawnFloatingText(b.x, b.y - 20, 'EYE MISSILE! 👁️🚀', '#00e5ff');
+              }
+          }
+
+          // SP2: Watchful Iris — auto-counter intruders near BlinkEye's body
+          if (getEntityStarChoice(owner) === 'long' && (!owner.lastIrisCounterAt || now - owner.lastIrisCounterAt >= 1100)) {
+              for (const victim of [player, ...bots]) {
+                  if (!victim || victim.hp <= 0 || victim.id === owner.id || areAlliedEntities(owner, victim)) continue;
+                  const distToBody = Math.hypot(victim.x - owner.x, victim.y - owner.y);
+                  if (distToBody <= 220) {
+                      owner.lastIrisCounterAt = now;
+                      const cAng = Math.atan2(victim.y - owner.y, victim.x - owner.x);
+                      bullets.push({
+                          id: nextId++,
+                          ownerBrawler: 'blinkeye',
+                          isBlinkEyeCounterBeam: true,
+                          x: owner.x,
+                          y: owner.y,
+                          vx: Math.cos(cAng) * 1200,
+                          vy: Math.sin(cAng) * 1200,
+                          life: 0,
+                          maxLife: 0.3,
+                          damage: 900,
+                          pierce: true,
+                          ownerId: owner.id,
+                          hitIds: {}
+                      });
+                      spawnFloatingText(owner.x, owner.y - 30, 'WATCHFUL IRIS! 👁️⚡', '#ffa726');
+                      break;
+                  }
+              }
+          }
+
+          // Check lifetime or boundary
+          if (b.life >= b.maxLife || b.x < 30 || b.x > WORLD_W - 30 || b.y < 30 || b.y > WORLD_H - 30) {
+              triggerBlinkEyeSuperExplosion(b, false);
+              bullets.splice(i, 1);
+              continue;
+          }
+      }
+
       b.prevX = b.x;
       b.prevY = b.y;
       
@@ -41004,6 +43488,10 @@ let heistFeverActive = false;
               }
               let owner = (b.ownerId === player.id) ? player : bots.find(bt=>bt.id===b.ownerId);
               let mult = 1.0 + ((owner ? owner.powerCubes : 0) || 0) * 0.1;
+              if (b.outlitWallChain && isOutlitChainWall(dw)) {
+                  damageOutlitWallChain(b, dw, owner, mult);
+                  break;
+              }
               if (dw.isVault) {
                   const ownerTeam = owner?.team || (b.ownerId === player.id ? 'player' : 'enemy');
                   if (ownerTeam !== dw.vaultTeam) {
@@ -41018,14 +43506,11 @@ let heistFeverActive = false;
                   }
                   break;
               }
-              const damageableObject = !!(dw.isPowerBox || dw.isPurpleBox || dw.isGreenBox || dw.trapperFenceWall || dw.isFreestyleWall || dw.expiresAt);
+              const damageableObject = !!(dw.isArenaWall || dw.isPowerBox || dw.isPurpleBox || dw.isGreenBox || dw.trapperFenceWall || dw.isFreestyleWall || dw.expiresAt);
               if (!dw.isPlatform && !dw.indestructible && damageableObject) {
-                  const botDirectedWallBreak = !!(owner && owner.id !== player.id && owner.botWallBreakTargetHitId === wallHitId && performance.now() < (owner.botWallBreakUntil || 0));
                   const wallDamage = b.breakWallsInstantly && dw.isArenaWall
                       ? Math.max(1, dw.hp)
-                      : (dw.isArenaWall && !b.super
-                          ? (botDirectedWallBreak ? b.damage * mult * 0.45 : 0)
-                          : b.damage * mult * (b.ownerBrawler === 'outlit' && b.super ? 1.15 : 1));
+                      : b.damage * mult * (b.ownerBrawler === 'outlit' && b.super ? 1.15 : 1);
                   recordFullOnDamageToTarget(dw,wallDamage);
                   dw.hp -= wallDamage;
                   if(dw.hp <= 0) {
@@ -41076,6 +43561,12 @@ let heistFeverActive = false;
       if (hitCube && b.isRocketeerMini) {
           triggerRocketeerMiniImpact(b);
           bullets.splice(i,1);
+          continue;
+      }
+
+            if (b.isBlinkEyeSteeredEye) {
+          triggerBlinkEyeSuperExplosion(b, true);
+          bullets.splice(i, 1);
           continue;
       }
 
@@ -44041,6 +46532,57 @@ let heistFeverActive = false;
                         ctx.arc(0, 0, radius * (1.1 + superKick * 0.4), 0, Math.PI * 2);
                         ctx.stroke();
                     }
+                }            } else if (brawlerId === 'blinkeye') {
+                // BlinkEye: Giant Glowing Optic Iris, Sleek Marksman Visor & Ricochet Laser Coils
+                const nowMs = performance.now();
+                const blinkProgress = Math.sin(nowMs * 0.003);
+                const eyelidClose = blinkProgress > 0.94 ? (blinkProgress - 0.94) / 0.06 : 0;
+                
+                ctx.translate(entity.x, drawY);
+                ctx.rotate(aim);
+
+                // 1. Sleek Optic Frame Base
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = isHyper ? '#00e5ff' : '#ffa726';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = ctx.strokeStyle;
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, radius * 0.95, radius * 0.82, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // 2. Glowing Sclera & Iris
+                const irisGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, radius * 0.72);
+                irisGrad.addColorStop(0, '#ffffff');
+                irisGrad.addColorStop(0.35, isHyper ? '#00e5ff' : '#ffa726');
+                irisGrad.addColorStop(0.75, isHyper ? '#7c4dff' : '#ea580c');
+                irisGrad.addColorStop(1, '#0f172a');
+                ctx.fillStyle = irisGrad;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, radius * 0.78, radius * 0.65, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 3. Pupil
+                ctx.fillStyle = '#050b14';
+                ctx.beginPath();
+                ctx.ellipse(radius * 0.15, 0, radius * 0.28, radius * 0.35, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 4. Optical Focus Crosshairs
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.7, 0); ctx.lineTo(radius * 0.7, 0);
+                ctx.moveTo(0, -radius * 0.55); ctx.lineTo(0, radius * 0.55);
+                ctx.stroke();
+
+                // 5. Animated Eyelid Blink
+                if (eyelidClose > 0) {
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.ellipse(0, -radius * (0.65 - eyelidClose * 0.65), radius * 0.85, radius * 0.45, 0, 0, Math.PI * 2);
+                    ctx.fill();
                 }
             } else if (brawlerId === 'sir_cheeseburger') {
                 // --- SIR CHEESEBURGER KNIGHT 2.5D MODEL ---
@@ -44560,6 +47102,10 @@ let heistFeverActive = false;
     // Camera follow player or living teammate when dead in squad/team modes
     let cameraTargetX = Number.isFinite(player.x) ? player.x : WORLD_W * 0.5;
     let cameraTargetY = Number.isFinite(player.y) ? player.y : WORLD_H * 0.5;
+    if (player.blinkeyeSteering && player.blinkeyeActiveEye && Number.isFinite(player.blinkeyeActiveEye.x) && Number.isFinite(player.blinkeyeActiveEye.y)) {
+        cameraTargetX = player.blinkeyeActiveEye.x;
+        cameraTargetY = player.blinkeyeActiveEye.y;
+    }
     if (player.hp <= 0 && (isDuoShowdown || isTrioShowdownMode || isObjectiveMode || isConstructionMode || isBrickVaultMode || isDamageFillerMode || isMirrorMode)) {
         const ally = bots.find(b => b.isTeammate && b.hp > 0) || bots.find(b => b.team === 'player' && b.hp > 0);
         if (ally && Number.isFinite(ally.x) && Number.isFinite(ally.y)) {
@@ -44764,6 +47310,8 @@ let heistFeverActive = false;
         ctx.fill();
         ctx.restore();
     }
+
+    
 
     // Arena Forge Jump Pads
     for (const pad of (typeof arenaForgeJumpPads !== 'undefined' ? arenaForgeJumpPads : [])) {
@@ -52450,6 +54998,26 @@ let heistFeverActive = false;
           continue;
       }
       else if (b.ownerBrawler === 'outlit') {
+          if (b.outlitSuperRework) {
+              const angle = Math.atan2(b.vy || 0, b.vx || 1);
+              const pulse = .5 + Math.sin(performance.now() / 70) * .5;
+              const color = b.hyperVisual ? '#df5cff' : '#46ebff';
+              ctx.save();
+              ctx.translate(b.x, b.y);
+              ctx.rotate(angle);
+              ctx.globalCompositeOperation = 'lighter';
+              ctx.shadowColor = color;
+              ctx.shadowBlur = 15;
+              ctx.strokeStyle = b.hyperVisual ? 'rgba(223,92,255,.72)' : 'rgba(70,235,255,.72)';
+              ctx.lineWidth = 5;
+              ctx.beginPath(); ctx.moveTo(-30, 0); ctx.lineTo(-8, 0); ctx.stroke();
+              ctx.fillStyle = color;
+              ctx.beginPath(); ctx.ellipse(0, 0, 12 + pulse * 2, 9 + pulse, 0, 0, Math.PI * 2); ctx.fill();
+              ctx.strokeStyle = '#efffff'; ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.arc(0, 0, 6 + pulse, 0, Math.PI * 2); ctx.stroke();
+              ctx.restore();
+              continue;
+          }
           if(b.mutationVisual){
               const angle=Math.atan2(b.vy||0,b.vx||1),pulse=.5+Math.sin(performance.now()/80)*.5;
               ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.globalCompositeOperation='lighter';ctx.shadowColor='#ff3346';ctx.shadowBlur=16;
@@ -53515,6 +56083,37 @@ let heistFeverActive = false;
             const hpLabel = Math.ceil(dw.hp);
             ctx.fillText(hpLabel, dw.x + dw.w/2, dw.y + dw.h/2 + 4);ctx.textAlign = 'left';
         }
+    }
+
+    const outlitChainNow = performance.now();
+    for (let chainIndex = outlitWallChains.length - 1; chainIndex >= 0; chainIndex--) {
+        const chain = outlitWallChains[chainIndex];
+        if (!chain || outlitChainNow >= chain.until) {
+            outlitWallChains.splice(chainIndex, 1);
+            continue;
+        }
+        const fade = clamp((chain.until - outlitChainNow) / Math.max(1, chain.until - chain.bornAt), 0, 1);
+        const dx = chain.x2 - chain.x1;
+        const dy = chain.y2 - chain.y1;
+        const length = Math.hypot(dx, dy) || 1;
+        const nx = -dy / length;
+        const ny = dx / length;
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.strokeStyle = chain.hyper ? '#df5cff' : '#46ebff';
+        ctx.shadowColor = ctx.strokeStyle;
+        ctx.shadowBlur = 13;
+        ctx.lineWidth = Math.max(2, 5 - chain.step * .55);
+        ctx.beginPath();
+        ctx.moveTo(chain.x1, chain.y1);
+        for (let segment = 1; segment < 6; segment++) {
+            const t = segment / 6;
+            const jitter = (segment % 2 ? 1 : -1) * (8 - chain.step);
+            ctx.lineTo(chain.x1 + dx * t + nx * jitter, chain.y1 + dy * t + ny * jitter);
+        }
+        ctx.lineTo(chain.x2, chain.y2);
+        ctx.stroke();
+        ctx.restore();
     }
 
     if ((isDuoShowdown || isTrioShowdownMode) && !gameOver) {
