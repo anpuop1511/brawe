@@ -17032,6 +17032,7 @@ let heistFeverActive = false;
   }
 
   function spawnShowdownPowerBoxReward(box) {
+      if (isBlinkEyeDodgeMode) return;
       const cx = box.x + box.w / 2;
       const cy = box.y + box.h / 2;
       if (box.isNovaBox) {
@@ -19963,6 +19964,25 @@ let heistFeverActive = false;
     if (isSlopSushiMode && owner === player && isSuper) damage *= 1 + getSlopEffectTotal('superDamagePct');
     if (owner && owner.hyperoriginWeakUntil && performance.now() < owner.hyperoriginWeakUntil) {
         damage *= 0.7;
+    }
+    if (isBlinkEyeDodgeMode && blinkEyeDodgeState?.giantEyes && ownerId === player.id) {
+        for (const eye of blinkEyeDodgeState.giantEyes) {
+            if (eye.hp <= 0) continue;
+            if (Math.hypot(eye.x - x, eye.y - y) <= radius + eye.radius) {
+                const dealt = Math.round(damage);
+                eye.hp = Math.max(0, eye.hp - dealt);
+                blinkEyeDodgeState.totalDamageDealt = (blinkEyeDodgeState.totalDamageDealt || 0) + dealt;
+                blinkEyeDodgeState.bossCurrentHp = blinkEyeDodgeState.giantEyes.reduce((sum, e) => sum + Math.max(0, e.hp), 0);
+                eye.squish = 0.6;
+                eye.hitFlashUntil = performance.now() + 120;
+                spawnDamageText({ x: eye.x, y: eye.y }, dealt, isSuper ? '#ffd34f' : '#ff4d4d');
+                if (eye.hp <= 0 && !eye.defeated) {
+                    eye.defeated = true;
+                    explosions.push({ x: eye.x, y: eye.y, radius: 95, life: 0, maxLife: 0.5, color: eye.irisColor });
+                    spawnFloatingText(eye.x, eye.y, `💥 ${eye.name} DEFEATED! 💥`, '#ff4757');
+                }
+            }
+        }
     }
     for(const bot of bots){
         if(bot.hp <= 0 || bot.id === ownerId || bot.isFlying) continue;
@@ -30490,7 +30510,7 @@ let heistFeverActive = false;
   const homeModeCardMap = {};
   const HOME_MODE_CARDS = [
       ['tug_zone', 'TZ', 'Tug Zone', '3v3 - pull the moving zone home'],
-      ['blink_eye_dodge', '👁️', 'Blink Eye Dodge', '1-Player survival: Dodge giant BlinkEye eyes & funny homing shots!'],
+      ['blink_eye_dodge', '👁️', 'Boss Battle: 1 vs The Eyes', '1-Player Boss Battle: Defeat the Giant Boss Eyes & dodge funny homing barrages!'],
       ['power_play_showdown', '⚡', 'Power Play Showdown', '3-Powers LTM with 5 curated hypercharged fighters'],
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
       ['lava_boss_s3', 'LAVA', 'Lava Villain Boss', 'Permanent co-op ladder • Hard to Impossible XV'],
@@ -30551,7 +30571,7 @@ let heistFeverActive = false;
       slop_sushi_plus: { type:'sushi_tapper', amount:1, label:'+1 Tower Drop' }
   };
   const HOME_MODE_RULES = {
-      blink_eye_dodge: ['1-Player Solo Survival Challenge', 'Dodge giant patrolling BlinkEye Eyes across the arena', 'Juke curving funny homing shots (imperfect homing)', 'Survive for 45 seconds to claim Victory!'],
+      blink_eye_dodge: ['1-Player Solo Boss Battle: 1 vs The Eyes!', 'Zero Power Cubes — Pure skill showdown', 'Shoot & defeat all Giant Boss Eyes to claim Victory', 'Dodge curving imperfect homing missiles & ocular gaze lasers'],
       power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo, Decayer, Money & Tax'],
       tower_duels_weekend: ['Five complete Duels matches', 'Each floor rolls a fresh random trio of Power 11 guest brawlers', 'Complete Floor 5 to unlock the exclusive TOWER DUELAR title'],
       solo: ['50-player free-for-all', 'No respawns', 'Rare Nova Boxes grant +2 Power, shield and charge'],
@@ -33642,7 +33662,7 @@ let heistFeverActive = false;
           setModeBtnState(trioShowdownBtn, false);
           setModeBtnState(knockDonateBtn, false);
           setModeBtnState(brickVaultBtn, false);
-          if (startBtn) startBtn.textContent = 'Start Blink Eye Dodge';
+          if (startBtn) startBtn.textContent = 'Start 1 vs The Eyes Boss Battle';
       }
       if (showdownMode === 'arena_forge' || showdownMode === 'marked_mayhem' || showdownMode === 'tug_zone') {
           setModeBtnState(soloShowdownBtn, false);
@@ -33740,7 +33760,12 @@ let heistFeverActive = false;
       isMirrorMode = showdownMode === 'mirror';
       isImpossibleMode = showdownMode === 'impossible';
       isBlinkEyeDodgeMode = showdownMode === 'blink_eye_dodge';
-      if (isBlinkEyeDodgeMode) initBlinkEyeDodgeState();
+      if (isBlinkEyeDodgeMode) {
+          player.powerCubes = 0;
+          powerups.length = 0;
+          cubes.length = 0;
+          initBlinkEyeDodgeState();
+      }
       isCorruptedShowdownMode = showdownMode === 'corrupted_showdown';
       isPowerPlayShowdownMode = showdownMode === 'power_play_showdown';
       if (isPowerPlayShowdownMode && !POWER_PLAY_BRAWLERS.has(selectedBrawler)) {
@@ -59117,10 +59142,10 @@ let heistFeverActive = false;
                 matchText = won ? 'YOUR TRIO SURVIVED!' : 'YOUR TRIO WAS ELIMINATED!';
                 rankText = `Trios left at end: ${Math.max(0, aliveCount)}`;
             } else if (isBlinkEyeDodgeMode) {
-                won = blinkEyeDodgeState?.won || (blinkEyeDodgeState?.timeSurvived >= (blinkEyeDodgeState?.targetTime || 45));
+                won = blinkEyeDodgeState?.won || (blinkEyeDodgeState?.bossDefeated) || ((blinkEyeDodgeState?.bossCurrentHp || 1) <= 0);
                 rankNum = won ? 1 : 2;
-                matchText = won ? '🏆 EYE DODGE MASTER! VICTORY!' : '👁️ BLINK EYE GOT YOU!';
-                rankText = `Survived ${(blinkEyeDodgeState?.timeSurvived || 0).toFixed(1)}s / 45s | Dodges: ${blinkEyeDodgeState?.dodges || 0} | Best Streak: x${blinkEyeDodgeState?.bestStreak || 0}`;
+                matchText = won ? '🏆 BOSS DEFEATED! 1 VS THE EYES VICTORY!' : '👁️ THE EYES OVERWHELMED YOU!';
+                rankText = `Boss Damage: ${(blinkEyeDodgeState?.totalDamageDealt || 0).toLocaleString()} | Dodges: ${blinkEyeDodgeState?.dodges || 0} | Best Streak: x${blinkEyeDodgeState?.bestStreak || 0}`;
             } else if (isImpossibleMode) {
                 const impossibleBot = bots.find((bot) => bot.isImpossibleAI);
                 won = player.hp > 0 && (!impossibleBot || impossibleBot.hp <= 0 || impossibleBot.isDead);
@@ -60404,16 +60429,18 @@ let heistFeverActive = false;
 // ==========================================
 function buildBlinkEyeDodgeMap() {
     cubes.length = 0;
+    powerups.length = 0;
     bushZones.length = 0;
     waterZones.length = 0;
     destructibleWalls.length = 0;
+    player.powerCubes = 0;
     const cx = WORLD_W * 0.5;
     const cy = WORLD_H * 0.5;
-    // 4 tactical bumper pillars for evasive cover & ricochets
-    addArenaWallStrip(cx - 360, cy - 360, 90, 90, { wallType: 'arena', hp: 99999 });
-    addArenaWallStrip(cx + 270, cy - 360, 90, 90, { wallType: 'arena', hp: 99999 });
-    addArenaWallStrip(cx - 360, cy + 270, 90, 90, { wallType: 'arena', hp: 99999 });
-    addArenaWallStrip(cx + 270, cy + 270, 90, 90, { wallType: 'arena', hp: 99999 });
+    // 4 tactical bumper pillars for cover, ricochets & dodging (not power boxes)
+    addArenaWallStrip(cx - 360, cy - 360, 90, 90, { wallType: 'arena', hp: 99999, isPowerBox: false });
+    addArenaWallStrip(cx + 270, cy - 360, 90, 90, { wallType: 'arena', hp: 99999, isPowerBox: false });
+    addArenaWallStrip(cx - 360, cy + 270, 90, 90, { wallType: 'arena', hp: 99999, isPowerBox: false });
+    addArenaWallStrip(cx + 270, cy + 270, 90, 90, { wallType: 'arena', hp: 99999, isPowerBox: false });
 }
 
 function initBlinkEyeDodgeState() {
@@ -60424,28 +60451,118 @@ function initBlinkEyeDodgeState() {
     player.y = cy;
     player.vx = 0;
     player.vy = 0;
+    player.powerCubes = 0;
+    powerups.length = 0;
+    cubes.length = 0;
+
+    const bossEyes = [
+        {
+            id: 'boss_prime_oculus',
+            name: '👑 PRIME OCULUS',
+            subName: 'Grand Boss Eye',
+            isBoss: true,
+            isGrandBoss: true,
+            x: cx,
+            y: cy - 420,
+            vx: 180,
+            vy: 90,
+            speed: 210,
+            radius: 60,
+            hp: 38000,
+            maxHp: 38000,
+            irisColor: '#9b59b6',
+            pupilSize: 0.42,
+            blinkUntil: 0,
+            nextBlinkAt: now + 2400,
+            squish: 1.0,
+            squishAngle: 0,
+            damage: 500,
+            enraged: false,
+            hitFlashUntil: 0,
+            defeated: false,
+            laserChargeUntil: 0,
+            laserFireUntil: 0,
+            laserAngle: 0,
+            nextLaserAt: now + 4000,
+            nextMissileAt: now + 1500
+        },
+        {
+            id: 'boss_crimson_sentinel',
+            name: '🔥 CRIMSON SENTINEL',
+            subName: 'Elite Rusher',
+            isBoss: true,
+            x: cx - 440,
+            y: cy + 300,
+            vx: 260,
+            vy: -190,
+            speed: 280,
+            radius: 46,
+            hp: 18000,
+            maxHp: 18000,
+            irisColor: '#e74c3c',
+            pupilSize: 0.38,
+            blinkUntil: 0,
+            nextBlinkAt: now + 1800,
+            squish: 1.0,
+            squishAngle: 0,
+            damage: 420,
+            enraged: false,
+            hitFlashUntil: 0,
+            defeated: false,
+            nextMissileAt: now + 1200
+        },
+        {
+            id: 'boss_violet_sentinel',
+            name: '🔮 VIOLET SENTINEL',
+            subName: 'Elite Blaster',
+            isBoss: true,
+            x: cx + 440,
+            y: cy + 300,
+            vx: -240,
+            vy: -210,
+            speed: 260,
+            radius: 46,
+            hp: 18000,
+            maxHp: 18000,
+            irisColor: '#8e44ad',
+            pupilSize: 0.38,
+            blinkUntil: 0,
+            nextBlinkAt: now + 3200,
+            squish: 1.0,
+            squishAngle: 0,
+            damage: 420,
+            enraged: false,
+            hitFlashUntil: 0,
+            defeated: false,
+            nextMissileAt: now + 2200
+        }
+    ];
+
+    const totalMax = bossEyes.reduce((sum, e) => sum + e.maxHp, 0);
+
     blinkEyeDodgeState = {
         startedAt: now,
         timeSurvived: 0,
-        targetTime: 45.0, // 45s survival goal
+        bossMaxHp: totalMax,
+        bossCurrentHp: totalMax,
+        bossDisplayHp: totalMax,
+        totalDamageDealt: 0,
         dodgeScore: 0,
         dodges: 0,
         closeCalls: 0,
         streak: 0,
         bestStreak: 0,
-        giantEyes: [
-            { id: 'eye_init_1', x: cx - 420, y: cy - 350, vx: 260, vy: 180, speed: 310, radius: 44, irisColor: '#8e44ad', pupilSize: 0.38, blinkUntil: 0, nextBlinkAt: now + 2000, squish: 1.0, squishAngle: 0, damage: 420 },
-            { id: 'eye_init_2', x: cx + 420, y: cy + 350, vx: -240, vy: -200, speed: 310, radius: 46, irisColor: '#e74c3c', pupilSize: 0.38, blinkUntil: 0, nextBlinkAt: now + 3200, squish: 1.0, squishAngle: 0, damage: 420 }
-        ],
+        giantEyes: bossEyes,
         funnyMissiles: [],
-        nextEyeSpawnAt: now + 3000,
-        nextMissileVolleyAt: now + 1200,
+        ocularBeams: [],
         nextFunnyTextAt: 0,
+        bossDefeated: false,
         won: false
     };
+
     setTimeout(() => {
-        spawnFloatingText(player.x, player.y - 70, '👁️ BLINK EYE DODGE 👁️', '#caa6ff');
-        setTimeout(() => spawnFloatingText(player.x, player.y - 45, 'DODGE EYES & CURVING HOMING SHOTS!', '#ff6bb5'), 400);
+        spawnFloatingText(player.x, player.y - 75, '👁️ BOSS BATTLE: 1 VS THE EYES! 👁️', '#ffd34f');
+        setTimeout(() => spawnFloatingText(player.x, player.y - 45, 'SHOOT & DESTROY ALL BOSS EYES TO WIN!', '#caa6ff'), 400);
     }, 300);
 }
 
@@ -60454,18 +60571,32 @@ function updateBlinkEyeDodge(dt, now) {
     const s = blinkEyeDodgeState;
     s.timeSurvived += dt;
 
+    // Remove any powerups or power cubes immediately (zero power cubes mode)
+    if (powerups.length > 0) powerups.length = 0;
+    if (cubes.length > 0) cubes.length = 0;
+    player.powerCubes = 0;
+
     if (player.hp <= 0) {
         gameOver = true;
         return;
     }
 
-    // Victory Check
-    if (s.timeSurvived >= s.targetTime && !s.won) {
+    // Boss Total HP Sync & Smooth Interpolation
+    s.bossCurrentHp = s.giantEyes.reduce((sum, e) => sum + Math.max(0, e.hp), 0);
+    s.bossDisplayHp += (s.bossCurrentHp - s.bossDisplayHp) * 0.12;
+
+    // Victory Check: All Boss Eyes Defeated!
+    const allDefeated = s.giantEyes.every(e => e.hp <= 0 || e.defeated);
+    if (allDefeated && !s.won) {
         s.won = true;
-        spawnFloatingText(player.x, player.y - 70, '🏆 SURVIVAL VICTORY! 🏆', '#ffd34f');
+        s.bossDefeated = true;
+        spawnFloatingText(player.x, player.y - 75, '🏆 ALL BOSS EYES DEFEATED! 🏆', '#ffd34f');
+        setTimeout(() => {
+            spawnFloatingText(player.x, player.y - 45, '1 VS THE EYES VICTORY!', '#2ed573');
+        }, 350);
         setTimeout(() => {
             gameOver = true;
-        }, 1200);
+        }, 1400);
         return;
     }
 
@@ -60473,39 +60604,15 @@ function updateBlinkEyeDodge(dt, now) {
     const cy = WORLD_H * 0.5;
     const arenaRadius = 920;
 
-    // 1. Giant Eyes Spawning & Movement ("Blink Eye's Eyes")
-    const maxEyes = Math.min(6, 2 + Math.floor(s.timeSurvived / 10));
-    if (s.giantEyes.length < maxEyes && now >= s.nextEyeSpawnAt) {
-        s.nextEyeSpawnAt = now + Math.max(1800, 3800 - s.timeSurvived * 60);
-        const spawnAngle = Math.random() * Math.PI * 2;
-        const spawnDist = arenaRadius - 60;
-        const speed = 260 + Math.random() * 120 + s.timeSurvived * 3.5;
-        const aimAngle = Math.atan2(player.y - (cy + Math.sin(spawnAngle) * spawnDist), player.x - (cx + Math.cos(spawnAngle) * spawnDist)) + (Math.random() - 0.5) * 0.6;
-        s.giantEyes.push({
-            id: Math.random().toString(36).substr(2, 9),
-            x: cx + Math.cos(spawnAngle) * spawnDist,
-            y: cy + Math.sin(spawnAngle) * spawnDist,
-            vx: Math.cos(aimAngle) * speed,
-            vy: Math.sin(aimAngle) * speed,
-            speed: speed,
-            radius: 40 + Math.random() * 10,
-            irisColor: Math.random() > 0.3 ? '#8e44ad' : '#e74c3c',
-            pupilSize: 0.38,
-            blinkUntil: 0,
-            nextBlinkAt: now + 1500 + Math.random() * 2500,
-            squish: 1.0,
-            squishAngle: 0,
-            damage: 420
-        });
-    }
-
-    // Update Giant Eyes
+    // 1. Update Boss Eyes
     for (let i = s.giantEyes.length - 1; i >= 0; i--) {
         const eye = s.giantEyes[i];
+        if (eye.hp <= 0) continue;
+
         // Dynamic pupil tracking
         const pDist = Math.hypot(player.x - eye.x, player.y - eye.y);
         eye.pupilAngle = Math.atan2(player.y - eye.y, player.x - eye.x);
-        eye.pupilOffset = Math.min(14, 180 / Math.max(20, pDist)) * (eye.radius / 44);
+        eye.pupilOffset = Math.min(16, 200 / Math.max(20, pDist)) * (eye.radius / 46);
 
         // Blinking animation
         if (now >= eye.nextBlinkAt) {
@@ -60516,9 +60623,13 @@ function updateBlinkEyeDodge(dt, now) {
         // Squish recovery
         eye.squish += (1.0 - eye.squish) * 0.15;
 
+        // Enrage check (<40% HP)
+        if (eye.hp <= eye.maxHp * 0.40) eye.enraged = true;
+        const currentSpeed = eye.enraged ? eye.speed * 1.25 : eye.speed;
+
         // Move
-        eye.x += eye.vx * dt;
-        eye.y += eye.vy * dt;
+        eye.x += (eye.vx / eye.speed) * currentSpeed * dt;
+        eye.y += (eye.vy / eye.speed) * currentSpeed * dt;
 
         // Arena boundary bounce
         const distFromCenter = Math.hypot(eye.x - cx, eye.y - cy);
@@ -60543,7 +60654,7 @@ function updateBlinkEyeDodge(dt, now) {
             }
         }
 
-        // Player Collision
+        // Contact Damage with Player
         if (pDist < eye.radius + player.radius && player.hp > 0) {
             player.hp -= eye.damage;
             spawnDamageText(player, eye.damage, '#ff4757');
@@ -60553,7 +60664,7 @@ function updateBlinkEyeDodge(dt, now) {
             player.y += Math.sin(pushAng) * 45;
             eye.squish = 0.55;
             s.streak = 0;
-            explosions.push({ x: player.x, y: player.y, radius: 36, life: 0, maxLife: 0.3, color: '#e056fd', isParticle: true });
+            explosions.push({ x: player.x, y: player.y, radius: 36, life: 0, maxLife: 0.3, color: eye.irisColor, isParticle: true });
         } else if (pDist < eye.radius + player.radius + 35 && !eye.closeCallDone) {
             // Close Call Dodge!
             eye.closeCallDone = true;
@@ -60568,40 +60679,121 @@ function updateBlinkEyeDodge(dt, now) {
         if (pDist > eye.radius + player.radius + 60) {
             eye.closeCallDone = false;
         }
-    }
 
-    // 2. Funny Homing Shots ("not 100% homing")
-    const missileInterval = Math.max(1200, 2600 - s.timeSurvived * 35);
-    if (now >= s.nextMissileVolleyAt && s.giantEyes.length > 0) {
-        s.nextMissileVolleyAt = now + missileInterval;
-        const volleyCount = 2 + Math.floor(Math.random() * (s.timeSurvived > 20 ? 3 : 2));
-        for (let i = 0; i < volleyCount; i++) {
-            const sourceEye = s.giantEyes[Math.floor(Math.random() * s.giantEyes.length)];
-            if (!sourceEye) continue;
-            const initAngle = Math.atan2(player.y - sourceEye.y, player.x - sourceEye.x) + (Math.random() - 0.5) * 1.2;
-            const missileSpeed = 380 + Math.random() * 80 + s.timeSurvived * 2.5;
-            s.funnyMissiles.push({
-                id: Math.random().toString(36).substr(2, 9),
-                x: sourceEye.x,
-                y: sourceEye.y,
-                vx: Math.cos(initAngle) * missileSpeed,
-                vy: Math.sin(initAngle) * missileSpeed,
-                speed: missileSpeed,
-                radius: 13,
-                turnRate: 2.3 + Math.random() * 0.4, // imperfect turning rate enables dodging & looping!
-                wobbleSpeed: 6.5 + Math.random() * 3.0,
-                wobbleAmp: 0.36 + Math.random() * 0.22,
-                wobblePhase: Math.random() * Math.PI * 2,
-                life: 0,
-                maxLife: 5.8,
-                damage: 280,
-                color: '#d980fa',
-                trail: []
-            });
+        // 2. Boss Eye Attack: Firing Funny Homing Missiles
+        if (now >= eye.nextMissileAt) {
+            eye.nextMissileAt = now + (eye.enraged ? 1400 : 2200) + Math.random() * 800;
+            const volleyCount = eye.isGrandBoss ? 3 : (eye.enraged ? 2 : 1);
+            for (let k = 0; k < volleyCount; k++) {
+                const initAngle = Math.atan2(player.y - eye.y, player.x - eye.x) + (Math.random() - 0.5) * 1.3;
+                const missileSpeed = 380 + Math.random() * 80;
+                s.funnyMissiles.push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    x: eye.x,
+                    y: eye.y,
+                    vx: Math.cos(initAngle) * missileSpeed,
+                    vy: Math.sin(initAngle) * missileSpeed,
+                    speed: missileSpeed,
+                    radius: 13,
+                    turnRate: 2.3 + Math.random() * 0.4, // imperfect turning rate enables dodging & looping!
+                    wobbleSpeed: 6.5 + Math.random() * 3.0,
+                    wobbleAmp: 0.36 + Math.random() * 0.22,
+                    wobblePhase: Math.random() * Math.PI * 2,
+                    life: 0,
+                    maxLife: 5.8,
+                    damage: 290,
+                    color: eye.irisColor,
+                    trail: []
+                });
+            }
+        }
+
+        // 3. Prime Oculus Ocular Gaze Laser Attack
+        if (eye.isGrandBoss && now >= eye.nextLaserAt) {
+            eye.nextLaserAt = now + (eye.enraged ? 3600 : 5200);
+            eye.laserChargeUntil = now + 900;
+            eye.laserFireUntil = now + 1600;
+            eye.laserAngle = Math.atan2(player.y - eye.y, player.x - eye.x);
+        }
+
+        // Resolve active laser beam damage
+        if (eye.isGrandBoss && now >= eye.laserChargeUntil && now < eye.laserFireUntil) {
+            // Check player collision with laser line
+            const lx1 = eye.x;
+            const ly1 = eye.y;
+            const lx2 = eye.x + Math.cos(eye.laserAngle) * 1400;
+            const ly2 = eye.y + Math.sin(eye.laserAngle) * 1400;
+            const dx = lx2 - lx1;
+            const dy = ly2 - ly1;
+            const lenSq = dx * dx + dy * dy;
+            const t = Math.max(0, Math.min(1, ((player.x - lx1) * dx + (player.y - ly1) * dy) / lenSq));
+            const projX = lx1 + t * dx;
+            const projY = ly1 + t * dy;
+            const pDistLaser = Math.hypot(player.x - projX, player.y - projY);
+            if (pDistLaser < player.radius + 18 && now >= (eye.nextLaserTickAt || 0) && player.hp > 0) {
+                eye.nextLaserTickAt = now + 180;
+                player.hp -= 220;
+                spawnDamageText(player, 220, '#ff4757');
+                recordFullOnDamageToTarget(player, 220);
+                explosions.push({ x: player.x, y: player.y, radius: 24, life: 0, maxLife: 0.15, color: '#f368e0', isParticle: true });
+            }
         }
     }
 
-    // Update Funny Homing Shots
+    // 4. Player Weapon Bullets & Attacks vs Boss Eyes
+    for (let bi = bullets.length - 1; bi >= 0; bi--) {
+        const b = bullets[bi];
+        if (!b) continue;
+        if (b.ownerId !== player.id && !b.isPlayer) continue;
+
+        for (const eye of s.giantEyes) {
+            if (eye.hp <= 0) continue;
+            const hitDist = Math.hypot(b.x - eye.x, b.y - eye.y);
+            const hitRadius = eye.radius + (b.hitboxMod || 1) * 6;
+            if (hitDist < hitRadius) {
+                b.hitIds = b.hitIds || {};
+                if (b.hitIds[eye.id]) continue;
+                b.hitIds[eye.id] = true;
+
+                // Deal damage
+                let dmg = Math.round((b.damage || 400) * getPlayerDamageScale() * (1 + (player.powerCubes || 0) * 0.1));
+                if (b.super) dmg = Math.round(dmg * 1.15);
+                eye.hp = Math.max(0, eye.hp - dmg);
+                s.totalDamageDealt += dmg;
+                s.bossCurrentHp = s.giantEyes.reduce((sum, e) => sum + Math.max(0, e.hp), 0);
+
+                // Feedback
+                eye.squish = 0.6;
+                eye.hitFlashUntil = now + 120;
+                spawnDamageText({ x: eye.x, y: eye.y }, dmg, b.super ? '#ffd34f' : '#ffffff');
+                explosions.push({ x: b.x, y: b.y, radius: 26, life: 0, maxLife: 0.2, color: eye.irisColor });
+
+                // Super & Hyper charge grant
+                const chargeGain = (b.super ? 6 : 14) * getAttackChargeMultiplier(player);
+                superCharge = clamp(superCharge + chargeGain, 0, 100);
+                if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + chargeGain * 0.25, 0, 100);
+                updateSuperButton();
+                updateHyperButton();
+
+                // Check eye defeat
+                if (eye.hp <= 0 && !eye.defeated) {
+                    eye.defeated = true;
+                    explosions.push({ x: eye.x, y: eye.y, radius: 95, life: 0, maxLife: 0.5, color: eye.irisColor });
+                    spawnFloatingText(eye.x, eye.y, `💥 ${eye.name} DEFEATED! 💥`, '#ff4757');
+                    if (s.giantEyes.some(e => e.hp > 0)) {
+                        spawnFloatingText(player.x, player.y - 45, 'BOSS EYE DESTROYED!', '#ffd34f');
+                    }
+                }
+
+                if (!b.pierce) {
+                    bullets.splice(bi, 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    // 5. Update Funny Homing Shots
     for (let i = s.funnyMissiles.length - 1; i >= 0; i--) {
         const m = s.funnyMissiles[i];
         m.life += dt;
@@ -60700,8 +60892,42 @@ function renderBlinkEyeDodgeWorld(ctx) {
     ctx.setLineDash([]);
     ctx.restore();
 
-    // Render Giant Eyes
+    // Render Boss Eyes
     for (const eye of s.giantEyes) {
+        if (eye.hp <= 0) continue;
+
+        // Render Ocular Laser Telegraph / Beam if active
+        if (eye.isGrandBoss) {
+            if (now < eye.laserChargeUntil && eye.laserChargeUntil > 0) {
+                // Warning Telegraph Line
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 71, 87, 0.7)';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 8]);
+                ctx.beginPath();
+                ctx.moveTo(eye.x, eye.y);
+                ctx.lineTo(eye.x + Math.cos(eye.laserAngle) * 1400, eye.y + Math.sin(eye.laserAngle) * 1400);
+                ctx.stroke();
+                ctx.restore();
+            } else if (now >= eye.laserChargeUntil && now < eye.laserFireUntil) {
+                // Active Firing Laser Beam
+                ctx.save();
+                ctx.shadowColor = '#ff4757';
+                ctx.shadowBlur = 24;
+                ctx.strokeStyle = 'rgba(255, 107, 129, 0.85)';
+                ctx.lineWidth = 26;
+                ctx.beginPath();
+                ctx.moveTo(eye.x, eye.y);
+                ctx.lineTo(eye.x + Math.cos(eye.laserAngle) * 1400, eye.y + Math.sin(eye.laserAngle) * 1400);
+                ctx.stroke();
+                // Core beam
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 12;
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
         ctx.save();
         ctx.translate(eye.x, eye.y);
         if (eye.squish !== 1.0) {
@@ -60709,10 +60935,22 @@ function renderBlinkEyeDodgeWorld(ctx) {
             ctx.scale(eye.squish, 2.0 - eye.squish);
             ctx.rotate(-eye.squishAngle);
         }
-        // Outer glow & eyeball body
-        ctx.shadowColor = '#d980fa';
+
+        // Enraged pulsating aura
+        if (eye.enraged) {
+            ctx.shadowColor = '#ff4757';
+            ctx.shadowBlur = 26;
+            ctx.strokeStyle = 'rgba(255, 71, 87, 0.6)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, eye.radius + 6 + Math.sin(now * 0.01) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Outer glow & eyeball body (with hit flash)
+        ctx.shadowColor = eye.enraged ? '#ff4757' : '#d980fa';
         ctx.shadowBlur = 18;
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = (now < eye.hitFlashUntil) ? '#ffcccc' : '#ffffff';
         ctx.beginPath();
         ctx.arc(0, 0, eye.radius, 0, Math.PI * 2);
         ctx.fill();
@@ -60731,7 +60969,7 @@ function renderBlinkEyeDodgeWorld(ctx) {
             // Pupil
             ctx.fillStyle = '#1e0c24';
             ctx.beginPath();
-            ctx.arc(px, py, irisR * 0.48, 0, Math.PI * 2);
+            ctx.arc(px, py, irisR * (eye.pupilSize || 0.42), 0, Math.PI * 2);
             ctx.fill();
 
             // Glint reflection
@@ -60747,6 +60985,35 @@ function renderBlinkEyeDodgeWorld(ctx) {
             ctx.arc(0, 0, eye.radius * 0.75, 0.1, Math.PI - 0.1);
             ctx.stroke();
         }
+        ctx.restore();
+
+        // Overhead Boss Status & HP Bar in World Space
+        ctx.save();
+        const barW = eye.radius * 2.2;
+        const barH = 7;
+        const barX = eye.x - barW * 0.5;
+        const barY = eye.y - eye.radius - 24;
+        const hpPct = clamp(eye.hp / eye.maxHp, 0, 1);
+
+        // Name badge
+        ctx.fillStyle = eye.isGrandBoss ? '#ffd34f' : '#ffffff';
+        ctx.font = 'bold 11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(eye.name, eye.x, barY - 6);
+
+        // Bar background
+        ctx.fillStyle = 'rgba(20, 10, 30, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, barW, barH, 3);
+        ctx.fill();
+
+        // Bar fill
+        ctx.fillStyle = eye.enraged ? '#ff4757' : (eye.isGrandBoss ? '#a855f7' : '#00d2d3');
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, barW * hpPct, barH, 3);
+        ctx.fill();
         ctx.restore();
     }
 
@@ -60792,47 +61059,76 @@ function renderBlinkEyeDodgeWorld(ctx) {
 function renderBlinkEyeDodgeHUD(ctx) {
     if (!isBlinkEyeDodgeMode || !blinkEyeDodgeState) return;
     const s = blinkEyeDodgeState;
-    const timeLeft = Math.max(0, s.targetTime - s.timeSurvived);
-    const pct = clamp(s.timeSurvived / s.targetTime, 0, 1);
+    const hpPct = clamp(s.bossCurrentHp / s.bossMaxHp, 0, 1);
+    const displayPct = clamp(s.bossDisplayHp / s.bossMaxHp, 0, 1);
 
     ctx.save();
-    // Top banner panel
-    const boxW = Math.min(540, innerWidth - 40);
+    // Top Boss Battle Banner Panel
+    const boxW = Math.min(580, innerWidth - 36);
     const boxX = innerWidth * 0.5 - boxW * 0.5;
-    const boxY = 22;
-    const boxH = 54;
+    const boxY = 20;
+    const boxH = 68;
 
-    ctx.fillStyle = 'rgba(23, 10, 36, 0.88)';
+    // Panel Background
+    ctx.fillStyle = 'rgba(20, 8, 32, 0.92)';
     ctx.strokeStyle = '#a855f7';
     ctx.lineWidth = 2.5;
-    ctx.shadowColor = 'rgba(168, 85, 247, 0.5)';
-    ctx.shadowBlur = 14;
+    ctx.shadowColor = 'rgba(168, 85, 247, 0.55)';
+    ctx.shadowBlur = 16;
     ctx.beginPath();
     ctx.roundRect(boxX, boxY, boxW, boxH, 14);
     ctx.fill();
     ctx.stroke();
 
-    // Progress bar
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    ctx.beginPath();
-    ctx.roundRect(boxX + 10, boxY + boxH - 10, boxW - 20, 5, 3);
-    ctx.fill();
-
-    ctx.fillStyle = '#2ed573';
-    ctx.beginPath();
-    ctx.roundRect(boxX + 10, boxY + boxH - 10, (boxW - 20) * pct, 5, 3);
-    ctx.fill();
-
-    // HUD Text
-    ctx.fillStyle = '#f1f2f6';
+    // Boss Header Title
+    ctx.fillStyle = '#ffd34f';
     ctx.font = '900 13px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.shadowBlur = 0;
-    ctx.fillText(`👁️ BLINK EYE DODGE  |  ⏱️ ${s.timeSurvived.toFixed(1)}s / ${s.targetTime.toFixed(0)}s  |  🎯 DODGES: ${s.dodges}  |  🔥 STREAK: x${s.streak}`, innerWidth * 0.5, boxY + 26);
+    ctx.fillText('👁️ BOSS BATTLE: 1 VS THE EYES 👁️', innerWidth * 0.5, boxY + 20);
+
+    // Grand Boss Health Bar (Dual-Layer)
+    const barX = boxX + 16;
+    const barY = boxY + 28;
+    const barW = boxW - 32;
+    const barH = 16;
+
+    // Health bar track
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW, barH, 8);
+    ctx.fill();
+
+    // Damage trail (lag bar)
+    ctx.fillStyle = '#ff4757';
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW * displayPct, barH, 8);
+    ctx.fill();
+
+    // Main Health gradient fill
+    const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+    grad.addColorStop(0, '#9b59b6');
+    grad.addColorStop(0.5, '#a855f7');
+    grad.addColorStop(1, '#00d2d3');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW * hpPct, barH, 8);
+    ctx.fill();
+
+    // HP Text inside bar
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`BOSS HP: ${s.bossCurrentHp.toLocaleString()} / ${s.bossMaxHp.toLocaleString()} (${Math.round(hpPct * 100)}%)`, innerWidth * 0.5, barY + 12);
+
+    // Bottom Stats Row
+    ctx.fillStyle = '#f1f2f6';
+    ctx.font = '700 11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`🎯 DODGES: ${s.dodges}  |  🔥 STREAK: x${s.streak}  |  💥 DAMAGE: ${(s.totalDamageDealt || 0).toLocaleString()}  |  ⏱️ ${s.timeSurvived.toFixed(1)}s`, innerWidth * 0.5, boxY + 58);
 
     ctx.restore();
 }
-
 
   loop();
 
