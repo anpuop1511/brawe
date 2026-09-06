@@ -32,7 +32,7 @@ test('BlinkEye main attack fires fast sniper shot with +100% range per bounce (m
   assert.match(gameCode, /if\s*\(b\.blinkeyeBounceCount > 2\)/);
 });
 
-test('BlinkEye Super We All See launches steerable eye with camera tracking, 40% DR, and active PiP threat radar', () => {
+test('BlinkEye Super We All See launches steerable eye with camera tracking, 40% DR, and recentered top-center PiP threat radar', () => {
   assert.match(gameCode, /function startBlinkEyeSuper\(/);
   assert.match(gameCode, /isBlinkEyeSteeredEye:\s*true/);
   assert.match(gameCode, /const baseEyeSpeed = 352;/);
@@ -40,14 +40,17 @@ test('BlinkEye Super We All See launches steerable eye with camera tracking, 40%
   assert.match(gameCode, /entity\.defenseMult = isHyper \? 0\.30 : 0\.60/);
   assert.match(gameCode, /function drawBlinkEyePiPScreen\(/);
   assert.match(gameCode, /drawBlinkEyePiPScreen\(ctx\);/);
+  assert.match(gameCode, /const pipX = Math\.round\(\(innerWidth - pipW\) \/ 2\);/);
 });
 
-test('BlinkEye Hypercharge fires double sniper shots, grants 70% DR, lasts 20s, and launches eye missiles at every spotted enemy every 0.8s', () => {
+test('BlinkEye Hypercharge fires double sniper shots, grants 70% DR, lasts 20s, and launches purple eye missiles at enemies in direct line-of-sight every 0.6s', () => {
   assert.match(gameCode, /const shotCount = isHyper \? 2 : 1/);
   assert.match(gameCode, /maxLife: isHyper \? 20\.0 : 16\.0/);
-  assert.match(gameCode, /now - b\.lastMissileAt >= 800/);
+  assert.match(gameCode, /now - b\.lastMissileAt >= 600/);
+  assert.match(gameCode, /function hasBlinkEyeSight\(/);
+  assert.match(gameCode, /hasBlinkEyeSight\(b\.x, b\.y, victim\.x, victim\.y\)/);
   assert.match(gameCode, /isBlinkEyeMissile:\s*true/);
-  assert.match(gameCode, /sightDist = 650/);
+  assert.match(gameCode, /#d25bff/);
 });
 
 test('BlinkEye Gadgets and Star Powers execute properly', () => {

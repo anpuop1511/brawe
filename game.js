@@ -2293,6 +2293,22 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   // ==========================================
   // BLINKEYE (THE REBOUND BRANCH) HELPERS
   // ==========================================
+  function hasBlinkEyeSight(x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      for (const c of cubes) {
+          if (intersectRayAABB(x1, y1, dx, dy, c.x, c.y, c.w, c.h) !== null) {
+              return false;
+          }
+      }
+      for (const dw of destructibleWalls) {
+          if (intersectRayAABB(x1, y1, dx, dy, dw.x, dw.y, dw.w, dw.h) !== null) {
+              return false;
+          }
+      }
+      return true;
+  }
+
   function startBlinkEyeSuper(entity, targetX, targetY, isHyper = false) {
       if (!entity || entity.hp <= 0) return;
       const now = performance.now();
@@ -2331,14 +2347,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       bullets.push(eyeBullet);
       entity.blinkeyeActiveEye = eyeBullet;
 
-      spawnFloatingText(entity.x, entity.y - 42, isHyper ? 'OMNIPRESENT SIGHT! 👁️✨' : 'WE ALL SEE! 👁️', isHyper ? '#00e5ff' : '#ffa726');
+      spawnFloatingText(entity.x, entity.y - 42, isHyper ? 'OMNIPRESENT SIGHT! 👁️💜' : 'WE ALL SEE! 👁️', isHyper ? '#d25bff' : '#ffa726');
       explosions.push({
           x: entity.x,
           y: entity.y,
           radius: 65,
           life: 0,
           maxLife: 0.28,
-          color: isHyper ? '#00e5ff' : '#ffa726'
+          color: isHyper ? '#d25bff' : '#ffa726'
       });
   }
 
@@ -2361,10 +2377,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           radius: expRadius,
           life: 0,
           maxLife: 0.35,
-          color: eyeBullet.hyperVisual ? '#00e5ff' : '#ffa726',
+          color: eyeBullet.hyperVisual ? '#d25bff' : '#ffa726',
           legendary: true
       });
-      spawnFloatingText(eyeBullet.x, eyeBullet.y - 35, directHit ? 'DIRECT SIGHT IMPACT! 👁️💥' : 'OPTIC DETONATION! 💥', eyeBullet.hyperVisual ? '#00e5ff' : '#ffa726');
+      spawnFloatingText(eyeBullet.x, eyeBullet.y - 35, directHit ? 'DIRECT SIGHT IMPACT! 👁️💥' : 'OPTIC DETONATION! 💥', eyeBullet.hyperVisual ? '#d25bff' : '#ffa726');
   }
 
   function triggerBlinkEyeRetinalFlash(entity) {
@@ -2411,41 +2427,42 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
 
       ctx.save();
-      const pipW = 180;
-      const pipH = 180;
-      const pipX = 24;
-      const pipY = innerHeight - pipH - 45;
+      // Recentered at Top-Center to never block game controls or bottom HUD
+      const pipW = 160;
+      const pipH = 88;
+      const pipX = Math.round((innerWidth - pipW) / 2);
+      const pipY = 16;
 
-      // Outer border with pulsing threat aura
+      // Outer bezel & glow
       const pulse = Math.sin(now * 0.008) * 3;
-      ctx.fillStyle = 'rgba(7, 17, 31, 0.92)';
-      ctx.strokeStyle = nearbyThreat ? '#ff3b56' : (isHyper ? '#00e5ff' : '#ffa726');
+      ctx.fillStyle = 'rgba(6, 12, 24, 0.88)';
+      ctx.strokeStyle = nearbyThreat ? '#ff3b56' : (isHyper ? '#d25bff' : '#ffa726');
       ctx.lineWidth = nearbyThreat ? (3.5 + pulse * 0.5) : 2.5;
       ctx.shadowColor = ctx.strokeStyle;
       ctx.shadowBlur = nearbyThreat ? 18 : 12;
       ctx.beginPath();
-      ctx.roundRect(pipX, pipY, pipW, pipH, 12);
+      ctx.roundRect(pipX, pipY, pipW, pipH, 10);
       ctx.fill();
       ctx.stroke();
 
       // Clip inside screen
       ctx.save();
       ctx.beginPath();
-      ctx.roundRect(pipX + 4, pipY + 4, pipW - 8, pipH - 8, 8);
+      ctx.roundRect(pipX + 3, pipY + 3, pipW - 6, pipH - 6, 8);
       ctx.clip();
 
       // Mini world background centered on player
       const cx = pipX + pipW / 2;
-      const cy = pipY + pipH / 2;
-      const zoom = 0.20;
+      const cy = pipY + pipH / 2 + 4;
+      const zoom = 0.16;
 
-      ctx.fillStyle = '#081322';
+      ctx.fillStyle = '#060f1c';
       ctx.fillRect(pipX, pipY, pipW, pipH);
 
       // Radar scan grid
-      ctx.strokeStyle = isHyper ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255, 167, 38, 0.15)';
+      ctx.strokeStyle = isHyper ? 'rgba(210, 91, 255, 0.18)' : 'rgba(255, 167, 38, 0.15)';
       ctx.lineWidth = 1;
-      for (let g = -360; g <= 360; g += 60) {
+      for (let g = -300; g <= 300; g += 50) {
           ctx.beginPath();
           ctx.moveTo(cx + g * zoom, pipY);
           ctx.lineTo(cx + g * zoom, pipY + pipH);
@@ -2456,14 +2473,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.stroke();
       }
 
-      // Radar rings
-      ctx.strokeStyle = nearbyThreat ? 'rgba(255, 59, 86, 0.25)' : (isHyper ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255, 167, 38, 0.2)');
+      // Radar range circle
+      ctx.strokeStyle = nearbyThreat ? 'rgba(255, 59, 86, 0.35)' : (isHyper ? 'rgba(210, 91, 255, 0.25)' : 'rgba(255, 167, 38, 0.2)');
       ctx.beginPath();
-      ctx.arc(cx, cy, 250 * zoom, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 260 * zoom, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Draw obstacles in mini-map
-      ctx.fillStyle = 'rgba(100, 130, 160, 0.35)';
+      // Mini obstacles
+      ctx.fillStyle = 'rgba(80, 110, 140, 0.35)';
       for (const c of cubes) {
           const rx = (c.x - player.x) * zoom + cx;
           const ry = (c.y - player.y) * zoom + cy;
@@ -2474,32 +2491,29 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           }
       }
 
-      // Draw mini BlinkEye (Player body) at center
+      // Draw mini BlinkEye (player body)
       ctx.fillStyle = '#ffa726';
       ctx.shadowColor = '#ffa726';
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 6;
       ctx.beginPath();
-      ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
 
       // Mini eye projectile position on radar
       if (player.blinkeyeActiveEye) {
           const eyeX = (player.blinkeyeActiveEye.x - player.x) * zoom + cx;
           const eyeY = (player.blinkeyeActiveEye.y - player.y) * zoom + cy;
-          ctx.fillStyle = isHyper ? '#00e5ff' : '#ffa726';
+          ctx.fillStyle = isHyper ? '#d25bff' : '#ffa726';
           ctx.shadowColor = ctx.fillStyle;
           ctx.shadowBlur = 6;
           ctx.beginPath();
-          ctx.arc(eyeX, eyeY, 5, 0, Math.PI * 2);
+          ctx.arc(eyeX, eyeY, 4, 0, Math.PI * 2);
           ctx.fill();
 
-          // Dotted tether line from player to Eye
-          ctx.strokeStyle = isHyper ? 'rgba(0, 229, 255, 0.4)' : 'rgba(255, 167, 38, 0.4)';
+          // Tether line
+          ctx.strokeStyle = isHyper ? 'rgba(210, 91, 255, 0.45)' : 'rgba(255, 167, 38, 0.4)';
           ctx.lineWidth = 1;
-          ctx.setLineDash([4, 3]);
+          ctx.setLineDash([3, 3]);
           ctx.beginPath();
           ctx.moveTo(cx, cy);
           ctx.lineTo(eyeX, eyeY);
@@ -2507,7 +2521,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.setLineDash([]);
       }
 
-      // Draw mini threat entities
+      // Mini threat entities
       for (const b of bots) {
           if (!b || b.hp <= 0) continue;
           const dx = (b.x - player.x) * zoom;
@@ -2516,9 +2530,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               const isEnemy = !areAlliedEntities(player, b);
               ctx.fillStyle = isEnemy ? '#ff3b56' : '#2ed573';
               ctx.shadowColor = ctx.fillStyle;
-              ctx.shadowBlur = 6;
+              ctx.shadowBlur = 5;
               ctx.beginPath();
-              ctx.arc(cx + dx, cy + dy, isEnemy ? 5 : 4, 0, Math.PI * 2);
+              ctx.arc(cx + dx, cy + dy, isEnemy ? 4 : 3, 0, Math.PI * 2);
               ctx.fill();
           }
       }
@@ -2526,36 +2540,33 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       ctx.restore(); // end clip
 
       // PiP Header Overlay
-      ctx.fillStyle = nearbyThreat ? 'rgba(255, 59, 86, 0.95)' : (isHyper ? '#00e5ff' : '#ffa726');
-      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = nearbyThreat ? '#ff3b56' : (isHyper ? '#d25bff' : '#ffa726');
+      ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(nearbyThreat ? '⚠️ BODY UNDER THREAT!' : '👁️ BODY SECURITY RADAR', pipX + 8, pipY + 16);
+      ctx.fillText(nearbyThreat ? '⚠️ BODY THREAT' : '👁️ BODY RADAR', pipX + 6, pipY + 12);
 
       // Remaining Time Pill
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 11px monospace';
+      ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText(secondsLeft + 's', pipX + pipW - 8, pipY + 16);
+      ctx.fillText(secondsLeft + 's', pipX + pipW - 6, pipY + 12);
 
       // Player HP Bar in PiP
       const hpPct = clamp(player.hp / player.maxHp, 0, 1);
-      const hpBarW = pipW - 16;
-      const hpBarH = 6;
-      const hpBarX = pipX + 8;
-      const hpBarY = pipY + pipH - 28;
+      const hpBarW = pipW - 12;
+      const hpBarH = 4;
+      const hpBarX = pipX + 6;
+      const hpBarY = pipY + pipH - 16;
       ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
       ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
       ctx.fillStyle = hpPct > 0.5 ? '#2ed573' : (hpPct > 0.25 ? '#ffa502' : '#ff4757');
       ctx.fillRect(hpBarX, hpBarY, hpBarW * hpPct, hpBarH);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 0.5;
-      ctx.strokeRect(hpBarX, hpBarY, hpBarW, hpBarH);
 
       // Exit / Detonate Prompt
       ctx.fillStyle = '#ffeaa7';
-      ctx.font = 'bold 9px sans-serif';
+      ctx.font = 'bold 8px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('CLICK / [E] / [SPACE]: EXIT', pipX + pipW / 2, pipY + pipH - 12);
+      ctx.fillText('[E] / [SPACE] / CLICK TO EXIT', pipX + pipW / 2, pipY + pipH - 5);
 
       ctx.restore();
   }
@@ -6002,7 +6013,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           attackDesc: 'Fires an ultra-fast optic sniper shot. Bouncing off a wall grants +100% range per bounce (up to 2 bounces for +200% max range).',
           super: 'We All See',
           superDesc: 'Gains 40% damage reduction and steers an All-Seeing Eye projectile with camera tracking and a mini threat-radar screen for 16s. Press Super, Space, or Click to manually detonate & exit early.',
-          hyper: 'Omnipresent Sight: Main attack fires 2 rapid shots. Super grants 70% damage reduction, lasts 20s, and automatically launches eye missiles at all spotted enemies in sight every 0.8s.',
+          hyper: 'Omnipresent Sight: Main attack fires 2 rapid purple shots. Super grants 70% damage reduction, lasts 20s, and launches purple eye missiles at all enemies in direct line-of-sight every 0.6s.',
           g1: 'Retinal Flash (Optic shockwave that knocks back nearby enemies and blinds them for 1.8s)',
           g2: 'Prism Bumper (Deploys an eye bumper that reflects any sniper shot with guaranteed +100% range)',
           sp1: 'Rebound Focus (Bounced shots deal +25% bonus damage on 1st bounce and +50% on 2nd bounce)',
@@ -23578,7 +23589,7 @@ let heistFeverActive = false;
             radius: isHyper ? 24 : 18,
             life: 0,
             maxLife: 0.15,
-            color: isHyper ? '#00e5ff' : '#ffa726'
+            color: isHyper ? '#d25bff' : '#ffa726'
         });
     } else if (brawler === 'steamer') {
         const isHyper = !isBot ? isHypercharged : !!fromEntity.isHypercharged;
@@ -38787,10 +38798,10 @@ let heistFeverActive = false;
               radius: 32 + b.blinkeyeBounceCount * 6,
               life: 0,
               maxLife: 0.22,
-              color: b.hyperVisual ? '#00e5ff' : '#ffa726',
+              color: b.hyperVisual ? '#d25bff' : '#ffa726',
               legendary: true
           });
-          spawnFloatingText(b.x, b.y - 20, '+100% RANGE (x' + b.blinkeyeBounceCount + ')! 👁️⚡', b.hyperVisual ? '#00e5ff' : '#ffa726');
+          spawnFloatingText(b.x, b.y - 20, '+100% RANGE (x' + b.blinkeyeBounceCount + ')! 👁️⚡', b.hyperVisual ? '#d25bff' : '#ffa726');
       }
 
       if (reflectX) b.vx *= -1;
@@ -42084,18 +42095,20 @@ let heistFeverActive = false;
                   radius: b.hyperVisual ? 22 : 16,
                   life: 0,
                   maxLife: 0.22,
-                  color: b.hyperVisual ? 'rgba(0, 229, 255, 0.45)' : 'rgba(255, 167, 38, 0.45)'
+                  color: b.hyperVisual ? 'rgba(210, 91, 255, 0.50)' : 'rgba(255, 167, 38, 0.45)'
               });
           }
 
-          // Hypercharge: launch detached eye missiles for every visible enemy in sight every 0.8s
-          if (b.hyperVisual && (!b.lastMissileAt || now - b.lastMissileAt >= 800)) {
+          // Hypercharge: launch detached purple eye missiles for every enemy in direct line of sight every 0.6s
+          if (b.hyperVisual && (!b.lastMissileAt || now - b.lastMissileAt >= 600)) {
               b.lastMissileAt = now;
-              const sightDist = 650;
+              const sightDist = 600;
+              let firedAny = false;
               for (const victim of [player, ...bots]) {
                   if (!victim || victim.hp <= 0 || victim.id === owner.id || areAlliedEntities(owner, victim)) continue;
                   const d = Math.hypot(victim.x - b.x, victim.y - b.y);
-                  if (d <= sightDist) {
+                  if (d <= sightDist && hasBlinkEyeSight(b.x, b.y, victim.x, victim.y)) {
+                      firedAny = true;
                       const mAng = Math.atan2(victim.y - b.y, victim.x - b.x);
                       bullets.push({
                           id: nextId++,
@@ -42103,8 +42116,8 @@ let heistFeverActive = false;
                           isBlinkEyeMissile: true,
                           x: b.x,
                           y: b.y,
-                          vx: Math.cos(mAng) * 750,
-                          vy: Math.sin(mAng) * 750,
+                          vx: Math.cos(mAng) * 800,
+                          vy: Math.sin(mAng) * 800,
                           life: 0,
                           maxLife: 1.2,
                           damage: owner.id === player.id ? 850 : 650,
@@ -42116,14 +42129,16 @@ let heistFeverActive = false;
                       explosions.push({
                           x: b.x,
                           y: b.y,
-                          radius: 20,
+                          radius: 22,
                           life: 0,
                           maxLife: 0.15,
-                          color: '#00e5ff'
+                          color: '#d25bff'
                       });
                   }
               }
-              spawnFloatingText(b.x, b.y - 20, 'EYE MISSILES! 👁️🚀', '#00e5ff');
+              if (firedAny) {
+                  spawnFloatingText(b.x, b.y - 20, 'SIGHT MISSILES! 👁️💜', '#d25bff');
+              }
           }
 
           // SP2: Watchful Iris — auto-counter intruders near BlinkEye's body
@@ -46644,7 +46659,7 @@ let heistFeverActive = false;
                 if (entity.blinkeyeSteering) {
                     ctx.save();
                     const trancePulse = Math.sin(nowMs * 0.01) * 6;
-                    ctx.strokeStyle = isHyper ? '#00e5ff' : '#ffa726';
+                    ctx.strokeStyle = isHyper ? '#d25bff' : '#ffa726';
                     ctx.lineWidth = 3.5;
                     ctx.shadowColor = ctx.strokeStyle;
                     ctx.shadowBlur = 20;
@@ -50461,7 +50476,7 @@ let heistFeverActive = false;
           ctx.save();
           const maxRange = isHypercharged ? 740 : 696;
           const traced = traceRicochetPath(player.x, player.y, ang, maxRange, 2, 16, 2.0);
-          ctx.strokeStyle = isHypercharged ? 'rgba(0, 229, 255, 0.92)' : 'rgba(255, 167, 38, 0.90)';
+          ctx.strokeStyle = isHypercharged ? 'rgba(210, 91, 255, 0.95)' : 'rgba(255, 167, 38, 0.90)';
           ctx.lineWidth = isHypercharged ? 3.5 : 2.5;
           ctx.setLineDash([8, 6]);
           ctx.beginPath();
@@ -50473,7 +50488,7 @@ let heistFeverActive = false;
           ctx.setLineDash([]);
           if (traced.points.length > 0) {
               const lastPt = traced.points[traced.points.length - 1];
-              ctx.fillStyle = isHypercharged ? '#00e5ff' : '#ffa726';
+              ctx.fillStyle = isHypercharged ? '#d25bff' : '#ffa726';
               ctx.beginPath();
               ctx.arc(lastPt.x, lastPt.y, 6, 0, Math.PI * 2);
               ctx.fill();
@@ -50488,7 +50503,7 @@ let heistFeverActive = false;
           const steerDist = isHypercharged ? 460 : 360;
           const targetPtX = player.x + Math.cos(ang) * steerDist;
           const targetPtY = player.y + Math.sin(ang) * steerDist;
-          ctx.strokeStyle = isHypercharged ? 'rgba(0, 229, 255, 0.95)' : 'rgba(255, 167, 38, 0.95)';
+          ctx.strokeStyle = isHypercharged ? 'rgba(210, 91, 255, 0.95)' : 'rgba(255, 167, 38, 0.95)';
           ctx.lineWidth = 3;
           ctx.beginPath();
           ctx.moveTo(player.x, player.y);
@@ -55375,7 +55390,7 @@ let heistFeverActive = false;
           const isHc = !!b.hyperVisual;
           
           // 1. Optic Energy Halo / Scan Aura
-          ctx.shadowColor = isHc ? '#00e5ff' : '#ffa726';
+          ctx.shadowColor = isHc ? '#d25bff' : '#ffa726';
           ctx.shadowBlur = isHc ? 24 : 16;
           ctx.fillStyle = isHc ? 'rgba(0, 229, 255, 0.18)' : 'rgba(255, 167, 38, 0.16)';
           ctx.beginPath();
@@ -55435,7 +55450,7 @@ let heistFeverActive = false;
           const isHc = !!b.hyperVisual;
           const bounceCount = b.blinkeyeBounceCount || 0;
           
-          ctx.shadowColor = isHc ? '#00e5ff' : (bounceCount > 0 ? '#ff7043' : '#ffa726');
+          ctx.shadowColor = isHc ? '#d25bff' : (bounceCount > 0 ? '#ff7043' : '#ffa726');
           ctx.shadowBlur = 14 + bounceCount * 4;
 
           // Optic Laser Bolt
@@ -55470,8 +55485,8 @@ let heistFeverActive = false;
           ctx.translate(b.x, b.y);
           const ang = Math.atan2(b.vy, b.vx);
           ctx.rotate(ang);
-          ctx.shadowColor = '#00e5ff';
-          ctx.shadowBlur = 10;
+          ctx.shadowColor = b.isBlinkEyeMissile ? '#d25bff' : '#ffa726';
+          ctx.shadowBlur = 12;
           ctx.fillStyle = '#00e5ff';
           ctx.beginPath();
           ctx.ellipse(0, 0, 10, 4, 0, 0, Math.PI * 2);
