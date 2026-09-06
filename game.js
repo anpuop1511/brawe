@@ -23856,6 +23856,9 @@ let heistFeverActive = false;
         const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
         const mode = isBot ? (fromEntity.moneyAndTaxMode || 'money') : (player.moneyAndTaxMode || 'money');
         const mutationAttack = consumeMoneyTaxMutationAttack(fromEntity, now);
+        const extraRangeTiles = isPowerPlayShowdownMode ? 192 : 0; // +4 tiles range
+        const extraLife = isPowerPlayShowdownMode ? 0.35 : 0;
+        const extraSideCoins = isPowerPlayShowdownMode ? 4 : 0; // +4 coins to sides
         
         if (mode === 'money') {
             const attackId = Math.random().toString(36).substr(2, 9); // For SP1 tracking
@@ -23868,7 +23871,7 @@ let heistFeverActive = false;
             for (let w = 0; w < 3 + extraWaves; w++) {
                 setTimeout(() => {
                     if (fromEntity.hp <= 0 && isBot) return; // Don't fire remaining waves if bot dies
-                    const coinsPerWave = mutationVolley ? 5 : 3;
+                    const coinsPerWave = (mutationVolley ? 5 : 3) + extraSideCoins;
                     const centerIndex = Math.floor(coinsPerWave / 2);
                     for (let i = 0; i < coinsPerWave; i++) {
                         const a = ang + (i - centerIndex) * MONEY_TAX_BASE_SPREAD;
@@ -23878,7 +23881,7 @@ let heistFeverActive = false;
                             ownerBrawler: 'money_and_tax', isCoin: true, moneyAttackId: attackId,
                             x: fromEntity.x + Math.cos(a)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(a)*(fromEntity.radius+4),
                             vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6,
-                            life: 0, maxLife: 0.9, damage: empoweredCenter ? (isBot ? 150 : 338)*(1+centerDamage) : (isBot ? 120 : 270), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxCoinDist: 513,
+                            life: 0, maxLife: 0.9 + extraLife, damage: empoweredCenter ? (isBot ? 150 : 338)*(1+centerDamage) : (isBot ? 120 : 270), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxCoinDist: 513 + extraRangeTiles,
                             hitboxMod: enlargedCenter
                                 ? 1.65 * (firedAtFullAmmo ? MONEY_TAX_FULL_CENTER_SIZE_MULT : 1) * (1 + centerSize)
                                 : MONEY_TAX_MONEY_SIZE_MULT,
@@ -23892,7 +23895,7 @@ let heistFeverActive = false;
             for (let i = 0; i < 2; i++) { // 2 banknotes side-by-side
                 const a = ang + (i === 0 ? -MONEY_TAX_TAX_SPREAD : MONEY_TAX_TAX_SPREAD);
                 bullets.push({ ownerBrawler: 'money_and_tax', isTaxNote: true, hitIds: {}, x: fromEntity.x + Math.cos(a)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(a)*(fromEntity.radius+4),
-                    vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6, life: 0, maxLife: 1.0, damage: Math.round((isBot ? 170 : 375) * MONEY_TAX_TAX_DAMAGE_MULT), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxTaxNoteDist: 850, hitboxMod: MONEY_TAX_TAX_SIZE_MULT });
+                    vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6, life: 0, maxLife: 1.0 + extraLife, damage: Math.round((isBot ? 170 : 375) * MONEY_TAX_TAX_DAMAGE_MULT), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxTaxNoteDist: 850 + extraRangeTiles, hitboxMod: MONEY_TAX_TAX_SIZE_MULT });
             }
             if (mutationAttack) {
                 setTimeout(() => {
@@ -27382,6 +27385,17 @@ let heistFeverActive = false;
 
     if(selectedBrawler === 'money_and_tax') {
         const hc = isHypercharged;
+        if (isPowerPlayShowdownMode) {
+            const coinCount = 6 + 8; // 14 boomerang coins (+8 extra)
+            for (let i = 0; i < coinCount; i++) {
+                const a = ang + (i - (coinCount - 1) / 2) * (1 / 8);
+                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: player.x, y: player.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: true, hyperVisual: true, ownerId: player.id, super: true, hitIds: {} });
+            }
+            bullets.push({ ownerBrawler: 'money_and_tax', isStickySuper: true, hcChain: true, x: player.x, y: player.y, vx: Math.cos(ang) * 1100 * 0.6, vy: Math.sin(ang) * 1100 * 0.6, life: 0, maxLife: 1.5, damage: 0, pierce: false, hyperVisual: true, ownerId: player.id, super: true, hitIds: {}, homingRadius: 400 });
+            player.moneyAndTaxMode = (player.moneyAndTaxMode === 'tax') ? 'money' : 'tax';
+            updateSuperButton();
+            return;
+        }
         if ((player.moneyAndTaxMode || 'money') === 'money') {
             for (let i = 0; i < 6; i++) {
                 const a = ang + (i - 2.5) * (1 / 6);
@@ -28825,6 +28839,16 @@ let heistFeverActive = false;
     }
     if (bot.brawler === 'money_and_tax') {
         const hc = bot.isHypercharged;
+        if (isPowerPlayShowdownMode) {
+            const coinCount = 6 + 8; // 14 boomerang coins (+8 extra)
+            for (let i = 0; i < coinCount; i++) {
+                const a = ang + (i - (coinCount - 1) / 2) * (1 / 8);
+                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: true, hyperVisual: true, ownerId: bot.id, super: true, hitIds: {} });
+            }
+            bullets.push({ ownerBrawler: 'money_and_tax', isStickySuper: true, hcChain: true, x: bot.x, y: bot.y, vx: Math.cos(ang) * 1100 * 0.6, vy: Math.sin(ang) * 1100 * 0.6, life: 0, maxLife: 1.5, damage: 0, pierce: false, hyperVisual: true, ownerId: bot.id, super: true, hitIds: {}, homingRadius: 400 });
+            bot.moneyAndTaxMode = (bot.moneyAndTaxMode === 'tax') ? 'money' : 'tax';
+            return;
+        }
         if ((bot.moneyAndTaxMode || 'money') === 'money') {
             for (let i = 0; i < 6; i++) {
                 const a = ang + (i - 2.5) * (1 / 6);
@@ -30482,7 +30506,7 @@ let heistFeverActive = false;
       ['impossible', 'AI', 'The Impossible', '1v1 against an adaptive dodger']
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
-  const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer']);
+  const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax']);
   const HOME_PERMANENT_MODE_IDS = ['power_play_showdown', 'corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
@@ -30517,7 +30541,7 @@ let heistFeverActive = false;
       slop_sushi_plus: { type:'sushi_tapper', amount:1, label:'+1 Tower Drop' }
   };
   const HOME_MODE_RULES = {
-      power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo, Decayer'],
+      power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo, Decayer, Money & Tax'],
       tower_duels_weekend: ['Five complete Duels matches', 'Each floor rolls a fresh random trio of Power 11 guest brawlers', 'Complete Floor 5 to unlock the exclusive TOWER DUELAR title'],
       solo: ['50-player free-for-all', 'No respawns', 'Rare Nova Boxes grant +2 Power, shield and charge'],
       duo: ['25 teams of two', '12-second Rally Beacon respawns', 'Stand by an ally beacon to revive them 2.25x faster'],
@@ -33918,7 +33942,8 @@ let heistFeverActive = false;
                   bouncin_balls: '2x BALL SPEED • +8 SUPER BALLS • GATLING TURRET',
                   echo: 'SONIC PULSE • 5s 360° BURST • 3x SUPER RINGS',
                   orbo: '+10 WIDE ORBS • BOUNCING SUPER • AUTO CHARGE',
-                  decayer: '4x MOVE SHIELD (+200 HP) • +150% SHIELD CAP • 3x ATTACK SIZE'
+                  decayer: '4x MOVE SHIELD (+200 HP) • +150% SHIELD CAP • 3x ATTACK SIZE',
+                  money_and_tax: '+4 TILES RANGE • DUAL COMBO SUPER (+8 PROJ) • +4 SIDE COINS'
               };
               if (powerNames[selectedBrawler]) {
                   setTimeout(() => spawnFloatingText(player.x, player.y - 45, powerNames[selectedBrawler], '#38e8ff'), 350);

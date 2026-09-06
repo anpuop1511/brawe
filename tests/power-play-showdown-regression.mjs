@@ -9,7 +9,7 @@ const checks = [
   ['Power Play Showdown rules defined in HOME_MODE_RULES', /power_play_showdown:\s*\[[\s\S]*?12-player Solo Battle Royale with Power Cubes/],
   ['Power Play Showdown spawns 11 enemy bots (12 players total per match)', /if \(isPowerPlayShowdownMode\) enemyCount = 11;/],
   ['Power Play Showdown rewards defined in HOME_EVENT_REWARDS', /power_play_showdown:\s*\{\s*type:'coins',\s*amount:60/],
-  ['Curated brawlers set defined with Decayer', /const POWER_PLAY_BRAWLERS = new Set\(\['blinkeye',\s*'fuser',\s*'rocketeer',\s*'bouncin_balls',\s*'echo',\s*'orbo',\s*'decayer'\]\);/],
+  ['Curated brawlers set defined with Money & Tax', /const POWER_PLAY_BRAWLERS = new Set\(\['blinkeye',\s*'fuser',\s*'rocketeer',\s*'bouncin_balls',\s*'echo',\s*'orbo',\s*'decayer',\s*'money_and_tax'\]\);/],
   ['Mode runtime flag isPowerPlayShowdownMode initialized', /let isPowerPlayShowdownMode = false;/],
   ['launchShowdownMatch activates isPowerPlayShowdownMode and enforces curated brawler', /isPowerPlayShowdownMode = showdownMode === 'power_play_showdown';[\s\S]*?!POWER_PLAY_BRAWLERS\.has\(selectedBrawler\)/],
   ['Bot pool restricted to curated brawlers in power play showdown', /if \(isPowerPlayShowdownMode\) \{[\s\S]*?const ppPool = \[\.\.\.POWER_PLAY_BRAWLERS\]/],
@@ -48,6 +48,11 @@ const checks = [
   ['Decayer Power 1: movement generates +200 HP shield ultra fast (50ms interval, +100% bonus)', /now - player\.lastDecayerMoveShield >= 50[\s\S]*?grantShield\(player,\s*200,\s*decayerShieldCap\);/],
   ['Decayer Power 2: shield cap increased by 150% (12500 HP max)', /const decayerShieldCap = 12500;/],
   ['Decayer Power 3: main attack size +200% (hitboxMod 3.0)', /const decayerHitbox = isPowerPlayShowdownMode \? 3\.0 : 1\.0;[\s\S]*?hitboxMod: decayerHitbox/],
+
+  // Money & Tax 3 Powers
+  ['Money & Tax Power 1: main attack range +4 tiles (+192px / +0.35s life)', /const extraRangeTiles = isPowerPlayShowdownMode \? 192 : 0;[\s\S]*?maxCoinDist: 513 \+ extraRangeTiles/],
+  ['Money & Tax Power 2: Super combines both and adds 8 projectiles (14 coins + sticky bill)', /if \(isPowerPlayShowdownMode\) \{[\s\S]*?const coinCount = 6 \+ 8;[\s\S]*?isBoomerang: true[\s\S]*?isStickySuper: true/],
+  ['Money & Tax Power 3: main attack has 4 more coins to sides (7-9 coins per wave)', /const extraSideCoins = isPowerPlayShowdownMode \? 4 : 0;[\s\S]*?const coinsPerWave = \(mutationVolley \? 5 : 3\) \+ extraSideCoins;/],
 ];
 
 for (const [label, pattern] of checks) {
