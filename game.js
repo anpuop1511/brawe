@@ -46537,6 +46537,7 @@ let heistFeverActive = false;
                 const nowMs = performance.now();
                 const blinkProgress = Math.sin(nowMs * 0.003);
                 const eyelidClose = blinkProgress > 0.94 ? (blinkProgress - 0.94) / 0.06 : 0;
+                const isHyper = entity === player ? !!isHypercharged : !!entity?.isHypercharged;
                 
                 ctx.translate(entity.x, drawY);
                 ctx.rotate(aim);
@@ -51084,17 +51085,23 @@ let heistFeverActive = false;
             ctx.setLineDash([]);
             ctx.restore();
         } else if (selectedBrawler === 'outlit') {
-            // Boom Break travels 1100 * .6 speed for .4 seconds. Long Boom's
-            // 1.38 multiplier is applied once in the real Super code.
-            const range = 264 * (selectedStar === 'long' ? 1.38 : 1);
-            ctx.fillStyle = 'rgba(255, 200, 0, 0.25)';
+            const range = 440 * (selectedStar === 'long' ? 1.38 : 1);
+            ctx.fillStyle = isHypercharged ? 'rgba(220,90,255,.16)' : 'rgba(70,235,255,.15)';
             ctx.beginPath(); ctx.moveTo(player.x, player.y);
             ctx.arc(player.x, player.y, range, ang - 0.15, ang + 0.15);
             ctx.closePath(); ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 200, 0, 0.6)'; ctx.lineWidth = 2;
+            ctx.strokeStyle = isHypercharged ? '#df5cff' : '#46ebff'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(player.x, player.y);
             ctx.arc(player.x, player.y, range, ang - 0.15, ang + 0.15);
             ctx.closePath(); ctx.stroke();
+            ctx.globalAlpha = .62;
+            for (const offset of [-0.115, 0, 0.115]) {
+                ctx.beginPath();
+                ctx.moveTo(player.x, player.y);
+                ctx.lineTo(player.x + Math.cos(ang + offset) * range, player.y + Math.sin(ang + offset) * range);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
         } else if (selectedBrawler === 'echo') {
             const cones = (selectedStar === 'long') ? 2 : 1;
             const range = 936;
