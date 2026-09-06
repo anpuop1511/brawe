@@ -67,7 +67,7 @@ assert.match(game,/const signatureWallTravelGain=signatureCollector\?baseTravel\
 assert.match(game,/if\(signatureCollector\)[\s\S]{0,100}distLeft\+=signatureWallTravelGain/,'Signature aim telegraph previews its additive wall range gain');
 assert.match(game,/function lockMainAttackSequence\(owner, durationMs,[\s\S]{0,500}owner\.mainAttackSequenceUntil=/,'Scheduled volleys use a centralized attack-sequence lock');
 assert.match(game,/if\((?:!cursedForcedAttack && )?now < \(fromEntity\.mainAttackSequenceUntil\|\|0\)\)return;/,'A new ammo attack cannot begin during the current launch sequence');
-assert.match(game,/brawler === 'fuser'[\s\S]{0,520}lockMainAttackSequence\(fromEntity,\s*11\s*\*\s*delay,\s*now\)/,'Fuser cannot overlap twelve-round bursts');
+assert.match(game,/brawler === 'fuser'[\s\S]{0,520}lockMainAttackSequence\(fromEntity,\s*17\s*\*\s*delay,\s*now\)/,'Fuser cannot overlap eighteen-round bursts');
 assert.match(game,/lockMainAttackSequence\(fromEntity,\(balls-1\)\*88,now\)/,'Bouncin Balls cannot overlap multi-ball volleys');
 assert.match(game,/progress\.selectedGadget=selectedGadget[\s\S]{0,220}saveProgress\(\)/,'Changing gadgets persists the selected slot');
 assert.match(game,/if\(b\.echoInstinctVisual\)/,'Echo Instinct projectile has dedicated visible VFX');
