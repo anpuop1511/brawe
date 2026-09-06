@@ -23077,6 +23077,8 @@ let heistFeverActive = false;
             ? (decayerHomingArmed && selectedGadget === 'g1')
             : (fromEntity.decayerHomingArmed && fromEntity.selectedGadget === 'g1');
 
+        const decayerHitbox = isPowerPlayShowdownMode ? 3.0 : 1.0;
+        const decayerShieldCap = isPowerPlayShowdownMode ? 12500 : baseShieldCap;
         bullets.push({
             ownerBrawler: 'decayer',
             isDecayerShieldShot: true,
@@ -23091,7 +23093,8 @@ let heistFeverActive = false;
             hyperVisual: decayerHyper,
             ownerId: fromEntity.id,
             shieldGain: baseShieldGain,
-            shieldCap: baseShieldCap,
+            shieldCap: decayerShieldCap,
+            hitboxMod: decayerHitbox,
             homing: homingArmed,
             homingRadius: homingArmed ? 300 : 0,
             decayerAttachSlow: homingArmed && hasEntityAttachie(fromEntity, 'gadget', 'g1'),
@@ -30479,7 +30482,7 @@ let heistFeverActive = false;
       ['impossible', 'AI', 'The Impossible', '1v1 against an adaptive dodger']
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
-  const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo']);
+  const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer']);
   const HOME_PERMANENT_MODE_IDS = ['power_play_showdown', 'corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
@@ -30514,7 +30517,7 @@ let heistFeverActive = false;
       slop_sushi_plus: { type:'sushi_tapper', amount:1, label:'+1 Tower Drop' }
   };
   const HOME_MODE_RULES = {
-      power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo'],
+      power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo, Decayer'],
       tower_duels_weekend: ['Five complete Duels matches', 'Each floor rolls a fresh random trio of Power 11 guest brawlers', 'Complete Floor 5 to unlock the exclusive TOWER DUELAR title'],
       solo: ['50-player free-for-all', 'No respawns', 'Rare Nova Boxes grant +2 Power, shield and charge'],
       duo: ['25 teams of two', '12-second Rally Beacon respawns', 'Stand by an ally beacon to revive them 2.25x faster'],
@@ -38352,15 +38355,19 @@ let heistFeverActive = false;
     if (b.isOrboSuper && owner) {
         const ownerStar = owner.id === player.id ? selectedStar : (owner.selectedStar || 'none');
         if (ownerStar === 'long') target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + 1200);
-        // Each real enemy hit restores 35% of one normal Orbo main-hit charge.
-        // A piercing orb therefore rewards every enemy it actually connects with.
+        // Each real enemy hit restores a flat 23.4% Super charge. Piercing rewards
+        // every enemy connected with, while Hypercharge builds at a safer 25% rate.
         if (!target.isPet && !target.isSummon) {
-            const recharge = (100 / getSuperChargeHitsForBrawler('orbo')) * getAttackChargeMultiplier(owner) * .35;
+            const recharge = 23.4 * getAttackChargeMultiplier(owner);
+            const hyperRecharge = recharge * .25;
             if (owner.id === player.id) {
                 superCharge = clamp(superCharge + recharge, 0, 100);
+                if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + hyperRecharge, 0, 100);
                 updateSuperButton();
+                updateHyperButton();
             } else {
                 owner.superCharge = clamp((owner.superCharge || 0) + recharge, 0, 100);
+                if (!owner.isHypercharged) owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + hyperRecharge, 0, 100);
             }
         }
     }
@@ -39883,6 +39890,33 @@ let heistFeverActive = false;
                 const chargeDelta = (100 / 8) * dt;
                 if ((bt.superCharge || 0) < 100) {
                     bt.superCharge = clamp((bt.superCharge || 0) + chargeDelta, 0, 100);
+                }
+            }
+        }
+        // Decayer: +100 HP shield while moving (every 200ms) + 150% shield cap (12500 HP)
+        const decayerShieldCap = 12500;
+        if ((selectedBrawler === 'decayer' || player.brawler === 'decayer') && player.hp > 0) {
+            player.shieldCapOverride = decayerShieldCap;
+            player.shieldMax = Math.max(player.shieldMax || 0, decayerShieldCap);
+            const isMoving = Math.hypot(player.vx || 0, player.vy || 0) > 10 || (player.x !== player.prevX || player.y !== player.prevY);
+            player.lastDecayerMoveShield = player.lastDecayerMoveShield || now;
+            if (isMoving && now - player.lastDecayerMoveShield >= 200) {
+                player.lastDecayerMoveShield = now;
+                grantShield(player, 100, decayerShieldCap);
+                if (Math.random() < 0.35) {
+                    explosions.push({ x: player.x + (Math.random() - 0.5) * 24, y: player.y + (Math.random() - 0.5) * 24, radius: 18, life: 0, maxLife: 0.22, color: '#38ef7d', isParticle: true });
+                }
+            }
+        }
+        for (const bt of bots) {
+            if (bt && bt.hp > 0 && bt.brawler === 'decayer') {
+                bt.shieldCapOverride = decayerShieldCap;
+                bt.shieldMax = Math.max(bt.shieldMax || 0, decayerShieldCap);
+                const isMoving = Math.hypot(bt.vx || 0, bt.vy || 0) > 10;
+                bt.lastDecayerMoveShield = bt.lastDecayerMoveShield || now;
+                if (isMoving && now - bt.lastDecayerMoveShield >= 200) {
+                    bt.lastDecayerMoveShield = now;
+                    grantShield(bt, 100, decayerShieldCap);
                 }
             }
         }
@@ -56561,6 +56595,19 @@ let heistFeverActive = false;
           ctx.beginPath();ctx.moveTo(-17,6);ctx.quadraticCurveTo(-5,11+pulse*3,7,5);ctx.stroke();
           ctx.fillStyle='#fff1a3';ctx.beginPath();ctx.arc(0,0,6+pulse*2,0,Math.PI*2);ctx.fill();
           ctx.strokeStyle='rgba(255,247,203,.8)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,10+pulse*3,0,Math.PI*2);ctx.stroke();ctx.restore();continue;
+      }
+      if (b.isDecayerShieldShot) {
+          const angle = Math.atan2(b.vy || 0, b.vx || 1);
+          const rad = (b.super ? 12 : 6.5) * (b.hitboxMod || 1);
+          ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(angle);
+          ctx.shadowColor = b.hyperVisual ? '#00ffcc' : '#38ef7d';
+          ctx.shadowBlur = 12 * (b.hitboxMod ? Math.min(2, b.hitboxMod * 0.7) : 1);
+          ctx.fillStyle = b.hyperVisual ? '#00e5ff' : '#11998e';
+          ctx.beginPath(); ctx.arc(0, 0, rad, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.5, 1.5 * (b.hitboxMod || 1));
+          ctx.beginPath(); ctx.arc(0, 0, rad * 0.65, 0, Math.PI * 2); ctx.stroke();
+          ctx.restore();
+          continue;
       }
       if(b.echoInstinctVisual){
           const angle=Math.atan2(b.vy||0,b.vx||1),pulse=.5+Math.sin(performance.now()/70)*.5;

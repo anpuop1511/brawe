@@ -9,7 +9,7 @@ const checks = [
   ['Power Play Showdown rules defined in HOME_MODE_RULES', /power_play_showdown:\s*\[[\s\S]*?12-player Solo Battle Royale with Power Cubes/],
   ['Power Play Showdown spawns 11 enemy bots (12 players total per match)', /if \(isPowerPlayShowdownMode\) enemyCount = 11;/],
   ['Power Play Showdown rewards defined in HOME_EVENT_REWARDS', /power_play_showdown:\s*\{\s*type:'coins',\s*amount:60/],
-  ['Curated brawlers set defined with Orbo', /const POWER_PLAY_BRAWLERS = new Set\(\['blinkeye',\s*'fuser',\s*'rocketeer',\s*'bouncin_balls',\s*'echo',\s*'orbo'\]\);/],
+  ['Curated brawlers set defined with Decayer', /const POWER_PLAY_BRAWLERS = new Set\(\['blinkeye',\s*'fuser',\s*'rocketeer',\s*'bouncin_balls',\s*'echo',\s*'orbo',\s*'decayer'\]\);/],
   ['Mode runtime flag isPowerPlayShowdownMode initialized', /let isPowerPlayShowdownMode = false;/],
   ['launchShowdownMatch activates isPowerPlayShowdownMode and enforces curated brawler', /isPowerPlayShowdownMode = showdownMode === 'power_play_showdown';[\s\S]*?!POWER_PLAY_BRAWLERS\.has\(selectedBrawler\)/],
   ['Bot pool restricted to curated brawlers in power play showdown', /if \(isPowerPlayShowdownMode\) \{[\s\S]*?const ppPool = \[\.\.\.POWER_PLAY_BRAWLERS\]/],
@@ -43,6 +43,11 @@ const checks = [
   ['Orbo Power 1: main attack +10 extra wide orbs (14-16 total) with 2x amplitude', /const count = \(hyperMain \? 6 : 4\) \+ \(isPowerPlayShowdownMode \? 10 : 0\);[\s\S]*?const amplitude = \(dense \? 72 : 54\) \* \(isPowerPlayShowdownMode \? 2\.0 : 1\.0\);/],
   ['Orbo Power 2: Super bouncy and infinite range (maxLife 12.0s, canBounce true)', /maxLife: isPowerPlay \? 12\.0 : \(edgeDistance \/ speed\)[\s\S]*?canBounce: !*isPowerPlay/],
   ['Orbo Power 3: Super auto-charges over 8 seconds in update loop', /const chargeDelta = \(100 \/ 8\) \* dt;[\s\S]*?superCharge = clamp\(superCharge \+ chargeDelta, 0, 100\);/],
+
+  // Decayer 3 Powers
+  ['Decayer Power 1: movement generates +100 HP shield', /grantShield\(player,\s*100,\s*decayerShieldCap\);/],
+  ['Decayer Power 2: shield cap increased by 150% (12500 HP max)', /const decayerShieldCap = 12500;/],
+  ['Decayer Power 3: main attack size +200% (hitboxMod 3.0)', /const decayerHitbox = isPowerPlayShowdownMode \? 3\.0 : 1\.0;[\s\S]*?hitboxMod: decayerHitbox/],
 ];
 
 for (const [label, pattern] of checks) {
