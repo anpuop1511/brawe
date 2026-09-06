@@ -33918,7 +33918,7 @@ let heistFeverActive = false;
                   bouncin_balls: '2x BALL SPEED • +8 SUPER BALLS • GATLING TURRET',
                   echo: 'SONIC PULSE • 5s 360° BURST • 3x SUPER RINGS',
                   orbo: '+10 WIDE ORBS • BOUNCING SUPER • AUTO CHARGE',
-                  decayer: '2x FAST MOVE SHIELD • +150% SHIELD CAP • 3x ATTACK SIZE'
+                  decayer: '4x MOVE SHIELD (+200 HP) • +150% SHIELD CAP • 3x ATTACK SIZE'
               };
               if (powerNames[selectedBrawler]) {
                   setTimeout(() => spawnFloatingText(player.x, player.y - 45, powerNames[selectedBrawler], '#38e8ff'), 350);
@@ -39895,16 +39895,16 @@ let heistFeverActive = false;
                 }
             }
         }
-        // Decayer: +100 HP shield while moving (every 200ms) + 150% shield cap (12500 HP)
+        // Decayer: +200 HP shield while moving (every 50ms - 100% faster again + 100% bonus) + 150% shield cap (12500 HP)
         const decayerShieldCap = 12500;
         if ((selectedBrawler === 'decayer' || player.brawler === 'decayer') && player.hp > 0) {
             player.shieldCapOverride = decayerShieldCap;
             player.shieldMax = Math.max(player.shieldMax || 0, decayerShieldCap);
             const isMoving = Math.hypot(player.vx || 0, player.vy || 0) > 10 || (player.x !== player.prevX || player.y !== player.prevY);
             player.lastDecayerMoveShield = player.lastDecayerMoveShield || now;
-            if (isMoving && now - player.lastDecayerMoveShield >= 100) {
+            if (isMoving && now - player.lastDecayerMoveShield >= 50) {
                 player.lastDecayerMoveShield = now;
-                grantShield(player, 100, decayerShieldCap);
+                grantShield(player, 200, decayerShieldCap);
                 if (Math.random() < 0.35) {
                     explosions.push({ x: player.x + (Math.random() - 0.5) * 24, y: player.y + (Math.random() - 0.5) * 24, radius: 18, life: 0, maxLife: 0.22, color: '#38ef7d', isParticle: true });
                 }
@@ -39916,9 +39916,9 @@ let heistFeverActive = false;
                 bt.shieldMax = Math.max(bt.shieldMax || 0, decayerShieldCap);
                 const isMoving = Math.hypot(bt.vx || 0, bt.vy || 0) > 10;
                 bt.lastDecayerMoveShield = bt.lastDecayerMoveShield || now;
-                if (isMoving && now - bt.lastDecayerMoveShield >= 100) {
+                if (isMoving && now - bt.lastDecayerMoveShield >= 50) {
                     bt.lastDecayerMoveShield = now;
-                    grantShield(bt, 100, decayerShieldCap);
+                    grantShield(bt, 200, decayerShieldCap);
                 }
             }
         }
