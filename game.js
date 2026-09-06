@@ -2419,7 +2419,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       let nearbyThreat = false;
       for (const b of bots) {
           if (b && b.hp > 0 && !areAlliedEntities(player, b)) {
-              if (Math.hypot(b.x - player.x, b.y - player.y) <= 350) {
+              if (Math.hypot(b.x - player.x, b.y - player.y) <= 360) {
                   nearbyThreat = true;
                   break;
               }
@@ -2427,42 +2427,41 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       }
 
       ctx.save();
-      // Recentered at Top-Center to never block game controls or bottom HUD
-      const pipW = 160;
-      const pipH = 88;
+      // Larger (240x140), 100% Solid/Opaque Top-Center Tactical Screen
+      const pipW = 240;
+      const pipH = 140;
       const pipX = Math.round((innerWidth - pipW) / 2);
       const pipY = 16;
 
-      // Outer bezel & glow
+      // Outer Bezel: 100% SOLID Opaque Background (no map bleeding)
       const pulse = Math.sin(now * 0.008) * 3;
-      ctx.fillStyle = 'rgba(6, 12, 24, 0.88)';
+      ctx.fillStyle = '#040b17';
+      ctx.fillRect(pipX, pipY, pipW, pipH);
+
       ctx.strokeStyle = nearbyThreat ? '#ff3b56' : (isHyper ? '#d25bff' : '#ffa726');
       ctx.lineWidth = nearbyThreat ? (3.5 + pulse * 0.5) : 2.5;
       ctx.shadowColor = ctx.strokeStyle;
       ctx.shadowBlur = nearbyThreat ? 18 : 12;
-      ctx.beginPath();
-      ctx.roundRect(pipX, pipY, pipW, pipH, 10);
-      ctx.fill();
-      ctx.stroke();
+      ctx.strokeRect(pipX, pipY, pipW, pipH);
 
-      // Clip inside screen
+      // Clip inside monitor screen
       ctx.save();
       ctx.beginPath();
-      ctx.roundRect(pipX + 3, pipY + 3, pipW - 6, pipH - 6, 8);
+      ctx.rect(pipX + 4, pipY + 4, pipW - 8, pipH - 8);
       ctx.clip();
 
-      // Mini world background centered on player
+      // Screen Interior: Solid dark base
       const cx = pipX + pipW / 2;
-      const cy = pipY + pipH / 2 + 4;
-      const zoom = 0.16;
+      const cy = pipY + pipH / 2 + 6;
+      const zoom = 0.20;
 
-      ctx.fillStyle = '#060f1c';
-      ctx.fillRect(pipX, pipY, pipW, pipH);
+      ctx.fillStyle = '#02060f';
+      ctx.fillRect(pipX + 4, pipY + 4, pipW - 8, pipH - 8);
 
-      // Radar scan grid
-      ctx.strokeStyle = isHyper ? 'rgba(210, 91, 255, 0.18)' : 'rgba(255, 167, 38, 0.15)';
+      // Tactical Grid lines
+      ctx.strokeStyle = isHyper ? 'rgba(210, 91, 255, 0.20)' : 'rgba(255, 167, 38, 0.16)';
       ctx.lineWidth = 1;
-      for (let g = -300; g <= 300; g += 50) {
+      for (let g = -400; g <= 400; g += 50) {
           ctx.beginPath();
           ctx.moveTo(cx + g * zoom, pipY);
           ctx.lineTo(cx + g * zoom, pipY + pipH);
@@ -2473,14 +2472,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           ctx.stroke();
       }
 
-      // Radar range circle
-      ctx.strokeStyle = nearbyThreat ? 'rgba(255, 59, 86, 0.35)' : (isHyper ? 'rgba(210, 91, 255, 0.25)' : 'rgba(255, 167, 38, 0.2)');
+      // Range circles
+      ctx.strokeStyle = nearbyThreat ? 'rgba(255, 59, 86, 0.40)' : (isHyper ? 'rgba(210, 91, 255, 0.30)' : 'rgba(255, 167, 38, 0.25)');
       ctx.beginPath();
-      ctx.arc(cx, cy, 260 * zoom, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 300 * zoom, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Mini obstacles
-      ctx.fillStyle = 'rgba(80, 110, 140, 0.35)';
+      // Mini map obstacles
+      ctx.fillStyle = '#1c2d40';
       for (const c of cubes) {
           const rx = (c.x - player.x) * zoom + cx;
           const ry = (c.y - player.y) * zoom + cy;
@@ -2491,13 +2490,21 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           }
       }
 
-      // Draw mini BlinkEye (player body)
+      // Player Body Beacon at Center
       ctx.fillStyle = '#ffa726';
       ctx.shadowColor = '#ffa726';
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 6, 0, Math.PI * 2);
       ctx.fill();
+
+      // Crosshairs on player body
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
+      ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
+      ctx.stroke();
 
       // Mini eye projectile position on radar
       if (player.blinkeyeActiveEye) {
@@ -2505,15 +2512,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           const eyeY = (player.blinkeyeActiveEye.y - player.y) * zoom + cy;
           ctx.fillStyle = isHyper ? '#d25bff' : '#ffa726';
           ctx.shadowColor = ctx.fillStyle;
-          ctx.shadowBlur = 6;
+          ctx.shadowBlur = 8;
           ctx.beginPath();
-          ctx.arc(eyeX, eyeY, 4, 0, Math.PI * 2);
+          ctx.arc(eyeX, eyeY, 5, 0, Math.PI * 2);
           ctx.fill();
 
           // Tether line
-          ctx.strokeStyle = isHyper ? 'rgba(210, 91, 255, 0.45)' : 'rgba(255, 167, 38, 0.4)';
-          ctx.lineWidth = 1;
-          ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = isHyper ? 'rgba(210, 91, 255, 0.55)' : 'rgba(255, 167, 38, 0.50)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 3]);
           ctx.beginPath();
           ctx.moveTo(cx, cy);
           ctx.lineTo(eyeX, eyeY);
@@ -2530,43 +2537,58 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
               const isEnemy = !areAlliedEntities(player, b);
               ctx.fillStyle = isEnemy ? '#ff3b56' : '#2ed573';
               ctx.shadowColor = ctx.fillStyle;
-              ctx.shadowBlur = 5;
+              ctx.shadowBlur = 6;
               ctx.beginPath();
-              ctx.arc(cx + dx, cy + dy, isEnemy ? 4 : 3, 0, Math.PI * 2);
+              ctx.arc(cx + dx, cy + dy, isEnemy ? 5 : 4, 0, Math.PI * 2);
               ctx.fill();
           }
       }
 
       ctx.restore(); // end clip
 
-      // PiP Header Overlay
+      // Top Header Overlay Bar (Solid Opaque Header)
+      ctx.fillStyle = 'rgba(2, 6, 14, 0.95)';
+      ctx.fillRect(pipX + 4, pipY + 4, pipW - 8, 20);
+
       ctx.fillStyle = nearbyThreat ? '#ff3b56' : (isHyper ? '#d25bff' : '#ffa726');
-      ctx.font = 'bold 9px monospace';
+      ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(nearbyThreat ? '⚠️ BODY THREAT' : '👁️ BODY RADAR', pipX + 6, pipY + 12);
+      ctx.fillText(nearbyThreat ? '⚠️ BODY THREAT DETECTED' : '👁️ BODY SECURITY RADAR', pipX + 10, pipY + 18);
 
       // Remaining Time Pill
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px monospace';
+      ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText(secondsLeft + 's', pipX + pipW - 6, pipY + 12);
+      ctx.fillText(secondsLeft + 's', pipX + pipW - 10, pipY + 18);
+
+      // Bottom Status Bar (Solid Opaque Footer)
+      ctx.fillStyle = 'rgba(2, 6, 14, 0.95)';
+      ctx.fillRect(pipX + 4, pipY + pipH - 26, pipW - 8, 22);
 
       // Player HP Bar in PiP
       const hpPct = clamp(player.hp / player.maxHp, 0, 1);
-      const hpBarW = pipW - 12;
-      const hpBarH = 4;
-      const hpBarX = pipX + 6;
-      const hpBarY = pipY + pipH - 16;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      const hpBarW = 100;
+      const hpBarH = 6;
+      const hpBarX = pipX + 10;
+      const hpBarY = pipY + pipH - 18;
+      ctx.fillStyle = '#000000';
       ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
       ctx.fillStyle = hpPct > 0.5 ? '#2ed573' : (hpPct > 0.25 ? '#ffa502' : '#ff4757');
       ctx.fillRect(hpBarX, hpBarY, hpBarW * hpPct, hpBarH);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(hpBarX, hpBarY, hpBarW, hpBarH);
+
+      ctx.fillStyle = '#cfeef7';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${player.hp}/${player.maxHp}`, hpBarX + hpBarW + 6, hpBarY + 6);
 
       // Exit / Detonate Prompt
       ctx.fillStyle = '#ffeaa7';
-      ctx.font = 'bold 8px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('[E] / [SPACE] / CLICK TO EXIT', pipX + pipW / 2, pipY + pipH - 5);
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('[E] / [SPACE]: EXIT', pipX + pipW - 10, hpBarY + 6);
 
       ctx.restore();
   }
@@ -6013,7 +6035,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           attackDesc: 'Fires an ultra-fast optic sniper shot. Bouncing off a wall grants +100% range per bounce (up to 2 bounces for +200% max range).',
           super: 'We All See',
           superDesc: 'Gains 40% damage reduction and steers an All-Seeing Eye projectile with camera tracking and a mini threat-radar screen for 16s. Press Super, Space, or Click to manually detonate & exit early.',
-          hyper: 'Omnipresent Sight: Main attack fires 2 rapid purple shots. Super grants 70% damage reduction, lasts 20s, and launches purple eye missiles at all enemies in direct line-of-sight every 0.6s.',
+          hyper: 'Omnipresent Sight: Main attack fires 2 rapid purple shots. Super grants 70% damage reduction, lasts 20s, and launches homing, piercing purple eye missiles at all enemies in direct line-of-sight every 0.6s.',
           g1: 'Retinal Flash (Optic shockwave that knocks back nearby enemies and blinds them for 1.8s)',
           g2: 'Prism Bumper (Deploys an eye bumper that reflects any sniper shot with guaranteed +100% range)',
           sp1: 'Rebound Focus (Bounced shots deal +25% bonus damage on 1st bounce and +50% on 2nd bounce)',
@@ -37436,7 +37458,21 @@ let heistFeverActive = false;
             spawnFloatingText(target.x, target.y - 30, 'DODGE!', '#9be7ff');
             return true;
         }
-    if (b.isBlinkEyeSteeredEye) {
+    if (b.isBlinkEyeMissile && b.targetId) {
+          const tgt = getEntityById(b.targetId);
+          if (tgt && tgt.hp > 0) {
+              const desiredAng = Math.atan2(tgt.y - b.y, tgt.x - b.x);
+              const curAng = Math.atan2(b.vy, b.vx);
+              const diff = Math.atan2(Math.sin(desiredAng - curAng), Math.cos(desiredAng - curAng));
+              const steerRate = 8.5 * dt;
+              const newAng = curAng + clamp(diff, -steerRate, steerRate);
+              const spd = b.speed || 850;
+              b.vx = Math.cos(newAng) * spd;
+              b.vy = Math.sin(newAng) * spd;
+          }
+      }
+
+      if (b.isBlinkEyeSteeredEye) {
         const owner = getEntityById(b.ownerId);
         if (target && owner && (target.id === owner.id || areAlliedEntities(owner, target))) {
             return false;
@@ -42114,14 +42150,17 @@ let heistFeverActive = false;
                           id: nextId++,
                           ownerBrawler: 'blinkeye',
                           isBlinkEyeMissile: true,
+                          targetId: victim.id,
                           x: b.x,
                           y: b.y,
-                          vx: Math.cos(mAng) * 800,
-                          vy: Math.sin(mAng) * 800,
+                          vx: Math.cos(mAng) * 850,
+                          vy: Math.sin(mAng) * 850,
+                          speed: 850,
                           life: 0,
-                          maxLife: 1.2,
+                          maxLife: 1.4,
                           damage: owner.id === player.id ? 850 : 650,
-                          pierce: false,
+                          pierce: true,
+                          pierceWalls: true,
                           ownerId: owner.id,
                           hyperVisual: true,
                           hitIds: {}
