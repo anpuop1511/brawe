@@ -2293,16 +2293,27 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   // ==========================================
   // BLINKEYE (THE REBOUND BRANCH) HELPERS
   // ==========================================
+  function segmentIntersectsAABB(x1, y1, x2, y2, rx, ry, rw, rh) {
+      if (x1 >= rx && x1 <= rx + rw && y1 >= ry && y1 <= ry + rh) return true;
+      if (x2 >= rx && x2 <= rx + rw && y2 >= ry && y2 <= ry + rh) return true;
+      const ccw = (ax, ay, bx, by, cx, cy) => (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
+      const lineIntersect = (ax, ay, bx, by, cx, cy, dx, dy) =>
+          (ccw(ax, ay, cx, cy, dx, dy) !== ccw(bx, by, cx, cy, dx, dy)) &&
+          (ccw(ax, ay, bx, by, cx, cy) !== ccw(ax, ay, bx, by, dx, dy));
+      return lineIntersect(x1, y1, x2, y2, rx, ry, rx + rw, ry) ||
+             lineIntersect(x1, y1, x2, y2, rx + rw, ry, rx + rw, ry + rh) ||
+             lineIntersect(x1, y1, x2, y2, rx + rw, ry + rh, rx, ry + rh) ||
+             lineIntersect(x1, y1, x2, y2, rx, ry + rh, rx, ry);
+  }
+
   function hasBlinkEyeSight(x1, y1, x2, y2) {
-      const dx = x2 - x1;
-      const dy = y2 - y1;
       for (const c of cubes) {
-          if (intersectRayAABB(x1, y1, dx, dy, c.x, c.y, c.w, c.h) !== null) {
+          if (c && segmentIntersectsAABB(x1, y1, x2, y2, c.x, c.y, c.w, c.h)) {
               return false;
           }
       }
       for (const dw of destructibleWalls) {
-          if (intersectRayAABB(x1, y1, dx, dy, dw.x, dw.y, dw.w, dw.h) !== null) {
+          if (dw && dw.hp > 0 && segmentIntersectsAABB(x1, y1, x2, y2, dw.x, dw.y, dw.w, dw.h)) {
               return false;
           }
       }
@@ -22171,7 +22182,7 @@ let heistFeverActive = false;
         performPredatorLeap(fromEntity,targetX,targetY,isBot,isBot?!!fromEntity.isHypercharged:!!isHypercharged);
         return;
     } else if (brawler === 'orbo') {
-        const hyperMain = (isPowerPlayShowdownMode && fromEntity.brawler === 'rocketeer') ? true : (isBot ? !!fromEntity.isHypercharged : !!isHypercharged);
+        const hyperMain = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const dense = isBot ? !!fromEntity.orboDenseArmed : (gadgetArmed && selectedGadget === 'g1');
         const count = hyperMain ? 6 : 4;
         const speed = 790;
@@ -22198,7 +22209,7 @@ let heistFeverActive = false;
         }
         return;
     } else if (brawler === 'homer') {
-        const hyperMain=(isPowerPlayShowdownMode && fromEntity.brawler === 'rocketeer') ? true : (isBot ? !!fromEntity.isHypercharged : !!isHypercharged);
+        const hyperMain = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const hardLock=!!fromEntity.homerPerfectShotArmed;
         const learned=clamp(fromEntity.homerHomingPct||.15,.15,.70),calibration=now<(fromEntity.homerCalibrationUntil||0) ? .20 : 0;
         const tuned=clamp(learned+calibration,.15,1);
@@ -23772,7 +23783,7 @@ let heistFeverActive = false;
             }
         }
     } else if (brawler === 'unstable') {
-        const hyperMain=(isPowerPlayShowdownMode && fromEntity.brawler === 'rocketeer') ? true : (isBot ? !fromEntity.isHypercharged : !isHypercharged);
+        const hyperMain = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const slots=Math.max(0,3-getUnstableMainContainerCount(fromEntity)),count=Math.min(hyperMain?2:1,slots),dist=Math.min(620,Math.hypot(dx,dy));
         const tx=fromEntity.x+Math.cos(ang)*dist,ty=fromEntity.y+Math.sin(ang)*dist,perp=ang+Math.PI/2;
         for(let i=0;i<count;i++){
@@ -27409,7 +27420,7 @@ let heistFeverActive = false;
                 }, i * 60);
             }
         } else {
-            const balls = hc ? 10 : 7;
+            const balls = (hc ? 10 : 7) + (isPowerPlayShowdownMode ? 8 : 0);
             for (let i = 0; i < balls; i++) {
                 setTimeout(() => { // +10% Delay (80ms -> 88ms)
                     bullets.push({ ownerBrawler: 'bouncin_balls', x: player.x, y: player.y, vx: Math.cos(ang) * 900 * 0.6 * (hc ? 1.2 : 1.0) * (isPowerPlayShowdownMode ? 2.0 : 1.0), vy: Math.sin(ang) * 900 * 0.6 * (hc ? 1.2 : 1.0) * (isPowerPlayShowdownMode ? 2.0 : 1.0), life: 0, maxLife: 2.0 * (hc ? 1.2 : 1.0), damage: 310, pierce: true, hyperVisual: hc, ownerId: player.id, super: true, canBounce: true, bounceDmgLoss: 0, bounceLifeLoss: 0, ownerSp2: sp2, splitOnHit: hc, hitIds: {}, hitboxMod: 1.5 });
@@ -38838,7 +38849,7 @@ let heistFeverActive = false;
           ownerId: sourceBullet.ownerId,
           radius: 10,
           maxRadius: 80 * (sourceBullet.ringSizeMod || 1.0),
-          growthRate: 150, // pixels per second
+          growthRate: 150 * Math.max(1, (sourceBullet.ringSizeMod || 1.0) * 0.65), // pixels per second
         damage: sourceBullet.damage * (sourceBullet.ringDmgMod || 1.0), // damage relies on bullet stats now
           hitIds: {}, // track what entities this ring has hit
         sourceBullet,
@@ -39829,6 +39840,19 @@ let heistFeverActive = false;
     if(!playing || gameOver) return;
     const now = performance.now();
     if (isPowerPlayShowdownMode) {
+        // Rocketeer: Permanent active Hypercharge state
+        if (player.brawler === 'rocketeer' && player.hp > 0) {
+            isHypercharged = true;
+            hyperchargeUntil = now + 999999;
+            hyperChargeCharge = 100;
+        }
+        for (const bt of bots) {
+            if (bt && bt.hp > 0 && bt.brawler === 'rocketeer') {
+                bt.isHypercharged = true;
+                bt.hyperchargeUntil = now + 999999;
+                bt.hyperChargeCharge = 100;
+            }
+        }
         const echoEntities = [player, ...bots].filter(e => e && e.hp > 0 && e.brawler === 'echo');
         for (const echoEnt of echoEntities) {
             echoEnt.lastEcho360Burst = echoEnt.lastEcho360Burst || now;
@@ -41595,7 +41619,7 @@ let heistFeverActive = false;
               if (target) {
                   const ang = Math.atan2(target.y - pod.y, target.x - pod.x);
                   for (let i = 0; i < 3; i++) {
-                      setTimeout(() => { bullets.push({ ownerBrawler: 'bouncin_balls', x: pod.x, y: pod.y, vx: Math.cos(ang) * 900 * 0.6, vy: Math.sin(ang) * 900 * 0.6, life: 0, maxLife: 1.7, damage: 250, pierce: false, ownerId: pod.ownerId, canBounce: true, bounceDmgLoss: 0.05, bounceLifeLoss: 0.05, hitboxMod: 1.5 }); }, i * 165);
+                      setTimeout(() => { const ballSpeedMult = isPowerPlayShowdownMode ? 2.0 : 1.0; bullets.push({ ownerBrawler: 'bouncin_balls', x: pod.x, y: pod.y, vx: Math.cos(ang) * 900 * 0.6 * ballSpeedMult, vy: Math.sin(ang) * 900 * 0.6 * ballSpeedMult, life: 0, maxLife: 1.7, damage: 250, pierce: false, ownerId: pod.ownerId, canBounce: true, bounceDmgLoss: 0.05, bounceLifeLoss: 0.05, hitboxMod: 1.5 }); }, i * 165);
                   }
               }
               pod.lastTurretFire = now;
@@ -42165,10 +42189,11 @@ let heistFeverActive = false;
       }
 
       if (isPowerPlayShowdownMode && b.ownerBrawler === 'blinkeye' && b.isBlinkEyeMain && !b.pierce) {
-          let nearestEnemy = null, minDist = 600;
+          let nearestEnemy = null, minDist = 650;
+          const bOwner = getEntityById(b.ownerId);
           const enemies = b.ownerId === player.id ? bots : [player, ...bots];
           for (const e of enemies) {
-              if (!e || e.hp <= 0 || e.id === b.ownerId || areAlliedEntities({ id: b.ownerId }, e)) continue;
+              if (!e || e.hp <= 0 || e.id === b.ownerId || (bOwner && areAlliedEntities(bOwner, e))) continue;
               const d = Math.hypot(e.x - b.x, e.y - b.y);
               if (d < minDist) { minDist = d; nearestEnemy = e; }
           }
@@ -42179,7 +42204,7 @@ let heistFeverActive = false;
               while (diff < -Math.PI) diff += Math.PI * 2;
               while (diff > Math.PI) diff -= Math.PI * 2;
               const spd = Math.hypot(b.vx, b.vy) || 1450;
-              const newAng = curAng + Math.sign(diff) * Math.min(Math.abs(diff), 3.5 * (typeof dt !== 'undefined' ? dt : 0.016));
+              const newAng = curAng + Math.sign(diff) * Math.min(Math.abs(diff), 4.5 * (typeof dt !== 'undefined' ? dt : 0.016));
               b.vx = Math.cos(newAng) * spd;
               b.vy = Math.sin(newAng) * spd;
           }
@@ -42787,7 +42812,7 @@ let heistFeverActive = false;
       }
       b.x += b.vx * dt;
       b.y += b.vy * dt;
-      if (isPowerPlayShowdownMode && b.ownerBrawler === 'echo' && b.isEchoRingProj && !b.isEchoSuperRing) {
+      if (isPowerPlayShowdownMode && b.ownerBrawler === 'echo' && b.isEchoRingProj && !b.super) {
           b.lastEchoRingPulse = b.lastEchoRingPulse || b.createdAt || now;
           if (now - b.lastEchoRingPulse >= 600) {
               b.lastEchoRingPulse = now;
@@ -55166,7 +55191,7 @@ let heistFeverActive = false;
           ctx.restore();continue;
       } else if (b.ownerBrawler === 'fuser' && b.isFuserBullet) {
           const a=Math.atan2(b.vy||0,b.vx||1);
-          const isSuperShot=!!b.super,coreR=isSuperShot?13.7:4.1;
+          const isSuperShot=!!b.super,coreR=(isSuperShot?13.7:4.1)*(b.hitboxMod?Math.max(1,b.hitboxMod*.9):1);
           if (activeSkinId === 'hyperfusion-fuser') {
               const transformed=!!b.hyperVisual;
               const lane=(b.fuserShotIndex||0)%2;

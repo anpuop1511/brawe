@@ -17,7 +17,7 @@ const checks = [
   ['Fuser player super hitboxMod is 2.45 (+40% buff)', /ownerBrawler:'fuser',isFuserBullet:true[\s\S]*?hitboxMod:2\.45,hyperVisual:isHypercharged/],
   ['Fuser bot super hitboxMod is 2.45 (+40% buff)', /ownerBrawler:'fuser',isFuserBullet:true[\s\S]*?hitboxMod:2\.45,hyperVisual:hyper/],
   ['Fuser super aim indicator width is 63 base and 35 hypercharged', /halfWidth=isHypercharged\?35:63;/],
-  ['Fuser super projectile renderer core radius is 13.7', /coreR=isSuperShot\?13\.7:4\.1/],
+  ['Fuser super projectile renderer core radius is 13.7', /coreR=\(isSuperShot\?13\.7:4\.1\)/],
   ['Fuser hyperfusion super projectile line width is 15.7', /ctx\.lineWidth=isSuperShot\?15\.7:5/],
   ['Fuser default super projectile line width is 11.8', /ctx\.lineWidth=isSuperShot\?11\.8:3/],
   ['Fuser brawlerData description reflects eighteen-round burst and +50% projectile speed', /Fires 18 rapid bullets with 30% larger hitboxes in alternating parallel left and right lanes with \+50% faster unload and \+50% projectile speed/],

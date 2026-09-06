@@ -16,7 +16,7 @@ const checks = [
   
   // BlinkEye 3 Powers
   ['BlinkEye Power 1: infinite bounces in Power Play Showdown', /!isPowerPlayShowdownMode && b\.blinkeyeBounceCount > 2/],
-  ['BlinkEye Power 2: 2x missile fire rate (300ms) in Power Play Showdown', /const interval = isPowerPlayShowdownMode \? 300 : 600;/],
+  ['BlinkEye Power 2: 2x missile fire rate (300ms) and functional line of sight check', /function segmentIntersectsAABB[\s\S]*?const interval = isPowerPlayShowdownMode \? 300 : 600;/],
   ['BlinkEye Power 3: main attack homing in Power Play Showdown', /isPowerPlayShowdownMode && b\.ownerBrawler === 'blinkeye' && b\.isBlinkEyeMain/],
 
   // Fuser 3 Powers
@@ -27,15 +27,15 @@ const checks = [
   // Rocketeer 3 Powers
   ['Rocketeer Power 1: Fire zone size +200% (3x radius)', /function spawnRocketeerFireZone[\s\S]*?if \(isPowerPlayShowdownMode\) radius \*= 3;/],
   ['Rocketeer Power 2: Super +4 extra fire zones', /const strikeCount = 3 \+ \(isPowerPlayShowdownMode \? 4 : 0\)/],
-  ['Rocketeer Power 3: permanent active hypercharge in Power Play Showdown', /const hyperMain=\(isPowerPlayShowdownMode && fromEntity\.brawler === 'rocketeer'\)/],
+  ['Rocketeer Power 3: permanent active hypercharge in Power Play Showdown', /player\.brawler === 'rocketeer' && player\.hp > 0[\s\S]*?isHypercharged = true;[\s\S]*?hyperchargeUntil = now \+ 999999;/],
 
   // Bouncin Balls 3 Powers
   ['Bouncin Balls Power 1: 2x ball speed in Power Play Showdown', /\* \(isPowerPlayShowdownMode \? 2\.0 : 1\.0\)/],
-  ['Bouncin Balls Power 2: Super +8 extra balls (16 total)', /\+ \(isPowerPlayShowdownMode \? 8 : 0\)/],
-  ['Bouncin Balls Power 3: Turret fire interval 0.3s (300ms)', /const turretInterval = isPowerPlayShowdownMode \? 300 : 1800;/],
+  ['Bouncin Balls Power 2: Super +8 extra balls (16 total) for player & bot', /const balls = \(hc \? 10 : 7\) \+ \(isPowerPlayShowdownMode \? 8 : 0\);/],
+  ['Bouncin Balls Power 3: Turret fire interval 0.3s (300ms) with 2x ball speed', /const turretInterval = isPowerPlayShowdownMode \? 300 : 1800;[\s\S]*?const ballSpeedMult = isPowerPlayShowdownMode \? 2\.0 : 1\.0;/],
 
   // Echo 3 Powers
-  ['Echo Power 1: traveling sonic pulse rings every 0.6s', /if \(isPowerPlayShowdownMode && b\.ownerBrawler === 'echo' && b\.isEchoRingProj && !b\.isEchoSuperRing\) \{[\s\S]*?now - b\.lastEchoRingPulse >= 600/],
+  ['Echo Power 1: traveling sonic pulse rings every 0.6s', /if \(isPowerPlayShowdownMode && b\.ownerBrawler === 'echo' && b\.isEchoRingProj && !b\.super\) \{[\s\S]*?now - b\.lastEchoRingPulse >= 600/],
   ['Echo Power 2: 5-second 360-degree sonic burst', /now - echoEnt\.lastEcho360Burst >= 5000[\s\S]*?360° SONIC BURST!/],
   ['Echo Power 3: Super rings 200% bigger (4.5x size mod)', /ringSizeMod: isPowerPlayShowdownMode \? 4\.5 : 1\.5/],
 ];
