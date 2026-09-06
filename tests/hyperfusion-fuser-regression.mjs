@@ -16,7 +16,7 @@ const checks = [
   ['original Fuser projectile fallback remains', /const accent=b\.hyperVisual\?'#e991ff'/],
   ['custom Core Breach takedown renders', /ex\.skinId === 'hyperfusion-fuser' && kind === 'takedown'[\s\S]*?CORE BREACH/],
   ['Training targets can preview takedowns', /target\.hp <= 0 && b\.ownerId === player\.id\)[\s\S]*?triggerSkinPulse\(target, takedownSkin, 'takedown'\)/],
-  ['gameplay projectile hitbox remains unchanged', /ownerBrawler:'fuser',isFuserBullet:true[\s\S]*?hitboxMod:\.983/],
+  ['gameplay projectile hitbox remains unchanged', /ownerBrawler:\s*'fuser',\s*isFuserBullet:\s*true[\s\S]*?hitboxMod:\s*\.983/],
 ];
 
 for (const [label, pattern] of checks) assert.match(game, pattern, label);

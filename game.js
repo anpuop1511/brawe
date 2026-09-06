@@ -6201,7 +6201,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       'homer': { name:'Homer', role:'Marksman', desc:'A learning sniper whose shots become better at tracking targets after every Super.', color:'#66d9ff', attack:'Learning Shot', attackDesc:'Fire a long-range 1800-damage sniper shot. Its homing starts at 10% and improves after using Super, up to 70%.', super:'Targeting Pair', superDesc:'Fire 2 fully homing projectiles and permanently improve main-attack homing by 8%.', hyper:'Perfect Lock: main attacks have at least 95% homing and Super fires 4 fully homing projectiles.', g1:'Perfect Read (Next main attack has 100% homing)', g2:'Live Calibration (Gain 20% homing for 6 seconds)', sp1:'Advanced Learning (Super improves homing by 12% instead of 8%; highly trained shots deal 12% more damage)', sp2:'Persistent Memory (Retain more targeting knowledge after being defeated)' },
       'orbo': { name:'Orbo', role:'Marksman', desc:'A cosmic marksman who braids multiple orbs through one another across extreme range.', color:'#8b7dff', attack:'Crisscross Orbit', attackDesc:'Fire 4 weaving 575-damage orbs that crisscross four times over a very long path.', super:'Orbital Horizon', superDesc:'Launch a massive piercing orb through walls to the edge of the map.', hyper:'Total Orbit: main attack fires 6 orbs with double range. Super fires 3 massive orbs and each returns.', g1:'Dense Orbit (Next volley is wider, larger, and piercing)', g2:'Orbital Skip (Blink 240 units toward your aim and gain a 900 shield)', sp1:'Orb Resonance (Repeated hits from one volley deal 18% more damage)', sp2:'Gravity Horizon (Super slows enemies for 1.2 seconds)' },
       'predator': { name:'Predator', role:'Assassin', desc:'A close-range hunter who leaps through prey and pins a chosen target with repeated claw strikes.', color:'#a8d63f', attack:'Through the Prey', attackDesc:'Lock onto a nearby enemy and leap through them for 1850 damage. Without a target, leap a short distance.', super:'No Escape', superDesc:'Leap onto a target, stun them, and claw them 4 times while attached.', hyper:'Cross Hunt: main-attack impact also slashes sideways. Super slows its target after locking on.', g1:'Long Hunt (Next main attack has 35% more lock range)', g2:'Shed Skin (Cleanse movement control and recover 1000 HP)', sp1:'Crippling Pounce (Main attack slows its target for 1 second)', sp2:'Extra Claw (Super attacks 5 times instead of 4)' },
-      'fuser': { name:'Fuser', role:'Damage Dealer', desc:'Outlit\'s evil twin fires a deliberate eight-round burst down two parallel firing lanes.', color:'#ff4d6d', attack:'Eight-Fuse Salvo', attackDesc:'Fires 8 bullets with 30% larger hitboxes in alternating parallel left and right lanes. There are no center shots and no cone spread.', super:'Wall-Fuser Barrage', superDesc:'Fires 8 piercing bullets that break through walls.', hyper:'Return to Sender: Super bullets return. Main attack unloads 50% faster with its two lanes clamped closer together, but its bullets never return.', g1:'Crossed Wires (Next attack swaps the left/right firing order and deals +20% damage)', g2:'Spare Magazine (Instantly reload 2 ammo)', sp1:'Live Fuse (Straight bullets explode at maximum range)', sp2:'Family Grudge (+12% damage to nearby enemies)' },
+      'fuser': { name:'Fuser', role:'Damage Dealer', desc:'Outlit\'s evil twin fires a rapid twelve-round burst down two parallel firing lanes.', color:'#ff4d6d', attack:'Twelve-Fuse Salvo', attackDesc:'Fires 12 rapid bullets with 30% larger hitboxes in alternating parallel left and right lanes with +50% faster unload.', super:'Wall-Fuser Barrage', superDesc:'Fires 8 massive piercing bullets with +40% size that break through walls.', hyper:'Return to Sender: Super bullets return. Main attack unloads 50% faster with its two lanes clamped closer together, but its bullets never return.', g1:'Crossed Wires (Next attack swaps the left/right firing order and deals +20% damage)', g2:'Spare Magazine (Instantly reload 2 ammo)', sp1:'Live Fuse (Straight bullets explode at maximum range)', sp2:'Family Grudge (+12% damage to nearby enemies)' },
       'robber': { name:'Robber', role:'Skirmisher', desc:'A coin thief who snowballs every successful hit into a faster, larger stolen-coin barrage.', color:'#d9b44a', attack:'Stolen Fortune', attackDesc:'Starts with 1 row of coins. Every hit adds another row, up to 6; later rows travel faster.', super:'Grand Theft Ammo', superDesc:'Dash through an enemy and steal all of their ammo. Stealing 3 ammo expands Robber from 3 to as many as 6 ammo.', hyper:'Perfect Heist: Main attack always fires 8 rows. Super siphons 1 ammo per second for 3 seconds and can expand Robber to 7 ammo.', g1:'Smoke Bomb (Gain a 1600 shield after the next Super dash)', g2:'Counterfeit Stack (Instantly add 2 attack rows)', sp1:'Compound Interest (First hit adds 2 rows)', sp2:'Quick Hands (Stolen ammo reloads 25% faster)' },
       'snapper': { name:'Snapper', role:'Controller / Marksman', desc:'A precision photographer who marks targets before unleashing a map-wide SNAP wave.', color:'#55e6ff', attack:'Perfect Picture', attackDesc:'Fire a medium-large, non-piercing orb for 1500 damage. It marks the enemy so Snapper\'s next hit deals 10% more damage.', super:'SNAP!', superDesc:'Release an expanding 360-degree wave with infinite range. It removes 30% of each enemy\'s current HP, but cannot defeat them by itself.', hyper:'Perfect Snap: marks amplify by 20%. SNAP removes 45% current HP, followed by a smaller wave removing 8%.', g1:'Double Exposure (Next orb gives 2 mark charges)', g2:'Camera Shy (Marked enemies cannot damage Snapper for 1.5s)', sp1:'Lasting Impression (Marks last 4s and empower every Snapper hit)', sp2:'Aftershock (SNAP slows; Hyper double-hit roots)' },
       'jetpack': { name:'Jetpack', role:'Assassin / Artillery', desc:'A one-ammo aerial diver who charges huge jumps and carpet-bombs a locked flight path.', color:'#5fd9ff', attack:'Crash Landing', attackDesc:'Hold to charge one jump. Longer holds increase range, airtime, blast size and landing damage from 1500 up to 2700.', super:'I Drop Bombs', superDesc:'Lock an aimed landing point and fly there without steering, dropping 6 bombs in a triangular pattern along the route.', hyper:'Air Raid: Super bombs split into 3 mini-bombs. Hypercharged Crash Landing drops a 900-damage bomb at takeoff.', g1:'Emergency Thrusters (Cancel the current flight and land safely)', g2:'Fuel Dump (Drop a 1200-damage bomb beneath Jetpack)', sp1:'Soft Landing (Heal 1000 after hitting an enemy with Crash Landing)', sp2:'High Altitude (Maximum-charge jumps gain 15% blast radius)' },
@@ -23786,17 +23786,17 @@ let heistFeverActive = false;
     } else if (brawler === 'fuser') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const reverse = !!fromEntity.fuserReverseArmed;
-        const delay = hyper ? 62 : 144;
-        lockMainAttackSequence(fromEntity,7*delay,now);
-        for (let shot=0;shot<8;shot++) setTimeout(()=>{
-            if(fromEntity.hp<=0)return;
-            const side=((shot%2===0)?-1:1)*(reverse?-1:1);
-            const lateral=side*(hyper?5:16);
-            const sx=fromEntity.x+Math.cos(ang)*(fromEntity.radius+5)-Math.sin(ang)*lateral;
-            const sy=fromEntity.y+Math.sin(ang)*(fromEntity.radius+5)+Math.cos(ang)*lateral;
-            bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.92,damage:Math.round((isBot?235:350)*(reverse?1.2:1)),pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:.983,hyperVisual:hyper,fuserShotIndex:shot});
-        },shot*delay);
-        fromEntity.fuserReverseArmed=false;
+        const delay = hyper ? 41 : 96; // +50% faster unload (was 62 / 144)
+        lockMainAttackSequence(fromEntity, 11 * delay, now);
+        for (let shot = 0; shot < 12; shot++) setTimeout(() => {
+            if (fromEntity.hp <= 0) return;
+            const side = ((shot % 2 === 0) ? -1 : 1) * (reverse ? -1 : 1);
+            const lateral = side * (hyper ? 5 : 16);
+            const sx = fromEntity.x + Math.cos(ang) * (fromEntity.radius + 5) - Math.sin(ang) * lateral;
+            const sy = fromEntity.y + Math.sin(ang) * (fromEntity.radius + 5) + Math.cos(ang) * lateral;
+            bullets.push({ ownerBrawler: 'fuser', isFuserBullet: true, x: sx, y: sy, vx: Math.cos(ang) * 760, vy: Math.sin(ang) * 760, life: 0, maxLife: .92, damage: Math.round((isBot ? 235 : 350) * (reverse ? 1.2 : 1)), pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: .983, hyperVisual: hyper, fuserShotIndex: shot });
+        }, shot * delay);
+        fromEntity.fuserReverseArmed = false;
     } else if (brawler === 'robber') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const perfectCrime = isSlopSushiMode && getEntitySlopEffectTotal(fromEntity,'robberPerfectCrime') > 0;
@@ -27636,7 +27636,7 @@ let heistFeverActive = false;
             if(!playing||player.hp<=0)return;
             const side=shot%2===0?-1:1,lateral=side*(isHypercharged?8:24);
             const sx=player.x+Math.cos(ang)*24-Math.sin(ang)*lateral,sy=player.y+Math.sin(ang)*24+Math.cos(ang)*lateral;
-            bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*920,vy:Math.sin(ang)*920,life:0,maxLife:1.08,damage:600,pierce:true,pierceWalls:true,breakWallsInstantly:true,ownerId:player.id,super:true,hitIds:{},hitboxMod:1.25,hyperVisual:isHypercharged,teetherReturns:isHypercharged});
+            bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*920,vy:Math.sin(ang)*920,life:0,maxLife:1.08,damage:600,pierce:true,pierceWalls:true,breakWallsInstantly:true,ownerId:player.id,super:true,hitIds:{},hitboxMod:1.75,hyperVisual:isHypercharged,teetherReturns:isHypercharged});
         },shot*(isHypercharged?18:65));
     } else if (selectedBrawler === 'drainbow') {
         castDrainbowSuper(player, isHypercharged, wm.x, wm.y);
@@ -28700,7 +28700,7 @@ let heistFeverActive = false;
         if(!playing||bot.hp<=0)return;
         const side=shot%2===0?-1:1,lateral=side*(hyper?8:24);
         const sx=bot.x+Math.cos(ang)*24-Math.sin(ang)*lateral,sy=bot.y+Math.sin(ang)*24+Math.cos(ang)*lateral;
-        bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*920,vy:Math.sin(ang)*920,life:0,maxLife:1.08,damage:400,pierce:true,pierceWalls:true,breakWallsInstantly:true,ownerId:bot.id,super:true,hitIds:{},hitboxMod:1.25,hyperVisual:hyper,teetherReturns:hyper});
+        bullets.push({ownerBrawler:'fuser',isFuserBullet:true,x:sx,y:sy,vx:Math.cos(ang)*920,vy:Math.sin(ang)*920,life:0,maxLife:1.08,damage:400,pierce:true,pierceWalls:true,breakWallsInstantly:true,ownerId:bot.id,super:true,hitIds:{},hitboxMod:1.75,hyperVisual:hyper,teetherReturns:hyper});
       },shot*(hyper?18:65));
       return;
     }
@@ -51291,7 +51291,7 @@ let heistFeverActive = false;
                         for(let jar=0;jar<count;jar++){const row=Math.floor(jar/3),slot=(jar%3)-1,jx=cx+Math.cos(perp)*slot*86-Math.cos(ang)*row*92,jy=cy+Math.sin(perp)*slot*86-Math.sin(ang)*row*92;ctx.fillStyle=isHypercharged?'rgba(210,100,245,.18)':'rgba(125,211,91,.18)';ctx.strokeStyle=isHypercharged?'#e7a2ff':'#bde985';ctx.lineWidth=2;ctx.beginPath();ctx.arc(jx,jy,28,0,Math.PI*2);ctx.fill();ctx.stroke();}
                 } else if (selectedBrawler === 'fuser') {
                         const range=990,endX=player.x+Math.cos(ang)*range,endY=player.y+Math.sin(ang)*range,perp=ang+Math.PI/2;
-                        const halfWidth=isHypercharged?18:32;
+                        const halfWidth=isHypercharged?25:45;
                         ctx.fillStyle=isHypercharged?'rgba(216,82,255,.15)':'rgba(255,68,105,.13)';
                         ctx.beginPath();ctx.moveTo(player.x+Math.cos(perp)*halfWidth,player.y+Math.sin(perp)*halfWidth);ctx.lineTo(endX+Math.cos(perp)*halfWidth,endY+Math.sin(perp)*halfWidth);ctx.lineTo(endX-Math.cos(perp)*halfWidth,endY-Math.sin(perp)*halfWidth);ctx.lineTo(player.x-Math.cos(perp)*halfWidth,player.y-Math.sin(perp)*halfWidth);ctx.closePath();ctx.fill();
                         ctx.strokeStyle=isHypercharged?'#e88cff':'#ff6d8c';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(endX,endY);ctx.stroke();
@@ -55068,7 +55068,7 @@ let heistFeverActive = false;
           ctx.restore();continue;
       } else if (b.ownerBrawler === 'fuser' && b.isFuserBullet) {
           const a=Math.atan2(b.vy||0,b.vx||1);
-          const isSuperShot=!!b.super,coreR=isSuperShot?7:4.1;
+          const isSuperShot=!!b.super,coreR=isSuperShot?9.8:4.1;
           if (activeSkinId === 'hyperfusion-fuser') {
               const transformed=!!b.hyperVisual;
               const lane=(b.fuserShotIndex||0)%2;
@@ -55077,7 +55077,7 @@ let heistFeverActive = false;
               ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);
               ctx.shadowColor=primary;ctx.shadowBlur=transformed?20:12;
               const trail=ctx.createLinearGradient(-30,0,8,0);trail.addColorStop(0,'rgba(0,0,0,0)');trail.addColorStop(.58,secondary);trail.addColorStop(1,primary);
-              ctx.strokeStyle=trail;ctx.lineWidth=isSuperShot?8:5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-31,0);ctx.lineTo(2,0);ctx.stroke();
+              ctx.strokeStyle=trail;ctx.lineWidth=isSuperShot?11.2:5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-31,0);ctx.lineTo(2,0);ctx.stroke();
               ctx.fillStyle=primary;ctx.strokeStyle='#efffff';ctx.lineWidth=1.4;
               ctx.beginPath();ctx.moveTo(coreR+7,0);ctx.lineTo(0,-coreR);ctx.lineTo(-coreR-3,0);ctx.lineTo(0,coreR);ctx.closePath();ctx.fill();ctx.stroke();
               ctx.fillStyle=transformed?'#ffffff':secondary;ctx.beginPath();ctx.arc(0,0,coreR*.42,0,Math.PI*2);ctx.fill();
@@ -55087,7 +55087,7 @@ let heistFeverActive = false;
           }
           const accent=b.hyperVisual?'#e991ff':((b.fuserShotIndex||0)%2===0?'#ff416c':'#ff9f43');
           ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(a);
-          ctx.strokeStyle=b.hyperVisual?'rgba(220,91,255,.55)':'rgba(255,65,108,.48)';ctx.lineWidth=isSuperShot?6:3;ctx.lineCap='round';
+          ctx.strokeStyle=b.hyperVisual?'rgba(220,91,255,.55)':'rgba(255,65,108,.48)';ctx.lineWidth=isSuperShot?8.4:3;ctx.lineCap='round';
           ctx.beginPath();ctx.moveTo(-22,0);ctx.lineTo(1,0);ctx.stroke();
           ctx.fillStyle=accent;
           ctx.beginPath();ctx.moveTo(coreR+5,0);ctx.lineTo(-coreR,-coreR*.78);ctx.lineTo(-coreR*.45,0);ctx.lineTo(-coreR,coreR*.78);ctx.closePath();ctx.fill();

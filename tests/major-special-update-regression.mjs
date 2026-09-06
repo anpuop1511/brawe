@@ -66,8 +66,8 @@ assert.match(game,/const signatureCollector=!!player\.bouncySignatureCollectorAr
 assert.match(game,/const signatureWallTravelGain=signatureCollector\?baseTravel\/1\.5\*\.20:0/,'Signature aim telegraph calculates twenty-percent pre-G1 wall range gain');
 assert.match(game,/if\(signatureCollector\)[\s\S]{0,100}distLeft\+=signatureWallTravelGain/,'Signature aim telegraph previews its additive wall range gain');
 assert.match(game,/function lockMainAttackSequence\(owner, durationMs,[\s\S]{0,500}owner\.mainAttackSequenceUntil=/,'Scheduled volleys use a centralized attack-sequence lock');
-assert.match(game,/if\(now < \(fromEntity\.mainAttackSequenceUntil\|\|0\)\)return;/,'A new ammo attack cannot begin during the current launch sequence');
-assert.match(game,/brawler === 'fuser'[\s\S]{0,520}lockMainAttackSequence\(fromEntity,7\*delay,now\)/,'Fuser cannot overlap eight-round bursts');
+assert.match(game,/if\((?:!cursedForcedAttack && )?now < \(fromEntity\.mainAttackSequenceUntil\|\|0\)\)return;/,'A new ammo attack cannot begin during the current launch sequence');
+assert.match(game,/brawler === 'fuser'[\s\S]{0,520}lockMainAttackSequence\(fromEntity,\s*11\s*\*\s*delay,\s*now\)/,'Fuser cannot overlap twelve-round bursts');
 assert.match(game,/lockMainAttackSequence\(fromEntity,\(balls-1\)\*88,now\)/,'Bouncin Balls cannot overlap multi-ball volleys');
 assert.match(game,/progress\.selectedGadget=selectedGadget[\s\S]{0,220}saveProgress\(\)/,'Changing gadgets persists the selected slot');
 assert.match(game,/if\(b\.echoInstinctVisual\)/,'Echo Instinct projectile has dedicated visible VFX');
@@ -79,7 +79,7 @@ assert.match(game,/b\.outlitMutationPull[\s\S]{0,1000}target\.ghoulPushUntil/,'O
 assert.match(game,/color: '#ff4b55'/,'Mutation uses its red family color');
 assert.match(game,/color: '#ffd34f'/,'Signature uses its gold family color');
 assert.match(game,/color: '#62ef88'/,'Instinct uses its green family color');
-assert.match(game,/else if \(b\.ownerBrawler === 'outlit'\) \{[\s\S]{0,180}if\(b\.mutationVisual\)/,'Outlit render branch prioritizes red Mutation projectiles over normal/skin colors');
+assert.match(game,/else if \(b\.ownerBrawler === 'outlit'\) \{[\s\S]{0,1200}if\(b\.mutationVisual\)/,'Outlit render branch prioritizes red Mutation projectiles over normal/skin colors');
 
 // Minigunnin Mutation and Classy Signature.
 assert.match(game,/minigunnin:[\s\S]{0,180}type: 'mutation'[\s\S]{0,180}Incendiary Belt/,'Minigunnin has the Incendiary Belt Mutation');
