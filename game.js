@@ -42123,9 +42123,7 @@ let heistFeverActive = false;
                       });
                   }
               }
-          });
-                  spawnFloatingText(b.x, b.y - 20, 'EYE MISSILE! 👁️🚀', '#00e5ff');
-              }
+              spawnFloatingText(b.x, b.y - 20, 'EYE MISSILES! 👁️🚀', '#00e5ff');
           }
 
           // SP2: Watchful Iris — auto-counter intruders near BlinkEye's body
