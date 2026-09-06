@@ -2281,28 +2281,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   window.addEventListener('mouseup', e=> {
       mouse.down = false;
       if (e.button === 0 && aimingSuper && superAimCancelState.source === 'desktop') {
-              if (selectedBrawler === 'blinkeye') {
-        if (player.blinkeyeSteering && player.blinkeyeActiveEye) {
-            triggerBlinkEyeSuperExplosion(player.blinkeyeActiveEye, false);
-            return;
-        }
-        startBlinkEyeSuper(player, targetX, targetY, isHypercharged);
-        return;
-    }
-    if (selectedBrawler === 'blinkeye') {
-        if (player.blinkeyeSteering && player.blinkeyeActiveEye) {
-            superBtn.textContent = 'We All See: DETONATE (E)';
-            superBtn.disabled = false;
-        } else if (superCharge >= 100) {
-            superBtn.textContent = isHypercharged ? 'Power Move: Omnipresent Sight' : 'Power Move: We All See';
-            superBtn.disabled = false;
-        } else {
-            superBtn.textContent = 'Power Move: ' + Math.floor(superCharge) + '%';
-            superBtn.disabled = true;
-        }
-        return;
-    }
-    if (selectedBrawler === 'steamer') {
+          if (selectedBrawler === 'steamer') {
               return;
           }
           releaseSuper();
@@ -29984,6 +29963,11 @@ let heistFeverActive = false;
   let superAimStartScreenY = 0;
 
   function startAimingSuper(source = 'desktop') {
+        if (selectedBrawler === 'blinkeye' && player.blinkeyeSteering && player.blinkeyeActiveEye) {
+            triggerBlinkEyeSuperExplosion(player.blinkeyeActiveEye, false);
+            updateSuperButton();
+            return;
+        }
         if (superCharge >= 100 && player.hp > 0) {
                 if (selectedBrawler === 'hyperorigin' && getHyperoriginEnergy(player) < 1) {
                         updateSuperButton();
@@ -37376,6 +37360,15 @@ let heistFeverActive = false;
         triggerBlinkEyeSuperExplosion(b, true);
         return true;
     }
+    if (target && target.isPrismBumper && b && b.ownerBrawler === 'blinkeye' && b.isBlinkEyeMain) {
+        const normAng = Math.atan2(b.y - target.y, b.x - target.x);
+        const curSpeed = Math.hypot(b.vx, b.vy) || 1450;
+        b.vx = Math.cos(normAng) * curSpeed;
+        b.vy = Math.sin(normAng) * curSpeed;
+        processBounce(b, false, false);
+        spawnFloatingText(target.x, target.y - 30, 'PRISM REFLECTION! 💎✨', '#00e5ff');
+        return true;
+    }
     if (b.isEchoRingProj) return false; // Handled separately so it creates a ring
     if (tryCrystilaGlassReflect(target, b)) return false;
     
@@ -38702,24 +38695,29 @@ let heistFeverActive = false;
               b.life = b.maxLife + 1;
               return;
           }
-          // +100% range per bounce!
+          // +100% range per bounce! (1st bounce: 1300 px travel, 2nd bounce: 1950 px travel)
           b.life = 0;
-          b.maxLife = 650 / 1450;
+          const bounceRangeMultiplier = 1 + b.blinkeyeBounceCount;
+          b.maxLife = (650 * bounceRangeMultiplier) / 1450;
+          b.speed = 1450;
+          const curSpeed = Math.hypot(b.vx, b.vy) || 1450;
+          b.vx = (b.vx / curSpeed) * b.speed;
+          b.vy = (b.vy / curSpeed) * b.speed;
           const owner = getEntityById(b.ownerId);
           if (owner && getEntityStarChoice(owner) === 'slow') {
-              // SP1: Rebound Focus
+              // SP1: Rebound Focus (+25% 1st bounce, +50% 2nd bounce)
               b.damage = Math.round((b.blinkeyeBaseDmg || b.damage) * (b.blinkeyeBounceCount === 1 ? 1.25 : 1.50));
           }
           explosions.push({
               x: b.x,
               y: b.y,
-              radius: 30,
+              radius: 32 + b.blinkeyeBounceCount * 6,
               life: 0,
-              maxLife: 0.20,
+              maxLife: 0.22,
               color: b.hyperVisual ? '#00e5ff' : '#ffa726',
               legendary: true
           });
-          spawnFloatingText(b.x, b.y - 20, '+100% RANGE! (x' + b.blinkeyeBounceCount + ')', b.hyperVisual ? '#00e5ff' : '#ffa726');
+          spawnFloatingText(b.x, b.y - 20, '+100% RANGE (x' + b.blinkeyeBounceCount + ')! 👁️⚡', b.hyperVisual ? '#00e5ff' : '#ffa726');
       }
 
       if (reflectX) b.vx *= -1;
