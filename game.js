@@ -37460,7 +37460,23 @@ let heistFeverActive = false;
         }
 
 
-      if (b.isBlinkEyeSteeredEye) {
+      if (b.isBlinkEyeMissile) {
+        if (!b.targetId || (target && target.id === b.targetId)) {
+            b.pierce = false; // Consumed on impact with primary target
+            explosions.push({
+                x: target.x,
+                y: target.y,
+                radius: 36,
+                life: 0,
+                maxLife: 0.22,
+                color: '#d25bff',
+                legendary: true
+            });
+            spawnFloatingText(target.x, target.y - 30, 'MISSILE IMPACT! 💥💜', '#d25bff');
+        }
+    }
+
+    if (b.isBlinkEyeSteeredEye) {
         const owner = getEntityById(b.ownerId);
         if (target && owner && (target.id === owner.id || areAlliedEntities(owner, target))) {
             return false;
@@ -42090,6 +42106,9 @@ let heistFeverActive = false;
               const spd = b.speed || 850;
               b.vx = Math.cos(newAng) * spd;
               b.vy = Math.sin(newAng) * spd;
+          } else {
+              b.targetId = null;
+              b.pierce = false;
           }
       }
 

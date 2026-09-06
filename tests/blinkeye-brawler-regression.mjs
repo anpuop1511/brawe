@@ -44,7 +44,7 @@ test('BlinkEye Super We All See launches steerable eye with camera tracking, 40%
   assert.match(gameCode, /const pipW = 240;\s*const pipH = 140;/);
 });
 
-test('BlinkEye Hypercharge launches homing and piercing purple eye missiles at visible enemies every 0.6s', () => {
+test('BlinkEye Hypercharge launches homing and piercing purple eye missiles that detonate on primary target', () => {
   assert.match(gameCode, /const shotCount = isHyper \? 2 : 1/);
   assert.match(gameCode, /maxLife: isHyper \? 20\.0 : 16\.0/);
   assert.match(gameCode, /now - b\.lastMissileAt >= 600/);
@@ -52,6 +52,7 @@ test('BlinkEye Hypercharge launches homing and piercing purple eye missiles at v
   assert.match(gameCode, /hasBlinkEyeSight\(b\.x, b\.y, victim\.x, victim\.y\)/);
   assert.match(gameCode, /isBlinkEyeMissile:\s*true/);
   assert.match(gameCode, /if \(b\.isBlinkEyeMissile && b\.targetId\)/);
+  assert.match(gameCode, /if \(!b\.targetId \|\| \(target && target\.id === b\.targetId\)\) \{\s*b\.pierce = false;/);
   assert.match(gameCode, /#d25bff/);
 });
 
