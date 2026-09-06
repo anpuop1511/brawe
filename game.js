@@ -46025,7 +46025,7 @@ let heistFeverActive = false;
         aliveCount = hostileAlive + (teamAlive ? 1 : 0);
     } else {
         aliveCount = aliveBots.length + (player.hp > 0 ? 1 : 0);
-        if (!isCoreBreachIntroMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isBossFight && !isSoloTrial && (player.hp <= 0 || aliveBots.length === 0)) {
+        if (!isCoreBreachIntroMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isBossFight && !isSoloTrial && (player.hp <= 0 || aliveBots.length === 0)) {
             gameOver = true;
         }
     }
@@ -60393,12 +60393,6 @@ let heistFeverActive = false;
       }
   }
 
-  loop();
-
-  // expose for debugging (preserve earlier helpers)
-  window.__pureHTMLGame = Object.assign(window.__pureHTMLGame || {}, { player, bots, bullets, healingPods });
-})();
-
 
 // ==========================================
 // BLINK EYE DODGE MODE (1-Player Survival)
@@ -60450,12 +60444,17 @@ function updateBlinkEyeDodge(dt, now) {
     const s = blinkEyeDodgeState;
     s.timeSurvived += dt;
 
+    if (player.hp <= 0) {
+        gameOver = true;
+        return;
+    }
+
     // Victory Check
-    if (s.timeSurvived >= s.targetTime && !s.won && player.hp > 0) {
+    if (s.timeSurvived >= s.targetTime && !s.won) {
         s.won = true;
         spawnFloatingText(player.x, player.y - 70, '🏆 SURVIVAL VICTORY! 🏆', '#ffd34f');
         setTimeout(() => {
-            if (!gameOver) finishMatch();
+            gameOver = true;
         }, 1200);
         return;
     }
@@ -60823,3 +60822,10 @@ function renderBlinkEyeDodgeHUD(ctx) {
 
     ctx.restore();
 }
+
+
+  loop();
+
+  // expose for debugging (preserve earlier helpers)
+  window.__pureHTMLGame = Object.assign(window.__pureHTMLGame || {}, { player, bots, bullets, healingPods });
+})();
