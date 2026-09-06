@@ -9,10 +9,10 @@ const checks = [
   ['Power Play Showdown rules defined in HOME_MODE_RULES', /power_play_showdown:\s*\[[\s\S]*?12-player Solo Battle Royale with Power Cubes/],
   ['Power Play Showdown spawns 11 enemy bots (12 players total per match)', /if \(isPowerPlayShowdownMode\) enemyCount = 11;/],
   ['Power Play Showdown rewards defined in HOME_EVENT_REWARDS', /power_play_showdown:\s*\{\s*type:'coins',\s*amount:60/],
-  ['Curated 5 brawlers set defined', /const POWER_PLAY_BRAWLERS = new Set\(\['blinkeye',\s*'fuser',\s*'rocketeer',\s*'bouncin_balls',\s*'echo'\]\);/],
+  ['Curated brawlers set defined with Orbo', /const POWER_PLAY_BRAWLERS = new Set\(\['blinkeye',\s*'fuser',\s*'rocketeer',\s*'bouncin_balls',\s*'echo',\s*'orbo'\]\);/],
   ['Mode runtime flag isPowerPlayShowdownMode initialized', /let isPowerPlayShowdownMode = false;/],
   ['launchShowdownMatch activates isPowerPlayShowdownMode and enforces curated brawler', /isPowerPlayShowdownMode = showdownMode === 'power_play_showdown';[\s\S]*?!POWER_PLAY_BRAWLERS\.has\(selectedBrawler\)/],
-  ['Bot pool restricted to curated 5 brawlers in power play showdown', /if \(isPowerPlayShowdownMode\) \{[\s\S]*?const ppPool = \[\.\.\.POWER_PLAY_BRAWLERS\]/],
+  ['Bot pool restricted to curated brawlers in power play showdown', /if \(isPowerPlayShowdownMode\) \{[\s\S]*?const ppPool = \[\.\.\.POWER_PLAY_BRAWLERS\]/],
   
   // BlinkEye 3 Powers
   ['BlinkEye Power 1: infinite bounces in Power Play Showdown', /!isPowerPlayShowdownMode && b\.blinkeyeBounceCount > 2/],
@@ -38,6 +38,11 @@ const checks = [
   ['Echo Power 1: traveling sonic pulse rings every 0.6s', /if \(isPowerPlayShowdownMode && b\.ownerBrawler === 'echo' && b\.isEchoRingProj && !b\.super\) \{[\s\S]*?now - b\.lastEchoRingPulse >= 600/],
   ['Echo Power 2: 5-second 360-degree sonic burst', /now - echoEnt\.lastEcho360Burst >= 5000[\s\S]*?360° SONIC BURST!/],
   ['Echo Power 3: Super rings 200% bigger (4.5x size mod)', /ringSizeMod: isPowerPlayShowdownMode \? 4\.5 : 1\.5/],
+
+  // Orbo 3 Powers
+  ['Orbo Power 1: main attack +10 extra wide orbs (14-16 total) with 2x amplitude', /const count = \(hyperMain \? 6 : 4\) \+ \(isPowerPlayShowdownMode \? 10 : 0\);[\s\S]*?const amplitude = \(dense \? 72 : 54\) \* \(isPowerPlayShowdownMode \? 2\.0 : 1\.0\);/],
+  ['Orbo Power 2: Super bouncy and infinite range (maxLife 12.0s, canBounce true)', /maxLife: isPowerPlay \? 12\.0 : \(edgeDistance \/ speed\)[\s\S]*?canBounce: !*isPowerPlay/],
+  ['Orbo Power 3: Super auto-charges over 8 seconds in update loop', /const chargeDelta = \(100 \/ 8\) \* dt;[\s\S]*?superCharge = clamp\(superCharge \+ chargeDelta, 0, 100\);/],
 ];
 
 for (const [label, pattern] of checks) {

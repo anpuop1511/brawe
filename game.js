@@ -22184,10 +22184,10 @@ let heistFeverActive = false;
     } else if (brawler === 'orbo') {
         const hyperMain = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const dense = isBot ? !!fromEntity.orboDenseArmed : (gadgetArmed && selectedGadget === 'g1');
-        const count = hyperMain ? 6 : 4;
+        const count = (hyperMain ? 6 : 4) + (isPowerPlayShowdownMode ? 10 : 0);
         const speed = 790;
         const maxLife = hyperMain ? 2.295 : 1.35;
-        const amplitude = dense ? 72 : 54;
+        const amplitude = (dense ? 72 : 54) * (isPowerPlayShowdownMode ? 2.0 : 1.0);
         const perpX = -Math.sin(ang), perpY = Math.cos(ang);
         const volleyId = `${fromEntity.id}:${Math.round(now * 10)}`;
         for (let shot = 0; shot < count; shot++) {
@@ -26490,20 +26490,24 @@ let heistFeverActive = false;
         for (const offset of angles) {
             const angle = baseAngle + offset;
             const edgeDistance = getRayDistanceToMapEdge(owner.x, owner.y, angle, 28);
+            const isPowerPlay = isPowerPlayShowdownMode;
             bullets.push({
                 ownerBrawler: 'orbo',
                 isOrboSuper: true,
-                orboReturns: !!hyper,
+                orboReturns: !isPowerPlay && !!hyper,
                 orboReturning: false,
                 x: owner.x + Math.cos(angle) * (owner.radius + 45),
                 y: owner.y + Math.sin(angle) * (owner.radius + 45),
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
                 life: 0,
-                maxLife: edgeDistance / speed,
+                maxLife: isPowerPlay ? 12.0 : (edgeDistance / speed),
                 damage: owner.id === player.id ? 2100 : 1500,
                 pierce: true,
-                pierceWalls: true,
+                pierceWalls: !isPowerPlay,
+                canBounce: !!isPowerPlay,
+                bounceDmgLoss: 0,
+                bounceLifeLoss: 0,
                 ownerId: owner.id,
                 hitIds: {},
                 hitboxMod: 14.87,
@@ -30475,7 +30479,7 @@ let heistFeverActive = false;
       ['impossible', 'AI', 'The Impossible', '1v1 against an adaptive dodger']
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
-  const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo']);
+  const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo']);
   const HOME_PERMANENT_MODE_IDS = ['power_play_showdown', 'corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
@@ -30510,7 +30514,7 @@ let heistFeverActive = false;
       slop_sushi_plus: { type:'sushi_tapper', amount:1, label:'+1 Tower Drop' }
   };
   const HOME_MODE_RULES = {
-      power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo'],
+      power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo'],
       tower_duels_weekend: ['Five complete Duels matches', 'Each floor rolls a fresh random trio of Power 11 guest brawlers', 'Complete Floor 5 to unlock the exclusive TOWER DUELAR title'],
       solo: ['50-player free-for-all', 'No respawns', 'Rare Nova Boxes grant +2 Power, shield and charge'],
       duo: ['25 teams of two', '12-second Rally Beacon respawns', 'Stand by an ally beacon to revive them 2.25x faster'],
@@ -38905,6 +38909,18 @@ let heistFeverActive = false;
 
       if (reflectX) b.vx *= -1;
       if (reflectY) b.vy *= -1;
+      if (b.isOrboSuper) {
+          b.hitIds = {};
+          explosions.push({
+              x: b.x,
+              y: b.y,
+              radius: 48,
+              life: 0,
+              maxLife: 0.28,
+              color: b.hyperVisual ? '#dc72ff' : '#8b7dff',
+              legendary: true
+          });
+      }
       if (b.isCrystalBounce) {
           b.crystalBounceCount = (b.crystalBounceCount || 0) + 1;
           if (typeof b.crystalBaseSpeed !== 'number') b.crystalBaseSpeed = Math.hypot(b.vx, b.vy) || 0.0001;
@@ -39851,6 +39867,21 @@ let heistFeverActive = false;
                 bt.isHypercharged = true;
                 bt.hyperchargeUntil = now + 999999;
                 bt.hyperChargeCharge = 100;
+            }
+        }
+        // Orbo: Auto-charge super over 8s (12.5% per second)
+        const orboEntities = [player, ...bots].filter(e => e && e.hp > 0 && e.brawler === 'orbo');
+        for (const orboEnt of orboEntities) {
+            const chargeDelta = (100 / 8) * dt;
+            if (orboEnt.id === player.id) {
+                if (superCharge < 100) {
+                    superCharge = clamp(superCharge + chargeDelta, 0, 100);
+                    updateSuperButton();
+                }
+            } else {
+                if ((orboEnt.superCharge || 0) < 100) {
+                    orboEnt.superCharge = clamp((orboEnt.superCharge || 0) + chargeDelta, 0, 100);
+                }
             }
         }
         const echoEntities = [player, ...bots].filter(e => e && e.hp > 0 && e.brawler === 'echo');
