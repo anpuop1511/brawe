@@ -238,12 +238,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         document.head.appendChild(styleSheet);
 
     function getScaledStats(brawlerId, levelOverride) {
+        const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
         if (brawlerId === 'blinkeye') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(5600 * scale), dmg: Math.round(1850 * scale), speed: 265 };
         }
-
-        const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
         if (brawlerId === 'weefee') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6800 * scale), dmg: Math.round(1200 * scale), speed: 270 };
