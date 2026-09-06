@@ -6,7 +6,8 @@ const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 const checks = [
   ['Power Play Showdown registered in HOME_MODE_CARDS', /\['power_play_showdown',\s*'⚡',\s*'Power Play Showdown'/],
   ['Power Play Showdown registered in HOME_PERMANENT_MODE_IDS', /HOME_PERMANENT_MODE_IDS\s*=\s*\[[^\]]*'power_play_showdown'/],
-  ['Power Play Showdown rules defined in HOME_MODE_RULES', /power_play_showdown:\s*\[[\s\S]*?10-player Solo Battle Royale with Power Cubes/],
+  ['Power Play Showdown rules defined in HOME_MODE_RULES', /power_play_showdown:\s*\[[\s\S]*?12-player Solo Battle Royale with Power Cubes/],
+  ['Power Play Showdown spawns 11 enemy bots (12 players total per match)', /if \(isPowerPlayShowdownMode\) enemyCount = 11;/],
   ['Power Play Showdown rewards defined in HOME_EVENT_REWARDS', /power_play_showdown:\s*\{\s*type:'coins',\s*amount:60/],
   ['Curated 5 brawlers set defined', /const POWER_PLAY_BRAWLERS = new Set\(\['blinkeye',\s*'fuser',\s*'rocketeer',\s*'bouncin_balls',\s*'echo'\]\);/],
   ['Mode runtime flag isPowerPlayShowdownMode initialized', /let isPowerPlayShowdownMode = false;/],

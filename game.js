@@ -16835,6 +16835,7 @@ let heistFeverActive = false;
                 if (isImpossibleMode) enemyCount = 1;
                 else if (isConstructionMode) enemyCount = 3;
                 else if (isObjectiveMode) enemyCount = 3;
+                else if (isPowerPlayShowdownMode) enemyCount = 11;
                 else if (isPowerGodsMode) enemyCount = 9;
                 else if (isMirrorMode) enemyCount = MIRROR_TEAM_SIZE;
                 else if (isDamageFillerMode) enemyCount = damageFillerTeamSize;
@@ -30498,7 +30499,7 @@ let heistFeverActive = false;
       slop_sushi_plus: { type:'sushi_tapper', amount:1, label:'+1 Tower Drop' }
   };
   const HOME_MODE_RULES = {
-      power_play_showdown: ['10-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo'],
+      power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo'],
       tower_duels_weekend: ['Five complete Duels matches', 'Each floor rolls a fresh random trio of Power 11 guest brawlers', 'Complete Floor 5 to unlock the exclusive TOWER DUELAR title'],
       solo: ['50-player free-for-all', 'No respawns', 'Rare Nova Boxes grant +2 Power, shield and charge'],
       duo: ['25 teams of two', '12-second Rally Beacon respawns', 'Stand by an ally beacon to revive them 2.25x faster'],
@@ -38335,17 +38336,16 @@ let heistFeverActive = false;
     if (b.isOrboSuper && owner) {
         const ownerStar = owner.id === player.id ? selectedStar : (owner.selectedStar || 'none');
         if (ownerStar === 'long') target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + 1200);
-        // Orbital Horizon restores 35% of the next Super once per orb. Piercing
-        // another target—or returning during Hyper—cannot repeat the grant.
-        if (!b.orboSuperRechargeGranted && !target.isPet && !target.isSummon) {
-            b.orboSuperRechargeGranted = true;
+        // Each real enemy hit restores 35% of one normal Orbo main-hit charge.
+        // A piercing orb therefore rewards every enemy it actually connects with.
+        if (!target.isPet && !target.isSummon) {
+            const recharge = (100 / getSuperChargeHitsForBrawler('orbo')) * getAttackChargeMultiplier(owner) * .35;
             if (owner.id === player.id) {
-                superCharge = clamp(superCharge + 35, 0, 100);
+                superCharge = clamp(superCharge + recharge, 0, 100);
                 updateSuperButton();
             } else {
-                owner.superCharge = clamp((owner.superCharge || 0) + 35, 0, 100);
+                owner.superCharge = clamp((owner.superCharge || 0) + recharge, 0, 100);
             }
-            spawnFloatingText(owner.x, owner.y - 38, '+35% SUPER', '#a99cff');
         }
     }
 
