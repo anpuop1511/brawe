@@ -45,7 +45,7 @@ const checks = [
   ['Orbo Power 3: Super auto-charges over 8 seconds in update loop', /const chargeDelta = \(100 \/ 8\) \* dt;[\s\S]*?superCharge = clamp\(superCharge \+ chargeDelta, 0, 100\);/],
 
   // Decayer 3 Powers
-  ['Decayer Power 1: movement generates +100 HP shield', /grantShield\(player,\s*100,\s*decayerShieldCap\);/],
+  ['Decayer Power 1: movement generates +100 HP shield 100% faster (100ms interval)', /now - player\.lastDecayerMoveShield >= 100[\s\S]*?grantShield\(player,\s*100,\s*decayerShieldCap\);/],
   ['Decayer Power 2: shield cap increased by 150% (12500 HP max)', /const decayerShieldCap = 12500;/],
   ['Decayer Power 3: main attack size +200% (hitboxMod 3.0)', /const decayerHitbox = isPowerPlayShowdownMode \? 3\.0 : 1\.0;[\s\S]*?hitboxMod: decayerHitbox/],
 ];

@@ -33916,7 +33916,9 @@ let heistFeverActive = false;
                   fuser: 'COLOSSAL ORBS • INFINITE SUPER • PHASE PIERCE',
                   rocketeer: 'MEGA FIRESTORM • +4 SUPER ZONES • PERMA HYPER',
                   bouncin_balls: '2x BALL SPEED • +8 SUPER BALLS • GATLING TURRET',
-                  echo: 'SONIC PULSE • 5s 360° BURST • 3x SUPER RINGS'
+                  echo: 'SONIC PULSE • 5s 360° BURST • 3x SUPER RINGS',
+                  orbo: '+10 WIDE ORBS • BOUNCING SUPER • AUTO CHARGE',
+                  decayer: '2x FAST MOVE SHIELD • +150% SHIELD CAP • 3x ATTACK SIZE'
               };
               if (powerNames[selectedBrawler]) {
                   setTimeout(() => spawnFloatingText(player.x, player.y - 45, powerNames[selectedBrawler], '#38e8ff'), 350);
@@ -39900,7 +39902,7 @@ let heistFeverActive = false;
             player.shieldMax = Math.max(player.shieldMax || 0, decayerShieldCap);
             const isMoving = Math.hypot(player.vx || 0, player.vy || 0) > 10 || (player.x !== player.prevX || player.y !== player.prevY);
             player.lastDecayerMoveShield = player.lastDecayerMoveShield || now;
-            if (isMoving && now - player.lastDecayerMoveShield >= 200) {
+            if (isMoving && now - player.lastDecayerMoveShield >= 100) {
                 player.lastDecayerMoveShield = now;
                 grantShield(player, 100, decayerShieldCap);
                 if (Math.random() < 0.35) {
@@ -39914,7 +39916,7 @@ let heistFeverActive = false;
                 bt.shieldMax = Math.max(bt.shieldMax || 0, decayerShieldCap);
                 const isMoving = Math.hypot(bt.vx || 0, bt.vy || 0) > 10;
                 bt.lastDecayerMoveShield = bt.lastDecayerMoveShield || now;
-                if (isMoving && now - bt.lastDecayerMoveShield >= 200) {
+                if (isMoving && now - bt.lastDecayerMoveShield >= 100) {
                     bt.lastDecayerMoveShield = now;
                     grantShield(bt, 100, decayerShieldCap);
                 }
