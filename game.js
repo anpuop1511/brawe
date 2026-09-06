@@ -7444,6 +7444,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     let isMarkedMayhemMode = false;
     let isTugZoneMode = false;
     let isImpossibleMode = false;
+let isBlinkEyeDodgeMode = false;
+let blinkEyeDodgeState = null;
     let isCorruptedShowdownMode = false;
     let isPowerPlayShowdownMode = false;
     let isCoreBreachIntroMode = false;
@@ -16659,6 +16661,10 @@ let heistFeverActive = false;
             return;
         }
     if (!isBossFight && !isDuels && !isTraining && !isSoloTrial) {
+        if (isBlinkEyeDodgeMode) {
+            buildBlinkEyeDodgeMap();
+            return;
+        }
         if (isImpossibleMode) {
             buildImpossibleArena();
             return;
@@ -16843,7 +16849,8 @@ let heistFeverActive = false;
                 }
 
                 let enemyCount = MAX_BOTS;
-                if (isImpossibleMode) enemyCount = 1;
+                if (isBlinkEyeDodgeMode) enemyCount = 0;
+                else if (isImpossibleMode) enemyCount = 1;
                 else if (isConstructionMode) enemyCount = 3;
                 else if (isObjectiveMode) enemyCount = 3;
                 else if (isPowerPlayShowdownMode) enemyCount = 11;
@@ -30482,6 +30489,7 @@ let heistFeverActive = false;
   const homeModeCardMap = {};
   const HOME_MODE_CARDS = [
       ['tug_zone', 'TZ', 'Tug Zone', '3v3 - pull the moving zone home'],
+      ['blink_eye_dodge', '👁️', 'Blink Eye Dodge', '1-Player survival: Dodge giant BlinkEye eyes & funny homing shots!'],
       ['power_play_showdown', '⚡', 'Power Play Showdown', '3-Powers LTM with 5 curated hypercharged fighters'],
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
       ['lava_boss_s3', 'LAVA', 'Lava Villain Boss', 'Permanent co-op ladder • Hard to Impossible XV'],
@@ -30507,7 +30515,7 @@ let heistFeverActive = false;
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
   const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax']);
-  const HOME_PERMANENT_MODE_IDS = ['power_play_showdown', 'corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
+  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'power_play_showdown', 'corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
   const WEEKLY_FEATURED_START = new Date(2026, 7, 9, 0, 0, 0).getTime();
@@ -30528,6 +30536,7 @@ let heistFeverActive = false;
   const HOME_EVENT_ROTATION_KEY = 'arenaForgeHomeEventRotationV3';
   const HOME_SHOWDOWN_CHOICE_KEY = 'arenaForgeLastShowdownChoice';
   const HOME_EVENT_REWARDS = {
+      blink_eye_dodge: { type:'coins', amount:75, label:'+75 Coins & +25 Souls' },
       power_play_showdown: { type:'coins', amount:60, label:'+60 Coins & +20 Souls' },
       arena_forge: { type:'coins', amount:40, label:'+40 Coins' },
       arena_forge_overclocked: { type:'coins', amount:50, label:'+50 Coins' },
@@ -30541,6 +30550,7 @@ let heistFeverActive = false;
       slop_sushi_plus: { type:'sushi_tapper', amount:1, label:'+1 Tower Drop' }
   };
   const HOME_MODE_RULES = {
+      blink_eye_dodge: ['1-Player Solo Survival Challenge', 'Dodge giant patrolling BlinkEye Eyes across the arena', 'Juke curving funny homing shots (imperfect homing)', 'Survive for 45 seconds to claim Victory!'],
       power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo, Decayer, Money & Tax'],
       tower_duels_weekend: ['Five complete Duels matches', 'Each floor rolls a fresh random trio of Power 11 guest brawlers', 'Complete Floor 5 to unlock the exclusive TOWER DUELAR title'],
       solo: ['50-player free-for-all', 'No respawns', 'Rare Nova Boxes grant +2 Power, shield and charge'],
@@ -32186,6 +32196,7 @@ let heistFeverActive = false;
           power_gods: '#ffe066',
           solo_td: '#5cf296',
           impossible: '#ff4d8d',
+          blink_eye_dodge: '#a855f7',
           tower_duels_weekend: '#67e8ff'
       };
 
@@ -32210,7 +32221,7 @@ let heistFeverActive = false;
           else if(id==='tower_duels_weekend') tag='5F';
           else if (id === 'duo') tag = 'DUO';
           else if (id === 'trio') tag = 'TRIO';
-          else if (id === 'power_gods' || id === 'damage_filler' || id === 'solo_td') tag = 'SOLO';
+          else if (id === 'power_gods' || id === 'damage_filler' || id === 'solo_td' || id === 'blink_eye_dodge') tag = 'SOLO';
           else if (id === 'arena_forge') tag = '3V3';
           else if (id === 'marked_mayhem') tag = '3V3';
           else if (id === 'mirror') tag = '5V5';
@@ -33619,6 +33630,19 @@ let heistFeverActive = false;
           setModeBtnState(brickVaultBtn, false);
           if (startBtn) startBtn.textContent = 'Start The Impossible';
       }
+      if (showdownMode === 'blink_eye_dodge') {
+          setModeBtnState(soloShowdownBtn, false);
+          setModeBtnState(duoShowdownBtn, false);
+          setModeBtnState(objectiveShowdownBtn, false);
+          setModeBtnState(constructionShowdownBtn, false);
+          setModeBtnState(damageFillerBtn, false);
+          setModeBtnState(splitterPoweredBtn, false);
+          setModeBtnState(mirrorModeBtn, false);
+          setModeBtnState(trioShowdownBtn, false);
+          setModeBtnState(knockDonateBtn, false);
+          setModeBtnState(brickVaultBtn, false);
+          if (startBtn) startBtn.textContent = 'Start Blink Eye Dodge';
+      }
       if (showdownMode === 'arena_forge' || showdownMode === 'marked_mayhem' || showdownMode === 'tug_zone') {
           setModeBtnState(soloShowdownBtn, false);
           setModeBtnState(duoShowdownBtn, false);
@@ -33714,6 +33738,8 @@ let heistFeverActive = false;
       isPowerGodsMode = showdownMode === 'power_gods';
       isMirrorMode = showdownMode === 'mirror';
       isImpossibleMode = showdownMode === 'impossible';
+      isBlinkEyeDodgeMode = showdownMode === 'blink_eye_dodge';
+      if (isBlinkEyeDodgeMode) initBlinkEyeDodgeState();
       isCorruptedShowdownMode = showdownMode === 'corrupted_showdown';
       isPowerPlayShowdownMode = showdownMode === 'power_play_showdown';
       if (isPowerPlayShowdownMode && !POWER_PLAY_BRAWLERS.has(selectedBrawler)) {
@@ -40441,7 +40467,7 @@ let heistFeverActive = false;
 
     // Check hit flash and handle movement
     
-    if (!isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isImpossibleMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isTraining && !isBossFight && !isSoloTrial && !gameOver) {
+    if (!isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isImpossibleMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isTraining && !isBossFight && !isSoloTrial && !gameOver) {
         stormTimer += dt;
         const stormDuration = getModeStormDurationSeconds();
         stormRadius = Math.max(0, (WORLD_W * 0.8) - (stormTimer / stormDuration) * (WORLD_W * 0.8));
@@ -40474,6 +40500,7 @@ let heistFeverActive = false;
         if (!isHypercharged) hyperChargeCharge = 100;
         updateSuperButton(); updateHyperButton();
         updateTrainingCaveMode(dt, now);
+    if (isBlinkEyeDodgeMode) updateBlinkEyeDodge(dt, now);
         
         if (player.hp <= 0) {
             player.respawnTimer = (player.respawnTimer || 0) + dt;
@@ -47627,6 +47654,7 @@ let heistFeverActive = false;
     renderCoreBreachIntro();
     renderCorruptedShowdown();
     renderLavaBossEvent();
+    if (isBlinkEyeDodgeMode) renderBlinkEyeDodgeWorld(ctx);
     
     // Draw only the visible section of the grid. The old full-world paths
     // became very expensive on the larger mode maps.
@@ -58970,6 +58998,8 @@ let heistFeverActive = false;
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(`THE IMPOSSIBLE  |  DODGES ${dodges}  |  AIM READS ${reads}  |  ADAPTATION ${adaptation}%`, innerWidth/2, 56);
+    } else if (isBlinkEyeDodgeMode) {
+        renderBlinkEyeDodgeHUD(ctx);
         ctx.textAlign = 'left';
     } else if (isDamageFillerMode) {
         ctx.fillStyle = '#7dd8ff';
@@ -59081,6 +59111,11 @@ let heistFeverActive = false;
                 rankNum = won ? 1 : Math.max(2, aliveCount + 1);
                 matchText = won ? 'YOUR TRIO SURVIVED!' : 'YOUR TRIO WAS ELIMINATED!';
                 rankText = `Trios left at end: ${Math.max(0, aliveCount)}`;
+            } else if (isBlinkEyeDodgeMode) {
+                won = blinkEyeDodgeState?.won || (blinkEyeDodgeState?.timeSurvived >= (blinkEyeDodgeState?.targetTime || 45));
+                rankNum = won ? 1 : 2;
+                matchText = won ? '🏆 EYE DODGE MASTER! VICTORY!' : '👁️ BLINK EYE GOT YOU!';
+                rankText = `Survived ${(blinkEyeDodgeState?.timeSurvived || 0).toFixed(1)}s / 45s | Dodges: ${blinkEyeDodgeState?.dodges || 0} | Best Streak: x${blinkEyeDodgeState?.bestStreak || 0}`;
             } else if (isImpossibleMode) {
                 const impossibleBot = bots.find((bot) => bot.isImpossibleAI);
                 won = player.hp > 0 && (!impossibleBot || impossibleBot.hp <= 0 || impossibleBot.isDead);
@@ -60363,3 +60398,428 @@ let heistFeverActive = false;
   // expose for debugging (preserve earlier helpers)
   window.__pureHTMLGame = Object.assign(window.__pureHTMLGame || {}, { player, bots, bullets, healingPods });
 })();
+
+
+// ==========================================
+// BLINK EYE DODGE MODE (1-Player Survival)
+// ==========================================
+function buildBlinkEyeDodgeMap() {
+    cubes.length = 0;
+    bushZones.length = 0;
+    waterZones.length = 0;
+    destructibleWalls.length = 0;
+    const cx = WORLD_W * 0.5;
+    const cy = WORLD_H * 0.5;
+    // 4 tactical bumper pillars for evasive cover & ricochets
+    addArenaWallStrip(cx - 360, cy - 360, 90, 90, { wallType: 'arena', hp: 99999 });
+    addArenaWallStrip(cx + 270, cy - 360, 90, 90, { wallType: 'arena', hp: 99999 });
+    addArenaWallStrip(cx - 360, cy + 270, 90, 90, { wallType: 'arena', hp: 99999 });
+    addArenaWallStrip(cx + 270, cy + 270, 90, 90, { wallType: 'arena', hp: 99999 });
+}
+
+function initBlinkEyeDodgeState() {
+    const now = performance.now();
+    blinkEyeDodgeState = {
+        startedAt: now,
+        timeSurvived: 0,
+        targetTime: 45.0, // 45s survival goal
+        dodgeScore: 0,
+        dodges: 0,
+        closeCalls: 0,
+        streak: 0,
+        bestStreak: 0,
+        giantEyes: [],
+        funnyMissiles: [],
+        nextEyeSpawnAt: now + 600,
+        nextMissileVolleyAt: now + 1500,
+        nextFunnyTextAt: 0,
+        won: false
+    };
+    player.x = WORLD_W * 0.5;
+    player.y = WORLD_H * 0.5;
+    player.vx = 0;
+    player.vy = 0;
+    setTimeout(() => {
+        spawnFloatingText(player.x, player.y - 70, '👁️ BLINK EYE DODGE 👁️', '#caa6ff');
+        setTimeout(() => spawnFloatingText(player.x, player.y - 45, 'DODGE EYES & CURVING HOMING SHOTS!', '#ff6bb5'), 400);
+    }, 300);
+}
+
+function updateBlinkEyeDodge(dt, now) {
+    if (!isBlinkEyeDodgeMode || !blinkEyeDodgeState || gameOver) return;
+    const s = blinkEyeDodgeState;
+    s.timeSurvived += dt;
+
+    // Victory Check
+    if (s.timeSurvived >= s.targetTime && !s.won && player.hp > 0) {
+        s.won = true;
+        spawnFloatingText(player.x, player.y - 70, '🏆 SURVIVAL VICTORY! 🏆', '#ffd34f');
+        setTimeout(() => {
+            if (!gameOver) finishMatch();
+        }, 1200);
+        return;
+    }
+
+    const cx = WORLD_W * 0.5;
+    const cy = WORLD_H * 0.5;
+    const arenaRadius = 920;
+
+    // 1. Giant Eyes Spawning & Movement ("Blink Eye's Eyes")
+    const maxEyes = Math.min(6, 2 + Math.floor(s.timeSurvived / 10));
+    if (s.giantEyes.length < maxEyes && now >= s.nextEyeSpawnAt) {
+        s.nextEyeSpawnAt = now + Math.max(1800, 3800 - s.timeSurvived * 60);
+        const spawnAngle = Math.random() * Math.PI * 2;
+        const spawnDist = arenaRadius - 60;
+        const speed = 260 + Math.random() * 120 + s.timeSurvived * 3.5;
+        const aimAngle = Math.atan2(player.y - (cy + Math.sin(spawnAngle) * spawnDist), player.x - (cx + Math.cos(spawnAngle) * spawnDist)) + (Math.random() - 0.5) * 0.6;
+        s.giantEyes.push({
+            id: Math.random().toString(36).substr(2, 9),
+            x: cx + Math.cos(spawnAngle) * spawnDist,
+            y: cy + Math.sin(spawnAngle) * spawnDist,
+            vx: Math.cos(aimAngle) * speed,
+            vy: Math.sin(aimAngle) * speed,
+            speed: speed,
+            radius: 40 + Math.random() * 10,
+            irisColor: Math.random() > 0.3 ? '#8e44ad' : '#e74c3c',
+            pupilSize: 0.38,
+            blinkUntil: 0,
+            nextBlinkAt: now + 1500 + Math.random() * 2500,
+            squish: 1.0,
+            squishAngle: 0,
+            damage: 420
+        });
+    }
+
+    // Update Giant Eyes
+    for (let i = s.giantEyes.length - 1; i >= 0; i--) {
+        const eye = s.giantEyes[i];
+        // Dynamic pupil tracking
+        const pDist = Math.hypot(player.x - eye.x, player.y - eye.y);
+        eye.pupilAngle = Math.atan2(player.y - eye.y, player.x - eye.x);
+        eye.pupilOffset = Math.min(14, 180 / Math.max(20, pDist)) * (eye.radius / 44);
+
+        // Blinking animation
+        if (now >= eye.nextBlinkAt) {
+            eye.blinkUntil = now + 180;
+            eye.nextBlinkAt = now + 2200 + Math.random() * 3000;
+        }
+
+        // Squish recovery
+        eye.squish += (1.0 - eye.squish) * 0.15;
+
+        // Move
+        eye.x += eye.vx * dt;
+        eye.y += eye.vy * dt;
+
+        // Arena boundary bounce
+        const distFromCenter = Math.hypot(eye.x - cx, eye.y - cy);
+        if (distFromCenter > arenaRadius - eye.radius) {
+            const normal = Math.atan2(eye.y - cy, eye.x - cx);
+            const currentVelAngle = Math.atan2(eye.vy, eye.vx);
+            const reflectedAngle = 2 * normal - currentVelAngle + Math.PI;
+            eye.vx = Math.cos(reflectedAngle) * eye.speed;
+            eye.vy = Math.sin(reflectedAngle) * eye.speed;
+            eye.x = cx + Math.cos(normal) * (arenaRadius - eye.radius - 2);
+            eye.y = cy + Math.sin(normal) * (arenaRadius - eye.radius - 2);
+            eye.squish = 0.65;
+            eye.squishAngle = normal;
+        }
+
+        // Wall collisions
+        for (const w of destructibleWalls) {
+            if (rectCircleCollides(w.x, w.y, w.w, w.h, eye.x, eye.y, eye.radius)) {
+                eye.vx *= -1;
+                eye.vy *= -1;
+                eye.squish = 0.7;
+            }
+        }
+
+        // Player Collision
+        if (pDist < eye.radius + player.radius && player.hp > 0) {
+            player.hp -= eye.damage;
+            spawnDamageText(player, eye.damage, '#ff4757');
+            recordFullOnDamageToTarget(player, eye.damage);
+            const pushAng = Math.atan2(player.y - eye.y, player.x - eye.x);
+            player.x += Math.cos(pushAng) * 45;
+            player.y += Math.sin(pushAng) * 45;
+            eye.squish = 0.55;
+            s.streak = 0;
+            explosions.push({ x: player.x, y: player.y, radius: 36, life: 0, maxLife: 0.3, color: '#e056fd', isParticle: true });
+        } else if (pDist < eye.radius + player.radius + 35 && !eye.closeCallDone) {
+            // Close Call Dodge!
+            eye.closeCallDone = true;
+            s.closeCalls++;
+            s.dodges++;
+            s.streak++;
+            s.bestStreak = Math.max(s.bestStreak, s.streak);
+            const funnyPhrases = ['👁️ WHOOSH!', '⚡ SLICK JUKE!', '👀 TOO SLOW!', '🔥 CLOSE ONE!'];
+            const phrase = funnyPhrases[Math.floor(Math.random() * funnyPhrases.length)];
+            spawnFloatingText(player.x, player.y - 35, phrase, '#2ed573');
+        }
+        if (pDist > eye.radius + player.radius + 60) {
+            eye.closeCallDone = false;
+        }
+    }
+
+    // 2. Funny Homing Shots ("not 100% homing")
+    const missileInterval = Math.max(1200, 2600 - s.timeSurvived * 35);
+    if (now >= s.nextMissileVolleyAt && s.giantEyes.length > 0) {
+        s.nextMissileVolleyAt = now + missileInterval;
+        const volleyCount = 2 + Math.floor(Math.random() * (s.timeSurvived > 20 ? 3 : 2));
+        for (let i = 0; i < volleyCount; i++) {
+            const sourceEye = s.giantEyes[Math.floor(Math.random() * s.giantEyes.length)];
+            if (!sourceEye) continue;
+            const initAngle = Math.atan2(player.y - sourceEye.y, player.x - sourceEye.x) + (Math.random() - 0.5) * 1.2;
+            const missileSpeed = 380 + Math.random() * 80 + s.timeSurvived * 2.5;
+            s.funnyMissiles.push({
+                id: Math.random().toString(36).substr(2, 9),
+                x: sourceEye.x,
+                y: sourceEye.y,
+                vx: Math.cos(initAngle) * missileSpeed,
+                vy: Math.sin(initAngle) * missileSpeed,
+                speed: missileSpeed,
+                radius: 13,
+                turnRate: 2.3 + Math.random() * 0.4, // imperfect turning rate enables dodging & looping!
+                wobbleSpeed: 6.5 + Math.random() * 3.0,
+                wobbleAmp: 0.36 + Math.random() * 0.22,
+                wobblePhase: Math.random() * Math.PI * 2,
+                life: 0,
+                maxLife: 5.8,
+                damage: 280,
+                color: '#d980fa',
+                trail: []
+            });
+        }
+    }
+
+    // Update Funny Homing Shots
+    for (let i = s.funnyMissiles.length - 1; i >= 0; i--) {
+        const m = s.funnyMissiles[i];
+        m.life += dt;
+        if (m.life >= m.maxLife) {
+            explosions.push({ x: m.x, y: m.y, radius: 20, life: 0, maxLife: 0.22, color: '#f368e0', isParticle: true });
+            s.funnyMissiles.splice(i, 1);
+            continue;
+        }
+
+        // Funny imperfect homing calculation: target angle with periodic wobble
+        const rawTargetAngle = Math.atan2(player.y - m.y, player.x - m.x);
+        const wobble = Math.sin(m.life * m.wobbleSpeed + m.wobblePhase) * m.wobbleAmp;
+        const targetAngle = rawTargetAngle + wobble;
+        const currentAngle = Math.atan2(m.vy, m.vx);
+        
+        let angleDiff = targetAngle - currentAngle;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+        const maxTurn = m.turnRate * dt;
+        const turn = Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), maxTurn);
+        const newAngle = currentAngle + turn;
+
+        m.vx = Math.cos(newAngle) * m.speed;
+        m.vy = Math.sin(newAngle) * m.speed;
+        m.x += m.vx * dt;
+        m.y += m.vy * dt;
+
+        // Trail record
+        if (Math.random() < 0.45) {
+            m.trail.push({ x: m.x, y: m.y, life: 0, maxLife: 0.28 });
+        }
+        for (let t = m.trail.length - 1; t >= 0; t--) {
+            m.trail[t].life += dt;
+            if (m.trail[t].life >= m.trail[t].maxLife) m.trail.splice(t, 1);
+        }
+
+        // Wall collisions
+        let hitWall = false;
+        for (const w of destructibleWalls) {
+            if (rectCircleCollides(w.x, w.y, w.w, w.h, m.x, m.y, m.radius)) {
+                hitWall = true;
+                break;
+            }
+        }
+        if (hitWall) {
+            explosions.push({ x: m.x, y: m.y, radius: 24, life: 0, maxLife: 0.25, color: '#9b59b6', isParticle: true });
+            s.funnyMissiles.splice(i, 1);
+            s.dodges++;
+            continue;
+        }
+
+        // Player Collision
+        const pDist = Math.hypot(player.x - m.x, player.y - m.y);
+        if (pDist < m.radius + player.radius && player.hp > 0) {
+            player.hp -= m.damage;
+            spawnDamageText(player, m.damage, '#ff4757');
+            recordFullOnDamageToTarget(player, m.damage);
+            explosions.push({ x: m.x, y: m.y, radius: 28, life: 0, maxLife: 0.28, color: '#ff6b81', isParticle: true });
+            s.funnyMissiles.splice(i, 1);
+            s.streak = 0;
+            continue;
+        }
+
+        // Near Miss Dodge Detection
+        if (pDist < m.radius + player.radius + 28 && !m.closeCallDone) {
+            m.closeCallDone = true;
+            s.dodges++;
+            s.streak++;
+            s.bestStreak = Math.max(s.bestStreak, s.streak);
+            if (now >= (s.nextFunnyTextAt || 0)) {
+                s.nextFunnyTextAt = now + 450;
+                const taunts = ['🤪 MISSED!', '💨 ANKLES BROKEN!', '✨ SLICK!', '👀 NICE TRY!'];
+                spawnFloatingText(player.x, player.y - 35, taunts[Math.floor(Math.random() * taunts.length)], '#00d2d3');
+            }
+        }
+    }
+}
+
+function renderBlinkEyeDodgeWorld(ctx) {
+    if (!isBlinkEyeDodgeMode || !blinkEyeDodgeState) return;
+    const s = blinkEyeDodgeState;
+    const now = performance.now();
+    const cx = WORLD_W * 0.5;
+    const cy = WORLD_H * 0.5;
+    const arenaRadius = 920;
+
+    // Arena Perimeter Ocular Field
+    ctx.save();
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.45)';
+    ctx.lineWidth = 6;
+    ctx.setLineDash([16, 12]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, arenaRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Render Giant Eyes
+    for (const eye of s.giantEyes) {
+        ctx.save();
+        ctx.translate(eye.x, eye.y);
+        if (eye.squish !== 1.0) {
+            ctx.rotate(eye.squishAngle);
+            ctx.scale(eye.squish, 2.0 - eye.squish);
+            ctx.rotate(-eye.squishAngle);
+        }
+        // Outer glow & eyeball body
+        ctx.shadowColor = '#d980fa';
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, eye.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Iris
+        const isBlinking = now < eye.blinkUntil;
+        if (!isBlinking) {
+            const irisR = eye.radius * 0.58;
+            const px = Math.cos(eye.pupilAngle || 0) * (eye.pupilOffset || 0);
+            const py = Math.sin(eye.pupilAngle || 0) * (eye.pupilOffset || 0);
+            ctx.fillStyle = eye.irisColor || '#8e44ad';
+            ctx.beginPath();
+            ctx.arc(px, py, irisR, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupil
+            ctx.fillStyle = '#1e0c24';
+            ctx.beginPath();
+            ctx.arc(px, py, irisR * 0.48, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Glint reflection
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.beginPath();
+            ctx.arc(px - irisR * 0.22, py - irisR * 0.22, irisR * 0.18, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Closed eyelid blink
+            ctx.strokeStyle = '#2c0c38';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(0, 0, eye.radius * 0.75, 0.1, Math.PI - 0.1);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // Render Funny Homing Missiles
+    for (const m of s.funnyMissiles) {
+        ctx.save();
+        // Trail particles
+        for (const tr of m.trail) {
+            const alpha = 1.0 - (tr.life / tr.maxLife);
+            ctx.fillStyle = `rgba(224, 86, 253, ${alpha * 0.6})`;
+            ctx.beginPath();
+            ctx.arc(tr.x, tr.y, m.radius * (0.6 * alpha), 0, Math.PI * 2);
+            ctx.fill();
+        }
+        // Missile Body
+        const ang = Math.atan2(m.vy, m.vx);
+        ctx.translate(m.x, m.y);
+        ctx.rotate(ang);
+        ctx.shadowColor = '#e056fd';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = '#833471';
+        ctx.beginPath();
+        ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eye center
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(m.radius * 0.25, 0, m.radius * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Funny wandering pupil
+        const pupilWobble = Math.sin(m.life * 10) * (m.radius * 0.2);
+        ctx.fillStyle = '#120718';
+        ctx.beginPath();
+        ctx.arc(m.radius * 0.35, pupilWobble, m.radius * 0.26, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+function renderBlinkEyeDodgeHUD(ctx) {
+    if (!isBlinkEyeDodgeMode || !blinkEyeDodgeState) return;
+    const s = blinkEyeDodgeState;
+    const timeLeft = Math.max(0, s.targetTime - s.timeSurvived);
+    const pct = clamp(s.timeSurvived / s.targetTime, 0, 1);
+
+    ctx.save();
+    // Top banner panel
+    const boxW = Math.min(540, innerWidth - 40);
+    const boxX = innerWidth * 0.5 - boxW * 0.5;
+    const boxY = 22;
+    const boxH = 54;
+
+    ctx.fillStyle = 'rgba(23, 10, 36, 0.88)';
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(168, 85, 247, 0.5)';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxW, boxH, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    // Progress bar
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.beginPath();
+    ctx.roundRect(boxX + 10, boxY + boxH - 10, boxW - 20, 5, 3);
+    ctx.fill();
+
+    ctx.fillStyle = '#2ed573';
+    ctx.beginPath();
+    ctx.roundRect(boxX + 10, boxY + boxH - 10, (boxW - 20) * pct, 5, 3);
+    ctx.fill();
+
+    // HUD Text
+    ctx.fillStyle = '#f1f2f6';
+    ctx.font = '900 13px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowBlur = 0;
+    ctx.fillText(`👁️ BLINK EYE DODGE  |  ⏱️ ${s.timeSurvived.toFixed(1)}s / ${s.targetTime.toFixed(0)}s  |  🎯 DODGES: ${s.dodges}  |  🔥 STREAK: x${s.streak}`, innerWidth * 0.5, boxY + 26);
+
+    ctx.restore();
+}
