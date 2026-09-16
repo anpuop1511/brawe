@@ -16,6 +16,7 @@ assert.match(game, /home-brawler-avatar[\s\S]{0,160}getBrawlerPortraitMarkup|por
 assert.match(game, /profile-favorite-icon[\s\S]{0,180}getBrawlerPortraitMarkup/, 'profile favorites receive shared portrait art');
 assert.match(game, /tower-run-fighter[\s\S]{0,200}getBrawlerPortraitMarkup/, 'Tower fighter rosters receive shared portrait art');
 assert.match(game, /charIcon\.innerHTML = getBrawlerPortraitMarkup\(id\)/, 'fighter upgrade page receives shared portrait art');
-assert.match(bootstrap, /20260901-forge-respawn-results1/, 'fresh release token loads the 2.5D renderer');
+assert.match(bootstrap, /const RELEASE_TOKEN = '202609\d{2}-[^']+'/, 'dated release token cache-busts the 2.5D renderer');
+assert.match(bootstrap, /\.\/modules\/visuals\/roster-2p5d\.js/, 'runtime loads the shared 2.5D registry before game.js');
 
 console.log('Featured 2.5D fighter render and animation wiring checks passed.');

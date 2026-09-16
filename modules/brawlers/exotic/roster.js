@@ -1,6 +1,6 @@
 (function registerExoticRoster(global) {
   'use strict';
   global.ArenaForgeModules.registerBrawlerGroup('Exotic', [
-    'ghoul', 'jacktrade', 'copyphase', 'portalo', 'snapper', 'malakor'
+    'ghoul', 'jacktrade', 'copyphase', 'portalo', 'snapper', 'malakor', 'the_deleter'
   ]);
 })(window);

@@ -363,6 +363,8 @@ button,select,input{font:inherit}
 }
 
 .gold-event-view{display:flex;flex-direction:column;gap:12px;color:#e8f4ff}
+/* The tools drawer must remain accessible even when legacy lobby rules hide it. */
+#homeUtilityDetails[open]{display:block!important;position:fixed!important;z-index:1500;top:85px;left:50%;transform:translateX(-50%);width:min(640px,calc(100vw - 24px));max-height:70vh;overflow:auto;box-sizing:border-box;background:#09172b!important;border:1px solid #426383!important;box-shadow:0 15px 50px #000b}
 .gold-event-hero{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding:18px;border:2px solid #ffcc00;border-radius:14px;background:radial-gradient(circle at 10% 20%,rgba(255,204,0,0.22),transparent 45%),linear-gradient(135deg,#241804,#091322)}
 .gold-event-hero small{display:block;font-weight:900;letter-spacing:1px;color:#ffd700;font-size:11px}
 .gold-event-hero h2{margin:4px 0 6px;color:#fff;font-size:26px;text-shadow:0 0 12px rgba(255,204,0,0.5)}

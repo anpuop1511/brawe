@@ -7,8 +7,9 @@ assert.match(game,/function applyOverlordBurnAt[\s\S]{0,260}const owner = ownerI
 for (const id of ['boomer','daggershard','cluster','witch','adlof','swimmer','blade_vane']) {
   assert.match(game, new RegExp(`const disabledBrawlers = new Set\\(\\[[\\s\\S]{0,300}['"]${id}['"]`), `${id} is temporarily disabled without deleting its saved kit`);
 }
-assert.match(game, /const sortedIds = allBrawlers[\s\S]{0,180}!disabledBrawlers\.has\(id\)/, 'Disabled kits are hidden from the compact selector');
-assert.match(game, /const visibleBrawlers = \[\.\.\.allBrawlers\][\s\S]{0,220}disabledBrawlers\.has\(id\)/, 'Disabled kits are hidden from the brawler browser');
+assert.match(game, /function isBrawlerHidden[\s\S]{0,180}disabledBrawlers\.has\(brawlerId\)/, 'Disabled and data-hidden fighters share one visibility rule');
+assert.match(game, /const sortedIds = allBrawlers[\s\S]{0,180}!isBrawlerHidden\(id\)/, 'Hidden kits are removed from the compact selector');
+assert.match(game, /const visibleBrawlers = \[\.\.\.allBrawlers\][\s\S]{0,220}(?:isBrawlerHidden\(id\)|disabledBrawlers\.has\(id\))/, 'Hidden kits are removed from the brawler browser');
 
 assert.match(game, /function applyRelayAllyHit[\s\S]{0,500}Math\.hypot\(projectile\.x-target\.x,projectile\.y-target\.y\)>hitRadius/, 'Relay shields require the orb to physically reach its ally');
 assert.match(game, /function applyAngelAllyHit[\s\S]{0,500}Math\.hypot\(projectile\.x-target\.x,projectile\.y-target\.y\)>hitRadius/, 'Angel healing requires the light projectile to physically reach its ally');
@@ -23,11 +24,11 @@ assert.match(game, /function pointInsideBlockingWall[\s\S]{0,300}isNavigationWal
 assert.match(game, /const waterDetour = waterZones\.includes\(blocker\)/, 'Bots identify water blockers for larger detours');
 assert.match(game, /planned\.waterDetour \? 4600 : 2600/, 'Bots keep water-routing waypoints long enough to clear the obstacle');
 assert.match(game, /botWallBreakTargetHitId = getDestructibleWallHitId\(blocker\)/, 'Bots deliberately target destructible walls blocking their shot');
-assert.match(game, /botDirectedWallBreak[\s\S]{0,240}b\.damage \* mult \* 0\.45/, 'Directed bot wall shots can break the obstruction');
+assert.match(game, /const damageableObject = !!\(dw\.isArenaWall[\s\S]{0,420}b\.damage \* mult/, 'Metal arena walls take ordinary projectile damage, including directed bot shots');
 
 assert.match(game, /function applyProjectileEndpointVaultDamage/, 'Projectile endpoints can damage vaults');
 assert.match(game, /if \(dw\.isVault\)[\s\S]{0,720}registerBrickVaultWallDamage/, 'Direct projectiles can damage vaults');
-assert.match(game, /function applyNonProjectileStructureDamage[\s\S]{0,1200}applyHeaterBoxDamage\(owner, wall, damage\)/, 'Non-projectile attacks have one shared power-box and vault damage path');
+assert.match(game, /function applyNonProjectileStructureDamage[\s\S]{0,1900}applyHeaterBoxDamage\(owner, wall, damage\)/, 'Non-projectile attacks retain the shared power-box and vault damage path alongside breakable metal walls');
 assert.match(game, /function AOEDamage[\s\S]{0,6200}applyNonProjectileStructureDamage\(owner, x, y, radius, wallDamage\)/, 'AOE and melee attacks share vault damage handling');
 assert.match(game, /function resolveGhoulHaunt[\s\S]{0,3600}applyNonProjectileStructureDamage\(owner,handX,handY,46,structureDamage/, 'Ghoul hands damage power boxes and enemy vaults through the shared structure path');
 assert.match(game, /for\(let i=rings\.length-1[\s\S]{0,2600}applyNonProjectileStructureDamage\(ringOwner/, 'Expanding non-projectile rings damage power boxes and enemy vaults');
@@ -41,6 +42,6 @@ assert.match(game, /function startDuelsRound[\s\S]{0,2600}getActiveSlopSushiDeck
 assert.match(game, /Arena Forge - Duels • Tower Power/, 'Duels announces its Tower Power modifier');
 assert.ok(game.includes('Vault Siege 3v3'), 'The retired Brick Vault presentation is replaced by Vault Siege');
 assert.doesNotMatch(game, /\n\s*if\s*\(b\.isUpiedownCorePie&&b\.upiedownFresh&&owner\)/, 'Projectile-only variables cannot leak into the global renderer');
-assert.match(game, /function hasEntityAttachie[\s\S]{0,260}type === 'gadget' \|\| type === 'star'\) return false/, 'Retired Tool/Talent Attachies no longer apply combat effects');
+assert.match(game, /function hasEntityAttachie[\s\S]{0,260}return false/, 'All retired Attachies no longer apply combat effects');
 
 console.log('Support collision + world regression suite passed.');

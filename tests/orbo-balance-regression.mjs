@@ -38,3 +38,13 @@ test('Orbo Super windup draws cosmic orbital collapsing rings and glowing core',
   assert.match(gameCode, /entity\.orboSuperWindup/);
   assert.match(gameCode, /ctx\.ellipse\(entity\.x,\s*entity\.y,\s*currentR,\s*currentR\s*\*\s*0\.55,\s*spinAngle,\s*0,\s*Math\.PI\s*\*\s*2\)/);
 });
+
+test('Every Orbo Super enemy hit restores 20% Super and a quarter-rate Hyper amount', () => {
+  assert.match(gameCode, /const recharge = 20 \* getAttackChargeMultiplier\(owner\)/);
+  assert.match(gameCode, /const hyperRecharge = recharge \* \.25/);
+  assert.match(gameCode, /superCharge = clamp\(superCharge \+ recharge, 0, 100\)/);
+  assert.match(gameCode, /owner\.superCharge = clamp\(\(owner\.superCharge \|\| 0\) \+ recharge, 0, 100\)/);
+  assert.match(gameCode, /hyperChargeCharge = clamp\(hyperChargeCharge \+ hyperRecharge, 0, 100\)/);
+  assert.match(gameCode, /owner\.hyperChargeCharge = clamp\(\(owner\.hyperChargeCharge \|\| 0\) \+ hyperRecharge, 0, 100\)/);
+  assert.doesNotMatch(gameCode, /orboSuperRechargeGranted/);
+});

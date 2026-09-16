@@ -31,14 +31,99 @@
     axeywaxy:['sword','#b78358','#d8e6e9'], trampaheal:['medic','#39b890','#efffc5'], mageny:['magnet','#427ac0','#72eeef'],
     ramage:['horn','#ac4655','#ffd285'], upgradart:['robot','#639fcc','#ffffa2'], cinderion:['furnace','#cf663a','#ffcd70'],
     cursed:['ghost','#9a68ba','#e0b1fc'], king:['crown','#566db3','#ffd465'], anti_royal:['pirate','#46948c','#f6d383'],
-    sir_cheeseburger:['helmet','#b38a5a','#ffda72'], weefee:['robot','#458f95','#74ffca'], blinkeye:['visor','#ff9800','#ffe082']
+    sir_cheeseburger:['helmet','#b38a5a','#ffda72'], weefee:['robot','#458f95','#74ffca'], blinkeye:['visor','#ff9800','#ffe082'], dr0ne:['robot','#00e5ff','#80d8ff'], unhitabble:['visor','#00f5d4','#d25bff'],
+    carmela_fudge:['confection','#e67e22','#795548']
   };
   const skins = {
     'fightn-spice':['firekeeper','#b63753','#ffbd79'],
     'astral-portalo':['astronaut','#e8ecfa','#7a9cff'],
     'neon-jacktrade':['dealer','#47377a','#74ffda']
   };
+  // Every fighter owns a visual identity assembled from kit-specific geometry.
+  // The four fields are head feature, held weapon/prop, chest mark and build.
+  // No two roster entries intentionally share the same combination.
+  const identities = Object.freeze({
+    outlit:'signal_lamp|light_caster|power_cell|lean', fuser:'split_coil|twin_fuses|fusion_core|wide',
+    echo:'wave_phones|echo_discs|sound_rings|lean', cheseypuff:'cheese_cap|puff_sprayer|cheese_wedge|round',
+    decayer:'spore_hood|decay_flask|biohazard|robe', unopcoloco:'pepper_crown|pepper_bombs|chili_mark|round',
+    dashaholic:'speed_visor|dash_blades|speed_chevron|lean', trapper:'snare_goggles|jaw_trap|trap_teeth|wide',
+    classy:'conductor_hat|music_baton|music_staff|tall', hyperorigin:'origin_crystal|energy_wand|origin_star|float',
+    heater_miser:'furnace_stack|heat_nozzle|heat_coil|square', minigunnin:'ammo_helmet|minigun|bullet_belt|wide',
+    steamer:'boiler_stack|steam_pipe|pressure_gauge|square', bowlin_rida:'bowling_pins|bowling_ball|lane_arrow|round',
+    money_and_tax:'coin_hat|tax_stamps|coin_scale|tall', hunter:'antler_hood|long_bow|target_mark|lean',
+    chaird:'chair_back|chair_arms|seat_buckle|wide', forest:'leaf_canopy|branch_staff|tree_rings|tall',
+    bouncin_balls:'ball_antennae|bounce_orbs|bounce_arc|round', goonbob:'goo_tuft|goo_fists|goo_drop|round',
+    tempo_maker:'tempo_phones|beat_pads|metronome|lean', overlord:'imperial_crown|royal_wand|overlord_eye|tall',
+    copyphase:'mirror_crest|phase_mirrors|copy_gem|float', fightnfire:'dual_flames|fire_ice_gauntlets|twin_core|wide',
+    beast:'razor_horns|beast_claws|paw_slash|wide', amplifier:'amp_towers|amp_cannons|volume_meter|square',
+    skeleflying:'skull_wings|bone_daggers|winged_skull|float', crystila:'crystal_tiara|prism_scepter|gem_flower|tall',
+    hope:'heart_halo|hope_ray|heart_wings|float', evil_doctor:'doctor_cap|dna_syringe|dna_helix|tall',
+    splitter:'split_fuse|split_launcher|split_fractal|round', scuba_diver:'dive_helmet|harpoon|air_gauge|wide',
+    hoop:'hoop_crown|basket_ball|basket_net|lean', screener:'screen_face|remote_blaster|pixel_grid|square',
+    malakor:'void_horns|void_blades|malakor_rune|wide', beam:'beam_lens|beam_cannon|laser_aperture|lean',
+    paradox:'clock_crest|time_blades|hourglass_mark|float', sera_eclipse:'eclipse_halo|moon_staff|eclipse_mark|float',
+    boom_arang:'rang_hat|boomerang|return_arrow|lean', teether:'tooth_crown|bite_launcher|tooth_mark|round',
+    fuel:'fuel_cap|fuel_hose|fuel_meter|square', xray:'xray_skull|scan_beam|rib_mark|lean',
+    angel:'angel_halo|light_spear|angel_wings|float', demon:'demon_horns|hell_forks|demon_tail|wide',
+    warrior:'war_helm|great_sword|shield_mark|wide', relay:'relay_dishes|signal_orbs|relay_nodes|square',
+    upiedown:'arrow_visor|flip_blades|up_down_arrows|lean', chickpig:'chick_comb|pig_launcher|egg_mark|round',
+    jetpack:'flight_helmet|jet_cannons|wing_meter|lean', snapper:'snap_jaw|snap_claws|shell_spiral|round',
+    robber:'loot_hood|money_bag|lock_mark|lean', rocketeer:'rocket_helmet|rocket_tubes|blast_star|wide',
+    peter_pickle:'pickle_cap|pickle_jar|pickle_slice|tall', unstable:'shard_crown|unstable_bolts|cracked_core|float',
+    homer:'home_cap|home_run_bat|diamond_mark|lean', orbo:'orbit_rings|planet_orbs|solar_system|float',
+    predator:'predator_spikes|hunter_claws|fang_mark|wide', fastpass:'speed_fins|ticket_shooters|momentum_meter|lean',
+    freestyle:'dj_phones|instrument_set|disco_mark|tall', portalo:'portal_horns|portal_orbs|linked_portals|float',
+    ghoul:'ghost_cowl|sky_hands|haunt_eye|robe', jacktrade:'dealer_hat|card_fan|dice_core|tall',
+    darkener:'dark_veil|shadow_cone|dark_hex|robe', awakenator:'wake_crystal|alarm_bolts|awake_eye|float',
+    adlof:'marshal_cap|command_baton|guard_mark|tall', cluster:'cluster_fuse|cluster_bombs|triangle_burst|round',
+    witch:'witch_hat|potion_staff|tomb_mark|robe', boomer:'boom_fuse|dynamite_sticks|blast_mark|round',
+    blade_vane:'blade_crest|blood_sword|spin_mark|lean', daggershard:'dagger_crown|glass_daggers|shard_burst|lean',
+    ice_cream:'sundae_crown|scoop_cannon|snow_cone|round', swimmer:'swim_cap|stroke_blades|wave_meter|lean',
+    kage:'shadow_scarf|kage_kunai|shadow_cross|lean', drainbow:'rainbow_prism|paint_caster|rainbow_road|float',
+    draflygon:'dragon_horns|flame_wings|dragon_scale|wide', axeywaxy:'axe_helm|double_axes|wood_ring|wide',
+    trampaheal:'medic_beacon|heal_traps|healing_cross|tall', mageny:'magnet_horns|horseshoe_bolt|polarity_core|float',
+    ramage:'ram_horns|stardust_fists|rage_star|wide', upgradart:'upgrade_scope|upgrade_cannon|level_chevron|square',
+    cinderion:'ember_crown|cinder_fan|flame_orbit|float', cursed:'curse_veil|curse_orb|broken_crown|robe',
+    king:'king_crown|royal_cannon|princess_tower|wide', anti_royal:'pirate_hat|gold_punch|mortar_mark|wide',
+    sir_cheeseburger:'burger_helm|cheese_lance|burger_crest|wide', weefee:'wifi_antennae|data_caster|signal_bars|square',
+    blinkeye:'giant_eye|eye_bolt|blink_reticle|float', dr0ne:'drone_rotors|drone_blaster|drone_eye|float',
+    unhitabble:'dodge_eye|phase_blades|dodge_cross|lean',
+    carmela_fudge:'baker_hat|caramel_hands|candy_swirl|wide'
+  });
+  function hash(text){let value=2166136261;for(const ch of String(text)){value^=ch.charCodeAt(0);value=Math.imul(value,16777619);}return value>>>0;}
   function model(id, skin) { return skins[skin] || looks[id]; }
+  function identityFor(id){return (identities[id]||('plain_'+id+'|kit_'+id+'|mark_'+id+'|lean')).split('|');}
+  function addPersonalGeometry(list,id,accent,coat){
+    const [head,weapon,mark,build]=identityFor(id),seed=hash(id+'|'+head+'|'+weapon+'|'+mark);
+    const ellipse=(x,y,rx,ry,c)=>list.push(['ellipse',x,y,rx,ry,c]);
+    const rect=(x,y,w,h,c)=>list.push(['rect',x,y,w,h,c]);
+    const poly=(points,c)=>list.push(['poly',points,c]);
+    const line=(points,c,w=2)=>list.push(['line',points,c,w]);
+    // A kit-shaped crest. Its point count, lean and height are identity-derived,
+    // so even fighters in the same archetype do not share a silhouette.
+    const points=3+(seed%5),crestW=12+((seed>>>3)%9),crestH=8+((seed>>>7)%15),lean=((seed>>>11)%9)-4;
+    const crest=[];for(let i=0;i<points;i++){const t=i/(points-1),zig=i%2?1:.3;crest.push([50-crestW+crestW*2*t+lean*t,25-crestH*zig]);}
+    line(crest,accent,3);ellipse(crest[crest.length-1][0],crest[crest.length-1][1],2.4,2.4,'#eefcff');
+    // The held kit prop is deliberately large enough to change the combat
+    // silhouette rather than reading as a tiny recoloured badge.
+    const side=(seed&1)?-1:1,wx=50+side*(31+((seed>>>13)%5)),wy=57+((seed>>>16)%8),weaponKind=(seed>>>19)%6;
+    if(weaponKind===0){rect(Math.min(wx-side*3,wx+side*15),wy-18,18,8,coat);rect(Math.min(wx+side*10,wx+side*18),wy-21,8,4,accent);}
+    else if(weaponKind===1){poly([[wx,wy-18],[wx+side*16,wy-8],[wx+side*11,wy+8],[wx-side*3,wy+3]],coat);ellipse(wx+side*10,wy-7,4,4,accent);}
+    else if(weaponKind===2){line([[wx-side*2,wy+14],[wx+side*4,wy-19],[wx+side*10,wy-25]],accent,5);poly([[wx+side*6,wy-24],[wx+side*19,wy-18],[wx+side*10,wy-10]],coat);}
+    else if(weaponKind===3){ellipse(wx,wy-5,10,13,coat);list.push(['ring',wx,wy-5,7,9,accent,3]);}
+    else if(weaponKind===4){rect(Math.min(wx-side*4,wx+side*8),wy-20,12,28,coat);for(let i=0;i<3;i++)ellipse(wx+side*(10+i*5),wy-15+i*7,3,3,accent);}
+    else {poly([[wx,wy-21],[wx+side*14,wy-12],[wx+side*7,wy+11],[wx-side*6,wy+4]],accent);line([[wx,wy-18],[wx+side*6,wy+5]],'#eefcff',2);}
+    // Personal chest rune: asymmetrical vector geometry, never an emoji/font.
+    const markSeed=hash(mark),nodes=3+(markSeed%4),ringR=7+((markSeed>>>5)%4);
+    list.push(['ring',50,69,ringR,ringR*.72,accent,2]);
+    for(let i=0;i<nodes;i++){const a=(Math.PI*2*i/nodes)+((markSeed>>>9)%20)/20;const r=i%2?ringR*.45:ringR;ellipse(50+Math.cos(a)*r,69+Math.sin(a)*r*.72,1.8+(i%2),1.8+(i%2),i%2?'#eaf8ff':coat);}
+    // Build-specific outer pieces make stance and mass readable at match scale.
+    if(build==='float'){poly([[29,79],[18,89],[35,87]],accent);poly([[71,79],[82,89],[65,87]],accent);}
+    else if(build==='wide'){rect(13,55,14,25,coat);rect(73,55,14,25,coat);}
+    else if(build==='robe'){poly([[30,75],[17,96],[45,87]],coat);poly([[70,75],[83,96],[55,87]],coat);}
+    else if(build==='tall'){line([[31,76],[25,94]],accent,5);line([[69,76],[75,94]],accent,5);}
+    else if(build==='square'){rect(19,61,12,20,accent);rect(69,61,12,20,accent);}
+  }
   // Shapes are expressed in a 100x100 model space, so UI and combat stay identical.
   function shapes(id, skin) {
     const entry = model(id, skin); if (!entry) return [];
@@ -65,6 +150,7 @@
       ellipse(15,64,7,9,'#271a29');ellipse(85,64,7,9,'#271a29');
       ellipse(15,64,3,5,accent);ellipse(85,64,3,5,accent);
       rect(32,64,36,15,'#352535');rect(36,69,28,4,accent);
+      addPersonalGeometry(list,id,accent,coat);
       return list;
     }
     if(['hat','dealer','pirate'].includes(type)) {rect(17,23,66,7,accent);poly([[28,23],[32,3],[65,3],[73,23]],coat);rect(30,17,39,5,accent);}
@@ -88,6 +174,7 @@
     if(type==='magnet'){poly([[19,17],[31,17],[31,30],[24,30]],'#ff6378');poly([[69,17],[81,17],[76,30],[69,30]],accent);}
     if(type==='hourglass'){poly([[28,8],[72,8],[56,24],[71,31],[29,31],[44,24]],accent);}
     if(type==='dealer'){poly([[75,55],[91,51],[95,73],[79,77]],'#eefbff');poly([[84,56],[88,64],[85,71],[81,64]],accent);}
+    addPersonalGeometry(list,id,accent,coat);
     return list;
   }
   function paint(ctx, parts) {
@@ -114,12 +201,22 @@
     const kick=Math.max(0,1-(now-(entity.visualAttackAt??-9999))/180);
     const surge=Math.max(0,1-(now-(entity.visualSuperAt??-9999))/500);
     const angle=Number.isFinite(entity.visualAimAngle)?entity.visualAimAngle:0;
+    const poseSeed=hash(id+'|'+identityFor(id)[1]),poseKind=poseSeed%5;
     ctx.save();ctx.translate(entity.x,y);const scale=radius*2.6/100*(boss?1.3:1);ctx.scale(scale,scale);
     if(surge){ctx.strokeStyle=entry[2];ctx.globalAlpha=surge*.65;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(0,25,38+(1-surge)*20,14+(1-surge)*8,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
-    ctx.translate(-50,-52-kick*3);paint(ctx,parts(id,skin));
+    // Individual recoil language: lean, hop, twist, brace or lunge. This keeps
+    // live fighters from sharing the same animation with a different colour.
+    if(poseKind===0)ctx.rotate(-Math.sin(angle)*kick*.12);
+    else if(poseKind===1)ctx.translate(Math.cos(angle)*kick*5,-kick*5);
+    else if(poseKind===2)ctx.scale(1+kick*.08,1-kick*.05);
+    else if(poseKind===3)ctx.rotate(Math.cos(angle)*kick*.1);
+    else ctx.translate(-Math.cos(angle)*kick*4,-kick*2);
+    ctx.translate(-50,-52-kick*(2+(poseSeed%4)));paint(ctx,parts(id,skin));
     // Art-only recoil and hand pose; hitboxes and projectile origins stay untouched.
-    ctx.fillStyle=entry[2];ctx.beginPath();ctx.ellipse(50+Math.cos(angle)*(29-kick*5),55+Math.sin(angle)*11,8,6,angle,0,Math.PI*2);ctx.fill();
+    const reach=27+(poseSeed%8),handY=52+((poseSeed>>>5)%9);
+    ctx.fillStyle=entry[2];ctx.beginPath();ctx.ellipse(50+Math.cos(angle)*(reach-kick*5),handY+Math.sin(angle)*(8+(poseSeed%6)),7+(poseSeed%3),5+(poseSeed%2),angle,0,Math.PI*2);ctx.fill();
+    if(kick){ctx.globalAlpha=kick*.7;ctx.strokeStyle=entry[2];ctx.lineWidth=2+(poseSeed%3);ctx.beginPath();ctx.moveTo(50+Math.cos(angle)*reach,handY+Math.sin(angle)*8);ctx.lineTo(50+Math.cos(angle)*(reach+10+(poseSeed%9)),handY+Math.sin(angle)*(11+(poseSeed%7)));ctx.stroke();}
     ctx.restore();return true;
   }
-  root.BraweRosterVisuals=Object.freeze({looks,skins,portrait,draw,has:id=>!!looks[id]});
+  root.BraweRosterVisuals=Object.freeze({looks,skins,identities,portrait,draw,has:id=>!!looks[id],identity:id=>identityFor(id).slice()});
 })(globalThis);

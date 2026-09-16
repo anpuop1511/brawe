@@ -10,3 +10,5 @@ android/.idea/
 android/app/build/
 outputs/
 __pycache__/
+.backups/
+*.bak

@@ -12,7 +12,7 @@ assert.match(game,/function isPermanentlyMaxedBrawler[\s\S]{0,360}level[^\n]+>= 
 assert.match(game,/pickWeeklyTrialFighters\(pool, fallbackSpecials \? 2 : 3/,'normal rotations contain three fighters and all-max fallbacks contain two Special fighters');
 assert.match(game,/function getEffectiveBrawlerProgress[\s\S]{0,600}level:11[\s\S]{0,180}gadgetUnlocked:true[\s\S]{0,120}starPowerUnlocked:true[\s\S]{0,120}hyperchargeUnlocked:true/,'trial fighters receive temporary Power 11 and full core loadout access');
 assert.match(game,/loadout\.ownedTrinkets = TRINKET_DEFS\.map/,'every Trinket choice is available temporarily');
-assert.match(game,/isTraining \|\| isWeeklyTrialBrawler\(brawlerId\)/,'Core Surge Attachies are available during the weekly trial');
+assert.match(game,/function getPlayerHyperMainActive\(brawlerId\) \{ return !!isHypercharged; \}/,'Core Surge main upgrades no longer depend on weekly-trial Attachies');
 assert.match(game,/if \(isWeeklyTrialBrawler\(fighterId\)\) return true/,'available Specials work during trial matches');
 assert.match(game,/!isBrawlerUnlocked\(selectedBrawler\) && !isWeeklyTrialBrawler\(selectedBrawler\)/,'selection normalization preserves locked weekly guests');
 assert.match(game,/weeklyTrials: playerData\.weeklyTrials/,'weekly picks and trial loadouts persist in the normal save');

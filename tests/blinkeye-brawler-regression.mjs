@@ -37,7 +37,7 @@ test('BlinkEye Super We All See launches steerable eye with camera tracking, 40%
   assert.match(gameCode, /isBlinkEyeSteeredEye:\s*true/);
   assert.match(gameCode, /const baseEyeSpeed = 352;/);
   assert.match(gameCode, /maxDur = isHyper \? 20000 : 16000;/);
-  assert.match(gameCode, /entity\.defenseMult = isHyper \? 0\.30 : 0\.60/);
+  assert.match(gameCode, /entity\.defenseMult = isHyper \? 0\.45 : 0\.60/);
   assert.match(gameCode, /isEntityRooted\(player, now\) \|\| player\.blinkeyeSteering/);
   assert.match(gameCode, /function drawBlinkEyePiPScreen\(/);
   assert.match(gameCode, /drawBlinkEyePiPScreen\(ctx\);/);
@@ -72,8 +72,8 @@ test('BlinkEye body renders custom glowing optic iris and eyelid blink animation
 test('BlinkEye Super cast and projectile rendering are hooked', () => {
   assert.match(gameCode, /if\s*\(combatBrawler === 'blinkeye'\)/);
   assert.match(gameCode, /if\s*\(botCombatBrawler === 'blinkeye'\)/);
-  assert.match(gameCode, /selectedBrawler === 'blinkeye' && !aimingSuper/);
-  assert.match(gameCode, /selectedBrawler === 'blinkeye' && aimingSuper/);
+  assert.match(gameCode, /isBlinkEyePlayerActive\(\) && !aimingSuper/);
+  assert.match(gameCode, /isBlinkEyePlayerActive\(\) && aimingSuper/);
   assert.match(gameCode, /b\.ownerBrawler === 'blinkeye' && b\.isBlinkEyeSteeredEye/);
   assert.match(gameCode, /b\.ownerBrawler === 'blinkeye' && b\.isBlinkEyeMain/);
 });
@@ -81,6 +81,16 @@ test('BlinkEye Super collision logic guards against self/ally collision and wall
   assert.match(gameCode, /if \(target && owner && \(target\.id === owner\.id \|\| areAlliedEntities\(owner, target\)\)\) \{\s*return false;\s*\}/);
   assert.match(gameCode, /if \(hitCube && b\.isBlinkEyeSteeredEye\)/);
   assert.match(gameCode, /if \(b\.life >= 0\.05\)/);
+});
+
+test('BlinkEye Super remains controllable and detonatable on desktop and mobile', () => {
+  assert.match(gameCode, /const blinkEyeDetonate = isBlinkEyePlayerActive\(\) && !!player\?\.blinkeyeSteering && !!player\?\.blinkeyeActiveEye/);
+  assert.match(gameCode, /function isBlinkEyePlayerActive\(\) \{[\s\S]*?player\?\.brawler === 'blinkeye'/);
+  assert.match(gameCode, /superTouchBtn\.textContent = '💥';\s*superTouchBtn\.dataset\.label = 'DETONATE'/);
+  assert.match(gameCode, /superBtn\.addEventListener\('mousedown', \(\) => startAimingSuper\('desktop'\)\)/);
+  assert.match(gameCode, /superBtn\.addEventListener\('touchstart', \(\) => \{ startAimingSuper\('mobile'\); \}/);
+  assert.match(gameCode, /superBtn\.disabled = false;\s*syncMobileActionButtons\(\);\s*return;/);
+  assert.match(gameCode, /player\.blinkeyeSteering = false;[\s\S]{0,180}?player\.blinkeyeActiveEye = null;/);
 });
 
 test('BlinkEye main attack supports Slop Sushi range buffs and 2.0x bounceMultiplier indicator', () => {

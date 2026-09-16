@@ -247,6 +247,26 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6800 * scale), dmg: Math.round(1200 * scale), speed: 270 };
         }
+        if (brawlerId === 'rager') {
+          const scale = 0.55 + (level - 1) * 0.045;
+          return { hp: Math.round(7600 * scale), dmg: Math.round(2200 * scale) };
+      }
+      if (brawlerId === 'carmela_fudge') {
+        const scale = 0.55 + (level - 1) * 0.045;
+        return { hp: Math.round(6400 * scale), dmg: Math.round(1800 * scale), speed: 260 };
+      }
+      if (brawlerId === 'bolznstien') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(7200 * scale), dmg: Math.round(1320 * scale), strikeDmg: Math.round(1650 * scale), speed: 265 };
+        }
+        if (brawlerId === 'magnatar') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6600 * scale), dmg: Math.round(864 * scale), speed: 270 };
+        }
+        if (brawlerId === 'oil_maker') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(8000 * scale), dmg: Math.round(520 * scale), speed: 260 };
+        }
         if (brawlerId === 'sir_cheeseburger') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(7800 * scale), dmg: Math.round(1650 * scale), speed: 270 };
@@ -335,7 +355,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
         if (brawlerId === 'kage') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(9200*scale), dmg:Math.round(2350*scale), speed:320 };
+            return { hp:Math.round(8500*scale), dmg:Math.round(2350*scale), speed:320 };
         }
         if (brawlerId === 'ramage') {
             const scale = 0.55 + (level - 1) * 0.045;
@@ -466,7 +486,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         { label: 'Brick Master III', color: '#ff7d7d' },
         { label: 'Brick Master IV', color: '#ff7d7d' },
         { label: 'Brick Master V', color: '#ff7d7d' },
-        { label: 'Brick Grandmaster', color: '#00f5d4' }
+        { label: 'Brick Grandmaster', color: '#00f5d4' },
+        { label: 'Brick Champion I', color: '#ff6b81' },
+        { label: 'Brick Champion II', color: '#ff6b81' },
+        { label: 'Brick Champion III', color: '#ff6b81' },
+        { label: 'Brick Legend I', color: '#ffa502' },
+        { label: 'Brick Legend II', color: '#ffa502' },
+        { label: 'Brick Legend III', color: '#ff4757' }
     ];
     const RANKED_POINTS_PER_DIVISION = 100;
     const RANKED_GOLD_MIN_DIVISION_INDEX = 7;
@@ -488,6 +514,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
 
     function getRankedDivisionFloor(points) {
+        if (points >= 2200) return 2200;
+        if (points >= 1900) return 1900;
         if (points >= 1800) return 1800;
         if (points >= 1300) return 1300;
         if (points >= 1000) return 1000;
@@ -496,11 +524,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return 0;
     }
 
+    function isRankedAboveBrickFume(pointsRaw) {
+        const points = Math.max(0, Math.floor(pointsRaw || 0));
+        return points >= 1300; // Brick Master I (idx 13) and above
+    }
+
     function isRankedGoldOrHigher(pointsRaw) {
         return getRankedTierInfo(pointsRaw).index >= RANKED_GOLD_MIN_DIVISION_INDEX;
     }
 
     function getShowdownModeLabel(mode) {
+        if (mode === 'custom_clash') return 'Custom Mutator Clash';
+        if (mode === 'brawe_ball') return 'Brawe Ball 3v3';
+        if (mode === 'knockout_3v3') return 'Knockout 3v3';
         if (mode === 'construction') return 'Brick Run 3v3';
         if (mode === 'damage_filler') return 'Damage Filler';
         if (mode === 'knock_donate') return 'Knock n Donate 3v3';
@@ -535,7 +571,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return Math.min(11, Math.max(1, playerPower)) >= getBrickMinimumPlayerPower(progress);
     }
     function isBrickPowerGateExempt() {
-        return isRankedMatch || showdownMode === 'slop_sushi' || showdownMode === 'slop_sushi_plus';
+        return isRankedMatch || showdownMode === 'slop_sushi' || showdownMode === 'slop_sushi_plus' || showdownMode === 'arena_forge' || showdownMode === 'arena_forge_overclocked';
     }
     function getSelectedBrickPowerGate() {
         const progress = playerData.brawlers?.[selectedBrawler] || getOrCreateProgress(selectedBrawler);
@@ -1250,6 +1286,929 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
 
     const balanceBlogEntries = [
+        /* BALANCE_V6_GENERATED_START */
+        {
+                "tag": "V6 LIVE",
+                "title": "Full Roster Balance Update",
+                "summary": "The V6 active-roster balance pass is live. Main Attacks, Supers, Gadgets, Star Powers, Hypercharges and special mechanics are grouped below. Recommendations already met by stricter live values were preserved. Robber, Boomer, Daggershard, Cluster, Witch, Adlof, Swimmer and Blade Vane remain disabled and unchanged.",
+                "grouped": true,
+                "changes": [
+                        {
+                                "brawler": "Cursed",
+                                "type": "nerf",
+                                "section": "Main Attack",
+                                "area": "Curse reliability",
+                                "current": "Main hit has a 50% chance to force random ammo use.",
+                                "numbers": "Mini Curse chance 50% → 40%.",
+                                "why": "Forced attacks remove player control and can spend scarce ammo. The effect should be threatening without deciding every second hit.",
+                                "priority": "Medium",
+                                "risk": "Test one- and two-ammo curse outcomes."
+                        },
+                        {
+                                "brawler": "Dashaholic",
+                                "type": "nerf",
+                                "section": "Main Attack",
+                                "area": "Main consistency",
+                                "current": "Main attack retains a very large size bonus while Super has two uses per charge.",
+                                "numbers": "Main attack size bonus +100% → +70%; keep two Super uses.",
+                                "why": "Two dashes already provide exceptional access. The oversized follow-up makes successful dives too automatic.",
+                                "priority": "Medium",
+                                "risk": "Test both Super charges and edge hits."
+                        },
+                        {
+                                "brawler": "Ghoul",
+                                "type": "nerf",
+                                "section": "Main Attack",
+                                "area": "Darkness",
+                                "current": "Darkness stacks to 4.0s.",
+                                "numbers": "Maximum stacked Darkness 4.0s → 3.2s.",
+                                "why": "Vision denial is stronger than a normal stun in team fights because it disrupts aim and positioning. The cap needs a clearer recovery window.",
+                                "priority": "High",
+                                "risk": "Test repeated hand hits and respawn cleanup."
+                        },
+                        {
+                                "brawler": "Ice Cream",
+                                "type": "nerf",
+                                "section": "Main Attack",
+                                "area": "Freeze buildup",
+                                "current": "Two Hyper cones can build Freeze extremely quickly.",
+                                "numbers": "Hyper Freeze per cone 25% → 20%.",
+                                "why": "Two accurate hits should create strong setup, not nearly complete a hard-control effect by themselves.",
+                                "priority": "Medium",
+                                "risk": "Test multi-cone overlap and immunity windows."
+                        },
+                        {
+                                "brawler": "Mageny",
+                                "type": "nerf",
+                                "section": "Main Attack",
+                                "area": "Projectile control",
+                                "current": "Main magnetic aura slows enemy projectiles 40%; Heavy Flux raises it to 70%.",
+                                "numbers": "Base slow 40% → 32%; Heavy Flux 70% → 55%.",
+                                "why": "A large moving aura should bend fights, not invalidate every projectile brawler. The Super remains the hard projectile-control tool.",
+                                "priority": "High",
+                                "risk": "Test slow restoration after leaving the aura."
+                        },
+                        {
+                                "brawler": "Portalo",
+                                "type": "nerf",
+                                "section": "Main Attack",
+                                "area": "Main displacement",
+                                "current": "Every hit teleports the enemy 5 tiles backward.",
+                                "numbers": "Teleport distance 5 → 4.5 tiles.",
+                                "why": "Reliable long-range displacement plus a usable portal pair can remove defenders too easily. A small trim keeps the unique routing identity.",
+                                "priority": "Medium",
+                                "risk": "Test wall-safe destination and objective displacement."
+                        },
+                        {
+                                "brawler": "Relay",
+                                "type": "nerf",
+                                "section": "Main Attack",
+                                "area": "Damage transfer",
+                                "current": "Hyper device redirects 90% of damage and shields do not naturally decay.",
+                                "numbers": "Hyper redirect 90% → 82%; base redirect unchanged.",
+                                "why": "Permanent shields make near-total redirection compound too safely. Hyper remains elite protection while focused damage can break through.",
+                                "priority": "High",
+                                "risk": "Test teammate-only transfer and shield caps."
+                        },
+                        {
+                                "brawler": "Unopcoloco",
+                                "type": "nerf",
+                                "section": "Main Attack",
+                                "area": "Whack follow-up",
+                                "current": "One scarf enables three Whack attacks with large Hyper range extensions.",
+                                "numbers": "Whack chain 3 attacks → 2; keep the current range and damage penalties.",
+                                "why": "The rework improved mobility and clarity, but three follow-ups make one safe scarf connection decide too much of the fight.",
+                                "priority": "High",
+                                "risk": "Test scarf-wall jumps and Hyper range telegraph."
+                        },
+                        {
+                                "brawler": "Freestyle",
+                                "type": "adjust",
+                                "section": "Main Attack",
+                                "area": "Setlist",
+                                "current": "Three attacks have very different reliability and sustain.",
+                                "numbers": "Disco Ball damage +4%; DJ Board outer keys -6%; microphone unchanged.",
+                                "why": "Move a little power toward precision without weakening Freestyle’s signature healing pickup.",
+                                "priority": "Low",
+                                "risk": "Full Disco→DJ→Mic cycle."
+                        },
+                        {
+                                "brawler": "Hope",
+                                "type": "adjust",
+                                "section": "Main Attack",
+                                "area": "Structure damage",
+                                "current": "Percent-max-HP attacks scale differently across fighters and giant objectives.",
+                                "numbers": "Keep 16%/18% versus fighters; add a documented structure cap equal to a normal heavy hit.",
+                                "why": "Hope should counter high-HP fighters without deleting Arena Forge towers through percentage scaling.",
+                                "priority": "High",
+                                "risk": "Rally Cry, Hyper and Forge modifiers."
+                        },
+                        {
+                                "brawler": "Money and Tax",
+                                "type": "adjust",
+                                "section": "Main Attack",
+                                "area": "Mode parity",
+                                "current": "Money has wider, larger coins; Tax has higher damage and tighter spread.",
+                                "numbers": "Tax first hit +8% damage, but returning ammo steal 0.25 → 0.20 per pair. Money unchanged.",
+                                "why": "Tax needs a clearer immediate reward without becoming an ammo-locking control mode.",
+                                "priority": "Medium",
+                                "risk": "Mode swap, mutation and Tower cards."
+                        },
+                        {
+                                "brawler": "Rocketeer",
+                                "type": "adjust",
+                                "section": "Main Attack",
+                                "area": "Main split",
+                                "current": "Direct hit and child rockets share too much of the same payoff.",
+                                "numbers": "Direct rocket damage +6%; each split rocket damage -8%.",
+                                "why": "Accuracy should matter more than stacking every child projectile on large targets. Total ideal damage stays close.",
+                                "priority": "Medium",
+                                "risk": "Point-blank and max-range damage."
+                        },
+                        {
+                                "brawler": "Tempo Maker",
+                                "type": "adjust",
+                                "section": "Main Attack",
+                                "area": "Cadence reward",
+                                "current": "Returning notes combine repeated damage and crowd control.",
+                                "numbers": "First return hit full damage; later contacts from the same attack deal 85%.",
+                                "why": "The rhythm payoff remains, but repeated body overlap stops multiplying burst uncontrollably.",
+                                "priority": "Medium",
+                                "risk": "Multi-contact attribution."
+                        },
+                        {
+                                "brawler": "Upiedown",
+                                "type": "adjust",
+                                "section": "Main Attack",
+                                "area": "Pie split",
+                                "current": "Landing pie and mini pies can overlap on large targets.",
+                                "numbers": "Landing impact +10%; each mini pie -5%.",
+                                "why": "A clean throw should carry more value than unavoidable overlap after the split.",
+                                "priority": "Low",
+                                "risk": "Direct impact and four-mini overlap."
+                        },
+                        {
+                                "brawler": "Beam",
+                                "type": "buff",
+                                "section": "Main Attack",
+                                "area": "Ramp entry",
+                                "current": "Continuous beam takes too long to become threatening after target swaps.",
+                                "numbers": "First ramp interval 0.45s → 0.38s; maximum damage unchanged.",
+                                "why": "Beam reaches its identity sooner but still needs sustained tracking for peak damage.",
+                                "priority": "Low",
+                                "risk": "Target swap and Golden Beam."
+                        },
+                        {
+                                "brawler": "Cheseypuff",
+                                "type": "buff",
+                                "section": "Main Attack",
+                                "area": "Close reliability",
+                                "current": "Long-range cheese is stable, but close shots feel unusually thin.",
+                                "numbers": "Minimum projectile size +8%; maximum evolved size unchanged.",
+                                "why": "This smooths the weak end without buffing already-powerful evolved shots.",
+                                "priority": "Low",
+                                "risk": "Evolution and wall contact."
+                        },
+                        {
+                                "brawler": "Demon",
+                                "type": "buff",
+                                "section": "Main Attack",
+                                "area": "Blade return",
+                                "current": "Correct glide choices can still miss the return damage by a small margin.",
+                                "numbers": "Returning blade hitbox +10%; outgoing hitbox unchanged.",
+                                "why": "Reward the planned return path without making the initial throw easier.",
+                                "priority": "Low",
+                                "risk": "Pull shield and wall contact."
+                        },
+                        {
+                                "brawler": "Draflygon",
+                                "type": "buff",
+                                "section": "Main Attack",
+                                "area": "Aerial flames",
+                                "current": "Outer scattered flames are difficult to confirm on moving targets.",
+                                "numbers": "Outer flame projectile size +10%; center flame unchanged.",
+                                "why": "Improve the edges of the pattern without raising the reliable center burst.",
+                                "priority": "Low",
+                                "risk": "Super pattern and Cinderion comparison."
+                        },
+                        {
+                                "brawler": "Duck",
+                                "type": "buff",
+                                "section": "Main Attack",
+                                "area": "Bread stream",
+                                "current": "The narrower, shorter cone can lose too many crumbs at its edge.",
+                                "numbers": "Crumb projectile size +6%; lifesteal remains 18%.",
+                                "why": "A tiny consistency buff supports the sweeping pattern without restoring the old wide cone.",
+                                "priority": "Low",
+                                "risk": "Held fire and homing Hyper crumbs."
+                        },
+                        {
+                                "brawler": "Hoop",
+                                "type": "buff",
+                                "section": "Main Attack",
+                                "area": "Precision hit",
+                                "current": "Direct pre-bounce contact is not much better than the easier splash.",
+                                "numbers": "Direct impact damage +10%; splash unchanged.",
+                                "why": "Rewarding the difficult hit adds skill expression without widening area damage.",
+                                "priority": "Low",
+                                "risk": "Direct plus bounce overlap."
+                        },
+                        {
+                                "brawler": "Hunter",
+                                "type": "buff",
+                                "section": "Main Attack",
+                                "area": "Target acquisition",
+                                "current": "Marked-target pressure drops when the mark chooses an unreachable enemy.",
+                                "numbers": "If a marked target is unreachable for 2s, retarget the nearest visible enemy.",
+                                "why": "The buff removes dead states rather than increasing damage or homing.",
+                                "priority": "Medium",
+                                "risk": "Walls, invisibility and respawns."
+                        },
+                        {
+                                "brawler": "Angel",
+                                "type": "nerf",
+                                "section": "Super & Summons",
+                                "area": "Second Life",
+                                "current": "Team-wide survival protection covers a long coordinated push.",
+                                "numbers": "Team Takeback duration -1s; personal Second Life unchanged.",
+                                "why": "Saving several allies at 1 HP is already one of the strongest team effects. The team window should be tighter than the personal version.",
+                                "priority": "Medium",
+                                "risk": "Test simultaneous lethal damage and respawns."
+                        },
+                        {
+                                "brawler": "Anti-Royal",
+                                "type": "nerf",
+                                "section": "Super & Summons",
+                                "area": "Mortar opening burst",
+                                "current": "Stored rounds create an immediate multi-shell area-control burst.",
+                                "numbers": "Maximum opening stored-round burst 8 → 6; ongoing 1.3s fire unchanged.",
+                                "why": "The mortar should establish territory, but the opening burst currently front-loads too much unavoidable area damage.",
+                                "priority": "Medium",
+                                "risk": "Confirm opening shells use distinct landing points."
+                        },
+                        {
+                                "brawler": "Cinderion",
+                                "type": "nerf",
+                                "section": "Super & Summons",
+                                "area": "Stored flames",
+                                "current": "Up to 17 orbit flames each last 16s.",
+                                "numbers": "Individual flame lifetime 16s → 13s.",
+                                "why": "Seventeen persistent hitboxes create too much passive control. A shorter lifetime makes full formations require continued accuracy.",
+                                "priority": "High",
+                                "risk": "Test orbit refresh and Hyper fourth layer."
+                        },
+                        {
+                                "brawler": "Decayer",
+                                "type": "nerf",
+                                "section": "Super & Summons",
+                                "area": "Permanent shield",
+                                "current": "Main hits repeatedly add shield in a no-decay shield system.",
+                                "numbers": "Shield gained per hit -15%; do not change damage.",
+                                "why": "A permanent resource must build more slowly than temporary health. This keeps the identity without allowing safe poke to create a second health bar.",
+                                "priority": "Medium",
+                                "risk": "Test cap stacking with Trinkets."
+                        },
+                        {
+                                "brawler": "Malakor",
+                                "type": "nerf",
+                                "section": "Super & Summons",
+                                "area": "Permanent zones",
+                                "current": "Hell zones can accumulate for an entire match.",
+                                "numbers": "Maximum 5 active Hell zones per owner; the sixth removes the oldest.",
+                                "why": "Unlimited permanent terrain guarantees late-match takeover and adds avoidable update/render load.",
+                                "priority": "High",
+                                "risk": "Test oldest-zone cleanup and team ownership."
+                        },
+                        {
+                                "brawler": "Orbo",
+                                "type": "nerf",
+                                "section": "Super & Summons",
+                                "area": "Super recharge",
+                                "current": "Super hits recharge at 23.4% of normal damage-based charge and also build Hyper.",
+                                "numbers": "Super recharge coefficient 23.4% → 20%.",
+                                "why": "Piercing multiple enemies now charges per enemy. A modest coefficient trim prevents back-to-back Supers in clustered modes.",
+                                "priority": "Medium",
+                                "risk": "Test single-target and three-target recharge."
+                        },
+                        {
+                                "brawler": "Paradox",
+                                "type": "nerf",
+                                "section": "Super & Summons",
+                                "area": "Relativity Zone",
+                                "current": "Enemy shots are slowed 30% while allied shots gain speed.",
+                                "numbers": "Enemy projectile slow 30% → 24%; allied +10% speed unchanged.",
+                                "why": "The zone already improves friendly tracking and safety. Reducing the denial side keeps projectile matchups playable.",
+                                "priority": "Medium",
+                                "risk": "Verify visual tags match actual speed."
+                        },
+                        {
+                                "brawler": "Peter Pickle",
+                                "type": "nerf",
+                                "section": "Super & Summons",
+                                "area": "Summons",
+                                "current": "Repeated hits and jars can produce very large walking-pickle armies.",
+                                "numbers": "Cap walking pickles at 12 normally and 20 during Hyper.",
+                                "why": "Autonomous pressure scales faster than player interaction and becomes a performance problem in team modes.",
+                                "priority": "High",
+                                "risk": "Test owner death and oldest-summon cleanup."
+                        },
+                        {
+                                "brawler": "Skeleflying",
+                                "type": "nerf",
+                                "section": "Super & Summons",
+                                "area": "Summon count",
+                                "current": "Large groups of flying and ground skeletons can overlap.",
+                                "numbers": "Maximum 9 living skeleton summons per owner.",
+                                "why": "The swarm fantasy remains, but a cap reduces body-blocking, pathfinding cost and unavoidable objective control.",
+                                "priority": "High",
+                                "risk": "Test portal spawns at cap and summon deaths."
+                        },
+                        {
+                                "brawler": "Chaird",
+                                "type": "adjust",
+                                "section": "Super & Summons",
+                                "area": "Super pull",
+                                "current": "Pull is now in the base Super; the Star Power ramps speed over time.",
+                                "numbers": "Base pull strength -8%; Star Power ends at the current 80% speed ceiling.",
+                                "why": "Moving pull into the kit is a real buff. A small base trim keeps the new Star Power from creating an unavoidable late spin.",
+                                "priority": "Medium",
+                                "risk": "Pull immunity and late-Super speed."
+                        },
+                        {
+                                "brawler": "Outlit",
+                                "type": "adjust",
+                                "section": "Super & Summons",
+                                "area": "Super pellets",
+                                "current": "Super now fires three large knockback pellets and chains into walls.",
+                                "numbers": "Center pellet damage +8%; side pellets -4%.",
+                                "why": "The center line should reward aim while the wall-chain spectacle remains coverage rather than free full damage.",
+                                "priority": "Medium",
+                                "risk": "Multiple walls and Super recharge."
+                        },
+                        {
+                                "brawler": "Sera Eclipse",
+                                "type": "adjust",
+                                "section": "Super & Summons",
+                                "area": "Eclipse zone",
+                                "current": "Zone heals, buffs allies, damages and slows enemies.",
+                                "numbers": "Enemy slow -5 percentage points; ally healing +6%.",
+                                "why": "Lean the zone further into support and away from doing every job equally well.",
+                                "priority": "Low",
+                                "risk": "Team ownership and overlapping zones."
+                        },
+                        {
+                                "brawler": "Trampaheal",
+                                "type": "buff",
+                                "section": "Super & Summons",
+                                "area": "Super charge",
+                                "current": "Healing teammates now charges Super, but the deployed Super is easy to erase.",
+                                "numbers": "Super deployable HP +12%; healing charge rate unchanged.",
+                                "why": "The new healing loop works only if the reward survives long enough to matter. This buffs payoff rather than charge speed.",
+                                "priority": "High",
+                                "risk": "Enemy damage, owner damage and team healing."
+                        },
+                        {
+                                "brawler": "Darkener",
+                                "type": "nerf",
+                                "section": "Star Powers",
+                                "area": "Star Power 1",
+                                "current": "Each consecutive cloud tick gains 25% damage.",
+                                "numbers": "Per-tick ramp +25% → +18%; reset immediately after leaving the cloud.",
+                                "why": "The ramp is healthy when earned through positioning, but 25% compounds too sharply on slowed or trapped targets.",
+                                "priority": "Medium",
+                                "risk": "Test tick ownership and reset timing."
+                        },
+                        {
+                                "brawler": "BlinkEye",
+                                "type": "nerf",
+                                "section": "Hypercharge",
+                                "area": "Hyper defense",
+                                "current": "Hyper grants 70% damage reduction with frequent homing eye missiles.",
+                                "numbers": "Hyper damage reduction 70% → 55%.",
+                                "why": "The controlled eye form already provides information and pressure. Tank-level mitigation removes the risk of entering the mode.",
+                                "priority": "High",
+                                "risk": "Test manual detonation and missile cadence."
+                        },
+                        {
+                                "brawler": "Chickpig",
+                                "type": "nerf",
+                                "section": "Hypercharge",
+                                "area": "Hyper mount",
+                                "current": "High-speed mount combines durability, ram pressure and charge resistance.",
+                                "numbers": "Pig HP -10%; Hyper charge resistance 40% → 32%.",
+                                "why": "Opponents currently have to solve too many defensive layers while also avoiding the ram.",
+                                "priority": "Medium",
+                                "risk": "Test dismount and summon attribution."
+                        },
+                        {
+                                "brawler": "Crystila",
+                                "type": "nerf",
+                                "section": "Hypercharge",
+                                "area": "Hyper reflector",
+                                "current": "Hyper glass absorbs 15,000 damage while reflecting in 360 degrees.",
+                                "numbers": "Absorption 15,000 → 12,500.",
+                                "why": "The reflector can remain spectacular, but its current durability stalls objectives longer than most full Supers.",
+                                "priority": "Medium",
+                                "risk": "Test reflected ownership and shield interaction."
+                        },
+                        {
+                                "brawler": "JackTrade",
+                                "type": "nerf",
+                                "section": "Hypercharge",
+                                "area": "ALL IN",
+                                "current": "Overlapping Hyper Super sources can deal full stacked damage.",
+                                "numbers": "Second and later overlapping ALL IN sources deal 75% damage.",
+                                "why": "Stacking is fun, but full multiplication creates extreme large-target burst and frame spikes. Diminishing repeats keep the jackpot fantasy.",
+                                "priority": "High",
+                                "risk": "Test poison return, slow zones and multi-target impact."
+                        },
+                        {
+                                "brawler": "King",
+                                "type": "nerf",
+                                "section": "Hypercharge",
+                                "area": "Hyper princess ramp",
+                                "current": "Focused princesses gain +10 damage per hit up to +550.",
+                                "numbers": "Per-hit growth +10 → +8; cap remains +550.",
+                                "why": "The no-minimum-fire-interval design already scales rapidly. Slower damage growth preserves the teamwork payoff without instant snowballing.",
+                                "priority": "High",
+                                "risk": "Test two-princess focus and target switching."
+                        },
+                        {
+                                "brawler": "Ramage",
+                                "type": "nerf",
+                                "section": "Hypercharge",
+                                "area": "Hyper sustain",
+                                "current": "Returning lifesteal projectiles heal 300 each, up to 3,000.",
+                                "numbers": "Per-projectile heal stays 300; activation cap 3,000 → 2,400.",
+                                "why": "The fixed heal solved scaling abuse, but ten confirmed returns still erase too much counter-damage during a high-pressure Hyper.",
+                                "priority": "High",
+                                "risk": "Test green return shots and 80% bonus travel."
+                        },
+                        {
+                                "brawler": "Snapper",
+                                "type": "nerf",
+                                "section": "Hypercharge",
+                                "area": "Hyper percentage damage",
+                                "current": "Hyper wave deals 50% current HP; mini wave deals 10%.",
+                                "numbers": "Main wave 50% → 44%; mini wave 10% → 8%.",
+                                "why": "Global percentage pressure should start engagements, not remove half a full team with limited positional counterplay.",
+                                "priority": "High",
+                                "risk": "Confirm both effects remain non-lethal."
+                        },
+                        {
+                                "brawler": "The Deleter",
+                                "type": "nerf",
+                                "section": "Hypercharge",
+                                "area": "Hypercharge",
+                                "current": "Hyper main executes below 35% HP; three clones deal 50% damage.",
+                                "numbers": "Execute threshold 35% → 30%; Hyper clone damage 50% → 42%.",
+                                "why": "The base 20% execute is already matchup-warping. Hyper should improve certainty without deleting one-third of every health bar behind clone pressure.",
+                                "priority": "Immediate",
+                                "risk": "Test boss/structure exclusions and clone attribution."
+                        },
+                        {
+                                "brawler": "Fuel",
+                                "type": "buff",
+                                "section": "Hypercharge",
+                                "area": "Hyper pull",
+                                "current": "Hyper’s long-range payoff feels too similar to the base flame cycle.",
+                                "numbers": "Hyper pull distance +18%.",
+                                "why": "A stronger displacement payoff differentiates Hyper without adding more damage.",
+                                "priority": "Low",
+                                "risk": "CC immunity and edge collisions."
+                        },
+                        {
+                                "brawler": "Beast",
+                                "type": "nerf",
+                                "section": "Special Abilities",
+                                "area": "Signature",
+                                "current": "BeastyBeast attacks every 0.01s at -40% damage.",
+                                "numbers": "Attack interval 0.01s → 0.05s and damage penalty -40% → -55%.",
+                                "why": "A 100-hit-per-second loop overwhelms collision checks and erases targets despite the damage penalty. The signature stays frantic at 20 hits per second.",
+                                "priority": "Immediate",
+                                "risk": "Test DPS, input lock and low-end performance."
+                        },
+                        {
+                                "brawler": "Echo",
+                                "type": "buff",
+                                "section": "Special Abilities",
+                                "area": "Instinct repeat",
+                                "current": "Aftershock Reflex repeats after 800ms but can be hard to read and land.",
+                                "numbers": "Repeated wave radius +10%; repeat damage unchanged.",
+                                "why": "A modest reliability buff makes the Instinct visible and useful without increasing its burst.",
+                                "priority": "Low",
+                                "risk": "Water movement and repeat cleanup."
+                        },
+                        {
+                                "brawler": "Homer",
+                                "type": "nerf",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Permanent homing",
+                                "current": "Repeated Supers permanently improve homing toward near-perfect accuracy.",
+                                "numbers": "Permanent homing cap 80% → 70%; Hyper may still temporarily exceed it.",
+                                "why": "Long-term progression should improve consistency without eventually removing the ability to miss.",
+                                "priority": "Medium",
+                                "risk": "Test save/reset boundaries between matches."
+                        },
+                        {
+                                "brawler": "Kage",
+                                "type": "nerf",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Base stats",
+                                "current": "9,200 HP, 2,350 damage and very fast movement.",
+                                "numbers": "HP 9,200 → 8,500. Keep the narrower cone and current damage.",
+                                "why": "Kage has tank durability, assassin speed and premium burst at the same time. Trimming HP preserves his lethal identity while restoring punish windows.",
+                                "priority": "Immediate",
+                                "risk": "Test dive survival against tanks and marksmen."
+                        },
+                        {
+                                "brawler": "Overlord",
+                                "type": "nerf",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Final stage",
+                                "current": "Late Ascension grows size and damage together after successful hits.",
+                                "numbers": "Final-stage growth cap 45% → 35%; earlier stages unchanged.",
+                                "why": "The final form should dominate space, but simultaneous size and damage growth currently removes too much room to outplay it.",
+                                "priority": "Medium",
+                                "risk": "Test stage loss, respawn and large targets."
+                        },
+                        {
+                                "brawler": "Amplifier",
+                                "type": "adjust",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Machines",
+                                "current": "Team amplifier creates strong shared damage windows.",
+                                "numbers": "Machine HP -8%; placement range +10%.",
+                                "why": "Make good placement more expressive while leaving the device easier to answer once found.",
+                                "priority": "Low",
+                                "risk": "Wall-safe placement and team buffs."
+                        },
+                        {
+                                "brawler": "AxeyWaxy",
+                                "type": "adjust",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Chaird overlap",
+                                "current": "Axe control can feel too similar to Chaird’s close-range displacement.",
+                                "numbers": "Returning axe gains +15% speed; remove knockback from the outgoing half only.",
+                                "why": "This creates a catch-and-return identity instead of competing with Chaird on the same CC pattern.",
+                                "priority": "Medium",
+                                "risk": "Outbound/return hit attribution."
+                        },
+                        {
+                                "brawler": "Bouncin’ Balls",
+                                "type": "adjust",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Turret command",
+                                "current": "Turret has 6,000 decaying HP, loses 750 HP per command and fires two waves every 10s.",
+                                "numbers": "Command cost 750 → 900 turret HP; wave ball damage +8%.",
+                                "why": "Fewer but more meaningful commands improve readability and stop a long-lived turret from flooding the arena.",
+                                "priority": "Medium",
+                                "risk": "Decay timing and command cooldown."
+                        },
+                        {
+                                "brawler": "Bowlin Rida",
+                                "type": "adjust",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Bull form",
+                                "current": "Always rides the bull; one ammo launches horns and contact deals damage.",
+                                "numbers": "Contact damage -10%; horn projectile damage +8%.",
+                                "why": "Shift power from passive collision into the attack players intentionally aim.",
+                                "priority": "Medium",
+                                "risk": "Contact cooldown and bots."
+                        },
+                        {
+                                "brawler": "Fastpass",
+                                "type": "adjust",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Momentum",
+                                "current": "Hits build shared movement and projectile-speed Momentum.",
+                                "numbers": "Movement Momentum cap unchanged; projectile-speed benefit uses 90% of current Momentum.",
+                                "why": "Separating the two outputs slightly keeps movement exciting without making late-stack projectiles too hard to dodge.",
+                                "priority": "Low",
+                                "risk": "HUD meter and stacked Super caps."
+                        },
+                        {
+                                "brawler": "Fight’nFire",
+                                "type": "adjust",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Flaming Core",
+                                "current": "Max-range shards add control and structure pressure.",
+                                "numbers": "Core direct damage +5%; shard damage -7%.",
+                                "why": "Shift value toward landing the core instead of farming every shard on large targets.",
+                                "priority": "Medium",
+                                "risk": "Max-range split and wall impact."
+                        },
+                        {
+                                "brawler": "Warrior",
+                                "type": "adjust",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Final Stand",
+                                "current": "Stationary Super grants extreme reload but removes mobility.",
+                                "numbers": "Spear hitbox +8%; Final Stand reload bonus -12%.",
+                                "why": "Improve the base attack while trimming the stationary damage ceiling.",
+                                "priority": "Low",
+                                "risk": "Normal poke and full Super DPS."
+                        },
+                        {
+                                "brawler": "Awakenator",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Wake transition",
+                                "current": "Nightmare setup can be lost when enemies wake at the edge of an effect.",
+                                "numbers": "Wake-trigger effect radius +10%; damage unchanged.",
+                                "why": "Improve consistency on the signature transition without making sleep easier to apply.",
+                                "priority": "Low",
+                                "risk": "Wake causes and ally corruption."
+                        },
+                        {
+                                "brawler": "Boom-Arang",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Return loop",
+                                "current": "Long out-and-back timing leaves the brawler exposed in open lanes.",
+                                "numbers": "Outgoing speed +8%; catch recovery lockout -10%.",
+                                "why": "The player still has to route the return, but spends less time unable to pressure.",
+                                "priority": "Low",
+                                "risk": "Catch, pull and wall interaction."
+                        },
+                        {
+                                "brawler": "dr0ne",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Command feedback",
+                                "current": "Drone commands are difficult to convert when targets change quickly.",
+                                "numbers": "Command retarget speed +15%; damage unchanged.",
+                                "why": "More responsive control improves the intended specialist feel without adding passive DPS.",
+                                "priority": "Low",
+                                "risk": "Multiple drones and owner death."
+                        },
+                        {
+                                "brawler": "Forest",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Parrot reliability",
+                                "current": "Pet pathing can waste attacks around water and obstacles.",
+                                "numbers": "Parrot retarget interval -20% and stuck recovery after 0.5s.",
+                                "why": "This fixes lost pressure through better behavior instead of inflating summon damage.",
+                                "priority": "Medium",
+                                "risk": "Water, walls and owner death."
+                        },
+                        {
+                                "brawler": "Goonbob",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Blobert collection",
+                                "current": "Self-created puddles are easy to miss by a few pixels.",
+                                "numbers": "Puddle collection radius +15%; stored-liquid cap unchanged.",
+                                "why": "The setup loop should fail from enemy pressure, not tiny pathing misses.",
+                                "priority": "Low",
+                                "risk": "Collection and water overlap."
+                        },
+                        {
+                                "brawler": "Jetpack",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Landing reliability",
+                                "current": "Charged landings are readable but inconsistent near the target edge.",
+                                "numbers": "Landing damage radius +8%; invulnerability timing unchanged.",
+                                "why": "The committed jump should connect slightly more reliably without restoring old repeat-flight safety.",
+                                "priority": "Medium",
+                                "risk": "Edge hits and water landings."
+                        },
+                        {
+                                "brawler": "Minigunnin",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Base firing",
+                                "current": "Recent range and cone changes improved consistency, but base bullets still feel weak.",
+                                "numbers": "Main bullet damage +8%; Super charge bonus stays +25%.",
+                                "why": "Sustained tracking needs a better normal payoff without accelerating the already-buffed Super cycle.",
+                                "priority": "Medium",
+                                "risk": "Full belt DPS and Super charge time."
+                        },
+                        {
+                                "brawler": "Predator",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Warning payoff",
+                                "current": "The longer latch warning gives opponents fair counterplay.",
+                                "numbers": "Successful latch claw damage +6%.",
+                                "why": "After adding reaction time, confirmed execution should remain rewarding.",
+                                "priority": "Low",
+                                "risk": "Warning, latch and CC immunity."
+                        },
+                        {
+                                "brawler": "Screener",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Battery",
+                                "current": "Confirmed hits do not refill the special loop quickly enough.",
+                                "numbers": "Battery restored per confirmed hit +15%.",
+                                "why": "Active accuracy should matter more than passive waiting. Capacity and burst remain unchanged.",
+                                "priority": "Low",
+                                "risk": "Multi-hit attacks and structures."
+                        },
+                        {
+                                "brawler": "Scuba Diver",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Mode clarity",
+                                "current": "Terrain-dependent pressure is difficult to convert consistently.",
+                                "numbers": "Surface attack projectile size +8%; underwater values unchanged.",
+                                "why": "The accessible form needs slightly better reliability while the terrain advantage remains special.",
+                                "priority": "Low",
+                                "risk": "Water transitions and aim telegraph."
+                        },
+                        {
+                                "brawler": "Sir Cheeseburger",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Engage",
+                                "current": "The large body reaches targets inconsistently in open maps.",
+                                "numbers": "Movement speed +4%; HP and damage unchanged.",
+                                "why": "A small mobility buff improves access without increasing brawl-winning durability.",
+                                "priority": "Low",
+                                "risk": "Collision and speed stacking."
+                        },
+                        {
+                                "brawler": "Steamer",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Respawn flow",
+                                "current": "Boiler-based attacks can restart with little usable pressure.",
+                                "numbers": "Respawn with 20% boiler resource.",
+                                "why": "A small reserve removes dead time without improving maximum Steam Stream output.",
+                                "priority": "Low",
+                                "risk": "Initial spawn must remain unchanged."
+                        },
+                        {
+                                "brawler": "Trapper",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Trap activation",
+                                "current": "Enemies often cross the warning before the fence becomes active.",
+                                "numbers": "Fence activation delay -15%; damage unchanged.",
+                                "why": "Prediction should pay off. Faster activation improves reliability without making a triggered trap more lethal.",
+                                "priority": "Medium",
+                                "risk": "Bot pathing and fast movement."
+                        },
+                        {
+                                "brawler": "Unstable",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Container threat",
+                                "current": "Containers can be destroyed before creating meaningful DNA pressure.",
+                                "numbers": "Container HP +8%; DNA damage and growth unchanged.",
+                                "why": "A little more setup durability supports the summoner identity without increasing the snowball reward.",
+                                "priority": "Low",
+                                "risk": "Owner death and hostile DNA."
+                        },
+                        {
+                                "brawler": "Upgradart",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Upgrade pacing",
+                                "current": "Early upgrades take too long to affect a short match.",
+                                "numbers": "First upgrade requirement -15%; later requirements unchanged.",
+                                "why": "Earlier identity helps normal modes while preserving late-game scaling limits.",
+                                "priority": "Low",
+                                "risk": "Respawn and mode resets."
+                        },
+                        {
+                                "brawler": "WeeFee",
+                                "type": "buff",
+                                "section": "Stats, Movement & Reliability",
+                                "area": "Signal uptime",
+                                "current": "Team utility falls off too sharply when a connection breaks.",
+                                "numbers": "Grace period after lost connection +0.4s.",
+                                "why": "Short connection drops should not erase the support loop, but opponents can still create real downtime.",
+                                "priority": "Low",
+                                "risk": "Reconnect, death and range limits."
+                        },
+                        {
+                                "brawler": "Classy",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "Core kit",
+                                "current": "Symphony ramp and mobile-speaker Signature are functioning after recent fixes.",
+                                "numbers": "No normal-kit change.",
+                                "why": "The latest Signature HP cost and speaker behavior need live data before another power move.",
+                                "priority": "Monitor",
+                                "risk": "Signature uptime and Hyper charge."
+                        },
+                        {
+                                "brawler": "Copyphase",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "Copied kits",
+                                "current": "Power depends heavily on the copied target and cleanup correctness.",
+                                "numbers": "No number change; audit copied-state cleanup first.",
+                                "why": "Base balance cannot be judged while copied shields, summons or UI may persist incorrectly.",
+                                "priority": "Monitor",
+                                "risk": "Death, respawn and target swaps."
+                        },
+                        {
+                                "brawler": "Drainbow",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "Track zones",
+                                "current": "Speed and regeneration depend on staying on luminous tracks.",
+                                "numbers": "No change.",
+                                "why": "The power has clear terrain dependency and counterplay through displacement.",
+                                "priority": "Monitor",
+                                "risk": "Track stacking and off-road drain."
+                        },
+                        {
+                                "brawler": "Evil Doctor",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "Mutation and Chain Reaction",
+                                "current": "Double Trouble and kill-attributed DNA now create complex delayed pressure.",
+                                "numbers": "No damage change.",
+                                "why": "The kit is powerful only when poison and kill attribution chain correctly; reliability data should come before tuning.",
+                                "priority": "Monitor",
+                                "risk": "Recursion cap and every kill source."
+                        },
+                        {
+                                "brawler": "Fuser",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "Recent pass",
+                                "current": "Now fires 8 bullets, +50% size, wider lanes; every 4 attacks banks 2 full-flight Curve Volleys with 60% weaker steering.",
+                                "numbers": "No further numerical change for one test cycle.",
+                                "why": "Several linked variables just changed. More tuning now would hide whether the new bullet count, size and homing tradeoff is healthy.",
+                                "priority": "Monitor",
+                                "risk": "Track hit rate, burst and Curve Volley accuracy."
+                        },
+                        {
+                                "brawler": "Heater Miser",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "Damage-over-time charge",
+                                "current": "Damage ticks now contribute to Super charge correctly.",
+                                "numbers": "No change.",
+                                "why": "The missing charge path was a functional weakness. Re-evaluate only after the repaired tick behavior has data.",
+                                "priority": "Monitor",
+                                "risk": "Time to first Super and Hyper pull."
+                        },
+                        {
+                                "brawler": "Hyperorigin",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "Energy loop",
+                                "current": "Energy, shields and heavy slams form a complete ramping kit.",
+                                "numbers": "No change.",
+                                "why": "The kit has strong payoff but visible setup and close-range exposure.",
+                                "priority": "Monitor",
+                                "risk": "Energy UI and shield caps."
+                        },
+                        {
+                                "brawler": "Splitter",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "Reworked split tree",
+                                "current": "Main 1→5 and Super 1→2→4→8→16 create high coverage with short pre-split range.",
+                                "numbers": "No immediate change.",
+                                "why": "The rework fundamentally changed hit distribution, so old damage assumptions no longer apply.",
+                                "priority": "Monitor",
+                                "risk": "Large targets, Hyper three-way shot and Instinct."
+                        },
+                        {
+                                "brawler": "Teether",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "Grapple",
+                                "current": "Delayed teeth and attached movement create clear warning and payoff stages.",
+                                "numbers": "No change.",
+                                "why": "The enemy gets a readable decision window and existing immunity systems provide counterplay.",
+                                "priority": "Monitor",
+                                "risk": "Pull distance and untargetability."
+                        },
+                        {
+                                "brawler": "Unhitabble",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "New release",
+                                "current": "Very new kit with limited matchup data.",
+                                "numbers": "No numerical change this cycle.",
+                                "why": "New mechanics need functional and counterplay testing before balance changes.",
+                                "priority": "Monitor",
+                                "risk": "Invulnerability, targeting and objectives."
+                        },
+                        {
+                                "brawler": "Xray",
+                                "type": "hold",
+                                "section": "Watchlist",
+                                "area": "Scanner",
+                                "current": "Information and vulnerability are strong but require a destructible machine.",
+                                "numbers": "No change.",
+                                "why": "Recent machine and vulnerability tuning should settle before another adjustment.",
+                                "priority": "Monitor",
+                                "risk": "Team damage amplification."
+                        }
+                ]
+        },
+        /* BALANCE_V6_GENERATED_END */
         {
             tag: 'V5',
             title: 'V5 Balance Changes',
@@ -1315,6 +2274,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const t = String(type || 'stable').toLowerCase();
             if (t === 'buff') return { label: 'BUFF', color: '#5df2c2', bg: 'rgba(93, 242, 194, 0.2)' };
             if (t === 'nerf') return { label: 'NERF', color: '#ff8f8f', bg: 'rgba(255, 143, 143, 0.2)' };
+            if (t === 'adjust') return { label: 'ADJUST', color: '#ffd166', bg: 'rgba(255, 209, 102, 0.18)' };
+            if (t === 'hold') return { label: 'HOLD', color: '#a9b8cc', bg: 'rgba(169, 184, 204, 0.16)' };
             return { label: 'REWORK', color: '#c9a3ff', bg: 'rgba(201, 163, 255, 0.2)' };
         };
 
@@ -1432,6 +2393,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             name.style.color = '#e8f6ff';
             top.appendChild(badge);
             top.appendChild(name);
+            if (change.area) {
+                const area = document.createElement('span');
+                area.textContent = change.area;
+                area.style.marginLeft = 'auto';
+                area.style.padding = '2px 7px';
+                area.style.borderRadius = '999px';
+                area.style.background = 'rgba(126, 200, 255, 0.1)';
+                area.style.border = '1px solid rgba(126, 200, 255, 0.28)';
+                area.style.color = '#9fd9ff';
+                area.style.fontSize = '10px';
+                area.style.fontWeight = '700';
+                top.appendChild(area);
+            }
             const nums = document.createElement('div');
             nums.textContent = change.numbers;
             nums.style.color = '#d7e8ff';
@@ -1559,7 +2533,30 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             }
 
             if (changeRows.length) {
-                changeRows.forEach((change) => body.appendChild(makeChangeRow(change)));
+                if (entry.grouped) {
+                    const groups = new Map();
+                    changeRows.forEach((change) => {
+                        const section = change.section || 'Other Changes';
+                        if (!groups.has(section)) groups.set(section, []);
+                        groups.get(section).push(change);
+                    });
+                    groups.forEach((sectionChanges, section) => {
+                        const sectionHead = document.createElement('div');
+                        sectionHead.style.display = 'flex';
+                        sectionHead.style.alignItems = 'center';
+                        sectionHead.style.gap = '10px';
+                        sectionHead.style.margin = '16px 0 8px';
+                        sectionHead.style.padding = '8px 10px';
+                        sectionHead.style.borderLeft = '4px solid #63dcff';
+                        sectionHead.style.borderRadius = '7px';
+                        sectionHead.style.background = 'linear-gradient(90deg, rgba(52,138,207,.22), rgba(52,138,207,.03))';
+                        sectionHead.innerHTML = `<strong style="color:#eaf7ff;letter-spacing:.06em">${section.toUpperCase()}</strong><small style="color:#8ebce3">${sectionChanges.length} ${sectionChanges.length === 1 ? 'ENTRY' : 'ENTRIES'}</small>`;
+                        body.appendChild(sectionHead);
+                        sectionChanges.forEach((change) => body.appendChild(makeChangeRow(change)));
+                    });
+                } else {
+                    changeRows.forEach((change) => body.appendChild(makeChangeRow(change)));
+                }
             } else {
                 const empty = document.createElement('div');
                 empty.textContent = 'No changes for this view.';
@@ -1850,7 +2847,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
   
   function getNativeAmmoCapacity(brawlerId){
-      if(brawlerId==='minigunnin'||brawlerId==='steamer'||brawlerId==='beam')return 100;
+      if(brawlerId==='minigunnin'||brawlerId==='steamer'||brawlerId==='beam'||brawlerId==='oil_maker')return 100;
       if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack')return 1;
       if(brawlerId==='demon'||brawlerId==='fastpass')return 2;
       if(brawlerId==='rocketeer')return 4;
@@ -1917,6 +2914,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         player.steamerSubCharge = 0;
         superCharge = 100;
     }
+    if (selectedBrawler === 'oil_maker' || (player && player.brawler === 'oil_maker')) {
+        player.oilMakerSuperCharges = 0;
+        player.oilMakerSubCharge = 0;
+        superCharge = 0;
+    }
     player.antiRoyalCounterfeitUntil = 0;
     player.freestyleSetlistStage = 0;
     player.freestyleSetlistHitMask = 0;
@@ -1966,6 +2968,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         player.moneyTaxMutationEmpoweredRemaining = 0;
         player.classySignatureUntil = 0;
         player.splitterInstinctReadyAt = 0;
+        player.boomArangInstinctReadyAt = performance.now() + 9000;
         player.trinketAttackCount = 0;
         player.trinketBushArmorShield = 0;
         player.trinketLastHp = player.hp;
@@ -1996,6 +2999,350 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   let gadgetTouchBtn = null;
   let superTouchBtn = null;
   let hyperTouchBtn = null;
+
+  // Shared action-control helpers.  These deliberately live beside the
+  // desktop/mobile input state so both control schemes use the same path.
+  const superAimCancelState = { source: 'desktop', pointerId: null, leftDeadZone: false, cancel: false };
+  let superAimStartTime = 0;
+  let superAimStartScreenX = 0;
+  let superAimStartScreenY = 0;
+  let healingRingActive = false;
+  let healingRingStart = 0;
+  const HEALING_RING_DURATION = 10000;
+  let lastHealingTick = 0;
+
+  function setSuperAimCancelVisual(cancelled) {
+      superAimCancelState.cancel = !!cancelled;
+      superBtn?.classList.toggle('super-aim-cancel', !!cancelled);
+      if (superTouchBtn) {
+          superTouchBtn.classList.toggle('super-aim-cancel', !!cancelled);
+          superTouchBtn.textContent = cancelled ? '×' : (isBlinkEyePlayerActive() && player?.blinkeyeSteering ? '💥' : '★');
+      }
+  }
+
+  function cancelSuperAim() {
+      if (!aimingSuper) return false;
+      aimingSuper = false;
+      superAimCancelState.pointerId = null;
+      superAimCancelState.leftDeadZone = false;
+      setSuperAimCancelVisual(false);
+      return true;
+  }
+
+  function startAimingSuper(source = 'desktop') {
+      const blinkEyeDetonate = isBlinkEyePlayerActive() && !!player?.blinkeyeSteering && !!player?.blinkeyeActiveEye;
+      if (blinkEyeDetonate) {
+          triggerBlinkEyeSuperExplosion(player.blinkeyeActiveEye, false);
+          updateSuperButton();
+          return;
+      }
+      if (superCharge < 100 || player.hp <= 0) return;
+      if (selectedBrawler === 'hyperorigin' && getHyperoriginEnergy(player) < 1) return;
+      if (selectedBrawler === 'copyphase') {
+          ensureCopyphaseState(player);
+          if (!player.copyphaseSlot1) return;
+      }
+      aimingSuper = true;
+      steamerPolesPlacedInCurrentAim = 0;
+      superAimStartTime = performance.now();
+      superAimStartScreenX = mouse.screenX;
+      superAimStartScreenY = mouse.screenY;
+      superAimCancelState.source = source;
+      superAimCancelState.cancel = false;
+  }
+
+  function releaseSuper(cancel = false) {
+      if (!aimingSuper) return;
+      if (cancel || superAimCancelState.cancel) { cancelSuperAim(); return; }
+      const holdMs = performance.now() - superAimStartTime;
+      const moved = Math.hypot(mouse.screenX - superAimStartScreenX, mouse.screenY - superAimStartScreenY);
+      const aimed = holdMs > 180 || moved > 15 || (superAimCancelState.source === 'mobile' && superAimCancelState.leftDeadZone);
+      aimingSuper = false;
+      setSuperAimCancelVisual(false);
+      fireSuper(aimed);
+  }
+
+  function updateGadgetInfo() {
+      const infoEl = document.getElementById('gadgetInfo');
+      if (!infoEl) return;
+      const data = brawlerData[selectedBrawler] || {};
+      const label = selectedGadget === 'g2' ? data.g2 : data.g1;
+      const names = selectedBrawler === 'carmela_fudge'
+          ? { g1: 'Sweet Recovery (Switch forms & Heal 2000 HP)', g2: 'Sugar Sprint (Switch forms, reload 1 ammo & +30% Speed)' }
+          : (selectedBrawler === 'bolznstien'
+              ? { g1: 'Bolznstien G1: Instant Discharge', g2: 'Bolznstien G2: Conductive Surge' }
+          : (selectedBrawler === 'rager'
+              ? { g1: 'Rager G1: Cleave Timber', g2: 'Rager G2: Battle Cry' }
+              : null));
+      const activeUntil = getPlayerGadgetCooldownUntil(selectedGadget, performance.now());
+      const cooldown = activeUntil > performance.now() ? ` — CD ${Math.ceil((activeUntil - performance.now()) / 1000)}s` : '';
+      infoEl.textContent = `${names?.[selectedGadget] || label || 'Select a Tool'}${cooldown}`;
+  }
+
+  function updateGadgetButton() {
+      if (!gadgetBtn) return;
+      const now = performance.now();
+      const unlocked = isTraining || !!getSelectedProgress().gadgetUnlocked;
+      const activeUntil = getPlayerGadgetCooldownUntil(selectedGadget, now);
+      gadgetCooldownUntil = activeUntil;
+      if (!unlocked) { gadgetBtn.textContent = 'Tool: Locked'; gadgetBtn.disabled = true; }
+      else if (gadgetArmed) { gadgetBtn.textContent = 'Tool: Armed'; gadgetBtn.disabled = false; }
+      else if (activeUntil > now) { gadgetBtn.textContent = `Tool: CD ${Math.ceil((activeUntil - now) / 1000)}s`; gadgetBtn.disabled = true; }
+      else { gadgetBtn.textContent = 'Tool: Ready'; gadgetBtn.disabled = false; }
+      updateGadgetInfo();
+  }
+
+  const BOUNCIN_SIGNATURE_COOLDOWN_MS = 10000;
+  function finalizeBouncinSignatureCollector(entity, now = performance.now()) {
+      if(!entity?.bouncySignatureCollectorActive||now<(entity.bouncySignatureCollectorEndsAt||0))return false;
+      const gained=Math.max(0,Math.floor(entity.bouncySignatureCollectorHits||0));
+      entity.bouncySignatureFollowupBalls=gained;
+      entity.bouncySignatureCollectorActive=false;
+      entity.bouncySignatureCollectorHitBalls={};
+      if(entity.id===player.id){
+          spawnFloatingText(entity.x,entity.y-48,gained>0?`NEXT VOLLEY +${gained} BALLS`:'NO BALLS COLLECTED',gained>0?'#ffd34f':'#8aa0b9');
+      }
+      return true;
+  }
+  function getBouncinSignatureState(entity = player, now = performance.now()) {
+      finalizeBouncinSignatureCollector(entity,now);
+      if (!isSpecialAbilityAvailableForEntity(entity, 'bouncin_balls')) return { ready:false, label:'LOCKED' };
+      if (entity.hp <= 1) return { ready:false, label:'NOT ENOUGH HP' };
+      const cooldownLeft=Math.max(0,(entity.bouncySignatureCooldownUntil||0)-now);
+      if(cooldownLeft>0)return {ready:false,label:`COOLDOWN ${(cooldownLeft/1000).toFixed(1)}s`,cooldownLeft};
+      if(entity.bouncySignatureCollectorArmed||entity.bouncySignatureCollectorActive)return {ready:false,label:'COLLECTOR ACTIVE'};
+      const ownedTurret = healingPods.find(p => p.isBouncyTurret && p.ownerId === entity.id && p.hp > 0);
+      if (entity.id === player.id) {
+          if (selectedGadget === 'g1' && gadgetArmed) return { ready:true, mode:'g1', label:'ELASTIC ARMED' };
+          if (selectedGadget === 'g2' && ownedTurret) return { ready:true, mode:'g2', label:'TURRET READY' };
+          return { ready:false, label:selectedGadget === 'g2' ? 'NO TURRET' : 'NEED TOOL' };
+      }
+      if (entity.selectedGadget === 'g1' && entity.gadgetArmed) return { ready:true, mode:'g1', label:'ELASTIC ARMED' };
+      if (entity.selectedGadget === 'g2' && ownedTurret) return { ready:true, mode:'g2', label:'TURRET READY' };
+      return { ready:false, label:'NEED TOOL' };
+  }
+
+  function getClassySignatureState(entity = player, now = performance.now()) {
+      if (!isSpecialAbilityAvailableForEntity(entity,'classy')) return {ready:false,label:'LOCKED'};
+      if (entity.hp <= 1) return {ready:false,label:'NOT ENOUGH HP'};
+      const speaker=getClassySpeaker(entity);
+      if (!speaker) return {ready:false,label:'NEED BASS DROP'};
+      const remaining=Math.max(0,(speaker.classySignatureUntil||0)-now);
+      if (remaining>0) return {ready:false,label:`MARCHING ${(remaining/1000).toFixed(1)}s`,remaining};
+      if (speaker.classySignatureUsed) return {ready:false,label:'ENCORE SPENT'};
+      return {ready:true,label:'MARCHING ENCORE',speaker};
+  }
+
+  function getMagenySignatureState(entity = player, now = performance.now()) {
+      if (!isSpecialAbilityAvailableForEntity(entity, 'mageny')) return {ready:false,label:'LOCKED'};
+      ensureMagenyState(entity);
+      const ownedZones = magenyVortexZones.filter((zone) => zone && zone.ownerId === entity.id);
+      const persistentZones = ownedZones.filter((zone) => zone.signaturePersistent);
+      if (persistentZones.length > 0) {
+          return {ready:true,mode:'detonate',label:'DETONATE VORTEX',castId:persistentZones[0].castId};
+      }
+      const cooldownLeft = Math.max(0, (entity.magenySignatureCooldownUntil || 0) - now);
+      if (cooldownLeft > 0) return {ready:false,label:`COOLDOWN ${(cooldownLeft/1000).toFixed(1)}s`,cooldownLeft};
+      if (entity.hp <= MAGENY_SIGNATURE_HP_COST) return {ready:false,label:`NEED ${MAGENY_SIGNATURE_HP_COST + 1} HP`};
+      if (ownedZones.length === 0) return {ready:false,label:'NEED ACTIVE VORTEX'};
+      const newestCastId = ownedZones.reduce((latest, zone) => Math.max(latest, zone.castId || 0), 0);
+      return {ready:true,mode:'sustain',label:'SUSTAIN VORTEX',castId:newestCastId};
+  }
+
+  function paySignatureHpCost(entity) {
+      if (!entity || entity.hp <= 1) return false;
+      const cost = Math.min(1000, Math.max(0, entity.hp - 1));
+      entity.hp = Math.max(1, entity.hp - cost);
+      const now=performance.now();
+      entity.lastDamagedAt=now;
+      entity.trinketLastCombatAt=now;
+      entity.idleRegenNextAt=0;
+      spawnFloatingText(entity.x, entity.y - 44, `-${Math.round(cost)} HP SIGNATURE`, '#ffd34f');
+      return true;
+  }
+  function payBouncinTurretSignatureHpCost(turret) {
+      if (!turret || turret.hp <= 1) return false;
+      const cost=Math.min(750,Math.max(0,turret.hp-1));
+      turret.hp=Math.max(1,turret.hp-cost);
+      turret.displayHp=turret.hp;
+      spawnFloatingText(turret.x,turret.y-44,`-${Math.round(cost)} TURRET HP`,'#ffd34f');
+      return true;
+  }
+  function fireBouncinTurretSignature(owner, turret) {
+      if (!owner || !turret) return false;
+      if (!payBouncinTurretSignatureHpCost(turret)) return false;
+      turret.bouncySignatureWavesAt = performance.now();
+      const perWave = 12;
+      for (let wave = 0; wave < 2; wave++) {
+          setTimeout(() => {
+              if (!playing || gameOver || turret.hp <= 0) return;
+              explosions.push({ x: turret.x, y: turret.y, radius: 88 + wave * 24, life: 0, maxLife: .36, color: 'rgba(255,211,79,.62)', fxKind: 'signatureWave' });
+              for (let i = 0; i < perWave; i++) {
+                  const a = Math.PI * 2 * (i / perWave) + wave * .13;
+                  bullets.push({ ownerBrawler:'bouncin_balls', x:turret.x, y:turret.y, vx:Math.cos(a)*900*.6, vy:Math.sin(a)*900*.6, life:0, maxLife:1.25, damage:250, pierce:false, ownerId:owner.id, canBounce:true, bounceDmgLoss:.05, bounceLifeLoss:.05, hitIds:{}, hitboxMod:1.45, hyperVisual:true, fxKind:'signatureTurret' });
+              }
+          }, wave * 260);
+      }
+      return true;
+  }
+
+  function activateSignatureAbility(entity = player) {
+      const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
+      if (fighterId === 'mageny') {
+          const state = getMagenySignatureState(entity);
+          if (!state.ready) {
+              spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9');
+              return false;
+          }
+          const now = performance.now();
+          if (state.mode === 'detonate') {
+              scheduleMagenyVortexCastDetonation(state.castId, now, 'MANUAL');
+              spawnFloatingText(entity.x, entity.y - 46, 'POLARITY RELEASE!', '#ffd34f');
+              updateSignatureButton();
+              return true;
+          }
+          if (entity.hp <= MAGENY_SIGNATURE_HP_COST) return false;
+          entity.hp -= MAGENY_SIGNATURE_HP_COST;
+          entity.lastDamagedAt = now;
+          entity.trinketLastCombatAt = now;
+          entity.idleRegenNextAt = 0;
+          entity.magenySignatureCooldownUntil = now + MAGENY_SIGNATURE_COOLDOWN_MS;
+          entity.magenySignatureCastId = state.castId;
+          for (const zone of getMagenyVortexCastZones(state.castId)) {
+              zone.signaturePersistent = true;
+              zone.signatureActivatedAt = now;
+              zone.detonateAt = now + MAGENY_SIGNATURE_MAX_LIFETIME_MS;
+          }
+          spawnFloatingText(entity.x, entity.y - 48, `-${MAGENY_SIGNATURE_HP_COST} HP · PERMANENT ATTRACTION`, '#ffd34f');
+          explosions.push({x:entity.x,y:entity.y,radius:94,life:0,maxLife:.38,color:'rgba(255,211,79,.72)',fxKind:'magenySignature'});
+          updateSignatureButton();
+          return true;
+      }
+      if (fighterId === 'classy') {
+          const classyState=getClassySignatureState(entity);
+          if (!classyState.ready) {
+              spawnFloatingText(entity.x,entity.y-34,classyState.label,'#8aa0b9');
+              return false;
+          }
+          if (!paySignatureHpCost(entity)) return false;
+          const now=performance.now();
+          classyState.speaker.classySignatureUsed=true;
+          classyState.speaker.classySignatureUntil=now+6000;
+          entity.classySignatureUntil=now+6000;
+          explosions.push({x:classyState.speaker.x,y:classyState.speaker.y,radius:76,life:0,maxLife:.3,color:'rgba(255,211,79,.72)',fxKind:'classySignature'});
+          spawnFloatingText(classyState.speaker.x,classyState.speaker.y-52,'MARCHING ENCORE!','#ffd34f');
+          updateSignatureButton();
+          return true;
+      }
+      if (fighterId === 'beast') {
+          const state = getBeastSignatureState(entity);
+          if (!state.ready) {
+              spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9');
+              return false;
+          }
+          const now = performance.now();
+          if (entity.id === player.id) {
+              ammo = 0;
+              ammoReloadTimer = 0;
+          } else {
+              entity.ammo = 0;
+          }
+          entity.beastyBeastUntil = now + 5000;
+          entity.beastyBeastNextClawAt = now;
+          entity.beastyBeastClawFlip = -1;
+          explosions.push({x:entity.x,y:entity.y,radius:94,life:0,maxLife:.42,color:'rgba(255,211,79,.78)',legendary:true,fxKind:'beastyBeast'});
+          spawnFloatingText(entity.x, entity.y - 56, 'BEASTYBEAST!', '#ffd34f');
+          updateSignatureButton();
+          return true;
+      }
+      if (fighterId !== 'bouncin_balls') return false;
+      const state = getBouncinSignatureState(entity);
+      if (!state.ready) {
+          spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9');
+          return false;
+      }
+      if (!paySignatureHpCost(entity)) return false;
+      if (state.mode === 'g1') {
+          entity.bouncySignatureCollectorArmed = true;
+          entity.bouncySignatureCooldownUntil = performance.now() + BOUNCIN_SIGNATURE_COOLDOWN_MS;
+          explosions.push({ x: entity.x, y: entity.y, radius: 62, life: 0, maxLife: .28, color: 'rgba(255,211,79,.66)', fxKind: 'signature' });
+          spawnFloatingText(entity.x, entity.y - 54, 'COLLECTOR VOLLEY', '#ffd34f');
+          return true;
+      }
+      const turret = healingPods.find(p => p.isBouncyTurret && p.ownerId === entity.id && p.hp > 0);
+      if (turret) {
+          const fired=fireBouncinTurretSignature(entity, turret);
+          if(fired)entity.bouncySignatureCooldownUntil=performance.now()+BOUNCIN_SIGNATURE_COOLDOWN_MS;
+          return fired;
+      }
+      return false;
+  }
+
+  function updateSignatureButton() {
+      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny';
+      const shouldShow = playing && signatureFighter && isSpecialAbilityAvailableForEntity(player, selectedBrawler);
+      if (signatureTouchBtn) signatureTouchBtn.style.display = shouldShow ? 'flex' : 'none';
+      if (signatureBtn) signatureBtn.style.display = shouldShow ? '' : 'none';
+      if (!shouldShow) return;
+      const state = selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : getBouncinSignatureState(player)));
+      const costText = selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP'));
+      if (signatureTouchBtn) {
+          signatureTouchBtn.textContent = state.ready ? 'SIG' : '×';
+          signatureTouchBtn.title = `Signature: ${state.label}${costText}`;
+          signatureTouchBtn.classList.toggle('signature-ready', !!state.ready);
+      }
+      if (signatureBtn) {
+          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : ' · up to 1000 HP + 750 turret HP'))} (R)`;
+          signatureBtn.disabled = !state.ready;
+          signatureBtn.classList.toggle('signature-ready', !!state.ready);
+      }
+  }
+
+  function updateSuperButton() {
+      if (!superBtn) return;
+      if (isBlinkEyePlayerActive() && player?.blinkeyeSteering && player?.blinkeyeActiveEye) {
+          superBtn.textContent = 'Power Move: Detonate Eye 💥';
+          superBtn.disabled = false;
+          syncMobileActionButtons();
+          return;
+      }
+      if (selectedBrawler === 'jacktrade' && superCharge >= 100 && !isHypercharged) {
+          const outcomes = prepareJackTradeOutcomes(player, getJackTradePreparedOutcomeCount(player));
+          const label = outcomes.map(outcome => JACKTRADE_OUTCOME_LABELS[outcome] || String(outcome).toUpperCase()).join(' + ');
+          superBtn.textContent = `Power Move: ${label}`;
+          superBtn.dataset.lockedOutcome = label;
+          superBtn.disabled = false;
+          return;
+      }
+      delete superBtn.dataset.lockedOutcome;
+      superBtn.textContent = superCharge >= 100 ? 'Power Move: Ready' : `Power Move: ${Math.floor(superCharge)}%`;
+      superBtn.disabled = superCharge < 100;
+  }
+
+  function updateHyperButton() {
+      if (!hyperBtn) return;
+      const unlocked = isTraining || !!getSelectedProgress().hyperchargeUnlocked;
+      if (!unlocked) { hyperBtn.textContent = 'Core Surge: Locked'; hyperBtn.disabled = true; return; }
+      if (isHypercharged) { hyperBtn.textContent = 'CORE SURGED'; hyperBtn.disabled = false; return; }
+      hyperBtn.textContent = hyperChargeCharge >= 100 ? 'CORE SURGE: Ready' : `CORE: ${Math.floor(hyperChargeCharge)}%`;
+      hyperBtn.disabled = hyperChargeCharge < 100;
+  }
+
+  function getSmoothDisplayedHp(entity) {
+      if (!entity) return 0;
+      const exact = Math.max(0, Number(entity.hp) || 0);
+      if (!Number.isFinite(entity.displayHp)) entity.displayHp = exact;
+      entity.displayHp += (exact - entity.displayHp) * .22;
+      if (Math.abs(entity.displayHp - exact) < 1) entity.displayHp = exact;
+      const step = (entity.maxHp || 0) >= 2000 ? (entity.displayHp < 1000 ? 10 : 100) : 10;
+      return Math.max(0, Math.round(entity.displayHp / step) * step);
+  }
+
+  superBtn.addEventListener('mousedown', () => startAimingSuper('desktop'));
+  superBtn.addEventListener('mouseup', () => releaseSuper(false));
+  superBtn.addEventListener('touchstart', () => { startAimingSuper('mobile'); }, { passive: true });
+  superBtn.addEventListener('touchend', () => releaseSuper(false), { passive: true });
+  hyperBtn?.addEventListener('click', () => activateHypercharge());
   let signatureTouchBtn = null;
   let mobileControlsRoot = null;
   let mobileControlsLastVisible = null;
@@ -2034,10 +3381,24 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           gadgetTouchBtn.classList.toggle('is-armed', !!gadgetArmed);
       }
       if (superTouchBtn) {
-          const charge = Math.max(0, Math.min(100, Number(superCharge) || 0));
+          if (isBlinkEyePlayerActive() && !!player?.blinkeyeSteering && !!player?.blinkeyeActiveEye) {
+              superTouchBtn.textContent = '💥';
+              superTouchBtn.dataset.label = 'DETONATE';
+          }
+          const isMulti = hasMultiSuper(selectedBrawler);
+          const charges = isMulti ? getBrawlerSuperCharges(player) : (superCharge >= 100 ? 1 : 0);
+          const charge = isMulti ? (charges > 0 ? 100 : Math.max(0, Math.min(100, Number(selectedBrawler === 'oil_maker' ? (player.oilMakerSubCharge || 0) : (player.steamerSubCharge || 0))))) : Math.max(0, Math.min(100, Number(superCharge) || 0));
           superTouchBtn.style.setProperty('--mobile-charge', `${charge * 3.6}deg`);
           superTouchBtn.disabled = !!superBtn.disabled;
-          superTouchBtn.classList.toggle('is-ready', charge >= 100 && !superBtn.disabled);
+          superTouchBtn.classList.toggle('is-ready', (charges > 0 || charge >= 100) && !superBtn.disabled);
+          if (isMulti && charges > 0) {
+              superTouchBtn.dataset.charges = `x${charges}`;
+              const maxCharges = getBrawlerSuperMaxCharges(selectedBrawler, !!isHypercharged);
+              superTouchBtn.textContent = `★ ${charges}/${maxCharges}`;
+          } else {
+              delete superTouchBtn.dataset.charges;
+              superTouchBtn.textContent = '★';
+          }
       }
       if (hyperTouchBtn) {
           const charge = Math.max(0, Math.min(100, Number(hyperChargeCharge) || 0));
@@ -2281,7 +3642,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   window.addEventListener('mouseup', e=> {
       mouse.down = false;
       if (e.button === 0 && aimingSuper && superAimCancelState.source === 'desktop') {
-          if (selectedBrawler === 'steamer') {
+          if (selectedBrawler === 'steamer' && !e.target?.closest?.('#super')) {
               return;
           }
           releaseSuper();
@@ -2320,7 +3681,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       return true;
   }
 
-  function startBlinkEyeSuper(entity, targetX, targetY, isHyper = false) {
+  function isBlinkEyePlayerActive() {
+    return selectedBrawler === 'blinkeye' || (typeof player !== 'undefined' && player?.brawler === 'blinkeye');
+}
+function startBlinkEyeSuper(entity, targetX, targetY, isHyper = false) {
       if (!entity || entity.hp <= 0) return;
       const now = performance.now();
       const ang = Math.atan2((targetY ?? entity.y) - entity.y, (targetX ?? entity.x) - entity.x);
@@ -2330,7 +3694,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       entity.blinkeyeSteering = true;
       entity.blinkeyeSteerStart = now;
       entity.blinkeyeSteerMaxDuration = maxDur;
-      entity.defenseMult = isHyper ? 0.30 : 0.60; // 70% DR in HC, 40% DR in normal
+      entity.defenseMult = isHyper ? 0.45 : 0.60; // 55% DR in HC, 40% DR in normal
       entity.defenseUntil = now + maxDur;
 
       const eyeBullet = {
@@ -2376,6 +3740,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if (owner) {
           owner.blinkeyeSteering = false;
           owner.blinkeyeActiveEye = null;
+          if (owner.id === player.id) {
+              player.blinkeyeSteering = false;
+              player.blinkeyeActiveEye = null;
+          }
           owner.defenseMult = 1.0;
           owner.defenseUntil = 0;
       }
@@ -2404,14 +3772,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           if (areAlliedEntities(entity, target)) continue;
           const dist = Math.hypot(target.x - entity.x, target.y - entity.y);
           if (dist > radius + (target.radius || 16)) continue;
-          const ang = Math.atan2(target.y - entity.y, target.x - entity.x);
-          const kb = knockback * getEntityKnockbackMultiplier(target, now);
-          target.x = clamp(target.x + Math.cos(ang) * kb, target.radius, WORLD_W - target.radius);
-          target.y = clamp(target.y + Math.sin(ang) * kb, target.radius, WORLD_H - target.radius);
-          target.slowUntil = Math.max(target.slowUntil || 0, now + 1800);
-          showDamageNumber(target.x, target.y - 20, 600, '#ffa726');
-          target.hp -= 600;
-          if (target.hp <= 0) handleDeath(target, entity);
+          applyKnockback(target, entity.x, entity.y, knockback, now);
+          applyStatusEffect(target, 'slow', 1800, entity);
+          checkHit(target, {
+              ownerBrawler: 'blinkeye', ownerId: entity.id, damage: 600,
+              pierce: true, isGadgetDamage: true, hitIds: {}
+          }, -1);
       }
       explosions.push({ x: entity.x, y: entity.y, radius, life: 0, maxLife: 0.25, color: 'rgba(255, 167, 38, 0.75)', legendary: true });
       spawnFloatingText(entity.x, entity.y - 38, 'RETINAL FLASH! ⚡👁️', '#ffa726');
@@ -2608,12 +3974,125 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   let WORLD_W = 4000;
   let WORLD_H = 4000;
   let camX = 0, camY = 0;
+  const CAMERA_ZOOM = 0.90;
   function getMouseWorld(){
-    return { x: mouse.screenX + camX, y: mouse.screenY + camY };
+    return { x: mouse.screenX / CAMERA_ZOOM + camX, y: mouse.screenY / CAMERA_ZOOM + camY };
   }
 
   // Combat
   const bullets = [];
+  // --- RAGER BRAWLER STATE ---
+const ragerWarTotems = [];
+function castRagerSuper(entity, targetX, targetY, isHyper) {
+    if (!entity || entity.hp <= 0) return;
+    const now = performance.now();
+    const duration = isHyper ? 9100 : 7000; // +30% duration in HC
+    const targetRadius = 240;
+    
+    // Throw range capped at 600px
+    const dist = Math.hypot((targetX ?? entity.x) - entity.x, (targetY ?? entity.y) - entity.y);
+    const ang = Math.atan2((targetY ?? entity.y) - entity.y, (targetX ?? entity.x) - entity.x);
+    const clampedDist = Math.min(dist, 600);
+    const placeX = entity.x + Math.cos(ang) * clampedDist;
+    const placeY = entity.y + Math.sin(ang) * clampedDist;
+
+    ragerWarTotems.push({
+        id: nextId++,
+        ownerId: entity.id,
+        team: entity.team,
+        x: placeX,
+        y: placeY,
+        radius: targetRadius,
+        expiresAt: now + duration,
+        isHyper: !!isHyper,
+        hasSp2: (entity.id === player.id ? selectedStar : entity.selectedStar) === 'long' || (entity.id === player.id ? selectedStar : entity.selectedStar) === 'sp2',
+        lastPulseAt: 0
+    });
+
+    spawnFloatingText(placeX, placeY - 45, isHyper ? '🔥 PRIMAL FRENZY! 🔥' : '🪓 WAR TOTEM! 🪓', isHyper ? '#d25bff' : '#ff4757');
+    explosions.push({
+        x: placeX,
+        y: placeY,
+        radius: 80,
+        life: 0,
+        maxLife: 0.35,
+        color: isHyper ? '#d25bff' : '#ff4757'
+    });
+}
+
+function executeRagerG1(entity) {
+    if (!entity || entity.hp <= 0) return;
+    const now = performance.now();
+    const radius = 180;
+    const dmg = 950;
+    const targets = entity.id === player.id ? bots : [player, ...bots];
+    
+    // 360 degree Cleave Timber
+    for (const t of targets) {
+        if (!t || t.hp <= 0 || t.id === entity.id || areAlliedEntities(entity, t)) continue;
+        const d = Math.hypot(t.x - entity.x, t.y - entity.y);
+        if (d <= radius + (t.radius || 14)) {
+            checkHit(t, { ownerBrawler: 'rager', damage: dmg, pierce: true, ownerId: entity.id, hitIds: {} }, -1);
+            applyKnockback(t, entity.x, entity.y, 140, now);
+        }
+    }
+    // Break cubes
+    for (let ci = cubes.length - 1; ci >= 0; ci--) {
+        const c = cubes[ci];
+        if (Math.hypot(c.x - entity.x, c.y - entity.y) <= radius + 20) {
+            c.hp -= dmg;
+            if (c.hp <= 0) {
+                powerups.push({ x: c.x, y: c.y });
+                cubes.splice(ci, 1);
+            }
+        }
+    }
+    explosions.push({
+        x: entity.x,
+        y: entity.y,
+        radius: radius,
+        life: 0,
+        maxLife: 0.28,
+        color: '#ff6b4a'
+    });
+    spawnFloatingText(entity.x, entity.y - 35, '🪓 CLEAVE TIMBER!', '#ff6b4a');
+}
+
+function executeRagerG2(entity) {
+    if (!entity || entity.hp <= 0) return;
+    const now = performance.now();
+    const teamEntities = [player, ...bots].filter(e => e && e.hp > 0 && areAlliedEntities(entity, e));
+    for (const ally of teamEntities) {
+        ally.ragerSpeedUntil = now + 3000;
+        if (ally.id === player.id) {
+            superCharge = clamp(superCharge + 30, 0, 100);
+            updateSuperButton();
+        } else {
+            ally.superCharge = clamp((ally.superCharge || 0) + 30, 0, 100);
+        }
+        spawnFloatingText(ally.x, ally.y - 35, '🔥 BATTLE CRY (+20% SPD & +30% SUPER)', '#ffa502');
+    }
+}
+
+const bolznstienPendingStrikes = [];
+  const bolznstienShockTrails = [];
+  const bolznstienChainArcs = [];
+  const chocolatePuddles = [];
+  const magnatarVortices = [];
+  const oilMakerPuddles = [];
+  const oilMakerBarrels = [];
+  const oilMakerPendingPuddles = [];
+  const _origBulletsPush = bullets.push.bind(bullets);
+  bullets.push = function(...items) {
+      if (typeof isGiantProjectilesActive === 'function' && isGiantProjectilesActive()) {
+          for (const item of items) {
+              if (item && typeof item === 'object') {
+                  applyGiantProjectilesModifier(item);
+              }
+          }
+      }
+      return _origBulletsPush(...items);
+  };
   const magenyVortexZones = [];
   const magenyResidualFloors = [];
   // Duck's lifesteal is represented by travelling orbs so ducklings only heal
@@ -2980,9 +4459,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             paradox: 0.95,
             sera_eclipse: 0.95,
             boom_arang: 1.0,
-            sir_cheeseburger: 1.0
+            sir_cheeseburger: 1.0,
+            carmela_fudge: 1.0,
+            rager: 1.0,
+        bolznstien: 1.0,
+            magnatar: 1.0,
+            oil_maker: 1.0
         },
         reloadMsByBrawler: {
+            carmela_fudge: 1400,
+            oil_maker: 90,
+            magnatar: 1450,
+            rager: 1500,
+        bolznstien: 1400,
             blinkeye: 1350,
             warrior: 1650,
             weefee: 1400,
@@ -3001,7 +4490,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             hunter: 1300,
             chaird: 1400,
             forest: 2100,
-            bouncin_balls: 1500,
+            bouncin_balls: 1275,
             goonbob: 1000,
             tempo_maker: 1300,
             copyphase: 1350,
@@ -3034,6 +4523,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             ,predator: 1500
         },
         fireDelayMsByBrawler: {
+            carmela_fudge: 180,
+            oil_maker: 75,
+            magnatar: 200,
+            rager: 220,
+        bolznstien: 200,
             blinkeye: 200,
             weefee: 240,
             sir_cheeseburger: 220,
@@ -3125,6 +4619,45 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (isEntityCcImmune(entity, now)) return 0;
         return now < (entity.ridaSuperArmorUntil || 0) ? 0.65 : 1.0;
     }
+    function applyKnockback(entity, sourceX, sourceY, distance, now = performance.now()) {
+        if (!entity || entity.hp <= 0) return false;
+        if (![entity.x, entity.y, sourceX, sourceY, distance].every(Number.isFinite)) return false;
+        const resistance = getEntityKnockbackMultiplier(entity, now);
+        const safeDistance = clamp(Math.abs(distance) * resistance, 0, 500);
+        if (safeDistance < 0.5) return false;
+
+        let dx = entity.x - sourceX;
+        let dy = entity.y - sourceY;
+        let length = Math.hypot(dx, dy);
+        if (length < 0.001) {
+            const fallbackAngle = Number.isFinite(entity.visualAimAngle) ? entity.visualAimAngle : 0;
+            dx = Math.cos(fallbackAngle);
+            dy = Math.sin(fallbackAngle);
+            length = 1;
+        }
+        const nx = dx / length;
+        const ny = dy / length;
+        const radius = Math.max(1, Number(entity.radius) || 14);
+        const startX = entity.x;
+        const startY = entity.y;
+        let safeX = startX;
+        let safeY = startY;
+        const steps = Math.max(1, Math.ceil(safeDistance / 12));
+        for (let step = 1; step <= steps; step++) {
+            const travel = safeDistance * step / steps;
+            const nextX = clamp(startX + nx * travel, radius, WORLD_W - radius);
+            const nextY = clamp(startY + ny * travel, radius, WORLD_H - radius);
+            if (!canBotMoveToPosition(entity, nextX, nextY)) break;
+            safeX = nextX;
+            safeY = nextY;
+        }
+        entity.x = safeX;
+        entity.y = safeY;
+        entity.vx = nx * Math.min(520, safeDistance * 3.2);
+        entity.vy = ny * Math.min(520, safeDistance * 3.2);
+        entity.knockbackUntil = Math.max(entity.knockbackUntil || 0, now + 120);
+        return Math.hypot(safeX - startX, safeY - startY) >= 0.5;
+    }
     function isEntityStunned(entity, now) {
         return !!(entity && !isEntityCcImmune(entity, now) && entity.stunUntil && now < entity.stunUntil);
     }
@@ -3138,7 +4671,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (effect === 'slow') entity.slowUntil = Math.max(entity.slowUntil || 0, until);
         if (effect === 'stun') entity.stunUntil = Math.max(entity.stunUntil || 0, until);
         if (effect === 'root') entity.rootUntil = Math.max(entity.rootUntil || 0, until);
-        if (isRankedMatch && activeRankedModifier === 'crowd_uncontrol' && sourceEntity && sourceEntity !== entity && !sourceEntity._ccReflecting) {
+        if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'crowd_uncontrol' || activeRankedModifierSecondary === 'crowd_uncontrol' || activeRankedModifierTertiary === 'crowd_uncontrol') && sourceEntity && sourceEntity !== entity && !sourceEntity._ccReflecting) {
             sourceEntity._ccReflecting = true;
             applyStatusEffect(sourceEntity, effect, durationMs);
             spawnFloatingText(sourceEntity.x, sourceEntity.y - 36, '🌀 CC REFLECTED!', '#ee5253');
@@ -3219,7 +4752,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye'
+        'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -3253,7 +4786,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             fuser: 'Starter',
             rocketeer: 'Starter',
 
-            // Rare (8)
+            carmela_fudge: 'Anomaly',
+            // Rare (9)
+            rager: 'Mythic',
+    bolznstien: 'Rare',
+            magnatar: 'Mythic',
+            oil_maker: 'Mythic',
             echo: 'Rare',
             cheseypuff: 'Rare',
             unopcoloco: 'Rare',
@@ -3384,6 +4922,22 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             playerData.unlockedBrawlers.outlit = true;
             playerData.unlockedBrawlers.fuser = true;
             playerData.unlockedBrawlers.rocketeer = true;
+            playerData.unlockedBrawlers.carmela_fudge = true;
+            playerData.unlockedBrawlers.rager = true;
+        playerData.unlockedBrawlers.bolznstien = true;
+            playerData.unlockedBrawlers.magnatar = true;
+            playerData.unlockedBrawlers.oil_maker = true;
+            playerData.unlockedBrawlers.rager = true;
+            if (!playerData.brawlers.rager) {
+                playerData.brawlers.rager = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+            } else {
+                playerData.brawlers.rager.level = Math.max(playerData.brawlers.rager.level || 1, 11);
+                playerData.brawlers.rager.gadgetUnlocked = true;
+                playerData.brawlers.rager.starPowerUnlocked = true;
+                playerData.brawlers.rager.hyperchargeUnlocked = true;
+                if (!playerData.brawlers.rager.selectedGadget) playerData.brawlers.rager.selectedGadget = 'g1';
+                if (!playerData.brawlers.rager.selectedStar || playerData.brawlers.rager.selectedStar === 'none') playerData.brawlers.rager.selectedStar = 'slow';
+            }
         }
 
         function isFavoriteBrawler(id) {
@@ -3436,6 +4990,61 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             playerData.unlockedBrawlers.outlit = true;
             playerData.unlockedBrawlers.fuser = true;
             playerData.unlockedBrawlers.rocketeer = true;
+            playerData.unlockedBrawlers.carmela_fudge = true;
+            playerData.unlockedBrawlers.bolznstien = true;
+            playerData.unlockedBrawlers.magnatar = true;
+            playerData.unlockedBrawlers.oil_maker = true;
+            playerData.unlockedBrawlers.rager = true;
+            if (!playerData.brawlers.rager) {
+                playerData.brawlers.rager = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+            } else {
+                playerData.brawlers.rager.level = Math.max(playerData.brawlers.rager.level || 1, 11);
+                playerData.brawlers.rager.gadgetUnlocked = true;
+                playerData.brawlers.rager.starPowerUnlocked = true;
+                playerData.brawlers.rager.hyperchargeUnlocked = true;
+                if (!playerData.brawlers.rager.selectedGadget) playerData.brawlers.rager.selectedGadget = 'g1';
+                if (!playerData.brawlers.rager.selectedStar || playerData.brawlers.rager.selectedStar === 'none') playerData.brawlers.rager.selectedStar = 'slow';
+            }
+            if (!playerData.brawlers.oil_maker) {
+                playerData.brawlers.oil_maker = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+            } else {
+                playerData.brawlers.oil_maker.level = Math.max(playerData.brawlers.oil_maker.level || 1, 11);
+                playerData.brawlers.oil_maker.gadgetUnlocked = true;
+                playerData.brawlers.oil_maker.starPowerUnlocked = true;
+                playerData.brawlers.oil_maker.hyperchargeUnlocked = true;
+                if (!playerData.brawlers.oil_maker.selectedGadget) playerData.brawlers.oil_maker.selectedGadget = 'g1';
+                if (!playerData.brawlers.oil_maker.selectedStar || playerData.brawlers.oil_maker.selectedStar === 'none') playerData.brawlers.oil_maker.selectedStar = 'slow';
+            }
+            if (!playerData.brawlers.carmela_fudge) {
+                playerData.brawlers.carmela_fudge = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+            } else {
+                playerData.brawlers.carmela_fudge.level = Math.max(playerData.brawlers.carmela_fudge.level || 1, 11);
+                playerData.brawlers.carmela_fudge.gadgetUnlocked = true;
+                playerData.brawlers.carmela_fudge.starPowerUnlocked = true;
+                playerData.brawlers.carmela_fudge.hyperchargeUnlocked = true;
+                if (!playerData.brawlers.carmela_fudge.selectedGadget) playerData.brawlers.carmela_fudge.selectedGadget = 'g1';
+                if (!playerData.brawlers.carmela_fudge.selectedStar || playerData.brawlers.carmela_fudge.selectedStar === 'none') playerData.brawlers.carmela_fudge.selectedStar = 'slow';
+            }
+            if (!playerData.brawlers.bolznstien) {
+                playerData.brawlers.bolznstien = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+            } else {
+                playerData.brawlers.bolznstien.level = Math.max(playerData.brawlers.bolznstien.level || 1, 11);
+                playerData.brawlers.bolznstien.gadgetUnlocked = true;
+                playerData.brawlers.bolznstien.starPowerUnlocked = true;
+                playerData.brawlers.bolznstien.hyperchargeUnlocked = true;
+                if (!playerData.brawlers.bolznstien.selectedGadget) playerData.brawlers.bolznstien.selectedGadget = 'g1';
+                if (!playerData.brawlers.bolznstien.selectedStar || playerData.brawlers.bolznstien.selectedStar === 'none') playerData.brawlers.bolznstien.selectedStar = 'slow';
+            }
+            if (!playerData.brawlers.magnatar) {
+                playerData.brawlers.magnatar = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+            } else {
+                playerData.brawlers.magnatar.level = Math.max(playerData.brawlers.magnatar.level || 1, 11);
+                playerData.brawlers.magnatar.gadgetUnlocked = true;
+                playerData.brawlers.magnatar.starPowerUnlocked = true;
+                playerData.brawlers.magnatar.hyperchargeUnlocked = true;
+                if (!playerData.brawlers.magnatar.selectedGadget) playerData.brawlers.magnatar.selectedGadget = 'g1';
+                if (!playerData.brawlers.magnatar.selectedStar || playerData.brawlers.magnatar.selectedStar === 'none') playerData.brawlers.magnatar.selectedStar = 'slow';
+            }
             if (!playerData.soulSummoner || typeof playerData.soulSummoner !== 'object') {
                 playerData.soulSummoner = {};
             }
@@ -3728,8 +5337,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const includeDisabled = !!options.includeDisabled;
             const exclude = new Set(options.exclude || []);
             if (isRankedMatch) {
-                if (rankedBans?.player) exclude.add(rankedBans.player);
-                if (rankedBans?.enemy) exclude.add(rankedBans.enemy);
+                if (Array.isArray(rankedBans?.player)) rankedBans.player.forEach(b => exclude.add(b));
+                else if (rankedBans?.player) exclude.add(rankedBans.player);
+                if (Array.isArray(rankedBans?.enemy)) rankedBans.enemy.forEach(b => exclude.add(b));
+                else if (rankedBans?.enemy) exclude.add(rankedBans.enemy);
+                if (Array.isArray(rankedBans?.blue)) rankedBans.blue.forEach(b => exclude.add(b));
+                if (Array.isArray(rankedBans?.red)) rankedBans.red.forEach(b => exclude.add(b));
             }
             const pool = allBrawlers.filter((bid) => {
                 if (exclude.has(bid)) return false;
@@ -6073,6 +7686,80 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           sp1: 'Signal Interference (Enemies caught in the network center between active poles suffer bad connection, reducing their damage output by 20% for 3 seconds)',
           sp2: 'E-Waste Demolition (Replaced or destroyed Signal Poles detonate in an electric shockwave dealing 1400 damage in a 90px radius)'
       },
+      'oil_maker': {
+          name: 'Oil Maker',
+          role: 'Controller',
+          desc: 'A heavy-duty crude refinery engineer who floods the arena with viscous oil slicks, deploys explosive oil barrels, and sparks devastating chain infernos.',
+          color: '#f59e0b',
+          attack: 'Crude Spray',
+          attackDesc: 'Continuously streams sticky crude oil with a 100-capacity ammo bar. Crude travels farther and quickly settles into oil puddles on impact, while moving leaves an oil trail. Firing oil onto existing oil ignites it into blazing fire dealing 1,250x2 fire damage (2,500 total) and slowing enemies.',
+          super: 'Oil Barrel',
+          superDesc: 'Stores and can be used 3 times in a row (up to 5 times in Hypercharge). Deploys a 3,000 HP oil barrel that decays by 500 HP per second (6s lifetime). Upon reaching 0 HP or being destroyed, it ruptures into a ring of oil puddles around it.',
+          hyper: 'High-Octane Overdrive: Main attack fires 2 wider purple crude streams per ammo use. Super capacity increases to 5 uses. Barrel destruction ruptures with +40% wider oil spread.',
+          g1: 'Flint Striker (Sparks a flint shockwave detonating and igniting all oil puddles and barrels within 320px)',
+          g2: 'Grease Slide (Dashes 240px leaving a wide oil slick, knocking back enemies in path and granting 3s slow immunity)',
+          sp1: 'Viscous Crude (Unignited oil slows enemies by 25% and reduces enemy reload speed by 30%)',
+          sp2: 'Fuel Injection (Standing on or near burning oil grants Oil Maker +25% reload speed and regenerates 300 HP/s)'
+      },
+      'magnatar': {
+          name: 'Magnatar',
+          role: 'Controller',
+          desc: 'A cosmic magnetic dynamo manipulating gravitational flux. Fires spinning magnetic orbs and deploys high-powered magnetic beacons that pull all projectiles into a lethal swirling orbit.',
+          color: '#00d2ff',
+          attack: 'Magnetic Orbs',
+          attackDesc: 'Fires a high-velocity spinning magnetic orb. Hold attack to charge and release up to 4 orbs in a single volley (up to 8 during Hypercharge).',
+          super: 'Polarity Beacon',
+          superDesc: 'Attaches a magnetic beacon to an enemy or target ground area. All nearby projectiles gain piercing, curve inward toward the center, and spin around in a swirling vortex to strike repeatedly.',
+          hyper: 'Gravitational Singularity: Main attack charges +4 additional orbs (up to 8 total). Super radius is increased by +40% and generates a protective swirling magnetic barrier around yourself.',
+          g1: 'Polarity Inversion (Instantly emits a powerful 180px repulsive magnetic shockwave that knocks all enemies and projectiles away, dealing 900 damage)',
+          g2: 'Flux Overcharge (Instantly charges your next attack to maximum orbs with +25% increased projectile size and damage)',
+          sp1: 'Ferrous Drag (Enemies caught within the magnetic beacon are slowed by 30% by intense magnetic drag)',
+          sp2: 'Kinetic Induction (Every projectile drawn into the magnetic vortex extends its duration by 0.35s and charges Magnatar\'s Super by 4%)'
+      },
+
+      'rager': {
+        name: 'Rager',
+        role: 'Controller',
+        rarity: 'Mythic',
+        attack: 'Timber Slam',
+        super: 'Raged Area',
+        hyper: 'Primal Frenzy',
+        g1: 'Cleave Timber',
+        g2: 'Battle Cry',
+        sp1: 'Splinter Shrapnel',
+        sp2: 'Bloodlust Resurgence'
+    },
+    'carmela_fudge': {
+          name: 'Carmela & Fudge',
+          role: 'Damage Dealer',
+          desc: 'Dual confectionery duo! Carmela stretches caramel arms to pull foes or slingshot herself, while Fudge encases enemies in immobilizing chocolate shells.',
+          color: '#d35400',
+          attack: 'Sticky Hands / Sticky Fudge',
+          attackDesc: 'Carmela: Hold to stretch long caramel arms; pulls foes closer or slingshots herself at max charge. Fudge: Fires globs of sticky chocolate that build up to encase foes in a Chocolate Shell.',
+          super: 'Quad Slam / Ultimate Shell',
+          superDesc: 'Carmela: Quad Slam summons 4 hovering caramel hands. Fudge: Ultimate Shell encases target in a durable chocolate shell, dealing 30% current HP loss.',
+          hyper: 'Sweet Overdrive: Carmela charges 30% faster and slams slow; Fudge gains 30% homing, 3x shell HP, and converts 30% lost HP into shields.',
+          g1: 'Sweet Recovery (Switch forms and heal 2000 HP. 8s cooldown)',
+          g2: 'Sugar Sprint (Switch forms, reload 1 ammo, and gain +30% speed for 3s. 8s cooldown)',
+          sp1: 'Taffy & Cocoa (Carmela charges 25% faster; Fudge needs only 3 hits for a shell)',
+          sp2: 'Sweet Revenge (Carmela switch triggers a caramel burst; Fudge switch leaves a slowing chocolate puddle)'
+      },
+    'bolznstien': {
+          name: 'Bolznstien',
+          role: 'Damage Dealer',
+          desc: 'A monstrous high-voltage patchwork titan built for Arena Forge Halloween. Smites foes with delayed thunderbolts and grasps with streaming electric chains.',
+          color: '#00f5d4',
+          attack: 'Lightning Jolt',
+          attackDesc: 'Fires a high-voltage lightning bolt. On impact, an electric bolt smashes down from the sky in a circle 0.8s later with spectacular lightning visuals.',
+          super: 'Electric Eyes',
+          superDesc: 'Channels electric energy for 4s, projecting 6 reaching electric hand chains (+40% range and hands) in a wide cone. Shocked foes arc lightning in any direction to enemies within 330 range for 40% less damage, and every chained enemy can relay the chain again.',
+          hyper: 'Franken-Overload: Main attack is 30% larger, and the secondary strike triggers 4 times (center + 3 in a wide spaced-out triangle) with 30% bigger blasts. Super lasts 6s, gains massive range, and weakens enemies so they deal 40% less damage for 4s.',
+          g1: 'Instant Discharge (Instantly detonates all pending 0.8s electric strikes with +30% damage and releases a defensive electric pulse)',
+          g2: 'Conductive Surge (Overcharges neck bolts for 4s, granting +30% movement speed and electrifying the ground beneath his feet)',
+          sp1: 'High Voltage (Secondary delayed electric strikes deal +25% bonus damage and slow enemies hit by 35% for 1.5s)',
+          sp2: 'Thunder Tempo (Consecutive lightning called onto the same target arrives 20% faster each time, up to 4 stacks)'
+      },
+
       'sir_cheeseburger': {
           name: 'Sir Cheeseburger',
           role: 'Tank',
@@ -6208,10 +7895,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       'hunter': { name: 'The Hunter', role: 'Assassin', desc: 'A tracker who isolates targets and hunts them down.', color: '#556b2f', attack: 'Delay Sweep', attackDesc: 'A sweeping sword slash. Knocks back enemies if used at full ammo!', super: 'I Found You', superDesc: 'Marks an enemy for 8s, gaining 25% speed, +25% dmg, and footsteps to them.', hyper: 'Attack delays -50% & double slash. Super gives 40% speed & first hit does 15% Max HP.', g1: 'Grappling Hook (Next attack pulls enemies)', g2: 'Camouflage (Invisibility for 3s)', sp1: 'Thrill of the Hunt (Kill marked target = +35% Super)', sp2: 'Relentless (Take 20% less damage while Super is active)' },
       'chaird': { name: 'Chaird', role: 'Tank', desc: 'A sturdy brawler who throws chairs and spins them around for area control.', color: '#8B4513', attack: 'Chair Toss', attackDesc: 'Throws a chair that explodes on impact and again 0.8s later.', super: 'Chair Spin', superDesc: 'Spins chairs around, gaining speed and dealing continuous damage.', hyper: 'Main attack explodes a 3rd time. Super moves faster and launches chairs at start/end.', g1: 'Chair Toss (Throws 3 chairs)', g2: 'Reinforced Seating (Shield & pull/knockback immunity)', sp1: 'Explosive Seating (Next chair explosion radius +30% on hit)', sp2: 'Gravitational Pull (Super pulls enemies)' },
       'forest': { name: 'Forest', role: 'Controller', desc: 'Commands nature to fire delayed plant projectiles and summons a fierce parrot.', color: '#228b22', attack: "Nature's Wrath", attackDesc: 'Shoots 3 large plants left to right with a short delay.', super: 'Avian Ally', superDesc: 'Spawns a 7000 HP parrot that pecks the closest enemy.', hyper: 'Super spawns a Hyper Parrot that drops an egg at 50% HP. Main attacks burn.', g1: 'Rooted (Heal 2000 HP & 30% Shield, cannot move 3s)', g2: 'Grasping Vines (Next attack pulls enemies slightly)', sp1: 'Flaming Core (Middle plant sets enemies on fire)', sp2: 'Angry Bird (Parrot speed & attack rate +20%)' },
-      'bouncin_balls': { name: "Bouncin' Balls", role: 'Marksman', desc: 'Shoots bouncing balls that ricochet off walls. Dynamic range mechanics.', color: '#00aaff', attack: 'Ricochet Volley', attackDesc: 'Fires 6 bouncing balls straight. -5% range and -5% dmg per bounce.', super: 'Bouncy House', superDesc: 'Shoots 7 overpowered piercing balls that bounce fully without losing stats.', hyper: 'Trampoline Park: Super gains 3 balls and splits on hit. +20% range/speed.', g1: 'Elasticity (+50% range)', g2: 'Bouncy Turret (Lose all ammo, deploy turret)', sp1: 'Desperation Bounce (Extra shiny ball when low HP)', sp2: 'Momentum (Bullets 10% faster after bounce)' },
+      'bouncin_balls': { name: "Bouncin' Balls", role: 'Marksman', desc: 'Shoots bouncing balls that ricochet off walls. Dynamic range mechanics.', color: '#00aaff', attack: 'Ricochet Volley', attackDesc: 'Fires 7 bouncing balls straight. +5% range and -8% dmg per bounce.', super: 'Bouncy House', superDesc: 'Shoots 7 overpowered piercing balls that bounce fully without losing stats.', hyper: 'Trampoline Park: Super gains 3 balls and splits on hit. +20% range/speed.', g1: 'Elasticity (+50% range)', g2: 'Bouncy Turret (Lose all ammo, deploy turret)', sp1: 'Desperation Bounce (Extra shiny ball when low HP)', sp2: 'Momentum (Bullets 10% faster after bounce)' },
       'copyphase': { name: 'Copyphase', role: 'Controller', desc: 'Exotic phase thief with 2 phase slots: one identity and one clone squad slot.', color: '#56d8ff', attack: 'Phase Orb', attackDesc: 'Shoots a phase orb. Takes 2 hits to download a phase into an empty slot.', super: "Copyin' U!", superDesc: 'With 1 phase: transform into Slot 1 for 7s. With 2 phases: also summon a Slot 2 clone.', hyper: '3v1 Mindset: Main attack becomes a dual-orb volley. Hyper-Super transforms and summons two clones from stored phases. While transformed in Hyper: +15% speed, +10% damage.', g1: 'System Purge (Clear slots, heal 2500)', g2: 'Data Breach (Next Phase Orb travels through walls)', sp1: 'Long Term Memory (Transform lasts 10s)', sp2: 'Overclocked AI (Clones deal 50% instead of 35%)' },
       'sera_eclipse': { name: 'Sera Eclipse', role: 'Support', desc: 'A Chromatic Support who controls dark and light energies, using eclipse flares that heal allies and harm enemies, alongside tether and orbit zones.', color: '#d15aff', attack: 'Eclipse Flare', attackDesc: 'Fires a medium-range solar/lunar orb that damages enemies, heals allies, and passes through all targets.', super: 'Eclipse Orbit', superDesc: 'Deploys a large zone centered around Sera. Allies continuously heal and gain +20% damage. Enemies are continuously damaged and slowed by 20%.', hyper: 'Total Eclipse: Increases Orbit radius by 45%, increases healing/damage rates by 50%, and releases a burst of 6 solar flares outwards upon activation.', g1: 'Solar Gravity (Instantly pulls all enemies within the Eclipse Orbit zone to the center)', g2: 'Corona Shield (Grants a protective shield reducing all incoming damage by 40% for 3.5 seconds)', sp1: 'Corona Flash (Healing an ally with Eclipse Flare boosts their movement speed by +20% for 2.0 seconds)', sp2: 'Umbral Crown (Extends Super zone duration by +4.0 seconds)' },
-      'rocketeer': { name:'Rocketeer', role:'Artillery', desc:'A four-ammo rocket specialist whose warheads split into incendiary mini-rockets.', color:'#ff6a32', attack:'Breakup Rocket', attackDesc:'Fire a short-range rocket for 2100 damage. On impact it splits into 3 tightly grouped mini-rockets that continue behind the original target without hitting it again.', super:'Triple Impact', superDesc:'Mark an area for three falling 1550-damage rockets. Each breaks walls, damages, and knocks enemies away.', hyper:'Orbital Overload: The center rocket becomes 40% larger. Two standalone 700-damage escort rockets are 30% smaller and never split or create fire. Every Super impact releases 8 short-range 260-damage rockets without fire zones.', g1:'Cluster Override (Next main rocket splits into 5 mini-rockets)', g2:'Emergency Ignition (Blast nearby enemies away for 900 damage and instantly reload 1 ammo)', sp1:'Scorched Launch (The main rocket impact also leaves a 2.5-second fire zone)', sp2:'Gravity Warheads (Super impacts pull enemies inward and leave a 160-damage fire area for 4 seconds)' },
+      'rocketeer': { name:'Rocketeer', role:'Artillery', desc:'A four-ammo rocket specialist whose warheads split into incendiary mini-rockets.', color:'#ff6a32', attack:'Breakup Rocket', attackDesc:'Fire a short-range 2191-damage precision rocket. On impact it splits into 3 lighter mini-rockets that continue behind the original target without hitting it again.', super:'Triple Impact', superDesc:'Mark an area for three falling 1550-damage rockets. Each breaks walls, damages, and knocks enemies away.', hyper:'Orbital Overload: The center rocket becomes 40% larger. Two standalone 700-damage escort rockets are 30% smaller and never split or create fire. Every Super impact releases 8 short-range 260-damage rockets without fire zones.', g1:'Cluster Override (Next main rocket splits into 5 mini-rockets)', g2:'Emergency Ignition (Blast nearby enemies away for 900 damage and instantly reload 1 ammo)', sp1:'Scorched Launch (The main rocket impact also leaves a 2.5-second fire zone)', sp2:'Gravity Warheads (Super impacts pull enemies inward and leave a 160-damage fire area for 4 seconds)' },
       'peter_pickle': { name:'Peter Pickle', role:'Controller', desc:'A streak-based pickle thrower who fills the battlefield with living pickles.', color:'#79d66f', attack:'Pickle Pitch', attackDesc:'Fire a 1280-damage pickle. Consecutive hits grow its size by 30%, up to 420%; misses remove 2 streaks.', super:"Petah's Pickles", superDesc:'Throw 3 jars. Each jar spawns 4 living pickles, then disappears.', hyper:'Pickle Overflow: main attacks fire at maximum size. Super throws 6 double-HP jars.', g1:'Brine Boost (Next main attack gains one extra size stage)', g2:'Pocket Jar (Place a 1518 HP jar that releases 2 pickles)', sp1:'Perfect Pickle (Maximum-size attacks deal 12% more damage)', sp2:'Preserved Jars (Jars spawn a fifth pickle, with a slower 1.3s interval)' },
       'unstable': { name:'Unstable', role:'Controller', desc:'A genome summoner whose decaying containers release walking DNA.', color:'#52ddb3', attack:'Containment Failure', attackDesc:'Throw an 850 HP container. It loses a fixed 150 HP once per second and releases 3 walking DNA when destroyed. Maximum 3 main containers.', super:'Going Unstable', superDesc:'Spin and throw 6 containers that automatically open after 1.2 seconds. Their DNA has 1500 HP.', hyper:'Genome Overload: main attack throws 2 containers. Super throws 8 containers whose DNA has 1800 HP; DNA effects are doubled.', g1:'Forced Mutation (Destroy your oldest container and release its DNA immediately)', g2:'Loose Sample (Spawn walking DNA beside Unstable; owner pickup grants 8% max HP)', sp1:'Reinforced Containment (Container HP 850 > 1200)', sp2:'Hostile Genome (DNA deals 20% more damage to enemies)' },
       'homer': { name:'Homer', role:'Marksman', desc:'A learning sniper whose shots become better at tracking targets after every Super.', color:'#66d9ff', attack:'Learning Shot', attackDesc:'Fire a long-range 1800-damage sniper shot. Its homing starts at 10% and improves after using Super, up to 70%.', super:'Targeting Pair', superDesc:'Fire 2 fully homing projectiles and permanently improve main-attack homing by 8%.', hyper:'Perfect Lock: main attacks have at least 95% homing and Super fires 4 fully homing projectiles.', g1:'Perfect Read (Next main attack has 100% homing)', g2:'Live Calibration (Gain 20% homing for 6 seconds)', sp1:'Advanced Learning (Super improves homing by 12% instead of 8%; highly trained shots deal 12% more damage)', sp2:'Persistent Memory (Retain more targeting knowledge after being defeated)' },
@@ -6270,11 +7957,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 attackDesc: 'Throws a spinning boomerang that returns to you. Hitting a tagged enemy triggers a small explosion that deals bonus damage and reduces healing.',
                 super: 'Gravity Recall',
                 superDesc: 'Fires a heavy boomerang that pulls nearby enemies toward its path.',
-                hyper: 'Infinite Orbit: Super moves faster, has larger pull radius, and tag damage is increased.',
+                hyper: 'Infinite Orbit: Main-attack impact sends two smaller boomerangs sideways. Super moves faster, has larger pull radius, and tag damage is increased.',
                 g1: 'Quick Recall (Instantly recall all active boomerangs and heal)',
                 g2: 'Stun Tag (Stun tagged enemies for 1.2s)',
                 sp1: 'Catch & Go (Gain 30% speed boost upon catching a boomerang)',
-                sp2: 'Double Return (Return trip explodes twice)'
+                sp2: 'Empty Pockets (Gravity Recall removes 1 ammo from each enemy hit, once per cast)'
             },
             'teether': {
                 name: 'Teether', role: 'Assassin', color: '#f4f0df',
@@ -6344,8 +8031,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 attack: 'Bouncy Leap',
                 attackDesc: 'Leaps into the air toward a target location. Landing deals 1200 damage to enemies or heals allies for 1500 HP, leaving a 1.0s healing aura on the ground.',
                 super: 'Mega Trampoline',
-                superDesc: 'Deploys a 5000 HP interactive trampoline with +150% bounce range. Stepping on it launches allies high into the air with extended mid-air steering and choice of landing spot, restoring 1200 HP on each bounce.',
-                hyper: 'Trampawind: Super trampoline gains 6500 HP and emits a 2-tile swirling purple gale that smoothly knocks back enemies every 1.0s.',
+                superDesc: 'Deploys a 5600 HP interactive trampoline with +150% bounce range. Stepping on it launches allies high into the air with extended mid-air steering and choice of landing spot, restoring 1200 HP on each bounce.',
+                hyper: 'Trampawind: Super trampoline gains 7280 HP and emits a 2-tile swirling purple gale that smoothly knocks back enemies every 1.0s.',
                 g1: 'High Spring (Trampaheal’s next jump gains +50% range and floats higher in the air)',
                 g2: 'Pocket Springboard (Drops an instant 1200 HP heal spring that launches allies forward)',
                 sp1: 'Soft Landing (Landing from any jump or trampoline bounce grants a 25% speed boost and 500 HP shield)',
@@ -6500,7 +8187,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', sir_cheeseburger:'Tank',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller',
+    carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
         boomer:'Artillery', cluster:'Artillery', evil_doctor:'Artillery', fightnfire:'Artillery', rocketeer:'Artillery', skeleflying:'Artillery', splitter:'Artillery', trapper:'Artillery', upiedown:'Artillery',
@@ -6513,6 +8201,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     const brawlerPortraitIcons = {
         blinkeye: '👁️',
         weefee: '📶',
+        oil_maker: '🛢️',
+        magnatar: '🧲',
+        rager: '🪓🪵',
+    carmela_fudge: '🍬🍫',
+    bolznstien: '⚡🧟',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
         cursed: '🧿',
@@ -6604,7 +8297,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return brawlerPortraitIcons[brawlerId] || '⭐';
     }
 
-    const CUSTOM_BRAWLER_PORTRAITS = Object.freeze(['evil_doctor', 'bouncin_balls', 'minigunnin', 'mageny', 'trampaheal', 'ramage', 'upgradart', 'rocketeer', 'sir_cheeseburger', 'blinkeye']);
+    const CUSTOM_BRAWLER_PORTRAITS = Object.freeze(['carmela_fudge', 'evil_doctor', 'bouncin_balls', 'minigunnin', 'mageny', 'trampaheal', 'ramage', 'upgradart', 'rocketeer', 'sir_cheeseburger', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager']);
     function hasCustomBrawlerPortrait(brawlerId) {
         return !!window.BraweRosterVisuals?.has(brawlerId) || CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId)
             || (brawlerId === 'classy' && getActiveSkinForBrawler('classy')?.id === 'back-to-school-classy')
@@ -6622,6 +8315,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             blinkeye: `<circle cx="50" cy="50" r="34" fill="#141a29" stroke="#ffa726" stroke-width="4"/><path d="M15 50 Q50 20 85 50 Q50 80 15 50 Z" fill="#222b40" stroke="#ffb74d" stroke-width="2.5"/><circle cx="50" cy="50" r="16" fill="#fff" stroke="#ffa726" stroke-width="2"/><circle cx="50" cy="50" r="10" fill="#ff7043"/><circle cx="50" cy="50" r="5" fill="#0d1117"/><circle cx="53" cy="47" r="2" fill="#fff"/><line x1="50" y1="26" x2="50" y2="74" stroke="#ffa726" stroke-width="1.5" stroke-dasharray="2,2"/><line x1="26" y1="50" x2="74" y2="50" stroke="#ffa726" stroke-width="1.5" stroke-dasharray="2,2"/>`,
 
                         weefee: `<circle cx="50" cy="50" r="34" fill="#0b1e28" stroke="#00f5d4" stroke-width="4"/><rect x="24" y="38" width="52" height="34" rx="7" fill="#132c3a" stroke="#00f5d4" stroke-width="2.5"/><line x1="33" y1="38" x2="27" y2="20" stroke="#00f5d4" stroke-width="3" stroke-linecap="round"/><circle cx="27" cy="20" r="3.5" fill="#00ff88"/><line x1="67" y1="38" x2="73" y2="20" stroke="#00f5d4" stroke-width="3" stroke-linecap="round"/><circle cx="73" cy="20" r="3.5" fill="#00ff88"/><rect x="33" y="46" width="34" height="18" rx="4" fill="#07141c" stroke="#58f0cf" stroke-width="1.5"/><rect x="37" y="56" width="4" height="5" rx="1" fill="#00ff88"/><rect x="44" y="53" width="4" height="8" rx="1" fill="#00ff88"/><rect x="51" y="50" width="4" height="11" rx="1" fill="#00ff88"/><rect x="58" y="47" width="4" height="14" rx="1" fill="#00ff88"/><circle cx="30" cy="65" r="2" fill="#ff4757"/><circle cx="70" cy="65" r="2" fill="#00f5d4"/>`,
+            oil_maker: `<circle cx="50" cy="50" r="34" fill="#1c1917" stroke="#f59e0b" stroke-width="4"/><path d="M26 36 Q50 16 74 36 L70 54 Q50 62 30 54 Z" fill="#d97706" stroke="#b45309" stroke-width="2.5"/><rect x="22" y="32" width="56" height="8" rx="4" fill="#f59e0b"/><rect x="32" y="44" width="36" height="12" rx="4" fill="#0f172a" stroke="#f59e0b" stroke-width="1.5"/><circle cx="42" cy="50" r="3.5" fill="#f59e0b"/><circle cx="58" cy="50" r="3.5" fill="#f59e0b"/><path d="M34 58 L38 78 L62 78 L66 58 Z" fill="#292524" stroke="#44403c" stroke-width="2"/><circle cx="50" cy="68" r="6" fill="#1c1917" stroke="#f59e0b" stroke-width="1.5"/><path d="M50 64 Q54 68 50 72 Q46 68 50 64 Z" fill="#f59e0b"/><path d="M48 20 C44 26, 56 26, 52 20 C50 16, 50 16, 48 20 Z" fill="#0c0a09" stroke="#f59e0b" stroke-width="1"/>`,
+            magnatar: `<circle cx="50" cy="50" r="34" fill="#0b132b" stroke="#00d2ff" stroke-width="4"/><path d="M30 24 L30 50 A20 20 0 0 0 70 50 L70 24 L58 24 L58 50 A8 8 0 0 1 42 50 L42 24 Z" fill="#1c2541" stroke="#00d2ff" stroke-width="2.5"/><rect x="27" y="22" width="6" height="12" fill="#ff4757" rx="1.5"/><rect x="67" y="22" width="6" height="12" fill="#00d2ff" rx="1.5"/><circle cx="50" cy="62" r="5" fill="#00d2ff"/><path d="M22 36 Q14 50 22 64" stroke="#ff4757" stroke-width="2" fill="none" stroke-dasharray="3,3"/><path d="M78 36 Q86 50 78 64" stroke="#00d2ff" stroke-width="2" fill="none" stroke-dasharray="3,3"/>`,
+            rager: `<circle cx="50" cy="50" r="34" fill="#2d1500" stroke="#ff4757" stroke-width="4"/>
+        <path d="M30 65 L45 35 L55 35 L70 65 Z" fill="#8B4513"/>
+        <path d="M26 38 L38 28 L42 34 L30 44 Z" fill="#c0392b" stroke="#fff" stroke-width="1.5"/>
+        <path d="M74 38 L62 28 L58 34 L70 44 Z" fill="#c0392b" stroke="#fff" stroke-width="1.5"/>
+        <circle cx="42" cy="46" r="3.5" fill="#ff4757"/>
+        <circle cx="58" cy="46" r="3.5" fill="#ff4757"/>
+        <path d="M40 58 Q50 64 60 58" stroke="#ffa502" stroke-width="3" fill="none"/>`,
+        carmela_fudge: `<circle cx="50" cy="50" r="34" fill="#3e2723" stroke="#f39c12" stroke-width="4"/><path d="M25 36Q50 14 75 36L70 78Q50 90 28 78Z" fill="#d35400" stroke="#f1c40f" stroke-width="2.5"/><circle cx="38" cy="46" r="6" fill="#ffffff"/><circle cx="62" cy="46" r="6" fill="#ffffff"/><circle cx="38" cy="46" r="3" fill="#3e2723"/><circle cx="62" cy="46" r="3" fill="#3e2723"/><path d="M38 64Q50 74 62 64" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/><path d="M18 42Q10 55 24 64Q32 50 22 42Z" fill="#e67e22"/><path d="M82 42Q90 55 76 64Q68 50 78 42Z" fill="#e67e22"/>`,
+        bolznstien: `<circle cx="50" cy="50" r="34" fill="#1e272e" stroke="#00f5d4" stroke-width="4"/><rect x="25" y="24" width="50" height="52" rx="14" fill="#00b894" stroke="#00cec9" stroke-width="2.5"/><rect x="17" y="52" width="10" height="6" fill="#b2bec3" stroke="#636e72" stroke-width="1.5"/><rect x="73" y="52" width="10" height="6" fill="#b2bec3" stroke="#636e72" stroke-width="1.5"/><line x1="32" y1="32" x2="68" y2="32" stroke="#2d3436" stroke-width="2.5"/><line x1="40" y1="28" x2="40" y2="36" stroke="#2d3436" stroke-width="2"/><line x1="52" y1="28" x2="52" y2="36" stroke="#2d3436" stroke-width="2"/><line x1="62" y1="28" x2="62" y2="36" stroke="#2d3436" stroke-width="2"/><circle cx="38" cy="44" r="5.5" fill="#81ecec" stroke="#00cec9" stroke-width="1.5"/><circle cx="62" cy="44" r="5.5" fill="#81ecec" stroke="#00cec9" stroke-width="1.5"/><circle cx="38" cy="44" r="2.5" fill="#ffffff"/><circle cx="62" cy="44" r="2.5" fill="#ffffff"/><path d="M36 62 Q50 68 64 62" stroke="#2d3436" stroke-width="2.5" fill="none"/><path d="M48 60 L50 64 L52 60" stroke="#00f5d4" stroke-width="2" fill="none"/>`,
             sir_cheeseburger: `<circle cx="50" cy="50" r="34" fill="#2b2d42" stroke="#ffb830" stroke-width="4"/><path d="M22 36Q50 14 78 36L72 74Q50 86 28 74Z" fill="#3d405b" stroke="#f4a261" stroke-width="2.5"/><path d="M24 35Q50 16 76 35L74 46Q50 36 26 46Z" fill="#e07a5f"/><circle cx="38" cy="28" r="1.5" fill="#ffffff"/><circle cx="50" cy="24" r="1.5" fill="#ffffff"/><circle cx="62" cy="28" r="1.5" fill="#ffffff"/><circle cx="44" cy="34" r="1.5" fill="#ffffff"/><circle cx="56" cy="34" r="1.5" fill="#ffffff"/><rect x="28" y="44" width="44" height="7" rx="2" fill="#ffb830" stroke="#d48b00" stroke-width="1.5"/><rect x="32" y="54" width="36" height="5" rx="2" fill="#1b1d2b"/><line x1="42" y1="54" x2="42" y2="59" stroke="#3d405b" stroke-width="2"/><line x1="50" y1="54" x2="50" y2="59" stroke="#3d405b" stroke-width="2"/><line x1="58" y1="54" x2="58" y2="59" stroke="#3d405b" stroke-width="2"/><path d="M14 48L24 44L24 64L14 60Z" fill="#f4a261" stroke="#ffb830" stroke-width="1.5"/><path d="M86 48L76 44L76 64L86 60Z" fill="#f4a261" stroke="#ffb830" stroke-width="1.5"/><path d="M72 16L82 6L86 10L76 20Z" fill="#ffb830" stroke="#ffffff" stroke-width="1.5"/><polygon points="76,20 70,26 74,30 80,24" fill="#3d405b"/><polygon points="78,10 88,20 74,34 64,24" fill="none"/>`,
             evil_doctor: `<circle cx="50" cy="47" r="30" fill="#183c38" stroke="#51ffad" stroke-width="4"/><path d="M24 37Q50 10 76 37L70 48H30Z" fill="#e8fff7"/><path d="M43 24h14v8H43zM46 21h8v14h-8z" fill="#ff4f74"/><circle cx="39" cy="49" r="6" fill="#87ffcf"/><circle cx="61" cy="49" r="6" fill="#87ffcf"/><path d="M36 65Q50 75 64 65" fill="none" stroke="#b7ffe1" stroke-width="5"/><path d="M19 71Q50 57 81 71L88 96H12Z" fill="#522c75" stroke="#9d68db" stroke-width="3"/><path d="M47 73h6v18h-6zM41 79h18v6H41z" fill="#54ffac"/>`,
             bouncin_balls: `<circle cx="50" cy="50" r="35" fill="#127bd1" stroke="#7df2ff" stroke-width="4"/><path d="M22 44Q50 15 78 44M22 56Q50 85 78 56M50 15v70" fill="none" stroke="#e7fbff" stroke-width="5"/><circle cx="39" cy="45" r="4" fill="#071b37"/><circle cx="61" cy="45" r="4" fill="#071b37"/><path d="M38 63Q50 70 62 63" fill="none" stroke="#071b37" stroke-width="4"/>`,
@@ -6816,7 +8520,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         bowlin_rida: ['Skips Water At Max Speed'],
         scuba_diver: ['Can Walk Over Water'],
         forest: ['Parrot Can Fly Over Water'],
-        hyperorigin: ['Passive Super Charge (Moving)', 'Charges Hyper By Taking Damage']
+        hyperorigin: ['Passive Super Charge (Moving)', 'Charges Hyper By Taking Damage'],
+        magnatar: ['Projectile Attractor', 'Charge Attack'],
+        carmela_fudge: ['Confectionery Stance Swap', 'Sticky Caramel & Chocolate Shell'],
+        bolznstien: ['Delayed Sky Strike', 'Electric Damage Debuff'],
+        rager: ['War Totem', 'Knockback Cleave']
     };
 
     function getBrawlerTraits(id) {
@@ -7239,10 +8947,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         explosions.push({ x: entity.x, y: entity.y, radius: 120, life: 0, maxLife: 0.4, color: 'rgba(200,120,255,0.18)' });
         spawnFloatingText(entity.x, entity.y - 30, entity === player ? 'YOU ARE THE OVERLORD' : 'OVERLORD!', '#d9a7ff');
     }
-  const MAX_BOTS = 50;
+  const MAX_BOTS = 19;
   let nextId = 1;
   let aliveCount = MAX_BOTS + 1;
   let gameOver = false;
+  let matchOver = false;
   let fullOnDamageMatchTotal = 0;
   let fullOnDamageMatchCommitted = true;
   let lastShot = 0;
@@ -7297,6 +9006,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       xray: { g1: 13000, g2: 15000 },
       king: { g1: 14000, g2: 12000 },
       anti_royal: { g1: 13000, g2: 15000 },
+      magnatar: { g1: 14000, g2: 15000 },
+      rager: { g1: 15000, g2: 18000 },
+    rager: {
+        attackDesc: 'Timber Slam: Rager chops a heavy timber trunk that crashes forward in a 420px path, dealing 2200 damage, knocking back enemies, and splintering debris.',
+        superDesc: 'Raged Area: Rager plants a War Totem for 7s. Allies inside gain +15% damage and automatically fire attacks every 1.0s without spending ammo.',
+        g1Desc: 'Cleave Timber: Instantly fells trees in a 360° sweep (180px), pushing enemies back 140px, dealing 950 damage, and breaking obstacles.',
+        g2Desc: 'Battle Cry: Rager roars, immediately granting himself and all allies +20% move speed and +30% Super charge for 3s.',
+        sp1Desc: 'Splinter Shrapnel: The timber trunk bursts into 4 cardinal splinter darts upon impact at max range, dealing 650 damage each.',
+        sp2Desc: 'Bloodlust Resurgence: Dealing damage or eliminating enemies inside the Raged Area heals Rager and allies for 40% of damage dealt.',
+        hyperDesc: 'Primal Frenzy: Raged Area duration increases by 30% and enemies inside have their reload speed slowed by 40%.'
+    },
+    carmela_fudge: { g1: 8000, g2: 8000 },
+    bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 }
   };
   function normalizeGadgetSlot(slot) {
@@ -7410,6 +9132,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   let towerDuelPowerLoadouts = {};
   let towerDuelBotPowerLoadouts = {};
   let isTraining = false;
+  let isBrawlerLabMode = false;
     let isTutorialMode = false;
     let tutorialStartedAt = 0;
     const TUTORIAL_DURATION_SECONDS = 180;
@@ -7444,10 +9167,27 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     let isMarkedMayhemMode = false;
     let isTugZoneMode = false;
     let isImpossibleMode = false;
+let isWeeFeeBossMode = false;
+let weefeeBossState = null;
 let isBlinkEyeDodgeMode = false;
 let blinkEyeDodgeState = null;
+let isDemonVillainsBossMode = false;
+let isRamageBossMode = false;
+let isOrboBossMode = false;
     let isCorruptedShowdownMode = false;
     let isPowerPlayShowdownMode = false;
+    let isMagnatarShowdownMode = false;
+function isPowerPlayModifierActive(entity = player) {
+    if (isWeeFeeBossMode && weefeeBossState?.hasPowerPlayModifier) {
+        if (!entity || entity.id === player.id || entity === player) return true;
+    }
+    if (isPowerPlayShowdownMode) return true;
+    if (isBlinkEyeDodgeMode && blinkEyeDodgeState?.hasPowerPlayModifier) {
+        if (!entity || entity.id === player.id || entity === player) return true;
+    }
+    return false;
+}
+
     let isCoreBreachIntroMode = false;
     const CORE_BREACH_DAMAGE_TARGET = 60000;
     const CORE_BALL_MAX_HP = 135000;
@@ -7598,11 +9338,15 @@ let blinkEyeDodgeState = null;
     }
     isSplitterPoweredMode = false;
     let isMirrorMode = false;
+    let isBraweBallMode = false;
+    let braweBallState = null;
+    let isKnockoutMode = false;
+    let knockoutState = null;
     let isRankedMatch = false;
     let rankedTeammatePicks = [];
     let rankedBans = { player: [], enemy: [] };
     let rankedDraftSummary = '';
-    const RANKED_TEAM_MODE_POOL = ['construction', 'objective', 'arena_forge', 'trio', 'brick_vault', 'knock_donate'];
+    const RANKED_TEAM_MODE_POOL = ['construction', 'objective', 'brawe_ball', 'knockout_3v3', 'brick_vault', 'knock_donate', 'trio'];
 
     const RANKED_MODIFIERS = {
         'classic': {
@@ -7633,6 +9377,13 @@ let blinkEyeDodgeState = null;
             icon: '🔥',
             color: '#e056fd'
         },
+        'always_hyper': {
+            id: 'always_hyper',
+            name: 'Always Hyper',
+            desc: 'Every brawler in the match has permanent active Hypercharge for the entire battle! Blazing speed, boosted damage, and unstoppable supers.',
+            icon: '⚡',
+            color: '#e056fd'
+        },
         'quickfire': {
             id: 'quickfire',
             name: 'Quickfire',
@@ -7653,10 +9404,478 @@ let blinkEyeDodgeState = null;
             desc: 'Continuous passive Super generation (+5%/sec) and +40% bonus Super charge gained on hit.',
             icon: '✨',
             color: '#feca57'
+        },
+        'friendly_fire': {
+            id: 'friendly_fire',
+            name: 'Friendly Fire',
+            desc: 'Attacks, projectiles, and explosions damage teammates! Watch your aim and area effects.',
+            icon: '⚠️',
+            color: '#ff4757'
+        },
+        'friendly_fire_plus': {
+            id: 'friendly_fire_plus',
+            name: 'Friendly Fire+',
+            desc: 'Attacks and explosives damage teammates, but landing hits on teammates awards massive Super and Hypercharge!',
+            icon: '⚠️⚡',
+            color: '#ff6b81'
+        },
+        'super_rate_90': {
+            id: 'super_rate_90',
+            name: '90% Super Rate+',
+            desc: '+90% Super charge rate on all attack hits and +90% faster continuous passive Super generation!',
+            icon: '🔋⚡',
+            color: '#ffd166'
+        },
+        'super_rate_plus': {
+            id: 'super_rate_plus',
+            name: '90% Super Rate+',
+            desc: '+90% Super charge rate on all attack hits and +90% faster continuous passive Super generation!',
+            icon: '🔋⚡',
+            color: '#ffd166'
+        },
+        'giant_projectiles': {
+            id: 'giant_projectiles',
+            name: '150% Bigger Projectiles',
+            desc: 'Every projectile, shot, and attack is 150% bigger in size, visual aura, and collision hitboxes!',
+            icon: '🔮',
+            color: '#ff70a6'
+        },
+        'projectiles_150': {
+            id: 'projectiles_150',
+            name: '150% Bigger Projectiles',
+            desc: 'Every projectile, shot, and attack is 150% bigger in size, visual aura, and collision hitboxes!',
+            icon: '🔮',
+            color: '#ff70a6'
         }
     };
     let activeRankedModifier = 'classic';
+    let activeRankedModifierSecondary = null;
+    let activeRankedModifierTertiary = null;
+    let isCustomMutatorMatch = false;
     let activeColossusMaxHp = null;
+
+    function isFriendlyFirePlusActive() {
+        const isFFP = (m) => m === 'friendly_fire_plus';
+        return (isRankedMatch || isCustomMutatorMatch) && (isFFP(activeRankedModifier) || isFFP(activeRankedModifierSecondary) || isFFP(activeRankedModifierTertiary));
+    }
+
+    function isSuperRate90Active() {
+        const isSR = (m) => m === 'super_rate_90' || m === 'super_rate_plus';
+        return (isRankedMatch || isCustomMutatorMatch) && (isSR(activeRankedModifier) || isSR(activeRankedModifierSecondary) || isSR(activeRankedModifierTertiary));
+    }
+
+    function isGiantProjectilesActive() {
+        const isGP = (m) => m === 'giant_projectiles' || m === 'projectiles_150' || m === 'colossal_projectiles';
+        return (isRankedMatch || isCustomMutatorMatch) && (isGP(activeRankedModifier) || isGP(activeRankedModifierSecondary) || isGP(activeRankedModifierTertiary));
+    }
+
+    function applyGiantProjectilesModifier(b) {
+        if (!b || b._giantProjectilesApplied) return;
+        if (!isGiantProjectilesActive()) return;
+        b._giantProjectilesApplied = true;
+        b.hitboxMod = (b.hitboxMod || 1) * 2.5;
+        if (b.radius) b.radius *= 2.5;
+        if (b.ringSizeMod) b.ringSizeMod *= 2.5;
+        if (b.tempoOutRadius) b.tempoOutRadius *= 2.5;
+        if (b.tempoReturnRadius) b.tempoReturnRadius *= 2.5;
+        b.slopSizeMultiplier = Math.max(b.slopSizeMultiplier || 1, 2.5);
+    }
+
+    // --- BOLZNSTIEN BRAWLER HELPERS ---
+
+    function castMagnatarSuper(entity, targetX, targetY, isHyper) {
+        if (!entity) return;
+        const now = performance.now();
+        const maxSuperRange = 660;
+        const dx = targetX - entity.x;
+        const dy = targetY - entity.y;
+        const totalDist = Math.hypot(dx, dy);
+        const ang = Math.atan2(dy, dx);
+        const aimDist = Math.min(maxSuperRange, totalDist);
+        let finalTargetX = entity.x + Math.cos(ang) * aimDist;
+        let finalTargetY = entity.y + Math.sin(ang) * aimDist;
+
+        // Soft magnetic auto-lock: if aiming near an enemy within 85px, snap to enemy
+        const targets = entity.id === player.id ? bots : [player, ...bots];
+        let lockEnemy = null;
+        let lockDist = 85;
+        for (const t of targets) {
+            if (!t || t.hp <= 0 || t.id === entity.id || areAlliedEntities(entity, t)) continue;
+            const d = Math.hypot(t.x - finalTargetX, t.y - finalTargetY);
+            if (d < lockDist) {
+                lockDist = d;
+                lockEnemy = t;
+            }
+        }
+        if (lockEnemy) {
+            finalTargetX = lockEnemy.x;
+            finalTargetY = lockEnemy.y;
+        }
+
+        const throwDist = Math.hypot(finalTargetX - entity.x, finalTargetY - entity.y);
+        const speed = 860;
+        const flightTime = Math.max(0.18, Math.min(1.1, throwDist / speed));
+        const finalAng = Math.atan2(finalTargetY - entity.y, finalTargetX - entity.x);
+
+        bullets.push({
+            ownerBrawler: 'magnatar',
+            isMagnatarBeacon: true,
+            x: entity.x,
+            y: entity.y,
+            vx: Math.cos(finalAng) * speed,
+            vy: Math.sin(finalAng) * speed,
+            targetX: finalTargetX,
+            targetY: finalTargetY,
+            life: 0,
+            maxLife: flightTime,
+            damage: 650,
+            ownerId: entity.id,
+            hitIds: {},
+            isHyper: isHyper
+        });
+
+        // HC: "super has +40% size and makes one around u that makes projectiles go around u."
+        if (isHyper) {
+            deployMagnatarBeacon(entity, entity.x, entity.y, null, true, true);
+            spawnFloatingText(entity.x, entity.y - 45, '🧲 SINGULARITY BARRIER!', '#e056fd');
+        }
+    }
+
+    function deployMagnatarBeacon(ownerEntity, x, y, attachedEntityId = null, isHyper = false, isPersonalAura = false) {
+        const now = performance.now();
+        const ownerId = ownerEntity ? ownerEntity.id : null;
+        const sp1 = ownerEntity ? ((ownerEntity.id === player.id ? selectedStar : ownerEntity.selectedStar) === 'slow' || (ownerEntity.id === player.id ? selectedStar : ownerEntity.selectedStar) === 'sp1') : false;
+        const sp2 = ownerEntity ? ((ownerEntity.id === player.id ? selectedStar : ownerEntity.selectedStar) === 'long' || (ownerEntity.id === player.id ? selectedStar : ownerEntity.selectedStar) === 'sp2') : false;
+
+        const baseRadius = isPersonalAura ? 180 : (isHyper ? 308 : 220); // +40% size: 220 * 1.4 = 308
+
+        const beacon = {
+            id: 'magnatar_vortex_' + now + '_' + Math.floor(Math.random() * 9999),
+            ownerId: ownerId,
+            x: x,
+            y: y,
+            attachedEntityId: attachedEntityId,
+            isPersonalAura: isPersonalAura,
+            radius: baseRadius,
+            expiresAt: now + (isPersonalAura ? 6000 : 5500),
+            isHyper: isHyper,
+            sp1: sp1,
+            sp2: sp2
+        };
+
+        magnatarVortices.push(beacon);
+
+        explosions.push({
+            x: x,
+            y: y,
+            radius: baseRadius * 0.7,
+            life: 0,
+            maxLife: 0.35,
+            color: isHyper ? 'rgba(224, 86, 253, 0.7)' : 'rgba(0, 210, 255, 0.7)'
+        });
+
+        if (attachedEntityId) {
+            const ent = getEntityById(attachedEntityId);
+            if (ent) spawnFloatingText(ent.x, ent.y - 42, '🧲 MAGNET ATTACHED!', '#00d2ff');
+        } else if (!isPersonalAura) {
+            spawnFloatingText(x, y - 35, '🧲 POLARITY BEACON!', '#00d2ff');
+        }
+    }
+
+    function executeMagnatarG1(entity) {
+        if (!entity) return;
+        const now = performance.now();
+        const shockRadius = 180;
+        const shockDmg = 900;
+        const targets = entity.id === player.id ? bots : [player, ...bots];
+
+        for (const t of targets) {
+            if (!t || t.hp <= 0 || t.id === entity.id || areAlliedEntities(entity, t)) continue;
+            const d = Math.hypot(t.x - entity.x, t.y - entity.y);
+            if (d <= shockRadius) {
+                checkHit(t, { ownerBrawler: 'magnatar', damage: shockDmg, pierce: true, ownerId: entity.id, hitIds: {} }, -1);
+                applyKnockback(t, entity.x, entity.y, 320);
+            }
+        }
+
+        // Deflect all nearby projectiles outwards
+        for (const b of bullets) {
+            if (!b || b.ownerId === entity.id) continue;
+            const dist = Math.hypot(b.x - entity.x, b.y - entity.y);
+            if (dist <= shockRadius + 40) {
+                const repAngle = Math.atan2(b.y - entity.y, b.x - entity.x);
+                const curSpd = Math.hypot(b.vx, b.vy) || 500;
+                b.vx = Math.cos(repAngle) * curSpd * 1.3;
+                b.vy = Math.sin(repAngle) * curSpd * 1.3;
+                b.ownerId = entity.id; // Repelled projectile deflected in defense
+            }
+        }
+
+        explosions.push({ x: entity.x, y: entity.y, radius: shockRadius, life: 0, maxLife: 0.3, color: 'rgba(0, 210, 255, 0.75)' });
+        spawnFloatingText(entity.x, entity.y - 40, '⚡ POLARITY INVERSION! 🧲', '#00d2ff');
+    }
+
+    function executeMagnatarG2(entity) {
+        if (!entity) return;
+        entity.magnatarG2Armed = true;
+        spawnFloatingText(entity.x, entity.y - 35, '⚡ FLUX OVERCHARGE READY! 🧲', '#00f5d4');
+    }
+
+    function scheduleBolznstienStrikes(ownerId, x, y, strikeDmg, isHyper, targetId = null) {
+        const now = performance.now();
+        const owner = getEntityById(ownerId);
+        const sp1 = owner ? ((owner.id === player.id ? selectedStar : owner.selectedStar) === 'slow' || (owner.id === player.id ? selectedStar : owner.selectedStar) === 'sp1') : false;
+        const sp2 = owner ? ((owner.id === player.id ? selectedStar : owner.selectedStar) === 'long' || (owner.id === player.id ? selectedStar : owner.selectedStar) === 'sp2') : false;
+        let tempoStacks = 0;
+        if (owner && sp2 && targetId != null) {
+            tempoStacks = owner.bolznstienTempoTargetId === targetId
+                ? Math.min(4, (owner.bolznstienTempoStacks || 1) + 1)
+                : 1;
+            owner.bolznstienTempoTargetId = targetId;
+            owner.bolznstienTempoStacks = tempoStacks;
+            owner.bolznstienTempoLastHitAt = now;
+        } else if (owner && targetId != null) {
+            owner.bolznstienTempoTargetId = null;
+            owner.bolznstienTempoStacks = 0;
+        }
+        const strikeDelay = sp2 && tempoStacks > 1
+            ? Math.max(320, Math.round(800 * Math.pow(0.8, tempoStacks - 1)))
+            : 800;
+        const triggerAt = now + strikeDelay;
+        const finalDmg = Math.round(strikeDmg * (sp1 ? 1.25 : 1.0));
+        const strikeRadius = (isHyper ? 85 : 65) * (isHyper ? 1.3 : 1.0); // 30% bigger strike during HC
+
+        if (isHyper) {
+            // Center strike
+            bolznstienPendingStrikes.push({
+                ownerId, x, y, triggerAt, damage: finalDmg, radius: strikeRadius, isHyper: true, sp1
+            });
+            // 3 strikes in a triangle around it (radius ~62px offset)
+            for (let k = 0; k < 3; k++) {
+                const strikeAngle = (k * 2 * Math.PI / 3) - Math.PI / 2;
+                bolznstienPendingStrikes.push({
+                    ownerId,
+                    x: x + Math.cos(strikeAngle) * 145,
+                    y: y + Math.sin(strikeAngle) * 145,
+                    triggerAt,
+                    damage: finalDmg,
+                    radius: strikeRadius,
+                    isHyper: true,
+                    sp1
+                });
+            }
+        } else {
+            bolznstienPendingStrikes.push({
+                ownerId, x, y, triggerAt, damage: finalDmg, radius: strikeRadius, isHyper: false, sp1
+            });
+        }
+    }
+
+    function doShield(entity, amount) {
+        if (!entity) return;
+        if (typeof grantShield === 'function') {
+            grantShield(entity, amount, 5000);
+        } else {
+            entity.shieldHp = (entity.shieldHp || 0) + amount;
+        }
+    }
+
+    function switchCarmelaFudgeForm(entity, gadgetChoice) {
+        if (!entity) return;
+        const now = performance.now();
+        const oldForm = entity.carmelaFudgeForm || 'carmela';
+        const newForm = oldForm === 'carmela' ? 'fudge' : 'carmela';
+        entity.carmelaFudgeForm = newForm;
+
+        // Gadget 1: Sweet Recovery - heal 2000 HP
+        if (gadgetChoice === 'g1') {
+            doHeal(entity, 2000);
+            spawnFloatingText(entity.x, entity.y - 35, '+2000 HP (Sweet Recovery)', '#2ecc71');
+        } else if (gadgetChoice === 'g2') {
+            // Gadget 2: Sugar Sprint - reload 1 ammo and +30% speed for 3s
+            if (entity.id === player.id) {
+                ammo = Math.min(maxAmmo, ammo + 1);
+                ammoReloadTimer = 0;
+            } else if (entity.ammo !== undefined && entity.maxAmmo !== undefined) {
+                entity.ammo = Math.min(entity.maxAmmo, entity.ammo + 1);
+            }
+            entity.carmelaSpeedUntil = now + 3000;
+            spawnFloatingText(entity.x, entity.y - 35, '+30% SPD & Reload! (Sugar Sprint)', '#f39c12');
+        }
+
+        // Star Power 2: Sweet Revenge
+        const hasSp2 = (entity.id === player.id ? selectedStar : entity.selectedStar) === 'long' || (entity.id === player.id ? selectedStar : entity.selectedStar) === 'sp2';
+        if (hasSp2) {
+            if (newForm === 'carmela') {
+                const burstDmg = 1400;
+                bullets.push({
+                    x: entity.x, y: entity.y, vx: 0, vy: 0,
+                    owner: entity.id, ownerId: entity.id, ownerBrawler: 'carmela_fudge',
+                    isCarmelaBurst: true, radius: 150, damage: burstDmg, life: 0, maxLife: 0.2
+                });
+                const targets = entity.id === player.id ? bots : [player, ...bots];
+                for (const t of targets) {
+                    if (!t || t.hp <= 0 || t.id === entity.id || areAlliedEntities(entity, t)) continue;
+                    if (Math.hypot(t.x - entity.x, t.y - entity.y) <= 150) {
+                        checkHit(t, { ownerBrawler: 'carmela_fudge', damage: burstDmg, pierce: true, ownerId: entity.id, hitIds: {} }, -1);
+                        t.slowUntil = Math.max(t.slowUntil || 0, now + 2000);
+                    }
+                }
+                spawnFloatingText(entity.x, entity.y - 45, '🍬 CARAMEL BURST! 🍬', '#d35400');
+            } else if (newForm === 'fudge') {
+                chocolatePuddles.push({
+                    x: entity.x, y: entity.y, radius: 120, ownerId: entity.id, expiresAt: now + 4000, slowAmount: 0.40
+                });
+                spawnFloatingText(entity.x, entity.y - 45, '🍫 CHOCOLATE PUDDLE! 🍫', '#5d4037');
+            }
+        }
+
+        spawnFloatingText(entity.x, entity.y - 20, newForm === 'fudge' ? '🍫 FUDGE STANCE! 🍫' : '🍬 CARMELA STANCE! 🍬', newForm === 'fudge' ? '#795548' : '#e67e22');
+    }
+
+    function castCarmelaSuper(entity, isHyper) {
+        if (!entity) return;
+        const now = performance.now();
+        entity.carmelaSuperHandsLeft = 4;
+        entity.carmelaSuperUntil = now + 5000;
+        entity.carmelaSuperIsHyper = isHyper;
+        spawnFloatingText(entity.x, entity.y - 40, isHyper ? '🍬 HYPER QUAD SLAM! 🍬' : '🍬 QUAD SLAM! 🍬', isHyper ? '#e056fd' : '#e67e22');
+    }
+
+    function castFudgeSuper(entity, isHyper, targetX, targetY) {
+        if (!entity) return;
+        const now = performance.now();
+        const ang = Math.atan2(targetY - entity.y, targetX - entity.x);
+        bullets.push({
+            ownerBrawler: 'carmela_fudge',
+            isFudgeSuperBoulder: true,
+            x: entity.x + Math.cos(ang) * (entity.radius + 16),
+            y: entity.y + Math.sin(ang) * (entity.radius + 16),
+            vx: Math.cos(ang) * 850,
+            vy: Math.sin(ang) * 850,
+            life: 0,
+            maxLife: 0.9,
+            damage: 1800,
+            ownerId: entity.id,
+            hitIds: {},
+            isHyper: isHyper
+        });
+        spawnFloatingText(entity.x, entity.y - 40, isHyper ? '🍫 COCOA CATACLYSM! 🍫' : '🍫 ULTIMATE SHELL! 🍫', isHyper ? '#e056fd' : '#795548');
+    }
+
+    function drawChocolateShell(targetCtx, target) {
+        if (!target || !target.inChocolateShell) return;
+        const r = (target.radius || 16) * 1.45;
+        targetCtx.save();
+        targetCtx.translate(target.x, target.y);
+        const grad = targetCtx.createRadialGradient(0, -r * 0.3, r * 0.2, 0, 0, r);
+        grad.addColorStop(0, '#8d6e63');
+        grad.addColorStop(0.6, '#4e342e');
+        grad.addColorStop(1, '#271710');
+        targetCtx.fillStyle = grad;
+        targetCtx.strokeStyle = '#d7ccc8';
+        targetCtx.lineWidth = 3;
+        targetCtx.beginPath();
+        targetCtx.ellipse(0, 0, r, r * 1.15, 0, 0, Math.PI * 2);
+        targetCtx.fill();
+        targetCtx.stroke();
+
+        targetCtx.strokeStyle = '#3e2723';
+        targetCtx.lineWidth = 2;
+        targetCtx.beginPath();
+        targetCtx.moveTo(-r * 0.5, -r * 0.4);
+        targetCtx.lineTo(-r * 0.2, 0);
+        targetCtx.lineTo(-r * 0.4, r * 0.5);
+        targetCtx.moveTo(r * 0.3, -r * 0.5);
+        targetCtx.lineTo(r * 0.1, -r * 0.1);
+        targetCtx.lineTo(r * 0.35, r * 0.4);
+        targetCtx.stroke();
+
+        const hpPct = clamp((target.chocolateShellHp || 0) / (target.chocolateShellMaxHp || 3500), 0, 1);
+        targetCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        targetCtx.fillRect(-r, -r - 14, r * 2, 6);
+        targetCtx.fillStyle = '#ffb300';
+        targetCtx.fillRect(-r, -r - 14, r * 2 * hpPct, 6);
+        targetCtx.strokeStyle = '#fff';
+        targetCtx.lineWidth = 1;
+        targetCtx.strokeRect(-r, -r - 14, r * 2, 6);
+        targetCtx.restore();
+    }
+
+    function castBolznstienSuper(entity, isHyper) {
+        if (!entity) return;
+        const now = performance.now();
+        // Super duration: 4s normal, 6s in Hypercharge
+        const duration = isHyper ? 6000 : 4000;
+        entity.bolznstienSuperUntil = now + duration;
+        entity.bolznstienSuperIsHyper = isHyper;
+        entity.bolznstienLastSuperTick = 0;
+        spawnFloatingText(entity.x, entity.y - 40, isHyper ? '⚡ FRANKEN-OVERLOAD! 🧟' : '⚡ ELECTRIC EYES! ⚡', isHyper ? '#e056fd' : '#00f5d4');
+    }
+
+    function executeBolznstienG1(entity) {
+        if (!entity) return;
+        const now = performance.now();
+        // G1: Instant Discharge - Immediately detonate all pending strikes for this owner with +30% damage, plus a defensive shock
+        let detonatedCount = 0;
+        for (let i = bolznstienPendingStrikes.length - 1; i >= 0; i--) {
+            const s = bolznstienPendingStrikes[i];
+            if (s.ownerId === entity.id) {
+                s.triggerAt = 0;
+                s.damage = Math.round(s.damage * 1.30); // +30% damage
+                detonatedCount++;
+            }
+        }
+        // Defensive shock around Bolznstien
+        const shockDmg = 800;
+        const targets = entity.id === player.id ? bots : [player, ...bots];
+        for (const t of targets) {
+            if (!t || t.hp <= 0 || t.id === entity.id || areAlliedEntities(entity, t)) continue;
+            const d = Math.hypot(t.x - entity.x, t.y - entity.y);
+            if (d <= 140) {
+                checkHit(t, { ownerBrawler: 'bolznstien', damage: shockDmg, pierce: true, ownerId: entity.id, hitIds: {} }, -1);
+                applyKnockback(t, entity.x, entity.y, 220);
+            }
+        }
+        explosions.push({ x: entity.x, y: entity.y, radius: 140, life: 0, maxLife: 0.25, color: 'rgba(0, 245, 212, 0.65)' });
+        spawnFloatingText(entity.x, entity.y - 35, '⚡ INSTANT DISCHARGE!', '#00f5d4');
+    }
+
+    function executeBolznstienG2(entity) {
+        if (!entity) return;
+        const now = performance.now();
+        // G2: Conductive Surge - +30% movement speed for 4s and leaves shocking electric floor trails
+        entity.bolznstienSpeedUntil = now + 4000;
+        spawnFloatingText(entity.x, entity.y - 35, '⚡ CONDUCTIVE SURGE! (+30% SPD)', '#ffd166');
+    }
+
+    function isFriendlyFireActive() {
+        return (isRankedMatch && activeRankedModifier === 'friendly_fire') || (isRankedMatch && activeRankedModifierSecondary === 'friendly_fire') || ((isRankedMatch || isCustomMutatorMatch) && activeRankedModifierTertiary === 'friendly_fire') || (isCustomMutatorMatch && (activeRankedModifier === 'friendly_fire' || activeRankedModifierSecondary === 'friendly_fire')) || isFriendlyFirePlusActive() || (showdownMode === 'knock_donate' && !isBossFight && !isTraining);
+    }
+
+    function grantFriendlyFirePlusBonus(owner) {
+        if (!owner || owner.hp <= 0) return;
+        const superBonus = 18;
+        const hyperBonus = 12;
+        if (owner.id === player.id) {
+            superCharge = clamp(superCharge + superBonus, 0, 100);
+            if (!isHypercharged) {
+                hyperChargeCharge = clamp(hyperChargeCharge + hyperBonus, 0, 100);
+                if (typeof updateHyperButton === 'function') updateHyperButton();
+            }
+            if (typeof updateSuperButton === 'function') updateSuperButton();
+            const now = performance.now();
+            if (now - (player._lastFFPlusBonusAt || 0) > 350) {
+                player._lastFFPlusBonusAt = now;
+                spawnFloatingText(player.x, player.y - 42, '⚡ +SUPER & HYPER!', '#00f5d4');
+            }
+        } else {
+            owner.superCharge = clamp((owner.superCharge || 0) + superBonus, 0, 100);
+            if (!owner.isHypercharged) {
+                owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + hyperBonus, 0, 100);
+            }
+        }
+    }
     let timedDetonationTimer = 0;
 
     const RANKED_PASS_TIERS = 50;
@@ -7943,7 +10162,7 @@ let blinkEyeDodgeState = null;
     const TOWER_POWER_VAULT_HP_MULTIPLIER = 4.5;
     const BRICK_VAULT_MAX_HIT_PCT = 0.12;
     const BRICK_VAULT_MAX_HIT_FLAT = 5000;
-    const MIRROR_TEAM_SIZE = 5;
+    const MIRROR_TEAM_SIZE = 4;
     const MIRROR_KILL_GOAL = 20;
     const SPLITTER_POWERED_TEAM_SIZE = 10;
     const SPLITTER_POWERED_ROUND2_GOAL = 4000000;
@@ -7959,6 +10178,22 @@ let blinkEyeDodgeState = null;
         };
     }
 
+    function getBraweBallSpawnPoint(team, slot = 0, teamSize = 3) {
+        const spread = Math.max(1, teamSize - 1);
+        const offset = (slot - spread * 0.5) * 170;
+        const px = clamp(WORLD_W * 0.5 + offset, 140, WORLD_W - 140);
+        const py = team === 'player' ? WORLD_H - 320 : 320;
+        return { x: px, y: py };
+    }
+
+    function getKnockoutSpawnPoint(team, slot = 0, teamSize = 3) {
+        const spread = Math.max(1, teamSize - 1);
+        const offset = (slot - spread * 0.5) * 150;
+        const px = clamp(WORLD_W * 0.5 + offset, 140, WORLD_W - 140);
+        const py = team === 'player' ? WORLD_H - 260 : 260;
+        return { x: px, y: py };
+    }
+
     function restoreRespawningEntity(entity, spawn, playerControlled = false, invulnerabilityMs = 900) {
         if (!entity) return;
         const now = performance.now();
@@ -7966,7 +10201,18 @@ let blinkEyeDodgeState = null;
         const fallbackY = entity.team === 'enemy' ? 190 : WORLD_H - 190;
         entity.x = Number.isFinite(spawn?.x) ? spawn.x : fallbackX;
         entity.y = Number.isFinite(spawn?.y) ? spawn.y : fallbackY;
-        entity.hp = Math.max(1, Number(entity.maxHp) || 1);
+        if ((isRankedMatch || isCustomMutatorMatch) && ((activeRankedModifier === 'colossus_friend' && activeColossusMaxHp) || (activeRankedModifierSecondary === 'colossus_friend' && activeColossusMaxHp) || (activeRankedModifierTertiary === 'colossus_friend' && activeColossusMaxHp))) {
+            entity.maxHp = activeColossusMaxHp;
+            entity.hp = activeColossusMaxHp;
+            grantShield(entity, 4000, 4000);
+        } else {
+            entity.hp = Math.max(1, Number(entity.maxHp) || 1);
+        }
+        if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper')) {
+            entity.isHypercharged = true;
+            entity.hyperchargeUntil = now + 999999999;
+            entity.hyperChargeCharge = 100;
+        }
         entity.z = 0;
         entity.vx = 0;
         entity.vy = 0;
@@ -8043,7 +10289,7 @@ let blinkEyeDodgeState = null;
     let timedDetonationStage = 0;
 
     function triggerTimedDetonationWave() {
-        if (!isRankedMatch || activeRankedModifier !== 'timed_detonation' || !playing || gameOver) return;
+        if ((!isRankedMatch && !isCustomMutatorMatch) || (activeRankedModifier !== 'timed_detonation' && activeRankedModifierSecondary !== 'timed_detonation' && activeRankedModifierTertiary !== 'timed_detonation') || !playing || gameOver) return;
         timedDetonationStage = (timedDetonationStage || 0) + 1;
         const blastRadius = Math.min(Math.max(WORLD_W, WORLD_H) * 0.48, 280 + timedDetonationStage * 160);
         const centerX = WORLD_W * 0.5, centerY = WORLD_H * 0.5;
@@ -8069,11 +10315,21 @@ let blinkEyeDodgeState = null;
             const cx = c.x + (c.w || 0) / 2, cy = c.y + (c.h || 0) / 2;
             if (Math.hypot(cx - centerX, cy - centerY) <= blastRadius) cubes.splice(i, 1);
         }
-        for (let i = grassZones.length - 1; i >= 0; i--) {
-            const g = grassZones[i];
-            if (!g) continue;
-            const gx = g.x + (g.w || 0) / 2, gy = g.y + (g.h || 0) / 2;
-            if (Math.hypot(gx - centerX, gy - centerY) <= blastRadius) grassZones.splice(i, 1);
+        if (typeof bushZones !== 'undefined' && Array.isArray(bushZones)) {
+            for (let i = bushZones.length - 1; i >= 0; i--) {
+                const g = bushZones[i];
+                if (!g) continue;
+                const gx = g.x + (g.w || 0) / 2, gy = g.y + (g.h || 0) / 2;
+                if (Math.hypot(gx - centerX, gy - centerY) <= blastRadius) bushZones.splice(i, 1);
+            }
+        }
+        if (typeof bushes !== 'undefined' && Array.isArray(bushes)) {
+            for (let i = bushes.length - 1; i >= 0; i--) {
+                const b = bushes[i];
+                if (!b) continue;
+                const bx = b.x + (b.w || 0) / 2, by = b.y + (b.h || 0) / 2;
+                if (Math.hypot(bx - centerX, by - centerY) <= blastRadius) bushes.splice(i, 1);
+            }
         }
     }
 
@@ -8113,6 +10369,12 @@ let blinkEyeDodgeState = null;
     let brickVaultDamage = { player: 0, enemy: 0 };
     let brickVaultTotalHp = { player: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + hp, 0), enemy: BRICK_VAULT_TIERS.reduce((sum, hp) => sum + hp, 0) };
     let arenaForgeTimer = 0;
+    let arenaForgeBeacon = null;
+    let arenaForgeCaptureIndex = 0;
+    let arenaForgeNextCaptureAt = 12;
+    let arenaForgeRocketeerBossSpawned = false;
+    let arenaForgeCapturedAttackPowers = { player: new Set(), enemy: new Set() };
+    let arenaForgeHudNextAt = 0;
     let arenaForgeSoulBank = { player: 0, enemy: 0 };
     let arenaForgeSouls = [];
     let arenaForgeFlamePuddles = [];
@@ -8185,6 +10447,7 @@ let heistFeverActive = false;
   })());
   const LAVA_BOSS_DIFFICULTY_ORDER = Object.freeze(Object.keys(LAVA_BOSS_DIFFICULTIES));
   const LAVA_BOSS_3V1_HP_MULTIPLIER = 0.72;
+
 
   function getLavaBossDifficulty(id=activeLavaBossDifficulty){return LAVA_BOSS_DIFFICULTIES[id]||LAVA_BOSS_DIFFICULTIES.hard;}
   function getLavaBossFightHp(cfg=getLavaBossDifficulty()){return Math.round(cfg.maxHp*LAVA_BOSS_3V1_HP_MULTIPLIER);}
@@ -8570,7 +10833,8 @@ let heistFeverActive = false;
       tutorialCompleted: false,
       evilDoctorUnlockEndAt: 0,
       unlockedBrawlers: { outlit: true, fuser: true, axeywaxy: true, trampaheal: true,
-        mageny: true, draflygon: true, drainbow: true, kage: true, cinderion: true, cursed: true },
+        carmela_fudge: true,
+        mageny: true, draflygon: true, drainbow: true, kage: true, cinderion: true, cursed: true, bolznstien: true, rager: true },
       soulSummoner: { pullCount: 0, deferredQueue: [], road: [], soulBank: 0, soulWater: 0, targetBrawler: null, pendingWaterReward: null, pendingTargetPick: null },
       ranked: { points: 0, rewardsClaimed: [] },
       attachies: { hyper: {}, gadget: {}, star: {}, pulls: 0 },
@@ -9737,7 +12001,12 @@ let heistFeverActive = false;
                   if (data.persistent.eventTappers) playerData.eventTappers = data.persistent.eventTappers;
                   if (data.persistent.questBoard) playerData.questBoard = data.persistent.questBoard;
                   if (data.persistent.tutorialCompleted != null) playerData.tutorialCompleted = !!data.persistent.tutorialCompleted;
-                  if (data.persistent.unlockedBrawlers) playerData.unlockedBrawlers = data.persistent.unlockedBrawlers;
+                  if (data.persistent.unlockedBrawlers) {
+                      playerData.unlockedBrawlers = data.persistent.unlockedBrawlers;
+                      playerData.unlockedBrawlers.carmela_fudge = true;
+                      playerData.unlockedBrawlers.bolznstien = true;
+                      playerData.unlockedBrawlers.magnatar = true;
+                  }
                   if (data.persistent.soulSummoner) playerData.soulSummoner = data.persistent.soulSummoner;
                   if (data.persistent.evilDoctorUnlockEndAt != null) playerData.evilDoctorUnlockEndAt = data.persistent.evilDoctorUnlockEndAt;
                   if (data.persistent.ranked) playerData.ranked = data.persistent.ranked;
@@ -9796,15 +12065,26 @@ let heistFeverActive = false;
                   level: Math.max(1, Math.min(11, Math.floor(existing.level || 1))),
                   bricks: Math.max(0, Math.floor(existing.bricks || 0)),
                   prestige: Math.max(0, Math.floor(existing.prestige || 0)),
-                  gadgetUnlocked: !!existing.gadgetUnlocked,
-                  starPowerUnlocked: !!existing.starPowerUnlocked,
-                  hyperchargeUnlocked: !!existing.hyperchargeUnlocked,
+                  gadgetUnlocked: (bid === 'bolznstien' || bid === 'magnatar' || bid === 'carmela_fudge') ? true : !!existing.gadgetUnlocked,
+                  starPowerUnlocked: (bid === 'bolznstien' || bid === 'magnatar') ? true : !!existing.starPowerUnlocked,
+                  hyperchargeUnlocked: (bid === 'bolznstien' || bid === 'magnatar') ? true : !!existing.hyperchargeUnlocked,
                   hyperchargeDiscountPct: normalizeHyperchargeDiscountPct(existing.hyperchargeDiscountPct),
                   selectedStar: existing.selectedStar || 'slow',
                   selectedGadget: existing.selectedGadget || 'g1',
                   ownedTrinkets: Array.isArray(existing.ownedTrinkets) ? [...new Set(existing.ownedTrinkets)] : [],
                   equippedTrinkets: Array.isArray(existing.equippedTrinkets) ? [...new Set(existing.equippedTrinkets)] : []
               };
+              if (bid === 'carmela_fudge') {
+                  playerData.brawlers[bid].gadgetUnlocked = true;
+              }
+              if (bid === 'bolznstien' || bid === 'magnatar') {
+                  playerData.brawlers[bid].level = Math.max(playerData.brawlers[bid].level || 1, 11);
+                  playerData.brawlers[bid].gadgetUnlocked = true;
+                  playerData.brawlers[bid].starPowerUnlocked = true;
+                  playerData.brawlers[bid].hyperchargeUnlocked = true;
+                  if (!playerData.brawlers[bid].selectedGadget) playerData.brawlers[bid].selectedGadget = 'g1';
+                  if (!playerData.brawlers[bid].selectedStar || playerData.brawlers[bid].selectedStar === 'none') playerData.brawlers[bid].selectedStar = 'slow';
+              }
               ensureProgressTrinkets(playerData.brawlers[bid]);
           }
           if (!playerData.shopClaims) {
@@ -10162,6 +12442,10 @@ let heistFeverActive = false;
           inp.disabled = !spUnlocked;
           inp.checked = spUnlocked && inp.value === selectedStar;
       });
+      if (selectedBrawler === 'rager' || selectedBrawler === 'bolznstien' || selectedBrawler === 'magnatar' || selectedBrawler === 'carmela_fudge') {
+          if (!selectedGadget) selectedGadget = 'g1';
+          if (!selectedStar || selectedStar === 'none') selectedStar = 'slow';
+      }
   }
 
   function grantTapperBonusWithPity(sourceTier = 'regular') {
@@ -10767,7 +13051,7 @@ let heistFeverActive = false;
           glow: 'rgba(93, 242, 194, 0.4)',
           cost: 70,
           milestoneReward: { coins: 300, gems: 30, label: '300 Coins + 30 Gems' },
-          brawlers: ['echo', 'cheseypuff', 'unopcoloco', 'minigunnin', 'bowlin_rida', 'chaird', 'forest', 'goonbob']
+          brawlers: ['echo', 'cheseypuff', 'unopcoloco', 'minigunnin', 'bowlin_rida', 'chaird', 'forest', 'goonbob', 'bolznstien']
       },
       {
           id: 'Epic',
@@ -10789,7 +13073,7 @@ let heistFeverActive = false;
           glow: 'rgba(255, 123, 209, 0.4)',
           cost: 270,
           milestoneReward: { coins: 1000, gems: 100, label: '1,000 Coins + 100 Gems' },
-          brawlers: ['dashaholic', 'classy', 'steamer', 'tempo_maker', 'amplifier', 'skeleflying', 'evil_doctor', 'boom_arang', 'upiedown', 'chickpig', 'jetpack', 'fastpass', 'freestyle', 'drainbow', 'draflygon', 'homer', 'predator', 'ice_cream', 'swimmer', 'boomer', 'blade_vane', 'daggershard', 'cluster', 'witch', 'trampaheal', 'upgradart']
+          brawlers: ['dashaholic', 'classy', 'steamer', 'tempo_maker', 'amplifier', 'skeleflying', 'evil_doctor', 'boom_arang', 'upiedown', 'chickpig', 'jetpack', 'fastpass', 'freestyle', 'drainbow', 'draflygon', 'homer', 'predator', 'ice_cream', 'swimmer', 'boomer', 'blade_vane', 'daggershard', 'cluster', 'witch', 'trampaheal', 'upgradart', 'rager']
       },
       {
           id: 'Exotic',
@@ -10822,7 +13106,7 @@ let heistFeverActive = false;
           glow: 'rgba(168, 85, 247, 0.4)',
           cost: 850,
           milestoneReward: { coins: 4000, gems: 400, label: '4,000 Coins + 400 Gems' },
-          brawlers: ['crystila', 'darkener', 'awakenator']
+          brawlers: ['crystila', 'darkener', 'awakenator', 'carmela_fudge']
       }
   ]);
 
@@ -11487,6 +13771,11 @@ let heistFeverActive = false;
 
 
   const SPECIAL_ABILITY_DEFS = Object.freeze({
+      boom_arang: {
+          type:'instinct', name:'Return Rider', icon:'RR', color:'#62ef88',
+          pieceName:'Boom-Arang Instinct Piece',
+          shortDesc:'Every 9 seconds, the next toss brings you to its first enemy impact or maximum-range endpoint.'
+      },
       outlit: {
           type: 'mutation',
           name: 'Overpressure',
@@ -11501,7 +13790,7 @@ let heistFeverActive = false;
           icon: 'PC',
           color: '#ffd34f',
           pieceName: "Bouncin' Balls Signature Piece",
-          shortDesc: 'Spend up to 1000 HP: Elasticity keeps its +50% range, and every collector-ball wall bounce adds another +20% base range. Or spend 750 turret HP to command 2 radial waves (10s cooldown).'
+          shortDesc: 'Spend up to 1000 HP: Elasticity keeps its +50% range, and every collector-ball wall bounce adds another +20% base range. Or spend 900 turret HP to command 2 stronger radial waves (10s cooldown).'
       },
       fightnfire: {
           type: 'instinct',
@@ -11573,6 +13862,11 @@ let heistFeverActive = false;
   const UNLEASH_POTENTIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
   const UNLEASH_POTENTIAL_FIGHTERS = Object.freeze(Object.keys(SPECIAL_ABILITY_DEFS));
   const SPECIAL_BREAKTHROUGH_QUESTS = Object.freeze({
+      boom_arang: [
+          {id:'ride_hits',title:'Catch the Wind',desc:'Land 40 Boomerang Toss hits.',kind:'main_hit',target:40},
+          {id:'ride_throws',title:'Out and Back',desc:'Fire 35 Boomerang Toss attacks.',kind:'main_attack',target:35},
+          {id:'ride_super',title:'Gravity Rider',desc:'Use Gravity Recall 5 times.',kind:'use_super',target:5}
+      ],
       outlit: [
           {id:'pressure_building',title:'Pressure Building',desc:'Play 3 matches with Outlit.',kind:'play_match',target:3},
           {id:'nine_round_rhythm',title:'Nine Round Rhythm',desc:'Fire 45 main attacks with Outlit.',kind:'main_attack',target:45},
@@ -11763,7 +14057,13 @@ let heistFeverActive = false;
 
   function hashShopKey(value) { let hash=2166136261; for(let i=0;i<String(value).length;i++){hash^=String(value).charCodeAt(i);hash=Math.imul(hash,16777619);} return hash>>>0; }
   function getOrCreateProgress(brawlerId) {
-      if (!playerData.brawlers[brawlerId]) playerData.brawlers[brawlerId] = { level:1, bricks:0, prestige:0, gadgetUnlocked:false, starPowerUnlocked:false, hyperchargeUnlocked:false, selectedStar:'slow', selectedGadget:'g1', ownedTrinkets:[], equippedTrinkets:[] };
+      if (!playerData.brawlers[brawlerId]) {
+          if (brawlerId === 'bolznstien' || brawlerId === 'magnatar' || brawlerId === 'rager' || brawlerId === 'carmela_fudge') {
+              playerData.brawlers[brawlerId] = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+          } else {
+              playerData.brawlers[brawlerId] = { level: 1, bricks: 0, prestige: 0, gadgetUnlocked: false, starPowerUnlocked: false, hyperchargeUnlocked: false, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+          }
+      }
       return ensureProgressTrinkets(playerData.brawlers[brawlerId]);
   }
   function getWeeklyTrialWeekInfo(now=Date.now()) {
@@ -12853,6 +15153,10 @@ let heistFeverActive = false;
     }
 
     function isBotRouteClear(entity, fromX, fromY, toX, toY) {
+        return isBotRouteClearExcluding(entity, fromX, fromY, toX, toY, null);
+    }
+
+    function isBotRouteClearExcluding(entity, fromX, fromY, toX, toY, ignoredBlocker) {
         const dx = toX - fromX, dy = toY - fromY;
         const distance = Math.hypot(dx, dy);
         if (distance < 8) return true;
@@ -12862,33 +15166,76 @@ let heistFeverActive = false;
             const travel = scanDistance * step / steps;
             const x = fromX + dx / distance * travel;
             const y = fromY + dy / distance * travel;
-            if (getBotBlockingTerrainAt(entity, x, y, (entity.radius || 14) + 3)) return false;
+            const blocker = getBotBlockingTerrainAt(entity, x, y, (entity.radius || 14) + 3);
+            if (blocker) {
+                // If this is the obstacle we are specifically navigating away from during early pathing, ignore it
+                if (ignoredBlocker && blocker === ignoredBlocker && travel < scanDistance * 0.45) continue;
+                return false;
+            }
         }
         return true;
     }
 
     function chooseBotWallWaypoint(entity, blocker, goalX, goalY) {
         if (!blocker) return null;
-        const waterDetour = waterZones.includes(blocker);
-        const clearance = (entity.radius || 14) + (waterDetour ? 58 : 34);
-        const left = blocker.x - clearance, right = blocker.x + blocker.w + clearance;
-        const top = blocker.y - clearance, bottom = blocker.y + blocker.h + clearance;
-        const candidates = [
-            { x:left, y:top }, { x:right, y:top }, { x:left, y:bottom }, { x:right, y:bottom },
-            { x:left, y:blocker.y + blocker.h / 2 }, { x:right, y:blocker.y + blocker.h / 2 },
-            { x:blocker.x + blocker.w / 2, y:top }, { x:blocker.x + blocker.w / 2, y:bottom }
-        ];
+        const waterDetour = Array.isArray(waterZones) && waterZones.includes(blocker);
+        const baseClearance = (entity.radius || 14) + (waterDetour ? 58 : 34);
+        const clearances = [baseClearance, baseClearance + 24];
         let best = null;
-        for (const candidate of candidates) {
-            candidate.x = clamp(candidate.x, clearance, WORLD_W - clearance);
-            candidate.y = clamp(candidate.y, clearance, WORLD_H - clearance);
-            if (!canBotMoveToPosition(entity, candidate.x, candidate.y)) continue;
-            const startClear = isBotRouteClear(entity, entity.x, entity.y, candidate.x, candidate.y);
-            if (!startClear) continue;
-            const goalClear = isBotRouteClear(entity, candidate.x, candidate.y, goalX, goalY);
-            const score = Math.hypot(candidate.x - entity.x, candidate.y - entity.y) +
-                Math.hypot(goalX - candidate.x, goalY - candidate.y) + (goalClear ? 0 : 240);
-            if (!best || score < best.score) best = { x:candidate.x, y:candidate.y, score, waterDetour };
+        for (const clearance of clearances) {
+            const left = blocker.x - clearance, right = blocker.x + blocker.w + clearance;
+            const top = blocker.y - clearance, bottom = blocker.y + blocker.h + clearance;
+            const midX = blocker.x + blocker.w / 2, midY = blocker.y + blocker.h / 2;
+            const candidates = [
+                { x:left, y:top }, { x:right, y:top }, { x:left, y:bottom }, { x:right, y:bottom },
+                { x:left, y:midY }, { x:right, y:midY }, { x:midX, y:top }, { x:midX, y:bottom }
+            ];
+            for (const candidate of candidates) {
+                candidate.x = clamp(candidate.x, clearance, WORLD_W - clearance);
+                candidate.y = clamp(candidate.y, clearance, WORLD_H - clearance);
+                if (!canBotMoveToPosition(entity, candidate.x, candidate.y)) continue;
+                const startClear = isBotRouteClearExcluding(entity, entity.x, entity.y, candidate.x, candidate.y, blocker);
+                if (!startClear) continue;
+                const goalClear = isBotRouteClear(entity, candidate.x, candidate.y, goalX, goalY);
+                const score = Math.hypot(candidate.x - entity.x, candidate.y - entity.y) +
+                    Math.hypot(goalX - candidate.x, goalY - candidate.y) + (goalClear ? 0 : 220);
+                if (!best || score < best.score) best = { x:candidate.x, y:candidate.y, score, waterDetour };
+            }
+            if (best && best.score < 9999) break;
+        }
+        return best;
+    }
+
+    function findBotCoverPoint(bot, threatPos) {
+        if (!threatPos) return null;
+        let best = null;
+        let bestScore = Infinity;
+        const terrain = [...destructibleWalls.filter(w => w && w.hp > 0 && !w.isPlatform), ...cubes];
+        for (const w of terrain) {
+            const cx = w.x + w.w / 2, cy = w.y + w.h / 2;
+            const dThreat = Math.hypot(cx - threatPos.x, cy - threatPos.y);
+            const dBot = Math.hypot(cx - bot.x, cy - bot.y);
+            if (dBot > 480) continue;
+            // Place cover position on the opposite side of the wall from the threat
+            const dirX = (cx - threatPos.x) / (dThreat || 1);
+            const dirY = (cy - threatPos.y) / (dThreat || 1);
+            const coverX = clamp(cx + dirX * (Math.max(w.w, w.h) / 2 + (bot.radius || 14) + 14), 20, WORLD_W - 20);
+            const coverY = clamp(cy + dirY * (Math.max(w.w, w.h) / 2 + (bot.radius || 14) + 14), 20, WORLD_H - 20);
+            if (!canBotMoveToPosition(bot, coverX, coverY)) continue;
+            const score = dBot;
+            if (score < bestScore) {
+                bestScore = score;
+                best = { x: coverX, y: coverY, id: 'center' };
+            }
+        }
+        if (!best && Array.isArray(bushes)) {
+            for (const b of bushes) {
+                if (!b) continue;
+                const dBot = Math.hypot(b.x - bot.x, b.y - bot.y);
+                if (dBot < 400 && canBotMoveToPosition(bot, b.x, b.y)) {
+                    return { x: b.x, y: b.y, id: 'center' };
+                }
+            }
         }
         return best;
     }
@@ -12896,6 +15243,29 @@ let heistFeverActive = false;
     function getBotSteeredStep(entity, dx, dy, speed, dt) {
         const now = performance.now();
         const goalX = entity.x + dx, goalY = entity.y + dy;
+
+        // Anti-stuck watchdog: detect if bot has been trapped against a wall edge/corner
+        entity.botStuckWatchdog = entity.botStuckWatchdog || {
+            lastX: entity.x, lastY: entity.y, lastCheck: now, stuckCount: 0, detourUntil: 0, detourAngle: 0
+        };
+        const dog = entity.botStuckWatchdog;
+        if (now >= dog.detourUntil && now - dog.lastCheck >= 180) {
+            const distMoved = Math.hypot(entity.x - dog.lastX, entity.y - dog.lastY);
+            if (distMoved < 5 && speed > 10) {
+                dog.stuckCount++;
+                if (dog.stuckCount >= 2) {
+                    dog.detourAngle = (Math.random() > 0.5 ? 1 : -1) * (Math.PI * 0.55);
+                    dog.detourUntil = now + 320;
+                    dog.stuckCount = 0;
+                }
+            } else if (distMoved >= 12) {
+                dog.stuckCount = 0;
+            }
+            dog.lastX = entity.x;
+            dog.lastY = entity.y;
+            dog.lastCheck = now;
+        }
+
         let waypoint = entity.botWallWaypoint;
         if (waypoint && (now >= waypoint.expiresAt || Math.hypot(entity.x - waypoint.x, entity.y - waypoint.y) < 32)) {
             entity.botWallWaypoint = null;
@@ -12913,11 +15283,26 @@ let heistFeverActive = false;
             dx = waypoint.x - entity.x;
             dy = waypoint.y - entity.y;
         }
+
+        // Apply active anti-stuck detour if needed
+        if (now < dog.detourUntil) {
+            const cosD = Math.cos(dog.detourAngle);
+            const sinD = Math.sin(dog.detourAngle);
+            const rDx = dx * cosD - dy * sinD;
+            const rDy = dx * sinD + dy * cosD;
+            dx = rDx;
+            dy = rDy;
+        }
+
         const dist = Math.hypot(dx, dy) || 1;
         const baseDirX = dx / dist;
         const baseDirY = dy / dist;
         const stride = speed * dt;
-        const angles = [0, 0.34, -0.34, 0.65, -0.65, 1.05, -1.05, 1.45, -1.45];
+
+        // Radial sweep: test small deviations first, then wider lateral angles up to PI
+        const angles = [
+            0, 0.32, -0.32, 0.64, -0.64, 0.98, -0.98, 1.35, -1.35, 1.75, -1.75, 2.15, -2.15, 2.65, -2.65, Math.PI
+        ];
         for (const ang of angles) {
             const cosA = Math.cos(ang);
             const sinA = Math.sin(ang);
@@ -12929,16 +15314,26 @@ let heistFeverActive = false;
             return { moved: true, x: nx, y: ny, vx: dirX * speed, vy: dirY * speed };
         }
 
-        // Axis slide fallback for tight corridors.
-        const nx = entity.x + baseDirX * stride;
-        if (canBotMoveToPosition(entity, nx, entity.y)) {
-            return { moved: true, x: nx, y: entity.y, vx: baseDirX * speed, vy: 0 };
+        // Tangential wall sliding fallback: slide along horizontal and vertical edges
+        const slideCandidates = [
+            { dirX: baseDirX, dirY: 0 },
+            { dirX: 0, dirY: baseDirY },
+            { dirX: -baseDirX * 0.7, dirY: baseDirY },
+            { dirX: baseDirX, dirY: -baseDirY * 0.7 },
+            { dirX: -baseDirY, dirY: baseDirX },
+            { dirX: baseDirY, dirY: -baseDirX }
+        ];
+        for (const cand of slideCandidates) {
+            const cDist = Math.hypot(cand.dirX, cand.dirY) || 1;
+            const cX = (cand.dirX / cDist) * stride;
+            const cY = (cand.dirY / cDist) * stride;
+            const nx = entity.x + cX;
+            const ny = entity.y + cY;
+            if (canBotMoveToPosition(entity, nx, ny)) {
+                return { moved: true, x: nx, y: ny, vx: (cand.dirX / cDist) * speed, vy: (cand.dirY / cDist) * speed };
+            }
         }
-        const ny = entity.y + baseDirY * stride;
-        if (canBotMoveToPosition(entity, entity.x, ny)) {
-            return { moved: true, x: entity.x, y: ny, vx: 0, vy: baseDirY * speed };
-        }
-        entity.botWallWaypoint = null;
+
         return { moved: false, x: entity.x, y: entity.y, vx: 0, vy: 0 };
     }
 
@@ -13990,6 +16385,7 @@ let heistFeverActive = false;
 
     function initializeArenaForgeCombatant(entity) {
         if (!entity || entity.isStructure || entity.isArenaForgeMinion) return;
+        entity.forgeRiderReadyAt = 0;
         const baseLevel = entity.id === player.id ? getSelectedBrawlerLevel() : Math.max(1, entity.level || 1);
         entity.arenaForgeBaseLevel = baseLevel;
         entity.arenaForgeBonusLevel = 0;
@@ -14378,11 +16774,11 @@ let heistFeverActive = false;
             <div style="display:grid;gap:10px">
               <div style="padding:12px;border-radius:14px;background:#102d3d"><b style="color:#7cecff">1. FOLLOW THE WAVE</b><br><span style="color:#c8dce9">Basic minions spawn every 20 seconds. Let them absorb tower shots while your team attacks.</span></div>
               <div style="padding:12px;border-radius:14px;background:#102d3d"><b style="color:#ffcf66">2. BREAK BOTH TOWERS</b><br><span style="color:#c8dce9">The enemy Core cannot take damage until both Guard Towers are destroyed.</span></div>
-              <div style="padding:12px;border-radius:14px;background:#102d3d"><b style="color:#aaef9d">3. GROW DURING THE MATCH</b><br><span style="color:#c8dce9">Each Energy grants the collector +50 max HP and XP. At bonus Power 4, 8 and 12, choose a Blueprint. Bots choose theirs automatically.</span></div>
+              <div style="padding:12px;border-radius:14px;background:#102d3d"><b style="color:#aaef9d">3. GROW DURING THE MATCH</b><br><span style="color:#c8dce9">Each Energy grants the collector +50 max HP and XP. Every 2 bonus Power levels, choose a Blueprint, up to bonus level 12. Bots choose theirs automatically.</span></div>
               <div style="padding:12px;border-radius:14px;background:#102d3d"><b style="color:#d9a6ff">4. SURVIVE BREACH WAVES</b><br><span style="color:#c8dce9">Enemy elite waves attack your weakest lane every 45 seconds. Defeating marked Breach units drops bonus Energy.</span></div>
               <div style="padding:12px;border-radius:14px;background:#102d3d"><b style="color:#ff9b9b">5. WATCH BASE INTEGRITY</b><br><span style="color:#c8dce9">The HUD combines both Towers and the Core into one total. Side Camps, Forge Boons and the Colossus can swing a losing defense.</span></div>
             </div>
-            <div style="margin-top:15px;padding:10px;border-radius:12px;background:#291d12;color:#ffe1a0;font-weight:800">Simple plan: stay with your team, follow a wave, focus one tower, then repeat on the other side.</div>
+            <div style="margin-top:15px;padding:10px;border-radius:12px;background:#291d12;color:#ffe1a0;font-weight:800">CAPTURE ENGINES: Hold the marked ring for 6 seconds to recruit an ally and earn a team reward. Attack engines stack for the rest of the match. Boss Rocketeer becomes available at 2:30 remaining and takes 15 seconds to capture. Overclocked starts with all four attack engines firing in four directions. Bonus volleys have a one-second cooldown.</div>
             <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:18px">
               <button data-forge-help-ok style="flex:1;min-width:190px;padding:13px;border:0;border-radius:13px;background:#61e2bd;color:#061a18;font-weight:1000;cursor:pointer">GOT IT - START PREP</button>
               <button data-forge-help-hide style="padding:13px 17px;border:1px solid #61768b;border-radius:13px;background:#172536;color:#e5eff8;font-weight:900;cursor:pointer">DON'T SHOW AGAIN</button>
@@ -14484,6 +16880,9 @@ let heistFeverActive = false;
 
     function updateArenaForgeUI() {
         if (!arenaForgePanel || !arenaForgePanel.isConnected) return;
+        const hudNow = performance.now();
+        if (hudNow < arenaForgeHudNextAt) return;
+        arenaForgeHudNextAt = hudNow + 150;
         const stats = arenaForgePanel.querySelector('[data-forge-stats]');
         const ownCore = getArenaForgeCore('player');
         const enemyCore = getArenaForgeCore('enemy');
@@ -14497,13 +16896,18 @@ let heistFeverActive = false;
         const maxPlayerLevel = (player.arenaForgeBaseLevel || getSelectedBrawlerLevel()) + ARENA_FORGE_MAX_BONUS_LEVELS;
         const xpNeeded = getArenaForgeXpRequirement(player);
         const blueprints = (player.arenaForgeBlueprints || []).map((id) => ARENA_FORGE_BLUEPRINTS.find((item) => item.id === id)?.name).filter(Boolean);
-        const colossusStatus = arenaForgeColossusSpawned ? 'claimed/defeated' : `${Math.max(0, Math.ceil(ARENA_FORGE_COLOSSUS_SPAWN_SECONDS - arenaForgeTimer))}s`;
+        const colossusAlive = bots.some(e => e.isArenaForgeColossus && e.hp > 0);
+        const colossusStatus = arenaForgeColossusSpawned ? (colossusAlive ? 'CONTEST NOW' : 'defeated') : `${Math.max(0, Math.ceil(ARENA_FORGE_COLOSSUS_SPAWN_SECONDS - arenaForgeTimer))}s`;
         const campStatus = arenaForgeCamps.map((camp) => `${camp.arenaForgeCampLabel}:${camp.hp > 0 ? 'UP' : `${Math.max(0, Math.ceil(((camp.respawnAt || performance.now()) - performance.now()) / 1000))}s`}`).join(' | ');
         const comebackReady = ownCore && ownCore.hp / Math.max(1, ownCore.maxHp) <= 0.6;
         const prepSeconds = Math.max(0, Math.ceil((arenaForgePrepUntil - performance.now()) / 1000));
         const boonSeconds = Math.max(0, Math.ceil((arenaForgeNextAutoUpgradeAt - performance.now()) / 1000));
         const breachSeconds = arenaForgeOvertime ? 0 : Math.max(0, Math.ceil((arenaForgeNextBreachWaveAt - performance.now()) / 1000));
         if (stats) stats.innerHTML = `<b>ARENA FORGE 3v3</b><br>` +
+            `<strong style="color:#7cecff">${arenaForgeOvertime ? 'OVERTIME' : `${Math.max(0,Math.ceil(ARENA_FORGE_MATCH_SECONDS-arenaForgeTimer))}s REMAINING`}</strong><br>` +
+            (arenaForgeBeacon ? `<strong style="color:#ffe18a">${arenaForgeBeacon.label}: ${Math.round(Math.abs(arenaForgeBeacon.progress)*100)}% ${arenaForgeBeacon.contested?'CONTESTED':arenaForgeBeacon.progress<0?'ENEMY':'YOUR TEAM'}</strong><br>` : `<span>Next capture: ${Math.max(0,Math.ceil(arenaForgeNextCaptureAt-arenaForgeTimer))}s</span><br>`) +
+            `<span style="color:#b8a5ff">Captured engines: ${[...arenaForgeCapturedAttackPowers.player].join(' • ') || 'None — hold capture rings'}</span><br>` +
+            `<div style="display:flex;gap:6px"><progress aria-label="Your base integrity" value="${ownIntegrity.pct}" max="1" style="width:50%;accent-color:#68edc1"></progress><progress aria-label="Enemy base integrity" value="${enemyIntegrity.pct}" max="1" style="width:50%;accent-color:#ff778d"></progress></div>` +
             `<span style="color:#ffdd79">OBJECTIVE: Break both towers, then destroy the Core.</span><br>` +
             (prepSeconds > 0 ? `<strong style="color:#7cecff">PREPARE: ${prepSeconds}s</strong><br>` : '') +
             `Power: <strong>${playerLevel}/${maxPlayerLevel}</strong> | XP ${Math.floor(player.arenaForgeXp || 0)}/${xpNeeded}<br>` +
@@ -14569,6 +16973,13 @@ let heistFeverActive = false;
 
     function initArenaForgeModeState() {
         const now = performance.now();
+        arenaForgeBeacon = null;
+        arenaForgeCaptureIndex = 0;
+        arenaForgeNextCaptureAt = 12;
+        arenaForgeRocketeerBossSpawned = false;
+        const startingCapturePowers = showdownMode === 'arena_forge_overclocked' ? ['rocketeer', 'bounce', 'orbit', 'fire'] : [];
+        arenaForgeCapturedAttackPowers = { player: new Set(startingCapturePowers), enemy: new Set(startingCapturePowers) };
+        arenaForgeHudNextAt = 0;
         arenaForgeTimer = 0;
         arenaForgeSoulBank = { player: 0, enemy: 0 };
         arenaForgeSouls = [];
@@ -15107,6 +17518,7 @@ let heistFeverActive = false;
     function updateArenaForgeJumpPads(now) {
         const entities = [player, ...bots.filter((entity) => entity && entity.hp > 0 && !entity.isStructure)];
         for (const entity of entities) {
+            if (!entity || entity.hp <= 0 || entity.isDead) { if(entity) entity.arenaForgePadFlight = null; continue; }
             const flight = entity.arenaForgePadFlight;
             if (flight) {
                 const progress = clamp((now - flight.startedAt) / flight.duration, 0, 1);
@@ -15139,6 +17551,65 @@ let heistFeverActive = false;
         }
     }
 
+    // Captures use match time, so the help/draft pause cannot expire an objective.
+    function updateArenaForgeBeacon(dt) {
+        if (!arenaForgeBeacon && !arenaForgeOvertime && (arenaForgeTimer >= arenaForgeNextCaptureAt || (!arenaForgeRocketeerBossSpawned && arenaForgeTimer >= ARENA_FORGE_MATCH_SECONDS - 150))) {
+            const boss = !arenaForgeRocketeerBossSpawned && arenaForgeTimer >= ARENA_FORGE_MATCH_SECONDS - 150;
+            const rotation = ['bounce', 'shield', 'orbit', 'overclock', 'fire', 'siege'];
+            const kind = boss ? 'rocketeer' : rotation[arenaForgeCaptureIndex++ % rotation.length];
+            if (boss) arenaForgeRocketeerBossSpawned = true;
+            const labels = {bounce:'BOUNCE ENGINE',shield:'SHIELD BOT',orbit:'ORBIT ENGINE',overclock:'OVERCLOCK BOT',fire:'FIRE ENGINE',siege:'SIEGE BOT',rocketeer:'BOSS ROCKETEER'};
+            arenaForgeBeacon = {x: WORLD_W * .5, y: WORLD_H * .5 + (boss ? 0 : (arenaForgeCaptureIndex % 2 ? -240 : 240)), radius:170, kind, label:labels[kind], progress:0, seconds:boss ? 15 : 6};
+            setArenaForgeCallout(`${labels[kind]} — HOLD THE RING`, '#ffe18a', 3500);
+        }
+        const beacon = arenaForgeBeacon;
+        if (!beacon) return;
+        const inside = getArenaForgeCombatants(null, true).filter(e => !e.isDead && !e.isFlying && Math.hypot(e.x-beacon.x,e.y-beacon.y) <= beacon.radius);
+        const playerCount = inside.filter(e => e.id === player.id || e.team === 'player').length;
+        const enemyCount = inside.length-playerCount;
+        const advantage = playerCount-enemyCount;
+        beacon.contested = playerCount > 0 && enemyCount > 0;
+        if (advantage) beacon.progress = clamp(beacon.progress + Math.sign(advantage) * Math.min(1.6, 1 + .3*(Math.abs(advantage)-1)) * dt/beacon.seconds, -1, 1);
+        if (Math.abs(beacon.progress) < 1) return;
+        const team = beacon.progress > 0 ? 'player' : 'enemy';
+        const fighters = getArenaForgeCombatants(team, true);
+        if (['rocketeer','bounce','orbit','fire'].includes(beacon.kind)) arenaForgeCapturedAttackPowers[team].add(beacon.kind);
+        else if (beacon.kind === 'shield') fighters.forEach(e => grantShield(e, 1600));
+        else if (beacon.kind === 'overclock') fighters.forEach(e => { e.reloadBuffUntil = performance.now()+10000; });
+        const recruit = spawnArenaForgeMinion(team, 1, true);
+        if (recruit) { recruit.arenaForgeMinionKind = 'ranged'; recruit.x=beacon.x; recruit.y=beacon.y; if(beacon.kind==='siege') recruit.arenaForgeMinionDamageMult *= 1.5; }
+        fighters.forEach(e => grantArenaForgeXp(e, 24));
+        setArenaForgeCallout(`${team === 'player' ? 'YOUR TEAM' : 'ENEMY'} CAPTURED ${beacon.label}`, team === 'player' ? '#68edc1' : '#ff778d', 4000);
+        arenaForgeBeacon = null;
+        arenaForgeNextCaptureAt = arenaForgeTimer+26;
+    }
+
+    function fireArenaForgeCapturedHyperAttacks(owner, angle, now) {
+        if (!isArenaForgeMode || owner.isPet || owner.isStructure || owner.isArenaForgeMinion || owner.hp <= 0) return;
+        // One rider volley per fighter per second, not one per pellet or damage tick.
+        if (now < (owner.forgeRiderReadyAt || 0)) return;
+        const team = owner.id === player.id || owner.team === 'player' ? 'player' : 'enemy';
+        const powers = arenaForgeCapturedAttackPowers[team];
+        if (!powers?.size) return;
+        owner.forgeRiderReadyAt = now+1000;
+        const angles = showdownMode === 'arena_forge_overclocked' ? [angle,angle+Math.PI*.5,angle+Math.PI,angle+Math.PI*1.5] : [angle];
+        for (const a of angles) {
+            if (powers.has('rocketeer')) {
+                launchRocketeerMain(owner,a,true,1);
+                launchRocketeerMain(owner,a,true,1/3,{lateral:-24,forward:12,hitboxMod:1.015,escort:true,noSplit:true});
+                launchRocketeerMain(owner,a,true,1/3,{lateral:24,forward:-12,hitboxMod:1.015,escort:true,noSplit:true});
+            }
+            for (const kind of ['bounce','orbit','fire']) {
+                if (!powers.has(kind)) continue;
+                const count=kind==='bounce'?3:2;
+                for(let n=0;n<count;n++) {
+                    const shotAngle=a+(n-(count-1)/2)*.17;
+                    bullets.push({ownerId:owner.id,ownerBrawler:owner.brawler,x:owner.x,y:owner.y,vx:Math.cos(shotAngle)*680,vy:Math.sin(shotAngle)*680,life:0,maxLife:.9,damage:kind==='fire'?420:520,pierce:kind==='orbit',canBounce:kind==='bounce',bouncesLeft:kind==='bounce'?3:undefined,hitIds:{},hitboxMod:1.2,hyperVisual:true,isArenaForgeBasicShot:true,forgeShotColor:kind==='fire'?'#ff9970':kind==='orbit'?'#c29bff':'#6ef5ed'});
+                }
+            }
+        }
+    }
+
     function updateArenaForgeMode(dt, now) {
         if (!isArenaForgeMode || gameOver) return;
         if (arenaForgeHelpPanel?.isConnected) {
@@ -15164,6 +17635,7 @@ let heistFeverActive = false;
             return;
         }
         arenaForgeTimer += dt;
+        updateArenaForgeBeacon(dt);
         updateArenaForgeJumpPads(now);
         updateArenaForgeCamps(now);
         if (!arenaForgeCampsSpawned && arenaForgeTimer >= ARENA_FORGE_CAMPS_OPEN_SECONDS) {
@@ -15378,6 +17850,7 @@ let heistFeverActive = false;
             skirmisher: role.includes('skirmisher'),
             damageDealer: role.includes('damage'),
             impossible: !!bot?.isImpossibleAI,
+            bot3: !!bot?.isBot3 || isRankedMatch,
         };
         context.ranged = context.marksman || context.artillery;
         context.allies = getBotLivingAllies(bot);
@@ -15521,7 +17994,7 @@ let heistFeverActive = false;
             const shot = bullets[i];
             if (!shot || shot.ownerId == null || shot.ownerId === bot.id || shot.damage <= 0 || shot.demonGrounded) continue;
             const owner = shot.ownerId === player.id ? player : bots.find((candidate) => candidate.id === shot.ownerId);
-            if (owner && areAlliedEntities(bot, owner)) continue;
+            if (owner && areAlliedEntities(bot, owner) && !isFriendlyFireActive()) continue;
             const speedSq = (shot.vx || 0) ** 2 + (shot.vy || 0) ** 2;
             if (speedSq < 100) continue;
             const relX = bot.x - shot.x, relY = bot.y - shot.y;
@@ -15960,6 +18433,13 @@ let heistFeverActive = false;
     function shouldBotShootTarget(bot, target, context, distance) {
         if (!target || target.isPowerup || ['center', 'cart'].includes(target.id)) return false;
         if ((target.invulnerableUntil || 0) > context.now || target.isFlying || (target.angelLiftUntil || 0) > context.now) return false;
+
+        // Bots 3.0: Cover & Natural HP Regeneration Discipline
+        // If bot is under 35% HP and has taken cover, hold fire to let the 3.0s calm timer trigger natural healing
+        if (context.hpPct < 0.35 && distance > 175 && (context.now - (bot.lastDamagedAt || 0)) > 600) {
+            return false;
+        }
+
         const maxRange = bot.brawler==='jacktrade'?getJackTradeCardRange(bot.isHypercharged?4:getJackTradeStage(bot))+60:(context.artillery || context.marksman ? 960 : context.support || context.controller ? 820 : context.tank ? 570 : 760);
         if (distance > maxRange) return false;
         let cadence = context.impossible ? 360 : (context.marksman ? 640 : context.artillery ? 700 : context.tank ? 500 : 570);
@@ -15977,6 +18457,23 @@ let heistFeverActive = false;
         if (context.artillery || bot.brawler === 'warrior' || bot.brawler === 'jetpack') return false;
         const dx = target.x - bot.x, dy = target.y - bot.y;
         const distance = Math.hypot(dx, dy);
+
+        // Bots 3.0: Friendly Fire Raycast Check
+        if (isFriendlyFireActive()) {
+            const allies = context.allies || getBotLivingAllies(bot);
+            for (const ally of allies) {
+                if (!ally || ally.id === bot.id || ally.hp <= 0) continue;
+                const allyDist = pointSegmentDistance(ally.x, ally.y, bot.x, bot.y, target.x, target.y);
+                const dangerRadius = (ally.radius || 14) + 12;
+                if (allyDist < dangerRadius) {
+                    const dot = (ally.x - bot.x) * dx + (ally.y - bot.y) * dy;
+                    if (dot > 0 && dot < distance * distance) {
+                        return true; // Obstructed by friendly teammate!
+                    }
+                }
+            }
+        }
+
         const samples = Math.max(5, Math.min(24, Math.ceil(distance / 42)));
         const terrain = [...cubes, ...destructibleWalls.filter((wall) => wall && wall.hp > 0 && !wall.isPlatform)];
         for (const wall of terrain) {
@@ -16589,28 +19086,13 @@ let heistFeverActive = false;
     waterZones.length = 0;
     arenaForgeJumpPads = [];
 
-    const wall = (x, y, w, h, collapse = false) => {
-      const made = addArenaWallStrip(x, y, w, h, {
-        wallType: 'forge_lane',
-        hp: collapse ? 6500 : 9000,
-      });
-      if (collapse) made.forEach((tile) => { tile.arenaForgeCollapseWall = true; });
-      return made;
-    };
-
-    // Sub-Zero Tactical Bastions between lanes
+    // Open lanes: capture fights and siege waves must never get stuck in walls.
     for (const y of [760, WORLD_H - 900]) {
-      wall(WORLD_W * 0.29, y, 175, 82);
-      wall(WORLD_W * 0.71 - 175, y, 175, 82);
-      wall(WORLD_W * 0.5 - 330, y + 115, 145, 70, true);
-      wall(WORLD_W * 0.5 + 185, y + 115, 145, 70, true);
       bushZones.push({ x: 500, y: y - 75, w: 220, h: 175 });
       bushZones.push({ x: WORLD_W - 720, y: y - 75, w: 220, h: 175 });
     }
 
     // Central Soul Forge Crucible barricades & bushes
-    wall(WORLD_W * 0.5 - 390, WORLD_H * 0.5 - 45, 250, 90, true);
-    wall(WORLD_W * 0.5 + 140, WORLD_H * 0.5 - 45, 250, 90, true);
     bushZones.push({ x: WORLD_W * 0.5 - 120, y: WORLD_H * 0.5 - 180, w: 240, h: 360 });
 
     const addPadPair = (x, fromY, toY) => {
@@ -16667,6 +19149,14 @@ let heistFeverActive = false;
         }
         if (isImpossibleMode) {
             buildImpossibleArena();
+            return;
+        }
+        if (isBraweBallMode) {
+            buildBraweBallMap();
+            return;
+        }
+        if (isKnockoutMode) {
+            buildKnockoutMap();
             return;
         }
         if (isMirrorMode) {
@@ -16729,15 +19219,16 @@ let heistFeverActive = false;
 
   function spawnBots(){
     bots.length = 0;
-    if (isDuels || isTraining) return; // Duels/Training handle their own spawns
+    if (isDuels || isTraining || isBlinkEyeDodgeMode || isWeeFeeBossMode) return; // Dedicated boss modes handle their own spawns
 
-        if (isDuoShowdown || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isTrioShowdownMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode) {
+        if (isDuoShowdown || isObjectiveMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isTrioShowdownMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isBraweBallMode || isKnockoutMode) {
             const allyCount = isMirrorMode
                 ? Math.max(0, MIRROR_TEAM_SIZE - 1)
                 : (isDamageFillerMode
                     ? Math.max(0, damageFillerTeamSize - 1)
                     : (isArenaForgeMode ? ARENA_FORGE_TEAM_SIZE - 1
-                        : ((isKnockDonateMode || isTrioShowdownMode || isBrickVaultMode || isMarkedMayhemMode || isTugZoneMode) ? 2 : 1)));
+                        : (isTrioShowdownMode ? 3
+                            : ((isObjectiveMode || isKnockDonateMode || isBrickVaultMode || isMarkedMayhemMode || isTugZoneMode) ? 2 : 1))));
             const allyChoices = getBotBrawlerPool({ exclude: [selectedBrawler] });
             for (let i = 0; i < allyCount; i++) {
                 const allyBrawler = isMirrorMode
@@ -16752,8 +19243,14 @@ let heistFeverActive = false;
                 const allyUnlocks = getUnlocksForLevel(allyLevel);
                 const allySpawn = isMirrorMode
                     ? getMirrorSpawnPoint('player', i + 1, MIRROR_TEAM_SIZE)
-                    : ((isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode)
-                        ? (isBrickVaultMode
+                    : ((isObjectiveMode || isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isBraweBallMode || isKnockoutMode)
+                        ? (isBraweBallMode
+                            ? getBraweBallSpawnPoint('player', i + 1, 3)
+                            : (isKnockoutMode
+                                ? getKnockoutSpawnPoint('player', i + 1, 3)
+                                : (isObjectiveMode
+                                    ? getObjectiveSpawnPoint('player', i + 1, 3)
+                                : (isBrickVaultMode
                             ? getBrickVaultSpawnPoint('player', i + 1, BRICK_VAULT_TEAM_SIZE)
                             : (isArenaForgeMode
                                 ? getArenaForgeSpawnPoint('player', i + 1, ARENA_FORGE_TEAM_SIZE)
@@ -16761,7 +19258,7 @@ let heistFeverActive = false;
                                     ? getTugZoneSpawnPoint('player', i + 1)
                                 : (isMarkedMayhemMode
                                     ? getMarkedMayhemSpawnPoint('player', i + 1, MARKED_MAYHEM_TEAM_SIZE)
-                                    : getDamageFillerSpawnPoint('player', i + 1, isDamageFillerMode ? damageFillerTeamSize : 3))))
+                                    : getDamageFillerSpawnPoint('player', i + 1, isDamageFillerMode ? damageFillerTeamSize : 3)))))))
                             )
                         : findNearestDrySpot(player.x + 120, player.y + 80, 14));
                 const ax = allySpawn.x;
@@ -16794,14 +19291,12 @@ let heistFeverActive = false;
                     minigunAmmo: 100, minigunPierceShots: 0,
                     ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false,
                     moneyAndTaxMode: 'money',
-                    team: 'player',
-                    isTeammate: true,
-                    respawnTimer: 0
+                    team: 'player', isTeammate: true, isBot3: true, respawnTimer: 0
                 });
             }
         }
 
-                if (isConstructionMode || isObjectiveMode) {
+                if (isConstructionMode) {
                         const allyChoices = getBotBrawlerPool({ exclude: [selectedBrawler] });
                         for (let i = 1; i < 3; i++) {
                                 const allyBrawler = (isRankedMatch && rankedTeammatePicks[i - 1])
@@ -16841,19 +19336,21 @@ let heistFeverActive = false;
                                         minigunAmmo: 100, minigunPierceShots: 0,
                                         ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false,
                                         moneyAndTaxMode: 'money',
-                                        team: 'player',
-                                        isTeammate: true,
-                                        respawnTimer: 0
+                                        team: 'player', isTeammate: true, isBot3: true, respawnTimer: 0
                                 });
                         }
                 }
 
                 let enemyCount = MAX_BOTS;
-                if (isBlinkEyeDodgeMode) enemyCount = 0;
+                if (isWeeFeeBossMode) enemyCount = 0;
+                else if (isBlinkEyeDodgeMode) enemyCount = 0;
                 else if (isImpossibleMode) enemyCount = 1;
+                else if (isBraweBallMode) enemyCount = 3;
+                else if (isKnockoutMode) enemyCount = 3;
                 else if (isConstructionMode) enemyCount = 3;
                 else if (isObjectiveMode) enemyCount = 3;
                 else if (isPowerPlayShowdownMode) enemyCount = 11;
+                else if (isMagnatarShowdownMode) enemyCount = 9;
                 else if (isPowerGodsMode) enemyCount = 9;
                 else if (isMirrorMode) enemyCount = MIRROR_TEAM_SIZE;
                 else if (isDamageFillerMode) enemyCount = damageFillerTeamSize;
@@ -16862,9 +19359,9 @@ let heistFeverActive = false;
                 else if (isMarkedMayhemMode) enemyCount = MARKED_MAYHEM_TEAM_SIZE;
                 else if (isTugZoneMode) enemyCount = 3;
                 else if (isKnockDonateMode) enemyCount = KNOCK_DONATE_TEAM_SIZE;
-                else if (isTrioShowdownMode) enemyCount = 42;
-                else if (isDuoShowdown) enemyCount = 48;
-                else if (!isBossFight && !isSoloTrial) enemyCount = 49;
+                else if (isTrioShowdownMode) enemyCount = 16;
+                else if (isDuoShowdown) enemyCount = 18;
+                else if (!isBossFight && !isSoloTrial) enemyCount = 19;
         const showdownEnemyTeamAnchors = new Map();
         for(let i=0;i<enemyCount;i++){
       // pick spawn not inside cubes and not too close to player
@@ -16882,6 +19379,14 @@ let heistFeverActive = false;
                 by = enemySpawn.y;
             } else if (isMirrorMode) {
                 const enemySpawn = getMirrorSpawnPoint('enemy', i, MIRROR_TEAM_SIZE);
+                bx = enemySpawn.x;
+                by = enemySpawn.y;
+            } else if (isBraweBallMode) {
+                const enemySpawn = getBraweBallSpawnPoint('enemy', i, enemyCount);
+                bx = enemySpawn.x;
+                by = enemySpawn.y;
+            } else if (isKnockoutMode) {
+                const enemySpawn = getKnockoutSpawnPoint('enemy', i, enemyCount);
                 bx = enemySpawn.x;
                 by = enemySpawn.y;
             } else if (isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode) {
@@ -16903,7 +19408,7 @@ let heistFeverActive = false;
                 bx = spawn.x;
                 by = spawn.y;
             } else if ((isDuoShowdown || isTrioShowdownMode) && showdownEnemyTeamAnchors.has(Math.floor(i / (isTrioShowdownMode ? 3 : 2)))) {
-                const squadSize = isTrioShowdownMode ? 3 : 2;
+                const squadSize = isTrioShowdownMode ? 4 : 2;
                 const anchor = showdownEnemyTeamAnchors.get(Math.floor(i / squadSize));
                 const angle = (i % squadSize) * (Math.PI * 2 / squadSize) + Math.random() * 0.35;
                 const spawn = findNearestOpenSpot(anchor.x + Math.cos(angle) * 105, anchor.y + Math.sin(angle) * 105, 18, 420);
@@ -16916,21 +19421,23 @@ let heistFeverActive = false;
                     tries++;
                             } while((isCircleBlockedByTerrain(null, bx, by, 14) || isCircleInWaterAt(bx, by, 14) || Math.hypot(bx-player.x,by-player.y)<800) && tries < 200);
                 if (isDuoShowdown || isTrioShowdownMode) {
-                    const squadSize = isTrioShowdownMode ? 3 : 2;
+                    const squadSize = isTrioShowdownMode ? 4 : 2;
                     showdownEnemyTeamAnchors.set(Math.floor(i / squadSize), { x: bx, y: by });
                 }
             }
     const brawlerPool = getBotBrawlerPool();
     const brawler = isImpossibleMode
         ? selectedBrawler
+        : (isMagnatarShowdownMode
+        ? 'orbo'
         : (isMirrorMode
         ? mirrorModeBrawler
         : (isSplitterPoweredMode
             ? SPLITTER_POWERED_BRAWLER
             : ((isRankedMatch && rankedEnemyPicks[i])
                 ? rankedEnemyPicks[i]
-                : brawlerPool[Math.floor(Math.random() * brawlerPool.length)])));
-                const botTeamId = (isImpossibleMode || isConstructionMode || isObjectiveMode || isMirrorMode || isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode)
+                : brawlerPool[Math.floor(Math.random() * brawlerPool.length)]))));
+                const botTeamId = (isImpossibleMode || isBraweBallMode || isKnockoutMode || isConstructionMode || isObjectiveMode || isMirrorMode || isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode)
                     ? 'enemy'
                     : (isTrioShowdownMode ? `enemy_${Math.floor(i / 3)}` : (isDuoShowdown ? `enemy_${Math.floor(i / 2)}` : `enemy_${i}`));
     const botLevel = (isMirrorMode || isSplitterPoweredMode || isImpossibleMode || isRankedMatch) ? 11 : getBotLevelNearPlayer();
@@ -17011,7 +19518,7 @@ let heistFeverActive = false;
         }
         return;
     }
-    if(isBlinkEyeDodgeMode || isDuels || isTraining || isImpossibleMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode) return;
+    if(isBlinkEyeDodgeMode || isDuels || isTraining || isWeeFeeBossMode || isBraweBallMode || isKnockoutMode || isImpossibleMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode) return;
       const towerBoxMult=isTowerTroubleMode&&towerTroubleVariant!=='gauntlet'?(TOWER_FLOOR_CHALLENGES[Math.max(0,(playerData.slopSushi?.run?.floor||1)-1)]?.boxMult||1):1;
       const showdownBoxCount = Math.round(((isDuoShowdown || isTrioShowdownMode) ? 90 : 75)*towerBoxMult);
       for(let i=0; i<showdownBoxCount; i++){
@@ -17050,6 +19557,7 @@ let heistFeverActive = false;
   generateCubes();
   if (!isBlinkEyeDodgeMode) generatePowerBoxes();
       if (isBlinkEyeDodgeMode) initBlinkEyeDodgeState();
+      if (isWeeFeeBossMode) initWeeFeeBossState();
   spawnBots();
 
   function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
@@ -17193,14 +19701,9 @@ let heistFeverActive = false;
         for (const target of [player, ...bots]) {
             if (!target || target.hp <= 0 || target.id === owner.id) continue;
             if (areAlliedEntities(owner,target)) continue;
-            const dx = target.x - owner.x;
-            const dy = target.y - owner.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > radius || dist <= 0.001) continue;
-            const ang = Math.atan2(dy, dx);
-            const force = 170;
-            target.x = clamp(target.x + Math.cos(ang) * force, target.radius, WORLD_W - target.radius);
-            target.y = clamp(target.y + Math.sin(ang) * force, target.radius, WORLD_H - target.radius);
+            const dist = Math.hypot(target.x - owner.x, target.y - owner.y);
+            if (dist > radius + (target.radius || 14)) continue;
+            applyKnockback(target, owner.x, owner.y, 170, now);
         }
     }
 
@@ -17460,7 +19963,8 @@ let heistFeverActive = false;
       adlof:6, daggershard:10, decayer:6, fuel:6, ice_cream:6, paradox:6, peter_pickle:6, scuba_diver:5, screener:6, tempo_maker:14, unstable:5, witch:7,
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
-      portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, sir_cheeseburger:4, blinkeye:4
+      portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -17553,6 +20057,52 @@ let heistFeverActive = false;
       entity.outlitMutationCharges = Math.max(0, Math.floor(entity.outlitMutationCharges || 0) - 1);
       return true;
   }
+  function updateCurrencies() {
+      updateHomeCurrencyBar();
+      document.querySelectorAll('#homeCurrencyBar .home-currency-pill').forEach((el,i)=>el.dataset.homeCurrency=['coins','gems','souls'][i]);
+      const snapshot=document.getElementById('homeCareerSnapshot'),progress=playerData?.brawlers?.[selectedBrawler]||{};
+      if(snapshot)snapshot.innerHTML=[['FIGHTERS',getUnlockedBrawlerPool().length],['WIN STREAK',playerData.winStreak||0],['SELECTED BRICKS',getLifetimeBricks(progress)],['POWER',progress.level||1]].map(([label,value])=>`<div class="home-career-stat"><small>${label}</small><b>${value}</b></div>`).join('');
+      const pulse=document.getElementById('homeSeasonPulse');if(pulse)pulse.textContent='Season 3 · Core Breaker';
+  }
+  function ensureBoomArangInstinctState(entity, now = performance.now()) {
+      if (!isSpecialAbilityAvailableForEntity(entity, 'boom_arang')) return null;
+      if (!Number.isFinite(entity.boomArangInstinctReadyAt)) entity.boomArangInstinctReadyAt = now + 9000;
+      return {ready:now >= entity.boomArangInstinctReadyAt, remaining:Math.max(0,entity.boomArangInstinctReadyAt-now)};
+  }
+  function resolveBoomArangImpact(projectile, enemyImpact) {
+      if (!projectile.isBoomArang || projectile.super || projectile.returning) return;
+      const owner = getEntityById(projectile.ownerId);
+      if (!owner || owner.hp <= 0) return;
+      if (projectile.boomArangRide && !projectile.boomArangRideConsumed) {
+          projectile.boomArangRideConsumed = true;
+          const safe = findNearestOpenSpot(projectile.x, projectile.y, (owner.radius || 14)+2, 300);
+          const oldX=owner.x, oldY=owner.y;
+          owner.boomArangRideTravel={fromX:oldX,fromY:oldY,toX:safe.x,toY:safe.y,startAt:performance.now(),duration:350};
+          explosions.push({x:oldX,y:oldY,radius:32,life:0,maxLife:.25,color:'rgba(98,239,136,.55)'});
+          explosions.push({x:owner.x,y:owner.y,radius:42,life:0,maxLife:.3,color:'rgba(98,239,136,.65)'});
+      }
+      if (!enemyImpact || !projectile.boomArangHyperSplit || projectile.boomArangSplitConsumed) return;
+      projectile.boomArangSplitConsumed=true;
+      const angle=Math.atan2(projectile.vy,projectile.vx);
+      for (const side of [-1,1]) {
+          const a=angle+side*Math.PI/2, speed=680;
+          bullets.push({id:nextId++,ownerId:owner.id,ownerBrawler:'boom_arang',isBoomArangSide:true,
+              x:projectile.x,y:projectile.y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,
+              life:0,maxLife:2.5,boomArangSideOutTime:.42*1.2,damage:Math.round(projectile.damage*.5),radius:8,
+              pierce:true,hitIds:{},hyperVisual:true});
+      }
+  }
+  function updateBoomArangInstinctTravel(now) {
+      for(const entity of [player,...bots]) {
+          const travel=entity.boomArangRideTravel;
+          if(!travel)continue;
+          if(entity.hp<=0 || getEntityBrawlerId(entity)!=='boom_arang'){entity.boomArangRideTravel=null;continue;}
+          const t=clamp((now-travel.startAt)/travel.duration,0,1),ease=t*t*(3-2*t);
+          const safe=findNearestOpenSpot(lerp(travel.fromX,travel.toX,ease),lerp(travel.fromY,travel.toY,ease),(entity.radius||14)+2,100);
+          entity.x=safe.x;entity.y=safe.y;
+          if(t>=1)entity.boomArangRideTravel=null;
+      }
+  }
   function ensureEchoInstinctState(entity, now = performance.now()) {
       if (!entity || !isSpecialAbilityAvailableForEntity(entity, 'echo')) return null;
       if (!entity.echoInstinctStartedAt) entity.echoInstinctStartedAt = now;
@@ -17636,6 +20186,9 @@ let heistFeverActive = false;
           const bonus = owner?.id === player.id ? getSlopEffectTotal('superGainPct') : getEntitySlopEffectTotal(owner, 'superGainPct');
           multiplier *= 1 + Math.max(0, Number(bonus) || 0);
       }
+      if (isMagnatarShowdownMode && (owner?.brawler === 'orbo' || (owner && owner.id !== player.id))) {
+          multiplier *= 3.0;
+      }
       return multiplier;
   }
   function grantMainAttackCharge(owner, source = null) {
@@ -17655,13 +20208,20 @@ let heistFeverActive = false;
       const brawler = source?.ownerBrawler || owner.currentMainAttackBrawler || owner.brawler || (owner.id === player.id ? selectedBrawler : 'outlit');
       let gain = (100 / getSuperChargeHitsForBrawler(brawler)) * getAttackChargeMultiplier(owner);
       if (isArenaForgeMode && owner.arenaForgeHyperDynamo) gain *= 1.35;
-      if (isRankedMatch && activeRankedModifier === 'super_surge') gain *= 1.4;
-      if (isRankedMatch && activeRankedModifier === 'quickfire') {
+      if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'super_surge' || activeRankedModifierSecondary === 'super_surge' || activeRankedModifierTertiary === 'super_surge')) gain *= 1.4;
+      if (typeof isSuperRate90Active === 'function' && isSuperRate90Active()) gain *= 1.9;
+      if ((isRankedMatch || isCustomMutatorMatch) && ((activeRankedModifier === 'quickfire' && !source?.super && !source?.isSuper) || (activeRankedModifierSecondary === 'quickfire' && !source?.super && !source?.isSuper) || (activeRankedModifierTertiary === 'quickfire' && !source?.super && !source?.isSuper))) {
+           const refundAmt = Math.max(0.35, (owner.maxAmmo || 3) * 0.12);
            if (owner.id === player.id) {
-               ammo = Math.min(maxAmmo, ammo + maxAmmo * 0.1);
+               ammo = Math.min(maxAmmo, ammo + refundAmt);
                if (typeof updateAmmoUI === 'function') updateAmmoUI();
+               const qnow = performance.now();
+               if (qnow - (player._lastQuickfireFloatAt || 0) > 380) {
+                   player._lastQuickfireFloatAt = qnow;
+                   spawnFloatingText(player.x, player.y - 32, '+AMMO', '#0abde3');
+               }
            } else {
-               owner.ammo = Math.min(owner.maxAmmo || 3, (owner.ammo || 0) + (owner.maxAmmo || 3) * 0.1);
+               owner.ammo = Math.min(owner.maxAmmo || 3, (owner.ammo || 0) + refundAmt);
            }
       }
       // Four-card volleys connect often, so JackTrade builds Hypercharge 30%
@@ -17669,8 +20229,13 @@ let heistFeverActive = false;
       // Classy's seven-note volleys each count as real projectile hits. Keep
       // normal Super charge intact, but stop one full ammo bar from filling HC.
       const hyperGain = gain * .5 * (brawler === 'jacktrade' ? .7 : (brawler === 'classy' ? .4 : 1));
-      if (brawler === 'steamer' || owner.brawler === 'steamer' || (owner.id === player.id && selectedBrawler === 'steamer')) {
-          addSteamerSuperCharge(owner, gain);
+      if (hasMultiSuper(brawler) || (owner && hasMultiSuper(owner.brawler)) || (owner.id === player.id && hasMultiSuper(selectedBrawler))) {
+          const activeBrawler = (owner.id === player.id) ? selectedBrawler : (owner.brawler || brawler);
+          if (activeBrawler === 'steamer') {
+              addSteamerSuperCharge(owner, gain);
+          } else if (activeBrawler === 'oil_maker') {
+              addOilMakerSuperCharge(owner, gain);
+          }
           if (owner.id === player.id) {
               if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + hyperGain, 0, 100);
               updateHyperButton();
@@ -17725,7 +20290,8 @@ let heistFeverActive = false;
 
   function startDuelsRound() {
     outlitWallChains.length = 0;
-    bullets.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
+    bullets.length = 0; ragerWarTotems.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     minigunninMutationFireZones.length = 0;
@@ -18225,6 +20791,301 @@ let heistFeverActive = false;
     });
   }
 
+
+  // ==========================================
+  // MULTI-SUPER SYSTEM & OIL MAKER HELPERS
+  // ==========================================
+  function hasMultiSuper(brawlerId) {
+      return brawlerId === 'steamer' || brawlerId === 'oil_maker';
+  }
+
+  function updateSuperUseIndicator(entity = player) {
+      if (!superBtn) return;
+      const brawlerId = entity && entity.id === player.id ? selectedBrawler : (entity?.brawler || '');
+      if (!hasMultiSuper(brawlerId)) {
+          delete superBtn.dataset.superUses;
+          delete superBtn.dataset.superUsesLabel;
+          return;
+      }
+      const maxUses = getBrawlerSuperMaxCharges(brawlerId, isEntityHyperchargedNow(entity, performance.now()));
+      const uses = clamp(Math.floor(getBrawlerSuperCharges(entity) || 0), 0, maxUses);
+      superBtn.dataset.superUses = String(uses);
+      superBtn.dataset.superUsesLabel = `${uses}/${maxUses} USES`;
+  }
+
+  function getBrawlerSuperMaxCharges(brawlerId, isHyper = false) {
+      if (brawlerId === 'steamer') return 5;
+      if (brawlerId === 'oil_maker') return isHyper ? 5 : 3;
+      return 1;
+  }
+
+  function getBrawlerSuperCharges(entity) {
+      if (!entity) return 0;
+      const brawler = entity.id === player.id ? selectedBrawler : (entity.brawler || '');
+      if (brawler === 'steamer') {
+          ensureSteamerState(entity);
+          return typeof entity.steamerSuperCharges === 'number' ? entity.steamerSuperCharges : 5;
+      }
+      if (brawler === 'oil_maker') {
+          ensureOilMakerState(entity);
+          return typeof entity.oilMakerSuperCharges === 'number' ? entity.oilMakerSuperCharges : 3;
+      }
+      return (entity.id === player.id ? superCharge : (entity.superCharge || 0)) >= 100 ? 1 : 0;
+  }
+
+  function ensureOilMakerState(entity) {
+      if (!entity) return;
+      if (typeof entity.oilMakerSuperCharges !== 'number') entity.oilMakerSuperCharges = 0;
+      if (typeof entity.oilMakerSubCharge !== 'number') entity.oilMakerSubCharge = 0;
+      if (typeof entity.oilMakerTrailTimer !== 'number') entity.oilMakerTrailTimer = 0;
+  }
+
+  function addOilMakerSuperCharge(entity, amount) {
+      if (!entity) return;
+      ensureOilMakerState(entity);
+      const isHyper = entity.id === player.id ? !!isHypercharged : !!entity.isHypercharged;
+      const maxCharges = getBrawlerSuperMaxCharges('oil_maker', isHyper);
+      if (entity.oilMakerSuperCharges >= maxCharges) {
+          if (entity.id === player.id) { superCharge = 100; updateSuperButton(); }
+          else entity.superCharge = 100;
+          return;
+      }
+      const currentSub = entity.oilMakerSubCharge || 0;
+      const nextSub = currentSub + amount;
+      if (nextSub >= 100) {
+          // Reaching 100% super grants the full multi-super capacity (3 barrels, or 5 in Hypercharge)
+          entity.oilMakerSuperCharges = maxCharges;
+          entity.oilMakerSubCharge = 0;
+      } else {
+          entity.oilMakerSubCharge = nextSub;
+      }
+      if (entity.id === player.id) {
+          superCharge = (entity.oilMakerSuperCharges > 0) ? 100 : entity.oilMakerSubCharge;
+          updateSuperButton();
+      } else {
+          entity.superCharge = (entity.oilMakerSuperCharges > 0) ? 100 : (entity.oilMakerSubCharge || 0);
+      }
+  }
+
+  function consumeOilMakerSuperCharge(entity) {
+      if (!entity) return;
+      ensureOilMakerState(entity);
+      if (entity.oilMakerSuperCharges > 0) {
+          entity.oilMakerSuperCharges--;
+      }
+      if (entity.id === player.id) {
+          superCharge = (entity.oilMakerSuperCharges > 0) ? 100 : (entity.oilMakerSubCharge || 0);
+          updateSuperButton();
+      } else {
+          entity.superCharge = (entity.oilMakerSuperCharges > 0) ? 100 : (entity.oilMakerSubCharge || 0);
+      }
+  }
+
+  function spawnOilPuddle(x, y, radius = 38, durationMs = 12000, ownerId = null, isHyper = false) {
+      const clampedX = clamp(x, 25, WORLD_W - 25);
+      const clampedY = clamp(y, 25, WORLD_H - 25);
+
+      // Amber-style oil merging: merge with nearby unignited puddles into a seamless contiguous pool
+      for (const existing of oilMakerPuddles) {
+          if (!existing.ignited) {
+              const d = Math.hypot(existing.x - clampedX, existing.y - clampedY);
+              if (d <= (existing.radius + radius) * 0.78) {
+                  existing.x = (existing.x * 2.5 + clampedX) / 3.5;
+                  existing.y = (existing.y * 2.5 + clampedY) / 3.5;
+                  existing.radius = Math.min(68, Math.hypot(existing.radius, radius * 0.5));
+                  existing.expiresAt = Math.max(existing.expiresAt, performance.now() + durationMs);
+                  if (isHyper) existing.isHyper = true;
+                  return existing;
+              }
+          }
+      }
+
+      const puddle = {
+          id: 'oil_puddle_' + performance.now() + '_' + Math.floor(Math.random() * 9999),
+          x: clampedX,
+          y: clampedY,
+          radius: radius,
+          createdAt: performance.now(),
+          expiresAt: performance.now() + durationMs,
+          ignited: false,
+          ignitedAt: 0,
+          ownerId: ownerId,
+          isHyper: isHyper,
+          damageTicksDone: 0,
+          lastDamageTick: 0
+      };
+      oilMakerPuddles.push(puddle);
+      if (oilMakerPuddles.length > 40) {
+          oilMakerPuddles.shift();
+      }
+      return puddle;
+  }
+
+  let lastOilIgniteFxAt = 0;
+  function igniteOilPuddle(puddle, igniterEntity = null) {
+      if (!puddle || puddle.ignited) return;
+      const now = performance.now();
+      puddle.ignited = true;
+      puddle.ignitedAt = now;
+      puddle.expiresAt = now + 2600;
+      puddle.damageTicksDone = 0;
+      puddle.lastDamageTick = 0;
+      if (igniterEntity && !puddle.ownerId) puddle.ownerId = igniterEntity.id;
+
+      // Throttle floating text and explosion FX so mass ignition causes ZERO lag
+      if (now - lastOilIgniteFxAt >= 400) {
+          lastOilIgniteFxAt = now;
+          spawnFloatingText(puddle.x, puddle.y - 24, '🔥 INFERNO IGNITED!', '#f59e0b');
+          explosions.push({
+              x: puddle.x,
+              y: puddle.y,
+              radius: Math.min(75, puddle.radius * 1.2),
+              life: 0,
+              maxLife: 0.22,
+              color: 'rgba(245, 158, 11, 0.75)'
+          });
+      }
+
+      // Propagate ignition along connected Amber-style oil chains
+      for (const other of oilMakerPuddles) {
+          if (!other.ignited && Math.hypot(other.x - puddle.x, other.y - puddle.y) <= puddle.radius + other.radius + 25) {
+              igniteOilPuddle(other, igniterEntity);
+          }
+      }
+      for (const barrel of oilMakerBarrels) {
+          if (!barrel.ignited && Math.hypot(barrel.x - puddle.x, barrel.y - puddle.y) <= puddle.radius + barrel.radius + 20) {
+              barrel.ignited = true;
+              barrel.hp = Math.min(barrel.hp, 300);
+          }
+      }
+  }
+
+  function castOilMakerSuper(owner, targetX, targetY, isHyper = false) {
+      if (!owner || owner.hp <= 0) return;
+      consumeOilMakerSuperCharge(owner);
+
+      const maxRange = 550;
+      const dx = (targetX ?? owner.x) - owner.x;
+      const dy = (targetY ?? owner.y) - owner.y;
+      const dist = Math.min(maxRange, Math.hypot(dx, dy));
+      const ang = Math.atan2(dy, dx);
+      const landX = clamp(owner.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
+      const landY = clamp(owner.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
+
+      const barrel = {
+          id: 'oil_barrel_' + performance.now() + '_' + Math.floor(Math.random() * 9999),
+          ownerId: owner.id,
+          x: landX,
+          y: landY,
+          radius: 26,
+          hp: 3000,
+          maxHp: 3000,
+          decayRate: 500,
+          createdAt: performance.now(),
+          lastDecayTick: performance.now(),
+          isHyper: !!isHyper,
+          ignited: false
+      };
+      oilMakerBarrels.push(barrel);
+
+      const remaining = typeof owner.oilMakerSuperCharges === 'number' ? owner.oilMakerSuperCharges : 0;
+      spawnFloatingText(landX, landY - 32, isHyper ? 'HYPER OIL BARREL!' : `OIL BARREL! (${remaining} left)`, isHyper ? '#f59e0b' : '#d97706');
+      explosions.push({
+          x: landX,
+          y: landY,
+          radius: 45,
+          life: 0,
+          maxLife: 0.25,
+          color: 'rgba(217, 119, 6, 0.6)'
+      });
+  }
+
+  function ruptureOilBarrel(barrel) {
+      if (!barrel) return;
+      const spreadCount = barrel.isHyper ? 8 : 6;
+      const spreadRadius = barrel.isHyper ? 140 : 100;
+      const puddleRadius = barrel.isHyper ? 52 : 42;
+
+      const centerP = spawnOilPuddle(barrel.x, barrel.y, puddleRadius * 1.2, 12000, barrel.ownerId, barrel.isHyper);
+      if (barrel.ignited) igniteOilPuddle(centerP);
+
+      for (let i = 0; i < spreadCount; i++) {
+          const ang = (i * Math.PI * 2 / spreadCount) + (Math.random() - 0.5) * 0.3;
+          const d = spreadRadius * (0.65 + Math.random() * 0.35);
+          const px = barrel.x + Math.cos(ang) * d;
+          const py = barrel.y + Math.sin(ang) * d;
+          const p = spawnOilPuddle(px, py, puddleRadius, 12000, barrel.ownerId, barrel.isHyper);
+          if (barrel.ignited) igniteOilPuddle(p);
+      }
+
+      explosions.push({
+          x: barrel.x,
+          y: barrel.y,
+          radius: spreadRadius * 1.1,
+          life: 0,
+          maxLife: 0.4,
+          color: barrel.ignited ? 'rgba(245, 158, 11, 0.9)' : 'rgba(44, 27, 9, 0.85)'
+      });
+      spawnFloatingText(barrel.x, barrel.y - 28, barrel.ignited ? '💥 BARREL INFERNO!' : '🛢️ BARREL RUPTURE!', barrel.ignited ? '#f59e0b' : '#d97706');
+  }
+
+  function executeOilMakerG1(entity) {
+      if (!entity) return;
+      const sparkRadius = 320;
+      spawnFloatingText(entity.x, entity.y - 36, 'FLINT STRIKER! 🔥', '#f59e0b');
+      explosions.push({
+          x: entity.x,
+          y: entity.y,
+          radius: sparkRadius * 0.7,
+          life: 0,
+          maxLife: 0.3,
+          color: 'rgba(255, 180, 50, 0.85)'
+      });
+      for (const p of oilMakerPuddles) {
+          if (!p.ignited && Math.hypot(p.x - entity.x, p.y - entity.y) <= sparkRadius) {
+              igniteOilPuddle(p, entity);
+          }
+      }
+      for (const b of oilMakerBarrels) {
+          if (Math.hypot(b.x - entity.x, b.y - entity.y) <= sparkRadius) {
+              b.ignited = true;
+              b.hp = 0;
+          }
+      }
+  }
+
+  function executeOilMakerG2(entity) {
+      if (!entity) return;
+      const now = performance.now();
+      const dashDist = 240;
+      const ang = entity.id === player.id ? Math.atan2(mouse.worldY - entity.y, mouse.worldX - entity.x) : (entity.visualAimAngle || 0);
+      const startX = entity.x;
+      const startY = entity.y;
+      const endX = clamp(entity.x + Math.cos(ang) * dashDist, entity.radius + 20, WORLD_W - entity.radius - 20);
+      const endY = clamp(entity.y + Math.sin(ang) * dashDist, entity.radius + 20, WORLD_H - entity.radius - 20);
+
+      for (let step = 0; step <= 5; step++) {
+          const t = step / 5;
+          const px = startX + (endX - startX) * t;
+          const py = startY + (endY - startY) * t;
+          spawnOilPuddle(px, py, 45, 9000, entity.id, !!entity.isHypercharged);
+      }
+
+      const enemies = entity.id === player.id ? bots : [player, ...bots];
+      for (const em of enemies) {
+          if (!em || em.hp <= 0 || areAlliedEntities(entity, em)) continue;
+          const d = Math.hypot(em.x - ((startX + endX) / 2), em.y - ((startY + endY) / 2));
+          if (d <= dashDist * 0.6) {
+              applyKnockback(em, startX, startY, 260);
+          }
+      }
+
+      entity.x = endX;
+      entity.y = endY;
+      entity.slowImmunityUntil = Math.max(entity.slowImmunityUntil || 0, now + 3000);
+      spawnFloatingText(entity.x, entity.y - 36, 'GREASE SLIDE! ⚡', '#ffd166');
+  }
+
   function getSteamerStar(entity) {
       if (!entity) return 'slow';
       return entity.id === player.id ? (selectedStar || 'slow') : (entity.selectedStar || 'slow');
@@ -18378,6 +21239,7 @@ let heistFeverActive = false;
 
       if (wantToFire) {
           if (!entity.beamActive) beginMainAttackActivation(entity, 'beam', now);
+          fireArenaForgeCapturedHyperAttacks(entity, targetAngle, now);
           const ammoDrain = 22 * dt;
           if (isBot) {
               entity.beamAmmo = Math.max(0, entity.beamAmmo - ammoDrain);
@@ -18934,6 +21796,139 @@ let heistFeverActive = false;
       }
 
       spawnFloatingText(entity.x, entity.y - 42, hyperActive ? 'HYPER OVERDRIVE LOCOMOTIVE! 🚂💨💨' : (isLinearDash ? 'STEAM RUSH! 💨' : 'STEAM DASH! 🚂💨'), hyperActive ? '#dc72ff' : '#7fd3ff');
+  }
+
+
+  function updateOilMakerEntities(now, dt) {
+      const allEntities = [player, ...(typeof bots !== 'undefined' ? bots : [])].filter(e => e && e.hp > 0);
+
+      for (const ent of allEntities) {
+          const brawler = ent.id === player.id ? selectedBrawler : ent.brawler;
+          if (brawler === 'oil_maker') {
+              ensureOilMakerState(ent);
+              const isMoving = Math.hypot(ent.vx || 0, ent.vy || 0) > 10;
+              if (isMoving && now - ent.oilMakerTrailTimer >= 260) {
+                  ent.oilMakerTrailTimer = now;
+                  const isHyper = ent.id === player.id ? !!isHypercharged : !!ent.isHypercharged;
+                  spawnOilPuddle(ent.x, ent.y, 28, 7000, ent.id, isHyper);
+              }
+          }
+      }
+
+      for (let bi = oilMakerBarrels.length - 1; bi >= 0; bi--) {
+          const barrel = oilMakerBarrels[bi];
+          barrel.hp -= barrel.decayRate * dt;
+          if (barrel.hp <= 0) {
+              ruptureOilBarrel(barrel);
+              oilMakerBarrels.splice(bi, 1);
+              continue;
+          }
+
+          for (let j = bullets.length - 1; j >= 0; j--) {
+              const b = bullets[j];
+              if (!b || b.ownerId === barrel.ownerId) continue;
+              const d = Math.hypot(b.x - barrel.x, b.y - barrel.y);
+              if (d <= barrel.radius + (b.radius || 8)) {
+                  barrel.hp -= (b.damage || 500);
+                  if (b.isFireDamage || b.ownerBrawler === 'fightnfire' || b.ownerBrawler === 'heater_miser') {
+                      barrel.ignited = true;
+                  }
+                  bullets.splice(j, 1);
+                  if (barrel.hp <= 0) {
+                      ruptureOilBarrel(barrel);
+                      oilMakerBarrels.splice(bi, 1);
+                      break;
+                  }
+              }
+          }
+      }
+
+      for (let pi = oilMakerPuddles.length - 1; pi >= 0; pi--) {
+          const puddle = oilMakerPuddles[pi];
+          if (now >= puddle.expiresAt) {
+              oilMakerPuddles.splice(pi, 1);
+              continue;
+          }
+
+          const owner = getEntityById(puddle.ownerId);
+          const sp1 = owner ? ((owner.id === player.id ? selectedStar : owner.selectedStar) === 'slow' || (owner.id === player.id ? selectedStar : owner.selectedStar) === 'sp1') : false;
+          const sp2 = owner ? ((owner.id === player.id ? selectedStar : owner.selectedStar) === 'long' || (owner.id === player.id ? selectedStar : owner.selectedStar) === 'sp2') : false;
+
+          for (const ent of allEntities) {
+              const dist = Math.hypot(ent.x - puddle.x, ent.y - puddle.y);
+              if (dist <= puddle.radius + ent.radius) {
+                  const isAllied = owner ? areAlliedEntities(owner, ent) : (ent.team === 'player');
+                  if (!isAllied) {
+                      if (puddle.ignited) {
+                          ent.slowUntil = Math.max(ent.slowUntil || 0, now + 400);
+                      } else {
+                          ent.slowUntil = Math.max(ent.slowUntil || 0, now + 400);
+                          if (sp1) {
+                              ent.reloadDebuffUntil = Math.max(ent.reloadDebuffUntil || 0, now + 1000);
+                          }
+                      }
+                  } else if (ent.id === puddle.ownerId || (owner && ent.id === owner.id)) {
+                      if (puddle.ignited && sp2) {
+                          doHeal(ent, 300 * dt);
+                      }
+                  }
+              }
+          }
+
+          if (puddle.ignited && puddle.damageTicksDone < 2) {
+              if (now - (puddle.lastDamageTick || puddle.ignitedAt) >= 1200) {
+                  puddle.lastDamageTick = now;
+                  puddle.damageTicksDone++;
+                  for (const ent of allEntities) {
+                      if (ent.hp <= 0) continue;
+                      const isAllied = owner ? areAlliedEntities(owner, ent) : (ent.team === 'player');
+                      if (!isAllied && Math.hypot(ent.x - puddle.x, ent.y - puddle.y) <= puddle.radius + ent.radius) {
+                          // Connected puddles are one inferno, not independent damage
+                          // sources. This prevents Flint Striker from stacking every
+                          // overlapping puddle into a 20k+ single-frame gadget hit.
+                          const burnKey = String(puddle.ownerId ?? 'oil_maker_world');
+                          ent.oilMakerBurnCooldowns ||= {};
+                          if (now < (ent.oilMakerBurnCooldowns[burnKey] || 0)) continue;
+                          ent.oilMakerBurnCooldowns[burnKey] = now + 900;
+                          checkHit(ent, {
+                              ownerBrawler: 'oil_maker',
+                              damage: 1250,
+                              pierce: true,
+                              ownerId: puddle.ownerId,
+                              hitIds: {},
+                              isFireDamage: true
+                          }, -1);
+                          spawnFloatingText(ent.x, ent.y - 32, '-1,250 🔥', '#f59e0b');
+                      }
+                  }
+              }
+          }
+
+          if (puddle.ignited && puddle.damageTicksDone >= 2 && now - puddle.lastDamageTick >= 500) {
+              puddle.expiresAt = now; // Burned out! Consume oil and remove cleanly
+          }
+
+          for (const b of bullets) {
+              if (!puddle.ignited) {
+                  // Crude bullet only ignites existing puddles on the ground (>= 250ms old), NOT its own fresh drop!
+                  const isExistingPuddle = b.isOilMakerCrude ? (now - puddle.createdAt >= 250) : true;
+                  if (isExistingPuddle && (b.isOilMakerCrude || b.isFireDamage || b.ownerBrawler === 'fightnfire' || b.ownerBrawler === 'heater_miser')) {
+                      if (Math.hypot(b.x - puddle.x, b.y - puddle.y) <= puddle.radius + (b.radius || 12)) {
+                          igniteOilPuddle(puddle, getEntityById(b.ownerId));
+                      }
+                  }
+              }
+          }
+      }
+
+      // Process main attack delayed puddles (spawn exactly 2 seconds after bullet reaches the end)
+      for (let ppi = oilMakerPendingPuddles.length - 1; ppi >= 0; ppi--) {
+          const pending = oilMakerPendingPuddles[ppi];
+          if (now >= pending.spawnAt) {
+              spawnOilPuddle(pending.x, pending.y, pending.radius, pending.durationMs, pending.ownerId, pending.isHyper);
+              oilMakerPendingPuddles.splice(ppi, 1);
+          }
+      }
   }
 
   function updateSteamerRail(entity, now) {
@@ -19965,6 +22960,32 @@ let heistFeverActive = false;
     if (owner && owner.hyperoriginWeakUntil && performance.now() < owner.hyperoriginWeakUntil) {
         damage *= 0.7;
     }
+    if (isWeeFeeBossMode && weefeeBossState?.bossEntities && ownerId === player.id) {
+        for (const ent of weefeeBossState.bossEntities) {
+            if (ent.hp <= 0) continue;
+            if (Math.hypot(ent.x - x, ent.y - y) <= radius + ent.radius) {
+                const dealt = Math.round(damage);
+                ent.hp = Math.max(0, ent.hp - dealt);
+                ent.hitFlashUntil = performance.now() + 140;
+                weefeeBossState.totalDamageDealt = (weefeeBossState.totalDamageDealt || 0) + dealt;
+                weefeeBossState.bossCurrentHp = weefeeBossState.bossEntities.reduce((sum, e) => sum + Math.max(0, e.hp), 0);
+            }
+        }
+        for (let pIdx = weefeePoles.length - 1; pIdx >= 0; pIdx--) {
+            const pole = weefeePoles[pIdx];
+            if (!pole || !pole.isDestructible || (pole.hp || 0) <= 0) continue;
+            if (Math.hypot(pole.x - x, pole.y - y) <= radius + 24) {
+                const dealt = Math.round(damage);
+                pole.hp = Math.max(0, pole.hp - dealt);
+                if (pole.hp <= 0) {
+                    weefeePoles.splice(pIdx, 1);
+                    weefeeBossState.polesDestroyed = (weefeeBossState.polesDestroyed || 0) + 1;
+                    explosions.push({ x: pole.x, y: pole.y, radius: 60, life: 0, maxLife: 0.25, color: '#ff3f34' });
+                    weefeeBossState.dataPickups.push({ x: pole.x, y: pole.y, radius: 18, life: 20.0, pulse: 0 });
+                }
+            }
+        }
+    }
     if (isBlinkEyeDodgeMode && blinkEyeDodgeState?.giantEyes && ownerId === player.id) {
         for (const eye of blinkEyeDodgeState.giantEyes) {
             if (eye.hp <= 0) continue;
@@ -19986,7 +23007,7 @@ let heistFeverActive = false;
     }
     for(const bot of bots){
         if(bot.hp <= 0 || bot.id === ownerId || bot.isFlying) continue;
-        if(owner && areAlliedEntities(owner, bot) && !bot.isChairSpinning) continue; // Chaird super can hit teammates
+        if(owner && areAlliedEntities(owner, bot) && !bot.isChairSpinning && !isFriendlyFireActive()) continue; // Chaird super can hit teammates
         if(Math.hypot(bot.x - x, bot.y - y) <= radius + bot.radius){
             if (ownerId === player.id && tryImpossibleInstantAoeDodge(bot, x, y, radius)) continue;
             // respect temporary invulnerability
@@ -20008,7 +23029,11 @@ let heistFeverActive = false;
                 bot.lastDamagerId = ownerId;
             }
             if (dealt > 0) registerConstructionCartDamage(ownerId, dealt);
-            if(!isSuper && !bot.isPet) grantMainAttackCharge(owner, {ownerBrawler:owner?.currentMainAttackBrawler,mainAttackActivationId:owner?.currentMainAttackActivationId});
+            if(!isSuper && !bot.isPet && !(areAlliedEntities(owner, bot) && isFriendlyFireActive())) grantMainAttackCharge(owner, {ownerBrawler:owner?.currentMainAttackBrawler,mainAttackActivationId:owner?.currentMainAttackActivationId});
+            if(!isSuper && !bot.isPet && areAlliedEntities(owner, bot) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, {ownerBrawler:owner?.currentMainAttackBrawler,mainAttackActivationId:owner?.currentMainAttackActivationId});
+            if (owner && areAlliedEntities(owner, bot) && isFriendlyFirePlusActive() && bot.id !== ownerId && dealt > 0) {
+                grantFriendlyFirePlusBonus(owner);
+            }
             spawnDamageText(bot, dealt, '#ff4d4d'); // Added damage numbers for bots
             if (bot.brawler === 'hyperorigin' && !bot.isHypercharged && dealt > 0) {
                 bot.hyperChargeCharge = clamp((bot.hyperChargeCharge || 0) + (dealt / 18000) * 100, 0, 100);
@@ -20019,8 +23044,11 @@ let heistFeverActive = false;
         // respect temporary invulnerability
         if (!(player.invulnerableUntil && player.invulnerableUntil > performance.now())) {
             let dealt = 0;
-            if(!(owner && areAlliedEntities(owner, player))){
+            if(!(owner && areAlliedEntities(owner, player)) || isFriendlyFireActive()){
                 let incomingAoeDamage = damage;
+            if (owner && owner.bolznstienDmgDebuffUntil && performance.now() < owner.bolznstienDmgDebuffUntil) {
+                incomingAoeDamage *= 0.60;
+            }
                 if (isSlopSushiMode) {
                     incomingAoeDamage *= Math.max(0.2, 1 - getSlopEffectTotal('damageReductionPct'));
                     if (player.hp <= player.maxHp * 0.35) incomingAoeDamage *= Math.max(0.2, 1 - getSlopEffectTotal('lowHpReductionPct'));
@@ -20036,7 +23064,11 @@ let heistFeverActive = false;
                     player.lastDamagerId = ownerId;
                 }
                 if (dealt > 0) registerConstructionCartDamage(ownerId, dealt);
-                if(!isSuper && owner) grantMainAttackCharge(owner, {ownerBrawler:owner.currentMainAttackBrawler,mainAttackActivationId:owner.currentMainAttackActivationId});
+                if(!isSuper && owner && !(areAlliedEntities(owner, player) && isFriendlyFireActive())) grantMainAttackCharge(owner, {ownerBrawler:owner.currentMainAttackBrawler,mainAttackActivationId:owner.currentMainAttackActivationId});
+                if(!isSuper && owner && areAlliedEntities(owner, player) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, {ownerBrawler:owner.currentMainAttackBrawler,mainAttackActivationId:owner.currentMainAttackActivationId});
+                if (owner && areAlliedEntities(owner, player) && isFriendlyFirePlusActive() && player.id !== ownerId && dealt > 0) {
+                    grantFriendlyFirePlusBonus(owner);
+                }
             }
             if (dealt > 0) spawnDamageText(player, dealt, '#ff4d4d'); // Damage numbers for player
             if (selectedBrawler === 'hyperorigin' && !isHypercharged && dealt > 0) {
@@ -20093,6 +23125,11 @@ let heistFeverActive = false;
     addEventQuestProgress('activate_hypers');
     const extraHyperMs = (isSplitterPoweredMode && selectedBrawler === 'splitter') ? 2000 : 0;
     hyperchargeUntil = performance.now() + 5000 + extraHyperMs;
+    if (selectedBrawler === 'oil_maker' || (player && player.brawler === 'oil_maker')) {
+        player.oilMakerSuperCharges = 5;
+        superCharge = 100;
+        updateSuperButton();
+    }
     if (hasTrinket(player, 'hyper_reload')) {
         ammo = Math.min(maxAmmo, ammo + 1);
         ammoReloadTimer = 0;
@@ -20211,7 +23248,12 @@ let heistFeverActive = false;
   }
 
   function isHeaterLockableBox(wall) {
-      return !!(wall && !wall.isPlatform && (wall.isPowerBox || wall.isPurpleBox || wall.isGreenBox || wall.isVault));
+      // Live boxes use `isPowerBox`; Training's reusable boxes use the legacy
+      // `isBox` flag. They are the same kind of damage target for combat.
+      return !!(wall && !wall.isPlatform && (
+          wall.isPowerBox || wall.isBox || wall.isPurpleBox || wall.isGreenBox ||
+          wall.isNovaBox || wall.isVault
+      ));
   }
 
   function canHeaterTargetWall(owner, wall) {
@@ -20807,7 +23849,7 @@ let heistFeverActive = false;
   }
 
     function spawnRocketeerFireZone(ownerId, x, y, durationMs=2200, damage=180, radius=62, hyper=false) {
-        if (isPowerPlayShowdownMode) radius *= 3; // +200% fire zone size
+        if (isPowerPlayModifierActive()) radius *= 3; // +200% fire zone size
         const owner = getEntityById(ownerId);
         const skinId = (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
         rocketeerFireZones.push({ ownerId, x, y, radius, damage, until:performance.now()+durationMs, nextTickAt:0, hyper:!!hyper, skinId });
@@ -20856,7 +23898,7 @@ let heistFeverActive = false;
         const star=getOwnerStarChoice(owner);
         const baseAng=Math.atan2(projectile.vy,projectile.vx);
         const count=Math.max(3,(projectile.rocketeerMiniCount||3)+(isSlopSushiMode?getEntitySlopEffectTotal(owner,'rocketeerExtraMinis'):0));
-        const miniDamage=Math.round((projectile.rocketeerBaseDamage||projectile.damage||2067)*.162);
+        const miniDamage=Math.round((projectile.rocketeerBaseDamage||projectile.damage||2191)*.14904);
         if(star==='slow') spawnRocketeerFireZone(projectile.ownerId,projectile.x,projectile.y,2500,210,78,projectile.hyperVisual);
         for(let n=0;n<count;n++){
             const lane=count===1?0:(n/(count-1)-.5);
@@ -20874,7 +23916,7 @@ let heistFeverActive = false;
     }
 
     function launchRocketeerMain(owner, angle, hyper, damageMult=1, options={}) {
-        const damage=Math.round(2067*damageMult);
+        const damage=Math.round(2191*damageMult);
         const lateral=options.lateral||0,forward=options.forward||0,perp=angle+Math.PI/2;
         const skinId = (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
         bullets.push({ownerBrawler:'rocketeer',isRocketeerMain:true,skinId,rocketeerBaseDamage:damage,
@@ -20924,7 +23966,7 @@ let heistFeverActive = false;
         const dx=targetX-owner.x,dy=targetY-owner.y,d=Math.hypot(dx,dy)||1,maxRange=760;
         const cx=owner.x+dx/d*Math.min(d,maxRange),cy=owner.y+dy/d*Math.min(d,maxRange),now=performance.now();
         const skinId = (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
-        const strikeCount = 3 + (isPowerPlayShowdownMode ? 4 : 0) + (isSlopSushiMode ? getEntitySlopEffectTotal(owner, 'rocketeerExtraSuperStrikes') : 0);
+        const strikeCount = 3 + (isPowerPlayModifierActive(owner) ? 4 : 0) + (isSlopSushiMode ? getEntitySlopEffectTotal(owner, 'rocketeerExtraSuperStrikes') : 0);
         for(let n=0;n<strikeCount;n++){
             const a=-Math.PI/2+n*Math.PI*2/strikeCount,offset=n===0?0:Math.min(112,62+strikeCount*4);
             rocketeerAirstrikes.push({ownerId:owner.id,skinId,x:clamp(cx+Math.cos(a)*offset,40,WORLD_W-40),y:clamp(cy+Math.sin(a)*offset,40,WORLD_H-40),landAt:now+800+n*180,hyper:!!hyper});
@@ -20963,7 +24005,7 @@ let heistFeverActive = false;
   const KING_PRINCESS_RANGE = 680;
   const KING_PRINCESS_DAMAGE = 250;
   const KING_PRINCESS_FIRE_MS = 500;
-  const KING_HYPER_PRINCESS_DAMAGE_PER_HIT = 10;
+  const KING_HYPER_PRINCESS_DAMAGE_PER_HIT = 8;
   const KING_HYPER_PRINCESS_DAMAGE_CAP = 550;
 
   function ensureKingState(entity) {
@@ -21312,7 +24354,7 @@ let heistFeverActive = false;
       return true;
   }
 
-  const ANTI_ROYAL_MORTAR_ROUND_CAP = 8;
+  const ANTI_ROYAL_MORTAR_ROUND_CAP = 6;
   const ANTI_ROYAL_BLOCK_COOLDOWN_MS = 4500;
   const ANTI_ROYAL_MORTAR_FIRE_MS = 1300;
   const ANTI_ROYAL_OPENING_BARRAGE_FIRE_MS = 220;
@@ -21706,7 +24748,7 @@ let heistFeverActive = false;
     target.iceCreamFreeze=Math.min(100,(target.iceCreamFreeze||0)+Math.max(0,amount));
     target.iceCreamFreezeLastHitAt=now;target.iceCreamFreezeDecayDelay=getIceCreamStar(owner)==='long'?3500:2000;target.iceCreamFreezeOwnerId=owner.id;
     spawnFloatingText(target.x,target.y-42,`${Math.round(target.iceCreamFreeze)}% FREEZE`,'#8ee9ff');
-    if (isRankedMatch && activeRankedModifier === 'crowd_uncontrol' && owner && owner !== target && !owner._ccReflecting) {
+    if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'crowd_uncontrol' || activeRankedModifierSecondary === 'crowd_uncontrol' || activeRankedModifierTertiary === 'crowd_uncontrol') && owner && owner !== target && !owner._ccReflecting) {
         owner._ccReflecting = true;
         try {
             owner.iceCreamFreeze = Math.min(100, (owner.iceCreamFreeze || 0) + Math.max(0, amount));
@@ -21756,6 +24798,10 @@ let heistFeverActive = false;
     }
 
     function fire(fromEntity, targetX, targetY, isBot=false, isMoving=false){
+        if (isBraweBallMode && braweBallState && braweBallState.ball && braweBallState.ball.carrier === fromEntity.id) {
+            kickBraweBall(fromEntity, targetX, targetY, false);
+            return;
+        }
         const aliveBots = (typeof bots !== 'undefined' && Array.isArray(bots)) ? bots.filter(b => b && b.hp > 0) : [];
         normalizeSelectedBrawler();
     const now = performance.now();
@@ -21833,9 +24879,9 @@ let heistFeverActive = false;
             // While flying, Draflygon uses dedicated flight ammo, NOT ground ammo
             if ((fromEntity.draflygonFlightAmmo || 0) <= 0) return;
         } else {
-            const steamerCost = brawler === 'steamer' ? 5 : 2;
+            const steamerCost = brawler === 'steamer' ? 5 : (brawler === 'oil_maker' ? 3 : 2);
             const duckCost = null;
-            const cost = crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1));
+            const cost = crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer' || brawler === 'oil_maker') ? steamerCost : 1));
             if (ammo < cost && !ammoSaverFree) return;
         }
     } else if (isDraflygonFlight) {
@@ -21888,12 +24934,12 @@ let heistFeverActive = false;
         lastShot = now;
         commitTrinketAttack(fromEntity);
         if (!isDraflygonFlight) {
-            const steamerCost = brawler === 'steamer' ? 5 : 2;
+            const steamerCost = brawler === 'steamer' ? 5 : (brawler === 'oil_maker' ? 3 : 2);
             const duckCost = null;
             const classyUnlimitedAmmo = brawler === 'classy' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'classyEndlessEncore') > 0;
             const robberUnlimitedAmmo = brawler === 'robber' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'robberPerfectCrime') > 0;
             if (classyUnlimitedAmmo || robberUnlimitedAmmo) ammo = maxAmmo;
-            else if (!ammoSaverFree) ammo -= (crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer') ? steamerCost : 1)));
+            else if (!ammoSaverFree) ammo -= (crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer' || brawler === 'oil_maker') ? steamerCost : 1)));
             if (ammoSaverFree) spawnFloatingText(player.x, player.y - 36, 'AMMO SAVED!', '#ffd66b');
         }
         player.lastAttackAt = now;
@@ -21906,6 +24952,8 @@ let heistFeverActive = false;
     const ang = Math.atan2(dy,dx);
     fromEntity.visualAimAngle = ang;
     fromEntity.visualAttackAt = now;
+
+    fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
     if (brawler === 'weefee') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
@@ -21933,6 +24981,247 @@ let heistFeverActive = false;
             pierce: true,
             ownerId: fromEntity.id,
             hitIds: {},
+            hyperVisual: hyper,
+            isHyper: hyper
+        });
+    } else if (brawler === 'oil_maker') {
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const stats = getScaledStats('oil_maker', level);
+        const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        const shotAngles = isHyper ? [ang - 0.105, ang + 0.105] : [ang + (Math.random() - 0.5) * 0.12];
+        const speed = 630;
+        const range = 560;
+        for (const finalAng of shotAngles) {
+            bullets.push({
+                ownerBrawler: 'oil_maker',
+                isOilMakerCrude: true,
+                x: fromEntity.x + Math.cos(finalAng) * 22,
+                y: fromEntity.y + Math.sin(finalAng) * 22,
+                vx: Math.cos(finalAng) * speed,
+                vy: Math.sin(finalAng) * speed,
+                life: 0,
+                maxLife: range / speed,
+                damage: stats.dmg,
+                radius: 8,
+                ownerId: fromEntity.id,
+                hitIds: {},
+                isHyper: !!isHyper,
+                hyperVisual: !!isHyper
+            });
+        }
+    } else if (brawler === 'magnatar') {
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const stats = getScaledStats('magnatar', level);
+        const hyper = isEntityHyperchargedNow(fromEntity, now);
+        const maxOrbs = hyper ? 8 : 4;
+
+        let orbCount = fromEntity.magnatarPendingFireOrbs || 1;
+        fromEntity.magnatarPendingFireOrbs = 0;
+        orbCount = clamp(orbCount, 1, maxOrbs);
+
+        // G2: Flux Overcharge check
+        let sizeBonus = 1.0;
+        let dmgBonus = 1.0;
+        if (fromEntity.magnatarG2Armed) {
+            fromEntity.magnatarG2Armed = false;
+            orbCount = maxOrbs;
+            sizeBonus = 1.25;
+            dmgBonus = 1.25;
+            spawnFloatingText(fromEntity.x, fromEntity.y - 35, '⚡ FLUX OVERCHARGE! (MAX ORBS)', '#00d2ff');
+        }
+
+        const baseAngle = ang;
+        const orbDmg = Math.round(stats.dmg * dmgBonus);
+        const speed = 640;
+        const fwdX = Math.cos(baseAngle);
+        const fwdY = Math.sin(baseAngle);
+        const perpX = -Math.sin(baseAngle);
+        const perpY = Math.cos(baseAngle);
+
+        // Orbit radius: 1 orb shoots straight; 2, 3, 4, or up to 8 orbs revolve in an expanding orbit swing
+        const startOrbitRadius = orbCount === 1 ? 0 : Math.round((orbCount === 2 ? 40 : (orbCount === 3 ? 48 : (orbCount === 4 ? 56 : 64))) * sizeBonus);
+        const maxOrbitRadius = orbCount === 1 ? 0 : Math.round((orbCount === 2 ? 128 : (orbCount === 3 ? 160 : (orbCount === 4 ? 190 : 224))) * sizeBonus);
+        const orbitRadius = startOrbitRadius;
+        const orbitSpeed = 3.99; // rad/s (+20% more satisfying speed: 3.325 * 1.20 = 3.99)
+        const centerX = fromEntity.x + fwdX * (fromEntity.radius + 14);
+        const centerY = fromEntity.y + fwdY * (fromEntity.radius + 14);
+
+        for (let k = 0; k < orbCount; k++) {
+            const orbitBaseAngle = (k * Math.PI * 2) / orbCount;
+            const initFwd = Math.cos(orbitBaseAngle) * startOrbitRadius;
+            const initPerp = Math.sin(orbitBaseAngle) * startOrbitRadius;
+            const spawnX = centerX + fwdX * initFwd + perpX * initPerp;
+            const spawnY = centerY + fwdY * initFwd + perpY * initPerp;
+
+            bullets.push({
+                ownerBrawler: 'magnatar',
+                isMagnatarOrb: true,
+                x: spawnX,
+                y: spawnY,
+                vx: fwdX * speed,
+                vy: fwdY * speed,
+                fwdX: fwdX,
+                fwdY: fwdY,
+                perpX: perpX,
+                perpY: perpY,
+                orbitRadius: startOrbitRadius,
+                startOrbitRadius: startOrbitRadius,
+                maxOrbitRadius: maxOrbitRadius,
+                orbitSpeed: orbitSpeed,
+                orbitBaseAngle: orbitBaseAngle,
+                lastFwdOffset: initFwd,
+                lastPerpOffset: initPerp,
+                life: 0,
+                maxLife: 1.38, // max orbit range: extended flight so it can orbit more full cycles (640 * 1.38 = 883.2px)
+                damage: orbDmg,
+                pierce: false,
+                ownerId: fromEntity.id,
+                hitIds: {},
+                radius: Math.round(16 * sizeBonus),
+                hitboxMod: sizeBonus,
+                hyperVisual: hyper,
+                isHyper: hyper,
+                spinOffset: k * (Math.PI / 3)
+            });
+        }
+    } else if (brawler === 'rager') {
+        const sp1 = (fromEntity.id === player.id ? selectedStar : fromEntity.selectedStar) === 'slow' || (fromEntity.id === player.id ? selectedStar : fromEntity.selectedStar) === 'sp1';
+        const timberDmg = fromEntity.id === player.id ? getScaledStats('rager', getSelectedBrawlerLevel()).dmg : Math.round(2200 * (0.55 + ((fromEntity.level || 1) - 1) * 0.045));
+        const trunkSpeed = 820;
+        const trunkRange = 420;
+        const ragerIsHyper = !isBot ? !!isHypercharged : !!fromEntity?.isHypercharged;
+        bullets.push({
+            id: nextId++,
+            ownerBrawler: 'rager',
+            isRagerTimber: true,
+            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 14),
+            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 14),
+            vx: Math.cos(ang) * trunkSpeed,
+            vy: Math.sin(ang) * trunkSpeed,
+            angle: ang,
+            life: 0,
+            maxLife: trunkRange / trunkSpeed,
+            damage: timberDmg,
+            pierce: true,
+            ownerId: fromEntity.id,
+            hitIds: {},
+            hasSp1: sp1,
+            hyperVisual: ragerIsHyper,
+            startX: fromEntity.x,
+            startY: fromEntity.y
+        });
+        explosions.push({
+            x: fromEntity.x + Math.cos(ang) * 32,
+            y: fromEntity.y + Math.sin(ang) * 32,
+            radius: 36,
+            life: 0,
+            maxLife: 0.18,
+            color: '#8B4513'
+        });
+        return;
+    }
+    if (brawler === 'carmela_fudge') {
+        const isFudge = fromEntity.carmelaFudgeForm === 'fudge';
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const stats = getScaledStats('carmela_fudge', level);
+        const isHyper = isEntityHyperchargedNow(fromEntity, now);
+        const hasSp1 = (fromEntity.id === player.id ? selectedStar : fromEntity.selectedStar) === 'slow' || (fromEntity.id === player.id ? selectedStar : fromEntity.selectedStar) === 'sp1';
+
+        if (fromEntity.carmelaFudgeForm === 'fudge') {
+            // Fudge main attack: Sticky Fudge
+            const isFudgeGlob = true;
+            let homing = 0.0;
+            if (isFudgeGlob && isHyper) homing = 0.30;
+            bullets.push({
+                ownerBrawler: 'carmela_fudge',
+                carmelaFudgeForm: 'fudge',
+                isFudgeGlob: true,
+                x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 14),
+                y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 14),
+                vx: Math.cos(ang) * 780,
+                vy: Math.sin(ang) * 780,
+                life: 0,
+                maxLife: 0.75,
+                damage: 1200,
+                pierce: false,
+                ownerId: fromEntity.id,
+                hitIds: {},
+                homing: homing,
+                isHyper: isHyper,
+                hasSp1: hasSp1
+            });
+        }
+        if (fromEntity.carmelaFudgeForm !== 'fudge') {
+            // Carmela main attack: Sticky Hands
+            let carmelaHandChargeSpeed = 1.0;
+            if (hasSp1) carmelaHandChargeSpeed *= 1.25;
+            if (isHyper) carmelaHandChargeSpeed *= 1.30;
+
+            const chargePct = fromEntity.carmelaChargePct !== undefined ? fromEntity.carmelaChargePct : (fromEntity.id !== player.id ? 0.5 : 0.0);
+            let handDmg = 1600;
+            let pullType = 'none';
+            if (chargePct <= 0.15) {
+                handDmg = 1600;
+                pullType = 'none';
+            } else if (chargePct <= 0.60) {
+                handDmg = 1900;
+                pullType = 'half';
+            } else if (chargePct <= 0.90) {
+                handDmg = 2200;
+                pullType = 'all';
+            } else {
+                handDmg = 2500;
+                pullType = 'pullSelf';
+            }
+            const range = 360 + chargePct * 260;
+            const speed = 880;
+
+            bullets.push({
+                ownerBrawler: 'carmela_fudge',
+                carmelaFudgeForm: 'carmela',
+                isCarmelaHand: true,
+                x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 14),
+                y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 14),
+                vx: Math.cos(ang) * speed,
+                vy: Math.sin(ang) * speed,
+                life: 0,
+                maxLife: range / speed,
+                damage: handDmg,
+                pierce: false,
+                ownerId: fromEntity.id,
+                hitIds: {},
+                pullType: pullType,
+                chargePct: chargePct,
+                isHyper: isHyper
+            });
+        }
+        return;
+    }
+    if (brawler === 'bolznstien') {
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const stats = getScaledStats('bolznstien', level);
+        const hyper = isEntityHyperchargedNow(fromEntity, now);
+        const speed = 720;
+        const sizeMod = hyper ? 1.3 : 1.0; // 30% larger projectile during Hypercharge
+        const boltDmg = Math.round(stats.dmg);
+        const strikeDmg = Math.round(stats.strikeDmg || 1650);
+
+        bullets.push({
+            ownerBrawler: 'bolznstien',
+            isBolznstienBolt: true,
+            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 14),
+            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 14),
+            vx: Math.cos(ang) * speed,
+            vy: Math.sin(ang) * speed,
+            life: 0,
+            maxLife: 0.82,
+            damage: boltDmg,
+            strikeDmg: strikeDmg,
+            pierce: false,
+            ownerId: fromEntity.id,
+            hitIds: {},
+            hitboxMod: sizeMod,
             hyperVisual: hyper,
             isHyper: hyper
         });
@@ -22091,7 +25380,7 @@ let heistFeverActive = false;
         const momentum=clamp(fromEntity.fastpassMomentum||0,0,1);
         const hyper=isBot?isEntityHyperchargedNow(fromEntity,now):!!isHypercharged;
         const count=hyper?3:2;
-        const projectileSpeed=900*.6*(1+momentum*.8);
+         const projectileSpeed=900*.6*(1+momentum*.72);
         const range=790;
         lockMainAttackSequence(fromEntity,count>1?200:0,now);
         for(let shot=0;shot<count;shot++){
@@ -22114,14 +25403,15 @@ let heistFeverActive = false;
         fromEntity.freestyleSetlistStage=(stage+1)%3;
         if(stage===0){
             const speed=940*.6,range=930;
-            bullets.push({ownerBrawler:'freestyle',ownerId:fromEntity.id,isFreestyleMain:true,isFreestyleDisco:true,freestyleStage:0,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+9),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+9),vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:range/speed,damage:1850,pierce:false,hitIds:{},hitboxMod:1.65,hyperVisual:hyper});
+            bullets.push({ownerBrawler:'freestyle',ownerId:fromEntity.id,isFreestyleMain:true,isFreestyleDisco:true,freestyleStage:0,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+9),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+9),vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:range/speed,damage:1924,pierce:false,hitIds:{},hitboxMod:1.65,hyperVisual:hyper});
         }else if(stage===1){
             const empowered=!!fromEntity.freestyleBassBoostArmed;
             const count=empowered?9:5,spread=empowered?.72:.46,speed=720*.6,range=560,sharedHits={};
             fromEntity.freestyleBassBoostArmed=false;
             for(let key=0;key<count;key++){
                 const lane=count===1?0:(key/(count-1)-.5),a=ang+lane*spread;
-                bullets.push({ownerBrawler:'freestyle',ownerId:fromEntity.id,isFreestyleMain:true,isFreestyleDJKey:true,freestyleStage:1,freestyleKeyIndex:key,freestyleKeyCount:count,x:fromEntity.x+Math.cos(a)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(a)*(fromEntity.radius+7),vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:0,maxLife:range/speed,damage:1500,pierce:true,hitIds:sharedHits,hitboxMod:empowered?1.42:1.2,hyperVisual:hyper,bassBoosted:empowered});
+                const keyDamage=Math.round(1500*(Math.abs(lane)<.001?1:.94));
+                bullets.push({ownerBrawler:'freestyle',ownerId:fromEntity.id,isFreestyleMain:true,isFreestyleDJKey:true,freestyleStage:1,freestyleKeyIndex:key,freestyleKeyCount:count,x:fromEntity.x+Math.cos(a)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(a)*(fromEntity.radius+7),vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:0,maxLife:range/speed,damage:keyDamage,pierce:true,hitIds:sharedHits,hitboxMod:empowered?1.42:1.2,hyperVisual:hyper,bassBoosted:empowered});
             }
         }else{
             const speed=650*.6,range=540;
@@ -22196,7 +25486,7 @@ let heistFeverActive = false;
         bullets.push({ownerBrawler:'witch',isWitchPotion:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+8),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+8),vx:Math.cos(ang)*590,vy:Math.sin(ang)*590,life:0,maxLife:.82,damage:isBot?820:1180,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:(hyper||cursed)?2.1:1.75,hyperVisual:hyper,witchAllTerrain:cursed,witchPuddleMs:getEntityStarChoice(fromEntity)==='slow'?3500:2500});
         return;
     } else if (brawler === 'rocketeer') {
-        const hyperMain=(isPowerPlayShowdownMode && fromEntity.brawler === 'rocketeer') ? true : (isBot ? !!fromEntity.isHypercharged : !!isHypercharged);
+        const hyperMain=(isPowerPlayModifierActive(fromEntity) && fromEntity.brawler === 'rocketeer') ? true : (isBot ? !!fromEntity.isHypercharged : !!isHypercharged);
         launchRocketeerMain(fromEntity,ang,hyperMain,1);
         if(hyperMain){
             launchRocketeerMain(fromEntity,ang,true,1/3,{lateral:-24,forward:12,hitboxMod:1.015,escort:true,noSplit:true});
@@ -22212,10 +25502,10 @@ let heistFeverActive = false;
     } else if (brawler === 'orbo') {
         const hyperMain = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const dense = isBot ? !!fromEntity.orboDenseArmed : (gadgetArmed && selectedGadget === 'g1');
-        const count = (hyperMain ? 6 : 4) + (isPowerPlayShowdownMode ? 10 : 0);
+        const count = (hyperMain ? 6 : 4) + (isPowerPlayModifierActive(fromEntity) ? 10 : 0);
         const speed = 790;
         const maxLife = hyperMain ? 2.295 : 1.35;
-        const amplitude = (dense ? 72 : 54) * (isPowerPlayShowdownMode ? 2.0 : 1.0);
+        const amplitude = (dense ? 72 : 54) * (isPowerPlayModifierActive(fromEntity) ? 2.0 : 1.0);
         const perpX = -Math.sin(ang), perpY = Math.cos(ang);
         const volleyId = `${fromEntity.id}:${Math.round(now * 10)}`;
         for (let shot = 0; shot < count; shot++) {
@@ -22311,7 +25601,7 @@ let heistFeverActive = false;
         const usedG1 = (hookGadget && selectedGadget === 'g1') || (isBot && fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
         const arcBurst=!!fromEntity.overlordArcBurstArmed;fromEntity.overlordArcBurstArmed=false;
         let finalDelay = attackDelay * (isHyper ? (runtimeSpec.hyperchargeDelayMultiplier || 0.7) : 1.0) * (stage >= 1 ? 0.9 : 1.0);
-        let finalRadius = stage >= 3 ? Math.round(baseRadius * 1.45) : (stage >= 2 ? Math.round(baseRadius * 1.2) : baseRadius);
+        let finalRadius = stage >= 3 ? Math.round(baseRadius * 1.35) : (stage >= 2 ? Math.round(baseRadius * 1.2) : baseRadius);
         if (usedG1) { finalDelay = Math.max(100, finalDelay * 0.55); finalRadius = Math.round(finalRadius * 1.15); }
 
         const maxRange = getOverlordPulseRange(stage, runtimeSpec);
@@ -23099,14 +26389,14 @@ let heistFeverActive = false;
         const decayerHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
         const starLong = !isBot ? (selectedStar === 'long') : (fromEntity.selectedStar === 'long');
         const starSlow = !isBot ? (selectedStar === 'slow') : (fromEntity.selectedStar === 'slow');
-        const baseShieldGain = Math.round(550 * (starLong ? 1.2 : 1));
+        const baseShieldGain = Math.round(468 * (starLong ? 1.2 : 1));
         const baseShieldCap = (starSlow && hasEntityAttachie(fromEntity, 'star', 'slow')) ? 4500 : (starLong ? 2400 : 2000);
         const homingArmed = !isBot
             ? (decayerHomingArmed && selectedGadget === 'g1')
             : (fromEntity.decayerHomingArmed && fromEntity.selectedGadget === 'g1');
 
-        const decayerHitbox = isPowerPlayShowdownMode ? 3.0 : 1.0;
-        const decayerShieldCap = isPowerPlayShowdownMode ? 12500 : baseShieldCap;
+        const decayerHitbox = isPowerPlayModifierActive(fromEntity) ? 3.0 : 1.0;
+        const decayerShieldCap = isPowerPlayModifierActive(fromEntity) ? 12500 : baseShieldCap;
         bullets.push({
             ownerBrawler: 'decayer',
             isDecayerShieldShot: true,
@@ -23255,7 +26545,7 @@ let heistFeverActive = false;
           
           const buffActive = isBot ? (now < (fromEntity.unopcolocoG2Until||0)) : (now < unopcolocoG2Until);
           const rangeMult = buffActive ? 1.3 : 1.0;
-          const maxCycle = isHyper ? 4 : 3;
+          const maxCycle = 3; // V6: scarf plus two Whacks in both normal and Hyper states.
 
           if (cycle === 0) {
               bullets.push({
@@ -23702,13 +26992,22 @@ let heistFeverActive = false;
             });
         }
     } else if (brawler === 'bowlin_rida') {
-        const prevSpeed = fromEntity.ridaSpeedMult || 1.0;
-        fromEntity.ridaSpeedMult = Math.min(2.6, prevSpeed + 0.7);
-        if (prevSpeed <= 1.05 && fromEntity.ridaSpeedMult > 1.05) {
-            const pulseDamage = isBot ? 280 : 420;
-            AOEDamage(fromEntity.x, fromEntity.y, 72, pulseDamage, fromEntity.id);
-            explosions.push({ x: fromEntity.x, y: fromEntity.y, radius: 72, life: 0, maxLife: 0.18, color: 'rgba(255, 132, 64, 0.45)' });
+        const hornSpeed = 720;
+        const hornDamage = isBot ? 480 : 620;
+        const sideX = -Math.sin(ang);
+        const sideY = Math.cos(ang);
+        for (const side of [-1, 1]) {
+            bullets.push({
+                ownerBrawler: 'bowlin_rida', isRidaHorn: true, ridaHornSide: side,
+                x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8) + sideX * side * 12,
+                y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8) + sideY * side * 12,
+                vx: Math.cos(ang) * hornSpeed, vy: Math.sin(ang) * hornSpeed,
+                life: 0, maxLife: 0.62, damage: hornDamage, pierce: false,
+                hyperVisual: !isBot ? !!isHypercharged : !!fromEntity.isHypercharged,
+                ownerId: fromEntity.id, hitboxMod: 1.18
+            });
         }
+        explosions.push({ x: fromEntity.x + Math.cos(ang) * 24, y: fromEntity.y + Math.sin(ang) * 24, radius: 28, life: 0, maxLife: 0.14, color: 'rgba(255, 190, 92, 0.55)', fxKind: 'ridaHornMuzzle' });
     } else if (brawler === 'scuba_diver') {
         ensureScubaDiverState(fromEntity);
         const isHyper = !isBot ? !!isHypercharged : !!fromEntity.isHypercharged;
@@ -23895,6 +27194,8 @@ let heistFeverActive = false;
             const extraWaves=isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'moneyExtraWaves')):0;
             const centerSize=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'moneyCenterSizePct'):0;
             const centerDamage=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'moneyCenterDamagePct'):0;
+            const coinHoming=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'moneyCoinHoming'):0;
+            const coinHomingRadius=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'moneyCoinHomingRadius'):0;
             lockMainAttackSequence(fromEntity,(3+extraWaves-1)*150,now);
             for (let w = 0; w < 3 + extraWaves; w++) {
                 setTimeout(() => {
@@ -23914,7 +27215,9 @@ let heistFeverActive = false;
                                 ? 1.65 * (firedAtFullAmmo ? MONEY_TAX_FULL_CENTER_SIZE_MULT : 1) * (1 + centerSize)
                                 : MONEY_TAX_MONEY_SIZE_MULT,
                             moneyEmpoweredCenter: enlargedCenter,
-                            moneyTaxMutationVisual: mutationVolley
+                            moneyTaxMutationVisual: mutationVolley,
+                            slopHoming: coinHoming,
+                            slopHomingRadius: coinHomingRadius || 620
                         });
                     }
                 }, w * 150); // 150ms delay between waves
@@ -24561,8 +27864,14 @@ let heistFeverActive = false;
         const levelMult = 1.0;
         const bulletDmg = Math.round(1100 * ownerMult * levelMult);
 
+        const rider = ensureBoomArangInstinctState(fromEntity, now);
+        const ride = !!rider?.ready;
+        if (ride) fromEntity.boomArangInstinctReadyAt = now + 9000;
         bullets.push({
             ownerBrawler: 'boom_arang',
+            boomArangRide: ride,
+            boomArangHyperSplit: !!isHc,
+            hyperVisual: !!isHc,
             x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 6),
             y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 6),
             vx: Math.cos(ang) * 1134 * 0.6,
@@ -24710,7 +28019,7 @@ let heistFeverActive = false;
         const now = performance.now();
         const sushiTeam=isSlopSushiMode&&getEntitySlopEffectTotal(owner,'angelSuperTeam')>0;
         const recipients = (hyper||sushiTeam) ? [player, ...bots].filter(e => e && e.hp > 0 && areAlliedEntities(owner, e)) : [owner];
-        const blessingDuration = (hyper || sushiTeam) ? 5000 : 6000;
+        const blessingDuration = (hyper || sushiTeam) ? 4000 : 6000;
         for (const entity of recipients) {
             entity.angelSecondLifeUntil = now + blessingDuration;
             entity.angelSecondLifeUsed = false;
@@ -24735,7 +28044,7 @@ let heistFeverActive = false;
         const linkPct=isSlopSushiMode?getEntitySlopEffectTotal(owner,'relayLinkRadiusPct'):0;
         const maxHp=Math.round(12000*scale*(hyper?(4/3):1)*(1+hpPct));
         const star=owner.id===player.id?selectedStar:owner.selectedStar;
-        healingPods.push({isRelayDevice:true,x:clamp(owner.x+dx/d*range,38,WORLD_W-38),y:clamp(owner.y+dy/d*range,38,WORLD_H-38),hp:maxHp,maxHp,radius:35,healRadius:0,healAmount:0,decayPerSec:0,ownerId:owner.id,team:owner.team,relayRedirectPct:hyper?.90:.75,relayLinkRadius:520*(star==='slow'?1.25:1)*(1+linkPct),relayHyper:hyper});
+        healingPods.push({isRelayDevice:true,x:clamp(owner.x+dx/d*range,38,WORLD_W-38),y:clamp(owner.y+dy/d*range,38,WORLD_H-38),hp:maxHp,maxHp,radius:35,healRadius:0,healAmount:0,decayPerSec:0,ownerId:owner.id,team:owner.team,relayRedirectPct:hyper?.82:.75,relayLinkRadius:520*(star==='slow'?1.25:1)*(1+linkPct),relayHyper:hyper});
         spawnFloatingText(owner.x,owner.y-38,hyper?'TOTAL TRANSFER!':'DAMAGE MOVED!','#67e8ff');
     }
     function stealAmmoForRobber(owner, target, requested, cap, requireThree=false) {
@@ -24851,7 +28160,7 @@ let heistFeverActive = false;
     function spawnChickpigPig(owner, hyper) {
         for (let i=bots.length-1;i>=0;i--) if (bots[i].isChickpigPig && bots[i].ownerId===owner.id) bots.splice(i,1);
         const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11);
-        const hp=Math.round(4100*getLevelDamageScale(level));
+        const hp=Math.round(3690*getLevelDamageScale(level));
         bots.push({id:nextId++,x:owner.x+28,y:owner.y+18,z:0,vx:0,vy:0,hp,maxHp:hp,powerCubes:owner.powerCubes||0,isDead:false,shield:0,shieldMax:0,radius:22,speed:330,slowUntil:0,brawler:'chickpig_pig',lastTargetId:null,targetLockUntil:0,lastShot:0,superCharge:0,hyperChargeCharge:0,isHypercharged:false,gadgetArmed:false,gadgetCooldownUntil:0,selectedStar:'none',isPet:true,isChickpigPig:true,chickpigPigHyper:!!hyper,ownerId:owner.id,team:owner.team||'player',ramCooldownUntil:0,charging:false});
     }
 
@@ -25323,7 +28632,7 @@ let heistFeverActive = false;
         deployX = clamp(deployX, 40, WORLD_W - 40);
         deployY = clamp(deployY, 40, WORLD_H - 40);
 
-        const hp = hyper ? 6500 : 5000;
+        const hp = hyper ? 7280 : 5600;
         const newTrampoline = {
             id: 'trampoline_' + now + '_' + Math.random(),
             x: deployX,
@@ -25368,7 +28677,7 @@ let heistFeverActive = false;
             });
         }
 
-        spawnFloatingText(deployX, deployY - 45, hyper ? '⚡ TRAMPAWIND PURPLE GALE (6500 HP)!' : '🤸 MEGA TRAMPOLINE (5000 HP)!', hyper ? '#e056fd' : '#10ac84');
+        spawnFloatingText(deployX, deployY - 45, hyper ? '⚡ TRAMPAWIND PURPLE GALE (7280 HP)!' : '🤸 MEGA TRAMPOLINE (5600 HP)!', hyper ? '#e056fd' : '#10ac84');
     }
 
     
@@ -25599,7 +28908,7 @@ let heistFeverActive = false;
     const RAMAGE_RETURN_DAMAGE = 240;
     const RAMAGE_SHADOW_DAMAGE = 500;
     const RAMAGE_LIFESTEAL_PER_HIT = 300;
-    const RAMAGE_LIFESTEAL_CAP = 3000;
+    const RAMAGE_LIFESTEAL_CAP = 2400;
     function getRamagePunchDamage(multiplier=1, levelScale=1, hyper=false) {
         const ramp = Math.min(RAMAGE_MAX_MULTIPLIER, Math.max(hyper ? RAMAGE_HYPER_BASE_MULTIPLIER : 1, Number(multiplier) || 1));
         return Math.round(RAMAGE_BASE_DAMAGE * ramp * Math.max(0, Number(levelScale) || 0));
@@ -26130,7 +29439,7 @@ let heistFeverActive = false;
     const CINDERION_LAYER_CAPS = Object.freeze([3, 6, 8, 10]);
     // Resting formation begins 30% farther from Cinderion than the original rings.
     const CINDERION_LAYER_RADII = Object.freeze([75, 122, 172, 226]);
-    const CINDERION_BASE_ORBIT_MS = 16000;
+    const CINDERION_BASE_ORBIT_MS = 13000;
     let nextCinderionFlameId = 1;
 
     function ensureCinderionState(entity) {
@@ -26458,7 +29767,7 @@ let heistFeverActive = false;
 
     function castSnapperSuper(owner, hyper) {
         const maxRadius = Math.hypot(WORLD_W, WORLD_H) + 300;
-        snapperWaves.push({ownerId:owner.id,x:owner.x,y:owner.y,radius:0,previousRadius:0,maxRadius,speed:1150,pct:hyper?0.45:0.30,delay:0,mini:false,hitIds:{},fxClock:0});
+        snapperWaves.push({ownerId:owner.id,x:owner.x,y:owner.y,radius:0,previousRadius:0,maxRadius,speed:1150,pct:hyper?0.44:0.30,delay:0,mini:false,hitIds:{},fxClock:0});
         if (hyper) snapperWaves.push({ownerId:owner.id,x:owner.x,y:owner.y,radius:0,previousRadius:0,maxRadius,speed:1240,pct:0.08,delay:0.62,mini:true,hitIds:{},fxClock:0});
         explosions.push({x:owner.x,y:owner.y,radius:90,life:0,maxLife:0.42,color:hyper?'#ff65e6':'#55e6ff',legendary:true});
         spawnFloatingText(owner.x, owner.y-42, hyper?'PERFECT SNAP!':'SNAP!', hyper?'#ff65e6':'#55e6ff');
@@ -26715,6 +30024,7 @@ let heistFeverActive = false;
     function fireSuper(isAimDrag = false){
         normalizeSelectedBrawler();
     if(superCharge < 100 || player.hp <= 0) return;
+        if (isBrawlerLabMode) maybeStartBrawlerLabRangeCapture('super', player);
         if (selectedBrawler === 'beast' && isBeastyBeastActive(player)) {
             spawnFloatingText(player.x, player.y - 34, 'BEASTYBEAST ACTIVE', '#ffd34f');
             return;
@@ -26742,7 +30052,7 @@ let heistFeverActive = false;
                     return;
                 }
             }
-    if (selectedBrawler !== 'steamer') {
+    if (!hasMultiSuper(selectedBrawler)) {
         superCharge = 0;
     }
     if (hasTrinket(player, 'super_guard')) grantShield(player, 1000, Math.max(5000, player.shieldMax || 0));
@@ -26772,8 +30082,30 @@ let heistFeverActive = false;
     if (combatBrawler === 'king') { castKingSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'anti_royal') { if(!castAntiRoyalSuper(player,!!isHypercharged,wm.x,wm.y))superCharge=100; updateSuperButton(); return; }
     if (combatBrawler === 'weefee') { castWeeFeeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'rager') { castRagerSuper(player, wm.x, wm.y, !!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'magnatar') { castMagnatarSuper(player, wm.x, wm.y, !!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'carmela_fudge') {
+        const isFudge = player.carmelaFudgeForm === 'fudge';
+        if (isFudge) {
+            castFudgeSuper(player, !!isHypercharged, wm.x, wm.y);
+        } else {
+            castCarmelaSuper(player, !!isHypercharged);
+        }
+        updateSuperButton();
+        return;
+    }
+    if (combatBrawler === 'bolznstien') { castBolznstienSuper(player, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'sir_cheeseburger') { castSirCheeseburgerSuper(player, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'blinkeye') {
+        if (player.blinkeyeSteering && player.blinkeyeActiveEye) {
+            triggerBlinkEyeSuperExplosion(player.blinkeyeActiveEye, false);
+        } else {
+            startBlinkEyeSuper(player, wm.x, wm.y, !!isHypercharged);
+        }
+        updateSuperButton();
+        return;
+    }
+    if (isBlinkEyePlayerActive()) {
         if (player.blinkeyeSteering && player.blinkeyeActiveEye) {
             triggerBlinkEyeSuperExplosion(player.blinkeyeActiveEye, false);
         } else {
@@ -27590,6 +30922,7 @@ let heistFeverActive = false;
     }
 
     if(selectedBrawler === 'boom_arang') {
+        player.boomArangSuperAmmoVictims={};
         const hc = isHypercharged;
         const spread = 0.35;
         const angles = [ang - spread, ang, ang + spread];
@@ -27971,7 +31304,9 @@ let heistFeverActive = false;
       if(!enrageKingPrincesses(bot))setEntityGadgetCooldownUntil(bot,now,g);
     } else if (bot.brawler === 'king' && g === 'g2') {
       bot.kingSiegeRoundArmed=true;bot.gadgetArmed=true;spawnFloatingText(bot.x,bot.y-34,'SIEGE ORDER','#ffcf52');
-        } else if (bot.brawler === 'weefee' && g === 'g1') {
+        } else if (bot.brawler === 'carmela_fudge') {
+      switchCarmelaFudgeForm(bot, g);
+    } else if (bot.brawler === 'weefee' && g === 'g1') {
         triggerWeeFeeOverclockGadget(bot);
     } else if (bot.brawler === 'weefee' && g === 'g2') {
         triggerWeeFeeRebootGadget(bot);
@@ -28462,6 +31797,15 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'king') { castKingSuper(bot,isHyper,targetX,targetY); return; }
     if (botCombatBrawler === 'anti_royal') { if(!castAntiRoyalSuper(bot,isHyper,targetX,targetY))bot.superCharge=100; return; }
     if (botCombatBrawler === 'weefee') { castWeeFeeSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'carmela_fudge') {
+        const isFudge = bot.carmelaFudgeForm === 'fudge';
+        if (isFudge) {
+            castFudgeSuper(bot, isHyper, targetX, targetY);
+        } else {
+            castCarmelaSuper(bot, isHyper);
+        }
+        return;
+    }
     if (botCombatBrawler === 'sir_cheeseburger') { castSirCheeseburgerSuper(bot, isHyper); return; }
     if (botCombatBrawler === 'blinkeye') { startBlinkEyeSuper(bot, targetX, targetY, isHyper); return; }
     const dx = targetX - bot.x; const dy = targetY - bot.y; const ang = Math.atan2(dy, dx);
@@ -28516,6 +31860,7 @@ let heistFeverActive = false;
         }
 
         if (botCombatBrawler === 'boom_arang') {
+            bot.boomArangSuperAmmoVictims={};
             const spread = 0.35;
             const angles = [ang - spread, ang, ang + spread];
             angles.forEach((a, idx) => {
@@ -29123,6 +32468,13 @@ let heistFeverActive = false;
       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();return;
     }
 
+    if (curBrawler === 'carmela_fudge') {
+      switchCarmelaFudgeForm(player, curGadget);
+      gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+      setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+      updateGadgetButton();
+      return;
+    }
     if (curBrawler === 'king' && curGadget === 'g1') {
       if(!enrageKingPrincesses(player)){spawnFloatingText(player.x,player.y-34,'DEPLOY A PRINCESS FIRST','#ffd27a');updateGadgetButton();return;}
       gadgetCooldownUntil=now+getGadgetCooldownMsForBrawler(curBrawler,curGadget);
@@ -29914,558 +33266,6 @@ let heistFeverActive = false;
     }
   });
 
-  const BOUNCIN_SIGNATURE_COOLDOWN_MS = 10000;
-  function finalizeBouncinSignatureCollector(entity, now = performance.now()) {
-      if(!entity?.bouncySignatureCollectorActive||now<(entity.bouncySignatureCollectorEndsAt||0))return false;
-      const gained=Math.max(0,Math.floor(entity.bouncySignatureCollectorHits||0));
-      entity.bouncySignatureFollowupBalls=gained;
-      entity.bouncySignatureCollectorActive=false;
-      entity.bouncySignatureCollectorHitBalls={};
-      if(entity.id===player.id){
-          spawnFloatingText(entity.x,entity.y-48,gained>0?`NEXT VOLLEY +${gained} BALLS`:'NO BALLS COLLECTED',gained>0?'#ffd34f':'#8aa0b9');
-      }
-      return true;
-  }
-  function getBouncinSignatureState(entity = player, now = performance.now()) {
-      finalizeBouncinSignatureCollector(entity,now);
-      if (!isSpecialAbilityAvailableForEntity(entity, 'bouncin_balls')) return { ready:false, label:'LOCKED' };
-      if (entity.hp <= 1) return { ready:false, label:'NOT ENOUGH HP' };
-      const cooldownLeft=Math.max(0,(entity.bouncySignatureCooldownUntil||0)-now);
-      if(cooldownLeft>0)return {ready:false,label:`COOLDOWN ${(cooldownLeft/1000).toFixed(1)}s`,cooldownLeft};
-      if(entity.bouncySignatureCollectorArmed||entity.bouncySignatureCollectorActive)return {ready:false,label:'COLLECTOR ACTIVE'};
-      const ownedTurret = healingPods.find(p => p.isBouncyTurret && p.ownerId === entity.id && p.hp > 0);
-      if (entity.id === player.id) {
-          if (selectedGadget === 'g1' && gadgetArmed) return { ready:true, mode:'g1', label:'ELASTIC ARMED' };
-          if (selectedGadget === 'g2' && ownedTurret) return { ready:true, mode:'g2', label:'TURRET READY' };
-          return { ready:false, label:selectedGadget === 'g2' ? 'NO TURRET' : 'NEED TOOL' };
-      }
-      if (entity.selectedGadget === 'g1' && entity.gadgetArmed) return { ready:true, mode:'g1', label:'ELASTIC ARMED' };
-      if (entity.selectedGadget === 'g2' && ownedTurret) return { ready:true, mode:'g2', label:'TURRET READY' };
-      return { ready:false, label:'NEED TOOL' };
-  }
-
-  function getClassySignatureState(entity = player, now = performance.now()) {
-      if (!isSpecialAbilityAvailableForEntity(entity,'classy')) return {ready:false,label:'LOCKED'};
-      if (entity.hp <= 1) return {ready:false,label:'NOT ENOUGH HP'};
-      const speaker=getClassySpeaker(entity);
-      if (!speaker) return {ready:false,label:'NEED BASS DROP'};
-      const remaining=Math.max(0,(speaker.classySignatureUntil||0)-now);
-      if (remaining>0) return {ready:false,label:`MARCHING ${(remaining/1000).toFixed(1)}s`,remaining};
-      if (speaker.classySignatureUsed) return {ready:false,label:'ENCORE SPENT'};
-      return {ready:true,label:'MARCHING ENCORE',speaker};
-  }
-
-  function getMagenySignatureState(entity = player, now = performance.now()) {
-      if (!isSpecialAbilityAvailableForEntity(entity, 'mageny')) return {ready:false,label:'LOCKED'};
-      ensureMagenyState(entity);
-      const ownedZones = magenyVortexZones.filter((zone) => zone && zone.ownerId === entity.id);
-      const persistentZones = ownedZones.filter((zone) => zone.signaturePersistent);
-      if (persistentZones.length > 0) {
-          return {ready:true,mode:'detonate',label:'DETONATE VORTEX',castId:persistentZones[0].castId};
-      }
-      const cooldownLeft = Math.max(0, (entity.magenySignatureCooldownUntil || 0) - now);
-      if (cooldownLeft > 0) return {ready:false,label:`COOLDOWN ${(cooldownLeft/1000).toFixed(1)}s`,cooldownLeft};
-      if (entity.hp <= MAGENY_SIGNATURE_HP_COST) return {ready:false,label:`NEED ${MAGENY_SIGNATURE_HP_COST + 1} HP`};
-      if (ownedZones.length === 0) return {ready:false,label:'NEED ACTIVE VORTEX'};
-      const newestCastId = ownedZones.reduce((latest, zone) => Math.max(latest, zone.castId || 0), 0);
-      return {ready:true,mode:'sustain',label:'SUSTAIN VORTEX',castId:newestCastId};
-  }
-
-  function getSmoothDisplayedHp(entity) {
-      if (!entity) return 0;
-      const exact=Math.max(0,Number(entity.hp)||0);
-      if (!Number.isFinite(entity.displayHp)) entity.displayHp=exact;
-      entity.displayHp += (exact-entity.displayHp)*.22;
-      if (Math.abs(entity.displayHp-exact)<1) entity.displayHp=exact;
-      const step=(entity.maxHp||0)>=2000 ? (entity.displayHp<1000?10:100) : 10;
-      return Math.max(0,Math.round(entity.displayHp/step)*step);
-  }
-  function paySignatureHpCost(entity) {
-      if (!entity || entity.hp <= 1) return false;
-      const cost = Math.min(1000, Math.max(0, entity.hp - 1));
-      entity.hp = Math.max(1, entity.hp - cost);
-      const now=performance.now();
-      entity.lastDamagedAt=now;
-      entity.trinketLastCombatAt=now;
-      entity.idleRegenNextAt=0;
-      spawnFloatingText(entity.x, entity.y - 44, `-${Math.round(cost)} HP SIGNATURE`, '#ffd34f');
-      return true;
-  }
-  function payBouncinTurretSignatureHpCost(turret) {
-      if (!turret || turret.hp <= 1) return false;
-      const cost=Math.min(750,Math.max(0,turret.hp-1));
-      turret.hp=Math.max(1,turret.hp-cost);
-      turret.displayHp=turret.hp;
-      spawnFloatingText(turret.x,turret.y-44,`-${Math.round(cost)} TURRET HP`,'#ffd34f');
-      return true;
-  }
-  function fireBouncinTurretSignature(owner, turret) {
-      if (!owner || !turret) return false;
-      if (!payBouncinTurretSignatureHpCost(turret)) return false;
-      turret.bouncySignatureWavesAt = performance.now();
-      const perWave = 12;
-      for (let wave = 0; wave < 2; wave++) {
-          setTimeout(() => {
-              if (!playing || gameOver || turret.hp <= 0) return;
-              explosions.push({ x: turret.x, y: turret.y, radius: 88 + wave * 24, life: 0, maxLife: .36, color: 'rgba(255,211,79,.62)', fxKind: 'signatureWave' });
-              for (let i = 0; i < perWave; i++) {
-                  const a = Math.PI * 2 * (i / perWave) + wave * .13;
-                  bullets.push({ ownerBrawler:'bouncin_balls', x:turret.x, y:turret.y, vx:Math.cos(a)*900*.6, vy:Math.sin(a)*900*.6, life:0, maxLife:1.25, damage:250, pierce:false, ownerId:owner.id, canBounce:true, bounceDmgLoss:.05, bounceLifeLoss:.05, hitIds:{}, hitboxMod:1.45, hyperVisual:true, fxKind:'signatureTurret' });
-              }
-          }, wave * 260);
-      }
-      return true;
-  }
-  function activateSignatureAbility(entity = player) {
-      const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
-      if (fighterId === 'mageny') {
-          const state = getMagenySignatureState(entity);
-          if (!state.ready) {
-              spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9');
-              return false;
-          }
-          const now = performance.now();
-          if (state.mode === 'detonate') {
-              scheduleMagenyVortexCastDetonation(state.castId, now, 'MANUAL');
-              spawnFloatingText(entity.x, entity.y - 46, 'POLARITY RELEASE!', '#ffd34f');
-              updateSignatureButton();
-              return true;
-          }
-          if (entity.hp <= MAGENY_SIGNATURE_HP_COST) return false;
-          entity.hp -= MAGENY_SIGNATURE_HP_COST;
-          entity.lastDamagedAt = now;
-          entity.trinketLastCombatAt = now;
-          entity.idleRegenNextAt = 0;
-          entity.magenySignatureCooldownUntil = now + MAGENY_SIGNATURE_COOLDOWN_MS;
-          entity.magenySignatureCastId = state.castId;
-          for (const zone of getMagenyVortexCastZones(state.castId)) {
-              zone.signaturePersistent = true;
-              zone.signatureActivatedAt = now;
-              zone.detonateAt = now + MAGENY_SIGNATURE_MAX_LIFETIME_MS;
-          }
-          spawnFloatingText(entity.x, entity.y - 48, `-${MAGENY_SIGNATURE_HP_COST} HP · PERMANENT ATTRACTION`, '#ffd34f');
-          explosions.push({x:entity.x,y:entity.y,radius:94,life:0,maxLife:.38,color:'rgba(255,211,79,.72)',fxKind:'magenySignature'});
-          updateSignatureButton();
-          return true;
-      }
-      if (fighterId === 'classy') {
-          const classyState=getClassySignatureState(entity);
-          if (!classyState.ready) {
-              spawnFloatingText(entity.x,entity.y-34,classyState.label,'#8aa0b9');
-              return false;
-          }
-          if (!paySignatureHpCost(entity)) return false;
-          const now=performance.now();
-          classyState.speaker.classySignatureUsed=true;
-          classyState.speaker.classySignatureUntil=now+6000;
-          entity.classySignatureUntil=now+6000;
-          explosions.push({x:classyState.speaker.x,y:classyState.speaker.y,radius:76,life:0,maxLife:.3,color:'rgba(255,211,79,.72)',fxKind:'classySignature'});
-          spawnFloatingText(classyState.speaker.x,classyState.speaker.y-52,'MARCHING ENCORE!','#ffd34f');
-          updateSignatureButton();
-          return true;
-      }
-      if (fighterId === 'beast') {
-          const state = getBeastSignatureState(entity);
-          if (!state.ready) {
-              spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9');
-              return false;
-          }
-          const now = performance.now();
-          if (entity.id === player.id) {
-              ammo = 0;
-              ammoReloadTimer = 0;
-          } else {
-              entity.ammo = 0;
-          }
-          entity.beastyBeastUntil = now + 5000;
-          entity.beastyBeastNextClawAt = now;
-          entity.beastyBeastClawFlip = -1;
-          explosions.push({x:entity.x,y:entity.y,radius:94,life:0,maxLife:.42,color:'rgba(255,211,79,.78)',legendary:true,fxKind:'beastyBeast'});
-          spawnFloatingText(entity.x, entity.y - 56, 'BEASTYBEAST!', '#ffd34f');
-          updateSignatureButton();
-          return true;
-      }
-      if (fighterId !== 'bouncin_balls') return false;
-      const state = getBouncinSignatureState(entity);
-      if (!state.ready) {
-          spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9');
-          return false;
-      }
-      if (!paySignatureHpCost(entity)) return false;
-      if (state.mode === 'g1') {
-          entity.bouncySignatureCollectorArmed = true;
-          entity.bouncySignatureCooldownUntil = performance.now() + BOUNCIN_SIGNATURE_COOLDOWN_MS;
-          explosions.push({ x: entity.x, y: entity.y, radius: 62, life: 0, maxLife: .28, color: 'rgba(255,211,79,.66)', fxKind: 'signature' });
-          spawnFloatingText(entity.x, entity.y - 54, 'COLLECTOR VOLLEY', '#ffd34f');
-          return true;
-      }
-      const turret = healingPods.find(p => p.isBouncyTurret && p.ownerId === entity.id && p.hp > 0);
-      if (turret) {
-          const fired=fireBouncinTurretSignature(entity, turret);
-          if(fired)entity.bouncySignatureCooldownUntil=performance.now()+BOUNCIN_SIGNATURE_COOLDOWN_MS;
-          return fired;
-      }
-      return false;
-  }
-  function updateSignatureButton() {
-      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny';
-      const shouldShow = playing && signatureFighter && isSpecialAbilityAvailableForEntity(player, selectedBrawler);
-      if (signatureTouchBtn) signatureTouchBtn.style.display = shouldShow ? 'flex' : 'none';
-      if (signatureBtn) signatureBtn.style.display = shouldShow ? '' : 'none';
-      if (!shouldShow) return;
-      const state = selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : getBouncinSignatureState(player)));
-      const costText = selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP'));
-      if (signatureTouchBtn) {
-          signatureTouchBtn.textContent = state.ready ? 'SIG' : '×';
-          signatureTouchBtn.title = `Signature: ${state.label}${costText}`;
-          signatureTouchBtn.classList.toggle('signature-ready', !!state.ready);
-      }
-      if (signatureBtn) {
-          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : ' · up to 1000 HP + 750 turret HP'))} (R)`;
-          signatureBtn.disabled = !state.ready;
-          signatureBtn.classList.toggle('signature-ready', !!state.ready);
-      }
-  }
-
-  const superAimCancelState = { source: 'desktop', pointerId: null, leftDeadZone: false, cancel: false };
-  function setSuperAimCancelVisual(cancelled) {
-      superAimCancelState.cancel = !!cancelled;
-      superBtn.classList.toggle('super-aim-cancel', !!cancelled);
-      const mobileButton = document.querySelector('#mobileActionButtons button[aria-label="Aim Power Move"]');
-      if (mobileButton) { mobileButton.classList.toggle('super-aim-cancel', !!cancelled); mobileButton.textContent = cancelled ? '×' : '★'; }
-  }
-  function cancelSuperAim() {
-      if (!aimingSuper) return false;
-      aimingSuper = false;
-      superAimCancelState.pointerId = null;
-      superAimCancelState.leftDeadZone = false;
-      setSuperAimCancelVisual(false);
-      return true;
-  }
-  let superAimStartTime = 0;
-  let superAimStartScreenX = 0;
-  let superAimStartScreenY = 0;
-
-  function startAimingSuper(source = 'desktop') {
-        if (selectedBrawler === 'blinkeye' && player.blinkeyeSteering && player.blinkeyeActiveEye) {
-            triggerBlinkEyeSuperExplosion(player.blinkeyeActiveEye, false);
-            updateSuperButton();
-            return;
-        }
-        if (superCharge >= 100 && player.hp > 0) {
-                if (selectedBrawler === 'hyperorigin' && getHyperoriginEnergy(player) < 1) {
-                        updateSuperButton();
-                        return;
-                }
-        if (selectedBrawler === 'copyphase') {
-            ensureCopyphaseState(player);
-            if (!player.copyphaseSlot1) {
-                updateSuperButton();
-                return;
-            }
-        }
-                aimingSuper = true;
-                steamerPolesPlacedInCurrentAim = 0;
-                superAimStartTime = performance.now();
-                superAimStartScreenX = mouse.screenX;
-                superAimStartScreenY = mouse.screenY;
-                superAimCancelState.source = source;
-                superAimCancelState.cancel = false;
-        }
-  }
-  function releaseSuper(cancel = false) {
-    if (aimingSuper) {
-      if (cancel || superAimCancelState.cancel) { cancelSuperAim(); return; }
-      const holdMs = performance.now() - (superAimStartTime || 0);
-      const mouseDelta = Math.hypot(mouse.screenX - (superAimStartScreenX || 0), mouse.screenY - (superAimStartScreenY || 0));
-      const isAimDrag = holdMs > 180 || mouseDelta > 15 || (superAimCancelState.source === 'mobile' && superAimCancelState.leftDeadZone);
-      aimingSuper = false;
-      setSuperAimCancelVisual(false);
-      fireSuper(isAimDrag);
-    }
-  }
-  superBtn.addEventListener('mousedown', startAimingSuper);
-  superBtn.addEventListener('touchstart', (e) => { startAimingSuper(); }, {passive: true});
-  superBtn.addEventListener('mouseup', releaseSuper);
-  superBtn.addEventListener('touchend', releaseSuper);
-
-  if(hyperBtn){
-    hyperBtn.addEventListener('click', ()=>{ activateHypercharge(); });
-  }
-
-    starInputs.forEach(inp=> inp.addEventListener('change', ()=>{
-        const prog = getSelectedProgress();
-        if(inp.checked && (prog.starPowerUnlocked || isTraining)) selectedStar = inp.value;
-        if(!prog.starPowerUnlocked && !isTraining) selectedStar = 'none';
-    }));
-  if(gadgetInputs) gadgetInputs.forEach(inp=> inp.addEventListener('change', ()=>{
-      if(inp.checked) {
-          const previousGadget=selectedGadget;
-          selectedGadget = inp.value;
-          const progress=getSelectedProgress();
-          progress.selectedGadget=selectedGadget;
-          if(previousGadget!==selectedGadget){
-              gadgetArmed=false;
-              player.bouncySignatureCollectorArmed=false;
-          }
-          syncSelectedGadgetCooldown();
-          saveProgress();
-      }
-      updateGadgetInfo();
-      updateGadgetButton();
-      updateSignatureButton();
-  }));
-  if (brawlerSelect) {
-    rebuildBrawlerSelectOptions();
-    brawlerSelect.addEventListener('change', ()=>{
-      selectedBrawler = brawlerSelect.value;
-      normalizeSelectedBrawler();
-      if (brawlerSelect.value !== selectedBrawler) brawlerSelect.value = selectedBrawler;
-      initPlayerHP();
-        player.cinderionOrbitFlames = [];
-        player.cinderionDoubleKindlingArmed = false;
-        player.cinderionSuperActive = false;
-      syncAbilityInputs();
-      updateGadgetInfo();
-      updateGadgetButton();
-      renderHomeBrawlerCard();
-      saveProgress();
-    });
-  }
-  
-  if (sortSelect) {
-    sortSelect.addEventListener('change', ()=>{ 
-      brawlerSortMode = sortSelect.value; 
-      localStorage.setItem('brawl_arena_brawler_sort', brawlerSortMode);
-      rebuildBrawlerSelectOptions(); 
-    });
-  }
-
-  // initialize gadget info text on load
-    syncAbilityInputs();
-  updateGadgetInfo();
-
-  let healingRingActive = false;
-  let healingRingStart = 0;
-  const HEALING_RING_DURATION = 10000;
-  let lastHealingTick = 0;
-
-  function updateGadgetButton(){
-    const now = performance.now();
-    const prog = getSelectedProgress();
-        const unlocked = isTraining || !!prog.gadgetUnlocked;
-    absorbLegacyPlayerGadgetCooldownWrite(selectedGadget, now);
-    syncSelectedGadgetCooldown();
-    const activeCdUntil = getPlayerGadgetCooldownUntil(selectedGadget, now);
-    gadgetCooldownUntil = activeCdUntil;
-        if(!unlocked){ gadgetBtn.textContent = 'Tool: Locked'; gadgetBtn.disabled = true; }
-    else if (selectedBrawler === 'kage' && selectedGadget === 'g1' && player.kageHologram && now < player.kageHologram.until) {
-        const rem = Math.max(0, (player.kageHologram.until - now) / 1000).toFixed(1);
-        gadgetBtn.textContent = `Tool: SWAP (${rem}s)`;
-        gadgetBtn.disabled = false;
-    } else if(gadgetArmed){ gadgetBtn.textContent = 'Tool: Armed'; gadgetBtn.disabled = false; }
-    else if(healingRingActive){ gadgetBtn.textContent = 'Tool: Active'; gadgetBtn.disabled = true; }
-    else if(activeCdUntil && now < activeCdUntil){ const s = Math.max(0, Math.ceil((activeCdUntil - now)/1000)); gadgetBtn.textContent = `Tool: CD ${s}s`; gadgetBtn.disabled = true; }
-    else { gadgetBtn.textContent = 'Tool: Ready'; gadgetBtn.disabled = false; }
-    updateGadgetInfo();
-  }
-
-    function updateGadgetInfo(){
-        normalizeSelectedBrawler();
-        const infoEl = document.getElementById('gadgetInfo');
-        if (!infoEl) return;
-
-        const now = performance.now();
-        let desc = '';
-
-        if (selectedBrawler === 'king') {
-            desc = (selectedGadget === 'g1') ? 'King G1: Royal Rage (active Princesses fire twice as fast for 3s).' : 'King G2: Siege Order (next Royal Cannon destroys walls).';
-        } else if (selectedBrawler === 'anti_royal') {
-            desc = (selectedGadget === 'g1') ? 'Anti-Royal G1: Counterfeit (restore Royal Blocker and remove its movement penalty for 3s).' : 'Anti-Royal G2: Emergency Funding (lose 1200 HP to bank 3 Mortar rounds).';
-        } else if (selectedBrawler === 'outlit') {
-            desc = (selectedGadget === 'g1') ? 'Outlit G1: Piercing pellet boost for next shot.' : 'Outlit G2: Deploys healing pod (3000 HP) heals 600 HP/sec, decays 350 HP/sec.';
-        } else if (selectedBrawler === 'echo') {
-            desc = (selectedGadget === 'g1') ? 'Echo G1: Enlarges ring shot (lower damage).' : 'Echo G2: Temporary defensive buff.';
-        } else if (selectedBrawler === 'cheseypuff') {
-            desc = (selectedGadget === 'g1') ? 'Chesey G1: Empower next puff to be larger.' : 'Chesey G2: Spawn cheese field that slows enemies.';
-        } else if (selectedBrawler === 'decayer') {
-            desc = (selectedGadget === 'g1') ? 'Decayer G1: Next shot homes in on nearby targets (reduced shield gain).' : 'Decayer G2: Sacrifice all ammo to grant an instant shield.';
-        } else if (selectedBrawler === 'unopcoloco') {
-            desc = (selectedGadget === 'g1') ? 'Uno G1: Next attack is a Scarf.' : 'Uno G2: 30% more range & healing for 4 sec.';
-        } else if (selectedBrawler === 'dashaholic') {
-            desc = (selectedGadget === 'g1') ? 'Dashaholic G1: Phase Dash (Short teleport).' : 'Dashaholic G2: Instantly heal 1500 HP & reload 1 ammo.';
-        } else if (selectedBrawler === 'minigunnin') {
-            desc = (selectedGadget === 'g1') ? 'Minigunnin G1: Overclock (Instant reload & burst).' : 'Minigunnin G2: Fortify (Sacrifice 1000 Max HP for 3000 HP).';
-        } else if (selectedBrawler === 'bowlin_rida') {
-            desc = (selectedGadget === 'g1') ? 'Bowlin Rida G1: Drift Boost (Instantly gain full speed and 1 ammo).' : 'Bowlin Rida G2: Flame Shield (Next roll damage heals you 50%).';
-        } else if (selectedBrawler === 'money_and_tax') {
-            desc = (selectedGadget === 'g1') ? 'M&T G1: Mode Swap (Instantly switch modes).' : 'M&T G2: Bailout (Consume 1 ammo to heal 1500 HP & gain speed).';
-        } else if (selectedBrawler === 'hunter') {
-            desc = (selectedGadget === 'g1') ? 'Hunter G1: Grappling Hook (Next slash pulls enemies).' : 'Hunter G2: Camouflage (Invisible for 3s).';
-        } else if (selectedBrawler === 'overlord') {
-            desc = (selectedGadget === 'g1') ? 'Overlord G1: Quick Draw (shorter delay on your next wand pulse or stage-up).' : 'Overlord G2: Arc Burst (your next wand pulse splits into 3 close shots).';
-        } else if (selectedBrawler === 'beast') {
-            desc = (selectedGadget === 'g1') ? 'Beast G1: Rending Grip (Next claw slows).' : 'Beast G2: Savage Surge (Transform with a burst of speed).';
-        } else if (selectedBrawler === 'chaird') {
-            desc = (selectedGadget === 'g1') ? 'Chaird G1: Chair Toss (Throws 3 chairs in an arc).' : 'Chaird G2: Reinforced Seating (Gain shield & immunity to pulls/knockbacks for 3s).';
-        } else if (selectedBrawler === 'forest') {
-            desc = (selectedGadget === 'g1') ? 'Forest G1: Rooted (Heal 2000 HP, gain shield, immobile 3s).' : 'Forest G2: Grasping Vines (Next attack pulls enemies).';
-        } else if (selectedBrawler === 'bouncin_balls') {
-            desc = (selectedGadget === 'g1') ? 'Bouncin G1: Elasticity (+50% range on next attack).' : 'Bouncin G2: Bouncy Turret (Lose all ammo, deploy decaying bouncy turret).';
-        } else if (selectedBrawler === 'goonbob') {
-            desc = (selectedGadget === 'g1') ? 'Blobert G1: Sticky Feet (Next shot roots enemies).' : 'Blobert G2: Overflow (Instantly spawn 3 puddles).';
-        } else if (selectedBrawler === 'tempo_maker') {
-            desc = (selectedGadget === 'g1') ? 'Tempo Maker G1: Snap Back (Next notes snap back to you early).' : 'Tempo Maker G2: Bass Drop (Super leaves a slowing zone on landing).';
-        } else if (selectedBrawler === 'classy') {
-            desc = (selectedGadget === 'g1') ? 'Classy G1: Tuning Up (Instantly fills half Symphony).' : 'Classy G2: Fanfare (Fire 8 notes in a wide fan).';
-        } else if (selectedBrawler === 'hyperorigin') {
-            desc = (selectedGadget === 'g1') ? 'Hyperorigin G1: Core Clamp (+3 Origin Energy instantly).' : 'Hyperorigin G2: Fault Step (short dash and 1200 shield).';
-        } else if (selectedBrawler === 'heater_miser') {
-            desc = (selectedGadget === 'g1') ? 'Heater G1: Heat Valve (next tether hit bursts and starts ramp faster).' : 'Heater G2: Flux Splitter (tether also chains to one nearby target for 5s).';
-        } else if (selectedBrawler === 'copyphase') {
-            desc = (selectedGadget === 'g1') ? 'Copyphase G1: System Purge (clear both phase slots and heal 2500).' : 'Copyphase G2: Data Breach (next Phase Orb travels through walls).';
-        } else if (selectedBrawler === 'amplifier') {
-            desc = (selectedGadget === 'g1') ? 'Amplifier G1: Torque Snap (next Ampifin applies stronger, longer damage-down).' : 'Amplifier G2: Quick Wrench (heal, speed up, gain 900 shield for 0.7s, and drop a toolbox).';
-        } else if (selectedBrawler === 'skeleflying') {
-            desc = (selectedGadget === 'g1') ? 'Skeleflying G1: Bone Beacon (next para-shoot barrage homes and goes farther).' : 'Skeleflying G2: Reinforce Drop (spawn a shielded skeletrooper at your feet).';
-        } else if (selectedBrawler === 'crystila') {
-            desc = (selectedGadget === 'g1') ? 'Crystila G1: Prism Edge (next arm pierces and follow-up travels farther).' : 'Crystila G2: Polish Guard (repair current glass HP, or gain a crystal shield if no glass).';
-        } else if (selectedBrawler === 'hope') {
-            desc = (selectedGadget === 'g1') ? 'Hope G1: Rally Cry (next attack deals damage as if at full HP).' : 'Hope G2: Desperate Shield (gain a shield equal to 25% of your missing HP).';
-        } else if (selectedBrawler === 'evil_doctor') {
-            desc = (selectedGadget === 'g1') ? 'Evil Doctor G1: Antidote (cleanse debuffs and heal 1200 instantly).' : 'Evil Doctor G2: Overdose (next syringe gains +1 poison tick).';
-        } else if (selectedBrawler === 'hoop') {
-            desc = (selectedGadget === 'g1') ? 'Hoop G1: Backboard Bank (next basketball gets larger splash and extra bounce).' : 'Hoop G2: Crossover Drive (dash forward, gain shield, and speed burst).';
-        } else if (selectedBrawler === 'screener') {
-            desc = (selectedGadget === 'g1') ? 'Screener G1: Power Cell (heal 900 and restore 35% battery).' : 'Screener G2: Overclock Grid (4s boosted screen output and battery gain).';
-        } else if (selectedBrawler === 'malakor') {
-            desc = (selectedGadget === 'g1') ? 'Malakor G1: Crimson Surge (spawn bonus Hell terrain and heal 1300).' : 'Malakor G2: Damnation Mark (next staff slam also summons demon hands).';
-        } else if (selectedBrawler === 'scuba_diver') {
-            desc = (selectedGadget === 'g1') ? 'Scuba Diver G1: Depth Charge (next main attack slows enemies).' : 'Scuba Diver G2: Emergency Oxygen (heal 1400, switch to scuba mode, gain speed).';
-        } else if (selectedBrawler === 'splitter') {
-            desc = (selectedGadget === 'g1') ? 'Splitter G1: Short Fuse (next grenade splits faster with bigger blast).' : 'Splitter G2: Ring Burst (throw 3 mini split grenades around you).';
-        } else if (selectedBrawler === 'beam') {
-            desc = (selectedGadget === 'g1') ? 'Beam G1: Prism Split (next attack fires a wide 3-laser cone).' : 'Beam G2: Emergency Cooling (consume 30% ammo to heal 2000 HP).';
-        } else if (selectedBrawler === 'paradox') {
-            desc = (selectedGadget === 'g1') ? 'Paradox G1: Chronoshift (rewind position and heal 1500 HP).' : 'Paradox G2: Paradox Charge (next attack pierces and deals double damage).';
-        } else if (selectedBrawler === 'sera_eclipse') {
-            desc = (selectedGadget === 'g1') ? 'Sera G1: Solar Gravity (pull enemies inside the active Orbit).' : 'Sera G2: Corona Shield (40% damage reduction for 3.5s).';
-        } else if (selectedBrawler === 'boom_arang') {
-            desc = (selectedGadget === 'g1') ? 'Boom-Arang G1: Quick Recall (recall active boomerangs).' : 'Boom-Arang G2: Stun Tag (detonate or arm a stunning tag).';
-        } else if (selectedBrawler === 'teether') {
-            desc = (selectedGadget === 'g1') ? 'Teether G1: Fresh Floss (enable Floss Line and speed for 4s).' : 'Teether G2: Enamel Coat (gain a 1600 shield for 3s).';
-        }
-
-        const activeCdUntil = getPlayerGadgetCooldownUntil(selectedGadget, now);
-        const cd = now < activeCdUntil ? ` — CD ${Math.ceil((activeCdUntil - now) / 1000)}s` : '';
-        infoEl.textContent = desc + cd;
-    }
-  function updateAmmoUI() {
-    // Canvas render loop dynamically draws player and entity ammo bars every frame
-  }
-
-  function updateSuperButton(){
-    if (selectedBrawler === 'blinkeye' && player.blinkeyeSteering && player.blinkeyeActiveEye) {
-        superBtn.textContent = 'Power Move: Detonate Eye 💥';
-        superBtn.disabled = false;
-        return;
-    }
-    if (selectedBrawler !== 'jacktrade') delete superBtn.dataset.lockedOutcome;
-    if (selectedBrawler === 'steamer') {
-        const charges = (typeof player.steamerSuperCharges === 'number') ? player.steamerSuperCharges : 5;
-        const poleCount = steamerPoles.filter(p => p.ownerId === player.id).length;
-        if (charges > 0) {
-            superBtn.textContent = `Tap E: Dash • Hold E+Click: Pole (${charges}/5)`;
-            superBtn.disabled = false;
-        } else {
-            superBtn.textContent = `Power Move: ${Math.floor(player.steamerSubCharge || 0)}%`;
-            superBtn.disabled = true;
-        }
-        return;
-    }
-    if (selectedBrawler === 'hyperorigin') {
-        const energy = getHyperoriginEnergy(player);
-        if (superCharge >= 100 && energy >= 1) {
-            superBtn.textContent = `Power Move: Ready (${energy})`;
-            superBtn.disabled = false;
-        } else if (superCharge >= 100) {
-            superBtn.textContent = 'Power Move: Need Energy';
-            superBtn.disabled = true;
-        } else {
-            superBtn.textContent = `Power Move: ${Math.floor(superCharge)}%`;
-            superBtn.disabled = true;
-        }
-        return;
-    }
-    if (selectedBrawler === 'copyphase') {
-        ensureCopyphaseState(player);
-        if (superCharge >= 100 && player.copyphaseSlot1) {
-            superBtn.textContent = 'Power Move: Ready';
-            superBtn.disabled = false;
-        } else if (superCharge >= 100) {
-            superBtn.textContent = 'Power Move: Need Slot 1';
-            superBtn.disabled = true;
-        } else {
-            superBtn.textContent = `Power Move: ${Math.floor(superCharge)}%`;
-            superBtn.disabled = true;
-        }
-        return;
-    }
-    if (selectedBrawler === 'jacktrade') {
-        if (superCharge >= 100) {
-            if (isHypercharged) {
-                superBtn.textContent = 'Power Move: ALL IN';
-                superBtn.dataset.lockedOutcome = 'ALL IN';
-            } else {
-                const outcomes=prepareJackTradeOutcomes(player,getJackTradePreparedOutcomeCount(player));
-                const lockedLabel=outcomes.map(outcome=>JACKTRADE_OUTCOME_LABELS[outcome]||outcome.toUpperCase()).join(' + ');
-                superBtn.textContent=`Power Move: ${lockedLabel}`;
-                superBtn.dataset.lockedOutcome=lockedLabel;
-            }
-            superBtn.disabled=false;
-        } else {
-            clearJackTradePreparedOutcomes(player);
-            delete superBtn.dataset.lockedOutcome;
-            superBtn.textContent=`Power Move: ${Math.floor(superCharge)}%`;
-            superBtn.disabled=true;
-        }
-        return;
-    }
-    delete superBtn.dataset.lockedOutcome;
-    superBtn.textContent = (superCharge>=100) ? 'Power Move: Ready' : `Power Move: ${Math.floor(superCharge)}%`; superBtn.disabled = superCharge<100;
-  }
-  function updateHyperButton(){
-    if(hyperBtn){
-        const prog = getSelectedProgress();
-        if(!prog.hyperchargeUnlocked && !isTraining){
-            hyperBtn.style.animation = 'none';
-            hyperBtn.style.boxShadow = 'none';
-            hyperBtn.style.borderColor = 'transparent';
-            hyperBtn.textContent = 'Core Surge: Locked';
-            hyperBtn.disabled = true;
-            return;
-        }
-        if(isHypercharged) { 
-            hyperBtn.textContent = 'CORE SURGED';
-            hyperBtn.disabled = false; 
-            hyperBtn.style.animation = 'hc-active-flame 0.3s infinite alternate';
-        }
-        else { 
-            if (hyperChargeCharge >= 100) {
-                hyperBtn.textContent = 'CORE SURGE: Ready';
-                hyperBtn.disabled = false; 
-                hyperBtn.style.animation = 'hc-ready-flame 0.5s infinite alternate';
-            } else {
-                hyperBtn.style.animation = 'none';
-                hyperBtn.style.boxShadow = 'none';
-                hyperBtn.style.borderColor = 'transparent';
-                hyperBtn.textContent = `CORE: ${Math.floor(hyperChargeCharge)}%`;
-                hyperBtn.disabled = true; 
-            }
-        }
-    }
-  }
-
   const homeActionRow = document.getElementById('homeActionRow');
   const homeUtilityRow = document.getElementById('homeUtilityRow');
   const homeModeCompactRow = document.getElementById('homeModeCompactRow');
@@ -30508,6 +33308,7 @@ let heistFeverActive = false;
   }
 
   const homeModeCardMap = {};
+
   const HOME_MODE_CARDS = [
       ['tug_zone', 'TZ', 'Tug Zone', '3v3 - pull the moving zone home'],
       ['blink_eye_dodge', '👁️', 'Boss Battle: 1 vs BlinkEye', '1-Player Boss Battle: Battle Mega Boss BlinkEye, dodge ricochet lasers & all-seeing eyes!'],
@@ -30527,7 +33328,7 @@ let heistFeverActive = false;
       ['brick_vault', '🔒', 'Vault Siege 3v3', 'Break the enemy core vault'],
       ['marked_mayhem', 'TR', 'Target Rush', 'Hunt marked targets for bonus points'],
       ['arena_forge', 'AF', 'Arena Forge', '3v3 lanes, minion waves, shared boons and match XP'],
-      ['arena_forge_overclocked', 'AFO', 'Arena Forge: Overclocked', '3v3 instant Hyper attacks, quad boss formation, 4x speed'],
+      ['arena_forge_overclocked', 'AFO', 'Arena Forge: Overclocked', '3v3 • all four engines from spawn • four-direction bonus volleys'],
       ['damage_filler', '💥', 'Damage Filler', 'Pure DPS race'],
       ['mirror', '🪞', 'Mirror 5v5', 'One brawler for all'],
       ['power_gods', '⚡', 'Power of the Gods', 'Solo LTM'],
@@ -30711,6 +33512,7 @@ let heistFeverActive = false;
   }
 
   function renderHomeBrawlerCard() {
+      updateCurrencies();
       const card = document.getElementById('homeBrawlerCard');
       if (!card) return;
       const data = brawlerData[selectedBrawler] || brawlerData.outlit || { name: 'Outlit', role: 'Fighter', rarity: 'Common' };
@@ -30804,7 +33606,7 @@ let heistFeverActive = false;
       return entity.id === player.id ? !!isHypercharged : !!(entity.isHypercharged && (!entity.hyperchargeUntil || entity.hyperchargeUntil > now));
   }
 
-  const PORTALO_TELEPORT_DISTANCE = ARENA_WALL_TILE * 5;
+  const PORTALO_TELEPORT_DISTANCE = ARENA_WALL_TILE * 4.5;
   const PORTALO_PORTAL_RADIUS = 31;
   const PORTALO_PRISON_RADIUS = 260;
 
@@ -33664,7 +36466,7 @@ let heistFeverActive = false;
           setModeBtnState(brickVaultBtn, false);
           if (startBtn) startBtn.textContent = 'Start 1 vs The Eyes Boss Battle';
       }
-      if (showdownMode === 'arena_forge' || showdownMode === 'marked_mayhem' || showdownMode === 'tug_zone') {
+      if (showdownMode === 'arena_forge' || showdownMode === 'arena_forge_overclocked' || showdownMode === 'marked_mayhem' || showdownMode === 'tug_zone') {
           setModeBtnState(soloShowdownBtn, false);
           setModeBtnState(duoShowdownBtn, false);
           setModeBtnState(objectiveShowdownBtn, false);
@@ -33675,7 +36477,7 @@ let heistFeverActive = false;
           setModeBtnState(trioShowdownBtn, false);
           setModeBtnState(knockDonateBtn, false);
           setModeBtnState(brickVaultBtn, false);
-          if (startBtn) startBtn.textContent = showdownMode === 'arena_forge' ? 'Start Arena Forge 3v3' : (showdownMode === 'tug_zone' ? 'Start Tug Zone 3v3' : 'Start Target Rush 3v3');
+          if (startBtn) startBtn.textContent = showdownMode.startsWith('arena_forge') ? (showdownMode === 'arena_forge_overclocked' ? 'Start Overclocked 3v3' : 'Start Arena Forge 3v3') : (showdownMode === 'tug_zone' ? 'Start Tug Zone 3v3' : 'Start Target Rush 3v3');
       }
       if (homeModeSelect && homeModeSelect.value !== showdownMode) {
           homeModeSelect.value = showdownMode;
@@ -33775,7 +36577,7 @@ let heistFeverActive = false;
       isKnockDonateMode = showdownMode === 'knock_donate';
       isBrickVaultMode = showdownMode === 'brick_vault';
       isSoloTdMode = showdownMode === 'solo_td';
-      isArenaForgeMode = showdownMode === 'arena_forge';
+      isArenaForgeMode = showdownMode === 'arena_forge' || showdownMode === 'arena_forge_overclocked';
       isMarkedMayhemMode = showdownMode === 'marked_mayhem';
       isTugZoneMode = showdownMode === 'tug_zone';
       isTrioShowdownMode = showdownMode === 'trio';
@@ -37462,6 +40264,9 @@ let heistFeverActive = false;
         // A revived target can earn a fresh premium takedown effect. This also
         // makes Training dummy eliminations useful for previewing owned skins.
         if (target && target.hp > 0) target._legendaryTakedownFxPlayed = false;
+        if (b && b.isOilMakerCrude) {
+            // Impact damage dealt; delayed puddle handled upon bullet completion
+        }
         // If target has temporary invulnerability (e.g., overlord transform), ignore the hit
         if (target && target.invulnerableUntil && target.invulnerableUntil > performance.now()) return false;
 
@@ -37692,7 +40497,7 @@ let heistFeverActive = false;
     if (b.isCursedBolt && !b.cursedForcedShot && owner && target && !areAlliedEntities(owner, target) &&
         (target === player || bots.includes(target)) && !target.isDummy && !target.isPowerup && !target.isBox) {
         if (b.cursedHyperCurse || b.cursedMarkedFate) applyCursedCurse(target, owner, {mini:false});
-        else if (Math.random() < .5) applyCursedCurse(target, owner, {mini:true});
+        else if (Math.random() < .4) applyCursedCurse(target, owner, {mini:true});
     }
     if (b.minigunninMutationExplosive) ensureMinigunninMutationImpactZone(b);
     if (owner && target && b.isAwakenatorMain) {
@@ -38439,10 +41244,10 @@ let heistFeverActive = false;
     if (b.isOrboSuper && owner) {
         const ownerStar = owner.id === player.id ? selectedStar : (owner.selectedStar || 'none');
         if (ownerStar === 'long') target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + 1200);
-        // Each real enemy hit restores a flat 23.4% Super charge. Piercing rewards
+        // Each real enemy hit restores a flat 20% Super charge. Piercing rewards
         // every enemy connected with, while Hypercharge builds at a safer 25% rate.
         if (!target.isPet && !target.isSummon) {
-            const recharge = 23.4 * getAttackChargeMultiplier(owner);
+            const recharge = 20 * getAttackChargeMultiplier(owner);
             const hyperRecharge = recharge * .25;
             if (owner.id === player.id) {
                 superCharge = clamp(superCharge + recharge, 0, 100);
@@ -38490,6 +41295,12 @@ let heistFeverActive = false;
         if (owner && owner.heistFrenzyUntil && performance.now() < owner.heistFrenzyUntil) {
             dealtDamage *= 1.25;
         }
+        if (owner && owner.ragerDmgBuffUntil && performance.now() < owner.ragerDmgBuffUntil) {
+            dealtDamage *= 1.15; // Raged Area: +15% damage
+        }
+        if (owner && owner.bolznstienDmgDebuffUntil && performance.now() < owner.bolznstienDmgDebuffUntil) {
+            dealtDamage *= 0.60; // HC Electric Eyes: 40% less damage for 4s
+        }
 
         dealtDamage = Math.min(Math.max(0, target.hp || 0), getVaultDamagePerHit(dealtDamage, target));
     }
@@ -38497,6 +41308,20 @@ let heistFeverActive = false;
     const rawDmg = dealtDamage;
     dealtDamage = applyShieldDamage(target, dealtDamage);
     target.hp -= dealtDamage;
+    if (owner && areAlliedEntities(owner, target) && isFriendlyFireActive() && target.id !== owner.id && dealtDamage > 0) {
+        const ffNow = performance.now();
+        if (ffNow - (target._lastFriendlyFireFloatAt || 0) > 400) {
+            target._lastFriendlyFireFloatAt = ffNow;
+            if (isFriendlyFirePlusActive()) {
+                spawnFloatingText(target.x, target.y - 32, '⚠️ FF+ CHARGE!', '#00f5d4');
+            } else {
+                spawnFloatingText(target.x, target.y - 32, '⚠️ FRIENDLY FIRE!', '#ff4757');
+            }
+        }
+        if (isFriendlyFirePlusActive()) {
+            grantFriendlyFirePlusBonus(owner);
+        }
+    }
     if (target?.isBrickVaultEntity && dealtDamage > 0) {
         registerBrickVaultWallDamage(b.ownerId, target, dealtDamage);
         target.lastDamagerId = b.ownerId;
@@ -38546,6 +41371,10 @@ let heistFeverActive = false;
     if (b.isPortaloShot && owner && rawDmg > 0) handlePortaloMainHit(owner, target, b);
     if (b.isJackTradeCard && owner && rawDmg > 0) {applyJackTradeTowerCardHit(owner,target,b,dealtDamage);registerJackTradeVolleyHit(owner,b);}
     if (b.isGhoulHand && b.ghoulHyper && rawDmg > 0) applyGhoulDarkness(target);
+    if (owner && owner.ragerSp2HealActive && dealtDamage > 0) {
+        doHeal(owner, Math.round(dealtDamage * 0.40));
+        spawnFloatingText(owner.x, owner.y - 25, `+${Math.round(dealtDamage * 0.40)} BLOODLUST`, '#2ed573');
+    }
     if (b.isFastpassTicket && owner && rawDmg > 0) {
         addFastpassMomentum(owner, FASTPASS_MOMENTUM_PER_HIT, false);
         if (b.hyperVisual) triggerFastpassHealingAura(owner);
@@ -38678,7 +41507,93 @@ let heistFeverActive = false;
     }
     // One connected main-attack activation grants one charge step, regardless
     // of pellet count, fragments, repeated damage, or raw damage dealt.
-    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet) grantMainAttackCharge(owner, b);
+    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet && !(areAlliedEntities(owner, target) && isFriendlyFireActive())) grantMainAttackCharge(owner, b);
+    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet && areAlliedEntities(owner, target) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, b);
+    if (b.ownerBrawler === 'rager' && b.isRagerTimber && b.hasSp1) {
+            // SP1: burst into 4 cardinal splinter darts
+            const dartDirs = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
+            for (const da of dartDirs) {
+                bullets.push({
+                    id: nextId++,
+                    ownerBrawler: 'rager',
+                    isRagerSplinter: true,
+                    x: b.x,
+                    y: b.y,
+                    vx: Math.cos(da) * 920,
+                    vy: Math.sin(da) * 920,
+                    damage: 650,
+                    pierce: false,
+                    ownerId: b.ownerId,
+                    life: 0,
+                    maxLife: 0.35,
+                    hitIds: {}
+                });
+            }
+        }
+        if (b && b.ownerBrawler === 'rager' && b.isRagerTimber) {
+            applyKnockback(target, b.x, b.y, 35, performance.now());
+            explosions.push({
+                x: target.x,
+                y: target.y,
+                radius: 28,
+                life: 0,
+                maxLife: 0.16,
+                color: '#8B4513'
+            });
+        }
+        if (b.ownerBrawler === 'bolznstien' && b.isBolznstienBolt) {
+        scheduleBolznstienStrikes(b.ownerId, target.x, target.y, b.strikeDmg || 1650, !!b.isHyper, target.id);
+    }
+    if (b.ownerBrawler === 'carmela_fudge') {
+        const now = performance.now();
+        const owner = getEntityById(b.ownerId);
+        if (b.isCarmelaHand) {
+            if (b.pullType === 'half' && owner) {
+                target.x = (target.x + owner.x) / 2;
+                target.y = (target.y + owner.y) / 2;
+            } else if (b.pullType === 'all' && owner) {
+                const pAng = Math.atan2(target.y - owner.y, target.x - owner.x);
+                target.x = owner.x + Math.cos(pAng) * 45;
+                target.y = owner.y + Math.sin(pAng) * 45;
+            } else if (b.pullType === 'pullSelf' && owner) {
+                const pAng = Math.atan2(owner.y - target.y, owner.x - target.x);
+                owner.x = target.x + Math.cos(pAng) * 45;
+                owner.y = target.y + Math.sin(pAng) * 45;
+            }
+        }
+        if (b.isFudgeGlob) {
+            const buildup = b.hasSp1 ? 34 : 25;
+            target.chocolateCoverage = (target.chocolateCoverage || 0) + buildup;
+            if (target.chocolateCoverage >= 100) {
+                target.chocolateCoverage = 0;
+                target.inChocolateShell = true;
+                target.chocolateShellHp = 3500;
+                target.chocolateShellMaxHp = 3500;
+                target.chocolateShellUntil = now + 3000;
+                target.stunnedUntil = Math.max(target.stunnedUntil || 0, now + 3000);
+                spawnFloatingText(target.x, target.y - 40, '🍫 CHOCOLATE SHELL! 🍫', '#5d4037');
+            }
+        }
+        if (b.isFudgeSuperBoulder) {
+            target.inChocolateShell = true;
+            if (b.isHyper) {
+                target.chocolateShellHp = 10500;
+                target.chocolateShellMaxHp = 10500;
+            } else {
+                target.chocolateShellHp = 7000;
+                target.chocolateShellMaxHp = 7000;
+            }
+            const hpLoss = Math.round(target.hp * 0.30);
+            target.hp = Math.max(1, target.hp - hpLoss);
+            if (b.isHyper && owner) {
+                doShield(owner, hpLoss);
+            }
+            target.chocolateShellUntil = now + 3000;
+            target.stunnedUntil = Math.max(target.stunnedUntil || 0, now + 3000);
+            target.fudgeReloadSlowUntil = now + 4000;
+            spawnFloatingText(target.x, target.y - 45, `-${hpLoss} HP (30% LOSS)`, '#e74c3c');
+        }
+    }
     if(b.ownerBrawler === 'decayer' && b.shieldGain){
       const decayerOwner = b.ownerId === player.id ? player : (bots.find(bt => bt.id === b.ownerId) || null);
       grantShield(decayerOwner, b.shieldGain, b.shieldCap);
@@ -38706,6 +41621,10 @@ let heistFeverActive = false;
       if(owner) owner.unopcolocoSpeedUntil = performance.now() + 1500;
     }
     
+    if (b.isMagnatarBeacon) {
+        const owner = getEntityById(b.ownerId);
+        deployMagnatarBeacon(owner, target.x, target.y, target.id, !!b.isHyper, false);
+    }
     if (b.ownerBrawler === 'decayer' && b.hyperVisual && !b.super) {
         const owner = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
         if (owner && (owner.hyperHpBoost || 0) < 1200) {
@@ -38828,7 +41747,7 @@ let heistFeverActive = false;
             screenShakeAmount = takedownSkin?.rarity === 'legendary' ? 7 : 4;
         }
     }
-    if (target.hp <= 0 && b.ownerId === player.id && !target.isDummy) {
+    if (target.hp <= 0 && b.ownerId === player.id && !target.isDummy && !(areAlliedEntities(ownerEntity, target) && isFriendlyFireActive())) {
         applySlopSushiOnKill(ownerEntity, target);
         addEventQuestProgress('get_kills');
         progressSeasonPassQuest('get_kills');
@@ -38851,7 +41770,19 @@ let heistFeverActive = false;
 
     if (b.ownerBrawler === 'boom_arang') {
         if (!b.super) {
+            resolveBoomArangImpact(b, true);
             tagBoomArangEnemy(target, ownerEntity, b.doubleExplode, b.instantStun);
+        } else if (ownerEntity && (ownerStar==='long'||ownerStar==='sp2')) {
+            const victims=ownerEntity.boomArangSuperAmmoVictims || (ownerEntity.boomArangSuperAmmoVictims={});
+            if(!victims[target.id]) {
+                victims[target.id]=true;
+                if(target.id===player.id)ammo=Math.max(0,ammo-1);
+                else {
+                    target.ammo=Math.max(0,(Number.isFinite(target.ammo)?target.ammo:(target.maxAmmo||getNativeAmmoCapacity(target.brawler)))-1);
+                    target.lastShot=Math.max(target.lastShot||0,performance.now())+getReloadTime(target.brawler);
+                }
+                spawnFloatingText(target.x,target.y-30,'-1 AMMO','#ffb64d');
+            }
         }
     }
 
@@ -39063,7 +41994,10 @@ let heistFeverActive = false;
           }
       }
       b.damage *= (1 - (b.bounceDmgLoss || 0));
-      b.life += b.maxLife * (b.bounceLifeLoss || 0); // Compress remaining range
+      b.life += b.maxLife * (b.bounceLifeLoss || 0); // If bounceLifeLoss < 0, restores life / extends range
+      if (b.ownerBrawler === 'bouncin_balls' && b.maxBounceDist && b.bounceLifeLoss < 0) {
+          b.maxBounceDist *= (1 - b.bounceLifeLoss); // Grow maximum distance limit by +5% on bounce
+      }
       if (b.ownerSp2) { b.vx *= 1.1; b.vy *= 1.1; }
       if (b.bouncyInfiniteBounce) {
           b.hitIds = {};
@@ -39624,10 +42558,11 @@ let heistFeverActive = false;
 
   function spawnWeeFeePole(owner, x, y, isHyper = false) {
       const ownerId = typeof owner === 'object' ? owner.id : owner;
-      const ownerEntity = ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find(bt => bt && bt.id === ownerId) : null);
+      const isBossOwner = isWeeFeeBossMode || (typeof owner === 'object' && (owner.isMegaBossWeeFee || owner.id === 'weefee_boss_main' || (owner.id && owner.id.startsWith('weefee_drone'))));
+      const ownerEntity = ownerId === player.id ? player : (isBossOwner && weefeeBossState?.bossEntities ? weefeeBossState.bossEntities.find(bt => bt && bt.id === ownerId) : (typeof bots !== 'undefined' ? bots.find(bt => bt && bt.id === ownerId) : null));
       const hasSp2 = ownerEntity ? (ownerEntity.id === player.id ? (selectedStar === 'long' || selectedStar === 'sp2') : (ownerEntity.selectedStar === 'long' || ownerEntity.selectedStar === 'sp2')) : false;
       const isOwnerHyper = isHyper || (ownerEntity && isEntityHyperchargedNow(ownerEntity, performance.now()));
-      const maxPoles = isOwnerHyper ? 4 : 3;
+      const maxPoles = isBossOwner ? Infinity : (isOwnerHyper ? 4 : 3);
 
       const currentPoles = weefeePoles.filter(p => p.ownerId === ownerId);
       while (currentPoles.length >= maxPoles) {
@@ -39651,7 +42586,10 @@ let heistFeverActive = false;
           ownerId,
           createdAt: now,
           cycleStartAt: now,
-          isHyper: !!isOwnerHyper
+          isHyper: !!isOwnerHyper,
+          hp: isBossOwner ? 1500 : undefined,
+          maxHp: isBossOwner ? 1500 : undefined,
+          isDestructible: isBossOwner ? true : false
       });
       spawnFloatingText(x, y - 36, '📶 SIGNAL POLE!', '#00f5d4');
       explosions.push({ x, y, radius: 52, life: 0, maxLife: 0.22, color: isOwnerHyper ? '#d946ef' : '#00f5d4' });
@@ -39726,10 +42664,10 @@ let heistFeverActive = false;
 
   function updateWeeFeeSystems(dt) {
       const now = performance.now();
-      const allEntities = [player, ...(typeof bots !== 'undefined' && Array.isArray(bots) ? bots : [])].filter(e => e && e.hp > 0);
+      const allEntities = [player, ...(typeof bots !== 'undefined' && Array.isArray(bots) ? bots : []), ...(isWeeFeeBossMode && weefeeBossState?.bossEntities ? weefeeBossState.bossEntities : [])].filter(e => e && e.hp > 0);
 
       for (const entity of allEntities) {
-          const brawlerId = entity === player ? selectedBrawler : entity.brawler;
+          const brawlerId = entity === player ? selectedBrawler : (entity.brawlerId || entity.brawler);
           if (brawlerId !== 'weefee') continue;
 
           const ownerPoles = weefeePoles.filter(p => p.ownerId === entity.id);
@@ -39944,9 +42882,53 @@ let heistFeverActive = false;
       }
   }
 
+  function stabilizeActiveMatchState() {
+      const entities = [player, ...bots];
+      for (const entity of entities) {
+          if (!entity) continue;
+          const radius = Math.max(1, Number(entity.radius) || 14);
+          if (Number.isFinite(entity.x) && Number.isFinite(entity.y)) {
+              entity._lastFiniteX = entity.x;
+              entity._lastFiniteY = entity.y;
+          } else {
+              entity.x = clamp(Number.isFinite(entity._lastFiniteX) ? entity._lastFiniteX : WORLD_W * 0.5, radius, WORLD_W - radius);
+              entity.y = clamp(Number.isFinite(entity._lastFiniteY) ? entity._lastFiniteY : WORLD_H * 0.5, radius, WORLD_H - radius);
+              entity.vx = 0;
+              entity.vy = 0;
+          }
+          if (!Number.isFinite(entity.vx)) entity.vx = 0;
+          if (!Number.isFinite(entity.vy)) entity.vy = 0;
+          if (!Number.isFinite(entity.maxHp) || entity.maxHp <= 0) entity.maxHp = 1;
+          if (!Number.isFinite(entity.hp)) entity.hp = 0;
+      }
+      for (let i = bullets.length - 1; i >= 0; i--) {
+          const shot = bullets[i];
+          if (!shot || !Number.isFinite(shot.x) || !Number.isFinite(shot.y)) {
+              bullets.splice(i, 1);
+              continue;
+          }
+          if (!Number.isFinite(shot.vx)) shot.vx = 0;
+          if (!Number.isFinite(shot.vy)) shot.vy = 0;
+          if (!Number.isFinite(shot.life)) shot.life = 0;
+          if (!Number.isFinite(shot.maxLife) || shot.maxLife <= 0) shot.maxLife = 0.01;
+      }
+      for (let i = explosions.length - 1; i >= 0; i--) {
+          const fx = explosions[i];
+          if (!fx || !Number.isFinite(fx.x) || !Number.isFinite(fx.y)) {
+              explosions.splice(i, 1);
+              continue;
+          }
+          if (!Number.isFinite(fx.radius) || fx.radius < 0) fx.radius = 0;
+          if (!Number.isFinite(fx.life)) fx.life = 0;
+          if (!Number.isFinite(fx.maxLife) || fx.maxLife <= 0) fx.maxLife = 0.01;
+      }
+  }
+
   function update(dt){
     if(!playing || gameOver) return;
+    stabilizeActiveMatchState();
     const now = performance.now();
+    if (isWeeFeeBossMode) updateWeeFeeBoss(dt, now);
     if (isBlinkEyeDodgeMode) updateBlinkEyeDodge(dt, now);
     if (isPowerPlayShowdownMode) {
         // Rocketeer: Permanent active Hypercharge state
@@ -40191,26 +43173,56 @@ let heistFeverActive = false;
     }
     updateBeastBossEvent(now);
     if (isWarperEvent) updateWarperEvent(now);
-    if (isRankedMatch && playing && !gameOver) {
-        if (activeRankedModifier === 'hyper_overdrive') {
-            if ((isTraining || !!getSelectedProgress().hyperchargeUnlocked) && !isHypercharged && player.hp > 0) {
-                hyperChargeCharge = Math.min(100, hyperChargeCharge + 4.0 * dt);
+    if ((isRankedMatch || isCustomMutatorMatch) && playing && !gameOver) {
+        if (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper') {
+            if (player.hp > 0) {
+                isHypercharged = true;
+                hyperchargeUntil = now + 999999999;
+                hyperChargeCharge = 100;
+                if (typeof updateHyperButton === 'function') updateHyperButton();
             }
             for (const b of bots) {
-                if (b && b.hp > 0 && b.hyperchargeUnlocked && !b.isHypercharged) {
+                if (b && b.hp > 0 && !b.isDummy && !b.isStructure) {
+                    b.isHypercharged = true;
+                    b.hyperchargeUntil = now + 999999999;
+                    b.hyperChargeCharge = 100;
+                }
+            }
+        }
+        if (activeRankedModifier === 'hyper_overdrive' || activeRankedModifierSecondary === 'hyper_overdrive' || activeRankedModifierTertiary === 'hyper_overdrive') {
+            if (!isHypercharged && player.hp > 0) {
+                hyperChargeCharge = Math.min(100, hyperChargeCharge + 4.0 * dt);
+                if (typeof updateHyperButton === 'function') updateHyperButton();
+            }
+            for (const b of bots) {
+                if (b && b.hp > 0 && !b.isHypercharged) {
                     b.hyperChargeCharge = Math.min(100, (b.hyperChargeCharge || 0) + 4.0 * dt);
                 }
             }
-        } else if (activeRankedModifier === 'super_surge') {
+        }
+        if (activeRankedModifier === 'super_surge' || activeRankedModifierSecondary === 'super_surge' || activeRankedModifierTertiary === 'super_surge') {
             if (player.hp > 0) {
                 superCharge = Math.min(100, superCharge + 5.0 * dt);
+                if (typeof updateSuperButton === 'function') updateSuperButton();
             }
             for (const b of bots) {
                 if (b && b.hp > 0) {
                     b.superCharge = Math.min(100, (b.superCharge || 0) + 5.0 * dt);
                 }
             }
-        } else if (activeRankedModifier === 'timed_detonation') {
+        }
+        if (typeof isSuperRate90Active === 'function' && isSuperRate90Active()) {
+            if (player.hp > 0) {
+                superCharge = Math.min(100, superCharge + 9.0 * dt);
+                if (typeof updateSuperButton === 'function') updateSuperButton();
+            }
+            for (const b of bots) {
+                if (b && b.hp > 0) {
+                    b.superCharge = Math.min(100, (b.superCharge || 0) + 9.0 * dt);
+                }
+            }
+        }
+        if (activeRankedModifier === 'timed_detonation' || activeRankedModifierSecondary === 'timed_detonation' || activeRankedModifierTertiary === 'timed_detonation') {
             if (!window._lastTimedDetonationAt) window._lastTimedDetonationAt = now;
             if (now - window._lastTimedDetonationAt >= 8000) {
                 window._lastTimedDetonationAt = now;
@@ -40289,6 +43301,12 @@ let heistFeverActive = false;
         }
     }
 
+    if (isBraweBallMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
+        updateBraweBall(dt);
+    }
+    if (isKnockoutMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
+        updateKnockout(dt);
+    }
     if (isKnockDonateMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver && performance.now() >= (knockDonateRoundTransitionUntil || 0)) {
         const friendlyAlive = getTeamLivingEntities('player').length;
         const enemyAlive = getTeamLivingEntities('enemy').length;
@@ -40499,7 +43517,7 @@ let heistFeverActive = false;
 
     // Check hit flash and handle movement
     
-    if (!isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isImpossibleMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isTraining && !isBossFight && !isSoloTrial && !gameOver) {
+    if (!isBraweBallMode && !isKnockoutMode && !isWeeFeeBossMode && !isDemonVillainsBossMode && !isRamageBossMode && !isOrboBossMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isImpossibleMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isTraining && !isBossFight && !isSoloTrial && !gameOver) {
         stormTimer += dt;
         const stormDuration = getModeStormDurationSeconds();
         stormRadius = Math.max(0, (WORLD_W * 0.8) - (stormTimer / stormDuration) * (WORLD_W * 0.8));
@@ -40820,7 +43838,7 @@ let heistFeverActive = false;
     // Update gadget button every frame to handle cooldown expiration
     updateGadgetButton();
 
-    if(isHypercharged && performance.now() > hyperchargeUntil){
+    if(isHypercharged && performance.now() > hyperchargeUntil && !(isRankedMatch && activeRankedModifier === 'always_hyper') && !(isRankedMatch && activeRankedModifierSecondary === 'always_hyper') && !((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper'))){
         isHypercharged = false;
         hyperChargeCharge = 0;
         updateHyperButton();
@@ -41360,8 +44378,8 @@ let heistFeverActive = false;
                 const rng = isHc ? 1.3 : 1.0;
                 let perp = 0;
                 if (e.id === player.id) {
-                    const dx = mouse.screenX + camX - e.x;
-                    const dy = mouse.screenY + camY - e.y;
+                    const dx = mouse.screenX / CAMERA_ZOOM + camX - e.x;
+                    const dy = mouse.screenY / CAMERA_ZOOM + camY - e.y;
                     perp = Math.atan2(dy, dx) + Math.PI/2;
                 } else {
                     perp = Math.atan2(e.vy || 0, e.vx || 1) + Math.PI/2;
@@ -41760,7 +44778,7 @@ let heistFeverActive = false;
       
       if (pod.isBouncyTurret) {
           pod.lastTurretFire = pod.lastTurretFire || now;
-          const turretInterval = isPowerPlayShowdownMode ? 300 : 1800;
+          const turretInterval = isPowerPlayModifierActive() ? 300 : 1800;
           if (now - pod.lastTurretFire >= turretInterval) {
               const podOwner = pod.ownerId === player.id ? player : bots.find(bt=>bt.id===pod.ownerId);
               let target = null; let bestDist = 700;
@@ -41774,7 +44792,7 @@ let heistFeverActive = false;
               if (target) {
                   const ang = Math.atan2(target.y - pod.y, target.x - pod.x);
                   for (let i = 0; i < 3; i++) {
-                      setTimeout(() => { const ballSpeedMult = isPowerPlayShowdownMode ? 2.0 : 1.0; bullets.push({ ownerBrawler: 'bouncin_balls', x: pod.x, y: pod.y, vx: Math.cos(ang) * 900 * 0.6 * ballSpeedMult, vy: Math.sin(ang) * 900 * 0.6 * ballSpeedMult, life: 0, maxLife: 1.7, damage: 250, pierce: false, ownerId: pod.ownerId, canBounce: true, bounceDmgLoss: 0.05, bounceLifeLoss: 0.05, hitboxMod: 1.5 }); }, i * 165);
+                      setTimeout(() => { const ballSpeedMult = isPowerPlayModifierActive() ? 2.0 : 1.0; bullets.push({ ownerBrawler: 'bouncin_balls', x: pod.x, y: pod.y, vx: Math.cos(ang) * 900 * 0.6 * ballSpeedMult, vy: Math.sin(ang) * 900 * 0.6 * ballSpeedMult, life: 0, maxLife: 1.7, damage: 250, pierce: false, ownerId: pod.ownerId, canBounce: true, bounceDmgLoss: 0.05, bounceLifeLoss: 0.05, hitboxMod: 1.5 }); }, i * 165);
                   }
               }
               pod.lastTurretFire = now;
@@ -41923,6 +44941,14 @@ let heistFeverActive = false;
       let hcSpd = (isHypercharged ? ((selectedBrawler === 'portalo' || selectedBrawler === 'ghoul') ? 1.15 : 1.2) : 1.0) * (cheseySuperActive ? 1.5 : 1.0);
       if (player.moneySpeedUntil && performance.now() < player.moneySpeedUntil) hcSpd *= 1.15;
       if (player.seraSpeedUntil && performance.now() < player.seraSpeedUntil) hcSpd *= 1.20;
+      if (player.ragerSpeedUntil && performance.now() < player.ragerSpeedUntil) hcSpd *= 1.20;
+    if (player.bolznstienSpeedUntil && performance.now() < player.bolznstienSpeedUntil) hcSpd *= 1.30;
+      if (player.carmelaFudgeForm === 'fudge') {
+          player.speed = 275;
+      } else if (selectedBrawler === 'carmela_fudge') {
+          player.speed = 260;
+      }
+      if (player.carmelaSpeedUntil && performance.now() < player.carmelaSpeedUntil) hcSpd *= 1.30;
       if (player.hunterSpeedUntil && performance.now() < player.hunterSpeedUntil) hcSpd *= (player.hunterHcMark ? 1.288 : 1.15);
       if (player.unopcolocoSpeedUntil && performance.now() < player.unopcolocoSpeedUntil) hcSpd *= 1.10;
       if (player.trinketQuickFeetUntil && now < player.trinketQuickFeetUntil) hcSpd *= 1.10;
@@ -42181,6 +45207,79 @@ let heistFeverActive = false;
               player.magenyChargePct = 0;
               player.magenyChargeRatio = 0;
           }
+      } else if (selectedBrawler === 'oil_maker') {
+          const held = mouse.down || mobileInput.attackActive;
+          if (held && !playerIsStunned && ammo >= 3 && (now - lastShot >= 75)) {
+              const wm = mobileInput.attackActive
+                  ? { x: player.x + mobileInput.aimX * 1200, y: player.y + mobileInput.aimY * 1200 }
+                  : getMouseWorld();
+              fire(player, wm.x, wm.y, false, isMoving);
+          }
+      } else if (selectedBrawler === 'magnatar') {
+          const held = mouse.down || mobileInput.attackActive;
+          const maxOrbs = isHypercharged ? 8 : 4;
+          const msPerOrb = 400;
+          if (held && !playerIsStunned && ammo > 0) {
+              if (!player.magnatarChargeStart) player.magnatarChargeStart = now;
+              const wm = mobileInput.attackActive
+                  ? { x: player.x + mobileInput.aimX * 1200, y: player.y + mobileInput.aimY * 1200 }
+                  : getMouseWorld();
+              player.magnatarAimX = wm.x; player.magnatarAimY = wm.y;
+              const elapsed = now - player.magnatarChargeStart;
+              player.magnatarOrbCount = clamp(1 + Math.floor(elapsed / msPerOrb), 1, maxOrbs);
+              player.magnatarChargePct = clamp(elapsed / ((maxOrbs - 1) * msPerOrb), 0, 1);
+          } else if (!held && player.magnatarChargeStart && !playerIsStunned && ammo > 0) {
+              const elapsed = now - player.magnatarChargeStart;
+              const orbCount = clamp(1 + Math.floor(elapsed / msPerOrb), 1, maxOrbs);
+              const wm = (player.magnatarAimX !== undefined && player.magnatarAimY !== undefined)
+                  ? { x: player.magnatarAimX, y: player.magnatarAimY }
+                  : getMouseWorld();
+              player.magnatarPendingFireOrbs = orbCount;
+              fire(player, wm.x, wm.y, false, isMoving);
+              player.magnatarChargeStart = 0;
+              player.magnatarOrbCount = 1;
+              player.magnatarChargePct = 0;
+          }
+      } else if (selectedBrawler === 'carmela_fudge') {
+          const held = mouse.down || mobileInput.attackActive;
+          const isFudge = player.carmelaFudgeForm === 'fudge';
+          if (!isFudge) {
+              const hasSp1 = selectedStar === 'slow' || selectedStar === 'sp1';
+              let carmelaHandChargeSpeed = 1.0;
+              if (hasSp1) carmelaHandChargeSpeed *= 1.25;
+              if (isHypercharged) carmelaHandChargeSpeed *= 1.30;
+              const maxCarmelaChargeMs = 1200;
+
+              if (held && !playerIsStunned && ammo > 0) {
+                  if (!player.carmelaChargeStart) player.carmelaChargeStart = now;
+                  const wm = mobileInput.attackActive
+                      ? { x: player.x + mobileInput.aimX * 1200, y: player.y + mobileInput.aimY * 1200 }
+                      : getMouseWorld();
+                  player.carmelaAimX = wm.x;
+                  player.carmelaAimY = wm.y;
+                  const elapsed = (now - player.carmelaChargeStart) * carmelaHandChargeSpeed;
+                  player.carmelaChargePct = clamp(elapsed / maxCarmelaChargeMs, 0, 1.0);
+              } else if (!held && player.carmelaChargeStart && !playerIsStunned) {
+                  const elapsed = (now - player.carmelaChargeStart) * carmelaHandChargeSpeed;
+                  player.carmelaChargePct = clamp(elapsed / maxCarmelaChargeMs, 0, 1.0);
+                  const wm = Number.isFinite(player.carmelaAimX) && Number.isFinite(player.carmelaAimY)
+                      ? { x: player.carmelaAimX, y: player.carmelaAimY }
+                      : getMouseWorld();
+                  fire(player, wm.x, wm.y, false, isMoving);
+                  player.carmelaChargeStart = 0;
+                  player.carmelaChargePct = 0;
+                  player.carmelaAimX = undefined;
+                  player.carmelaAimY = undefined;
+              }
+          } else if (held && !playerIsStunned) {
+              // Fudge is a conventional tap/hold attacker. This branch must
+              // explicitly fire because the duo's shared input handler keeps
+              // both forms out of the generic attack path below.
+              const wm = mobileInput.attackActive
+                  ? { x: player.x + mobileInput.aimX * 1200, y: player.y + mobileInput.aimY * 1200 }
+                  : getMouseWorld();
+              fire(player, wm.x, wm.y, false, isMoving);
+          }
       } else if(selectedBrawler === 'jetpack') {
           const held = mouse.down || mobileInput.attackActive;
           const jetpackReady = now >= (player.jetpackNextJumpAt || 0) && now >= (player.jetpackLandingRecoveryUntil || 0);
@@ -42195,6 +45294,7 @@ let heistFeverActive = false;
               const charge=clamp((now-player.jetpackChargeStartedAt)/1200,.12,1);
               ammo=Math.max(0,ammo-1);lastShot=now;ammoReloadTimer=0;player.lastAttackAt=now;
               beginMainAttackActivation(player,'jetpack',now);
+              fireArenaForgeCapturedHyperAttacks(player,Math.atan2((player.jetpackAimY??player.y)-player.y,(player.jetpackAimX??player.x)-player.x),now);
               applySlopSushiOnAttack();
               startJetpackFlight(player,player.jetpackAimX??player.x,player.jetpackAimY??player.y,{charge,hyper:getPlayerHyperMainActive('jetpack')});
               player.jetpackChargeStartedAt=0;player.jetpackChargePct=0;
@@ -42255,6 +45355,7 @@ let heistFeverActive = false;
 
     updateSteamerRail(player, now);
     for (const sb of aliveBots) updateSteamerRail(sb, now);
+    updateOilMakerEntities(now, dt);
 
     updateSpecialAbilityRuntime(now);
     updateSignatureButton();
@@ -42298,6 +45399,7 @@ let heistFeverActive = false;
         updateIceCreamEffects(now, dt);
         updateFastpassAndFreestyle(now, dt);
         updatePortaloSystems(now, dt);
+        updateBoomArangInstinctTravel(now);
         updateGhoulSystems(now, dt);
         updateDarkenerSystems(now, dt);
         updateCursedSystems(now, dt);
@@ -42333,6 +45435,7 @@ let heistFeverActive = false;
     for(let i=bullets.length-1;i>=0;i--){
       const b = bullets[i];
       applySlopSushiProjectileMutation(b);
+      if (typeof applyGiantProjectilesModifier === 'function') applyGiantProjectilesModifier(b);
       if (b.towerTravelGrowthPct > 0 && b.maxLife > 0) {
           const travelProgress = clamp((b.life || 0) / b.maxLife, 0, 1);
           b.hitboxMod = (b.towerTravelBaseHitbox || 1) * (1 + b.towerTravelGrowthPct * travelProgress);
@@ -42343,7 +45446,7 @@ let heistFeverActive = false;
           explosions.push({x:b.x,y:b.y,radius:b.towerTrailRadius||60,life:0,maxLife:.18,color:'rgba(114,226,255,.48)'});
       }
 
-      if (isPowerPlayShowdownMode && b.ownerBrawler === 'blinkeye' && b.isBlinkEyeMain && !b.pierce) {
+      if (isPowerPlayModifierActive() && b.ownerBrawler === 'blinkeye' && b.isBlinkEyeMain && !b.pierce) {
           let nearestEnemy = null, minDist = 650;
           const bOwner = getEntityById(b.ownerId);
           const enemies = b.ownerId === player.id ? bots : [player, ...bots];
@@ -42370,7 +45473,7 @@ let heistFeverActive = false;
               const desiredAng = Math.atan2(tgt.y - b.y, tgt.x - b.x);
               const curAng = Math.atan2(b.vy, b.vx);
               const diff = Math.atan2(Math.sin(desiredAng - curAng), Math.cos(desiredAng - curAng));
-              const steerRate = 8.5 * dt;
+              const steerRate = 4.25 * dt;
               const newAng = curAng + clamp(diff, -steerRate, steerRate);
               const spd = b.speed || 850;
               b.vx = Math.cos(newAng) * spd;
@@ -42427,7 +45530,7 @@ let heistFeverActive = false;
           }
 
           // Hypercharge: launch detached purple eye missiles for every enemy in direct line of sight every 0.6s
-          const interval = isPowerPlayShowdownMode ? 300 : 600;
+          const interval = isPowerPlayModifierActive() ? 200 : 400;
           if ((b.hyperVisual || isPowerPlayShowdownMode) && (!b.lastMissileAt || now - b.lastMissileAt >= interval)) {
               b.lastMissileAt = now;
               const sightDist = 600;
@@ -42450,7 +45553,7 @@ let heistFeverActive = false;
                           speed: 850,
                           life: 0,
                           maxLife: 1.4,
-                          damage: owner.id === player.id ? 850 : 650,
+                          damage: owner.id === player.id ? 638 : 488,
                           pierce: true,
                           pierceWalls: true,
                           ownerId: owner.id,
@@ -42646,6 +45749,17 @@ let heistFeverActive = false;
               b.hitIds = {};
               b.clearedHits = true;
           }
+      } else if (b.isBoomArangSide) {
+          const owner=getEntityById(b.ownerId);
+          if(!owner || owner.hp<=0){bullets.splice(i,1);continue;}
+          if(!b.returning && (b.life>=b.boomArangSideOutTime || b.x<15 || b.x>WORLD_W-15 || b.y<15 || b.y>WORLD_H-15 || destructibleWalls.some(w=>w.hp>0 && b.x>=w.x-8 && b.x<=w.x+w.w+8 && b.y>=w.y-8 && b.y<=w.y+w.h+8))) {
+              b.returning=true;b.hitIds={};
+          }
+          if(b.returning) {
+              const dx=owner.x-b.x,dy=owner.y-b.y,d=Math.hypot(dx,dy);
+              if(d<(owner.radius||14)+16){bullets.splice(i,1);continue;}
+              b.vx=dx/d*850;b.vy=dy/d*850;
+          }
       } else if (b.isBoomArang) {
           const owner = b.ownerId === player.id ? player : bots.find(bt => bt.id === b.ownerId);
           if (!owner || owner.hp <= 0) {
@@ -42668,6 +45782,7 @@ let heistFeverActive = false;
 
           if (!b.returning) {
               let turnAround = false;
+              let boomArangWallImpact = false;
               if (b.life >= b.maxLife * 0.45) turnAround = true;
               
               if (b.x < 15 || b.x > WORLD_W - 15 || b.y < 15 || b.y > WORLD_H - 15) turnAround = true;
@@ -42677,12 +45792,14 @@ let heistFeverActive = false;
                   for (const wall of destructibleWalls) {
                       if (wall.hp > 0 && Math.abs(b.x - wall.x) < wall.w/2 + 8 && Math.abs(b.y - wall.y) < wall.h/2 + 8) {
                           turnAround = true;
+                          boomArangWallImpact = true;
                           break;
                       }
                   }
               }
               
               if (turnAround) {
+                  resolveBoomArangImpact(b, boomArangWallImpact);
                   b.returning = true;
                   b.hitIds = {};
               }
@@ -42914,8 +46031,8 @@ let heistFeverActive = false;
                   b.vy *= 1.10;
                   b.paradoxTimeEffect = 'sped';
               } else {
-                  b.vx *= 0.70;
-                  b.vy *= 0.70;
+                  b.vx *= 0.76;
+                  b.vy *= 0.76;
                   b.paradoxTimeEffect = 'slowed';
               }
           }
@@ -42965,9 +46082,38 @@ let heistFeverActive = false;
           b.y += (b.orboPerpY || 0) * deltaOffset;
           b.orboLastOffset = nextOffset;
       }
+      if (b.isMagnatarOrb && !b.isMagnetized && (b.orbitRadius || 0) > 0) {
+          const progress = clamp(((b.life || 0) + dt) / Math.max(0.001, b.maxLife || 1.38), 0, 1);
+          const startR = b.startOrbitRadius || b.orbitRadius || 0;
+          const maxR = b.maxOrbitRadius || startR;
+          const curOrbitR = startR + (maxR - startR) * progress;
+
+          const nextAngle = (b.orbitBaseAngle || 0) + ((b.life || 0) + dt) * (b.orbitSpeed || 3.99);
+          const nextFwd = Math.cos(nextAngle) * curOrbitR;
+          const nextPerp = Math.sin(nextAngle) * curOrbitR;
+          const deltaFwd = nextFwd - (b.lastFwdOffset || 0);
+          const deltaPerp = nextPerp - (b.lastPerpOffset || 0);
+          b.x += (b.fwdX || 0) * deltaFwd + (b.perpX || 0) * deltaPerp;
+          b.y += (b.fwdY || 0) * deltaFwd + (b.perpY || 0) * deltaPerp;
+          b.lastFwdOffset = nextFwd;
+          b.lastPerpOffset = nextPerp;
+
+          // 20% More Satisfying Cosmic Stardust Wake Particles
+          b._trailTick = (b._trailTick || 0) + 1;
+          if (b._trailTick % 2 === 0) {
+              explosions.push({
+                  x: b.x + (Math.random() - 0.5) * 6,
+                  y: b.y + (Math.random() - 0.5) * 6,
+                  radius: (b.isHyper ? 4.5 : 3.2) + Math.random() * 2,
+                  life: 0,
+                  maxLife: 0.26,
+                  color: b.isHyper ? (Math.random() > 0.5 ? 'rgba(243, 104, 224, 0.55)' : 'rgba(224, 86, 253, 0.45)') : (Math.random() > 0.5 ? 'rgba(0, 245, 212, 0.50)' : 'rgba(0, 210, 255, 0.45)')
+              });
+          }
+      }
       b.x += b.vx * dt;
       b.y += b.vy * dt;
-      if (isPowerPlayShowdownMode && b.ownerBrawler === 'echo' && b.isEchoRingProj && !b.super) {
+      if (isPowerPlayModifierActive() && b.ownerBrawler === 'echo' && b.isEchoRingProj && !b.super) {
           b.lastEchoRingPulse = b.lastEchoRingPulse || b.createdAt || now;
           if (now - b.lastEchoRingPulse >= 600) {
               b.lastEchoRingPulse = now;
@@ -43302,6 +46448,9 @@ let heistFeverActive = false;
           }
       }
       b.life += dt;
+      if (b.isOilMakerCrude) {
+          // Crude bullet does not drop mid-flight trails anymore: forms one puddle at the end
+      }
       if (b.isCursedBolt) {
           const progress = clamp(b.maxLife > 0 ? b.life / b.maxLife : 1, 0, 1);
           b.hitboxMod = (b.cursedMarkedFate ? 1.25 : 1) * (.72 + progress * 1.72);
@@ -43561,6 +46710,21 @@ let heistFeverActive = false;
           continue;
       }
       if(b.life > b.maxLife){ 
+            if (b.isOilMakerCrude) {
+                // Main attack now makes one puddle at the end after 2 seconds
+                oilMakerPendingPuddles.push({
+                    x: b.x,
+                    y: b.y,
+                    radius: 46,
+                    durationMs: 12000,
+                    ownerId: b.ownerId,
+                    isHyper: !!b.isHyper,
+                    spawnAt: now + 900
+                });
+                bullets.splice(i, 1);
+                i--;
+                continue;
+            }
             if (b.minigunninMutationExplosive) {
                 triggerMinigunninMutationEndpoint(b);
                 bullets.splice(i,1); i--; continue;
@@ -43955,7 +47119,7 @@ let heistFeverActive = false;
                   }
                   break;
               }
-              const damageableObject = !!(dw.isArenaWall || dw.isPowerBox || dw.isPurpleBox || dw.isGreenBox || dw.trapperFenceWall || dw.isFreestyleWall || dw.expiresAt);
+              const damageableObject = !!(dw.isArenaWall || dw.isPowerBox || dw.isBox || dw.isPurpleBox || dw.isGreenBox || dw.isNovaBox || dw.trapperFenceWall || dw.isFreestyleWall || dw.expiresAt);
               if (!dw.isPlatform && !dw.indestructible && damageableObject) {
                   const wallDamage = b.breakWallsInstantly && dw.isArenaWall
                       ? Math.max(1, dw.hp)
@@ -43972,7 +47136,7 @@ let heistFeverActive = false;
                           addEventQuestProgress('destroy_walls');
                           progressSeasonPassQuest('destroy_walls');
                       }
-                      if (dw.isPowerBox) {
+                      if (dw.isPowerBox || dw.isBox) {
                               // Trial green boxes: heal and double max HP, then drop many cubes
                               if (isWarperEvent && dw.isGreenBox) {
                                   const ownerEnt = owner || (b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId));
@@ -44058,6 +47222,30 @@ let heistFeverActive = false;
           b.lastCleanBounceAt = now;
           hitCube = false; // Resolved bounce, don't destroy
       } else if(hitCube && !canPierceWall){ 
+           if (b.isOilMakerCrude) {
+               oilMakerPendingPuddles.push({
+                   x: b.x,
+                   y: b.y,
+                   radius: 46,
+                   durationMs: 12000,
+                   ownerId: b.ownerId,
+                   isHyper: !!b.isHyper,
+                   spawnAt: now + 900
+               });
+               bullets.splice(i, 1);
+               continue;
+           }
+           if (b.isMagnatarBeacon) {
+               const owner = getEntityById(b.ownerId);
+               deployMagnatarBeacon(owner, b.x, b.y, null, !!b.isHyper, false);
+               bullets.splice(i, 1);
+               continue;
+           }
+           if (b.ownerBrawler === 'bolznstien' && b.isBolznstienBolt) {
+               scheduleBolznstienStrikes(b.ownerId, b.x, b.y, b.strikeDmg || 1650, !!b.isHyper);
+               bullets.splice(i, 1);
+               continue;
+           }
           if (b.isUpiedownCorePie) {
               spawnUpiedownMiniPies(b);
               bullets.splice(i,1);
@@ -44120,6 +47308,24 @@ let heistFeverActive = false;
             if (b.isEvilDoctorSyringe) triggerEvilDoctorMissEffect(b.ownerId);
             if (b.isScubaSubBubble) resolveScubaDiverSubBubble(b, false);
             if (b.isHoopBall) triggerHoopBallImpact(b, now);
+            if (b.isOilMakerCrude) {
+                oilMakerPendingPuddles.push({
+                    x: b.x,
+                    y: b.y,
+                    radius: 46,
+                    durationMs: 12000,
+                    ownerId: b.ownerId,
+                    isHyper: !!b.isHyper,
+                    spawnAt: now + 900
+                });
+            }
+            if (b.isMagnatarBeacon) {
+                const owner = getEntityById(b.ownerId);
+                deployMagnatarBeacon(owner, b.targetX || b.x, b.targetY || b.y, null, !!b.isHyper, false);
+            }
+            if (b.ownerBrawler === 'bolznstien' && b.isBolznstienBolt) {
+                scheduleBolznstienStrikes(b.ownerId, b.x, b.y, b.strikeDmg || 1650, !!b.isHyper);
+            }
             bullets.splice(i,1); continue; // Added Chaird specific properties
       }
       
@@ -44140,7 +47346,7 @@ let heistFeverActive = false;
       // Draflygon cone flames are handled by their dedicated multi-hit/burstHitMap logic
       if (b.isDraflygonConeFlame) continue;
       
-      // VS Healing Pods
+    // VS Healing Pods
       for(let j=healingPods.length-1; j>=0; j--){
           const pod = healingPods[j];
           if (b.isHeaterTetherStarter) continue;
@@ -44234,6 +47440,9 @@ let heistFeverActive = false;
       // VS player
       if(player.hp > 0 && b.ownerId !== player.id){
          if (b.hitIds && b.hitIds[player.id]) { /* skip duplicate hits */ }
+         else if (b.isMagnetized && magnatarVortices.some(v => v && v.isPersonalAura && v.ownerId === player.id && Math.hypot(b.x - player.x, b.y - player.y) <= v.radius)) {
+             // Singularity barrier: projectile curves safely around player without damaging player
+         }
          else {
          let ownerEntity = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
          if (ownerEntity && areAlliedEntities(ownerEntity,player) && !b.isHeaterTetherStarter) {
@@ -44268,7 +47477,10 @@ let heistFeverActive = false;
                      }
                  }
              }
-         } else {
+             if (consumed) continue;
+             if (!isFriendlyFireActive()) continue; // skip friendly fire unless modifier is active
+         }
+         if (true) {
          const dx = b.x - player.x; const dy = b.y - player.y;
          if(Math.hypot(dx,dy) < player.radius + (b.hitboxMod || 1) * 4){ 
                  if (b.isTempoNote && b.tempoReturning) {
@@ -44345,6 +47557,7 @@ let heistFeverActive = false;
       for(let j=aliveBots.length-1;j>=0;j--){
         const t = aliveBots[j];
         if(b.ownerId === t.id || (t.ownerId && t.ownerId === b.ownerId) || t.isFlying || (b.hitIds && b.hitIds[t.id])) continue; // don't hit self, hit pets of owner, or hit twice
+        if (b.isMagnetized && magnatarVortices.some(v => v && v.isPersonalAura && v.ownerId === t.id && Math.hypot(b.x - t.x, b.y - t.y) <= v.radius)) continue;
         
         let ownerEntity = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
         if (ownerEntity && areAlliedEntities(ownerEntity,t) && !b.isHeaterTetherStarter) {
@@ -44379,7 +47592,7 @@ let heistFeverActive = false;
                 }
             }
             if (consumed) break;
-            continue; // skip friendly fire
+            if (!isFriendlyFireActive()) continue; // skip friendly fire unless modifier is active
         }
         
         const dx = b.x - t.x; const dy = b.y - t.y;
@@ -44509,6 +47722,475 @@ let heistFeverActive = false;
                rings.splice(i,1);
            }
        }
+    }
+
+
+    // --- MAGNATAR MAGNETIC VORTICES & PROJECTILE HOMING+SPINNING UPDATE ---
+    for (let vi = magnatarVortices.length - 1; vi >= 0; vi--) {
+        const v = magnatarVortices[vi];
+        if (!v || now >= v.expiresAt) {
+            magnatarVortices.splice(vi, 1);
+            continue;
+        }
+        // Follow attached entity or personal aura
+        if (v.attachedEntityId) {
+            const ent = getEntityById(v.attachedEntityId);
+            if (ent && ent.hp > 0) {
+                v.x = ent.x;
+                v.y = ent.y;
+            }
+        } else if (v.isPersonalAura) {
+            const owner = getEntityById(v.ownerId);
+            if (owner && owner.hp > 0) {
+                v.x = owner.x;
+                v.y = owner.y;
+            }
+        }
+
+        // SP1: Ferrous Drag (slow enemies by 30%)
+        const targets = v.ownerId === player.id ? bots : [player, ...bots];
+        for (const t of targets) {
+            if (!t || t.hp <= 0 || t.id === v.ownerId) continue;
+            const ownerEnt = getEntityById(v.ownerId);
+            if (ownerEnt && areAlliedEntities(ownerEnt, t)) continue;
+            const dist = Math.hypot(t.x - v.x, t.y - v.y);
+            if (dist <= v.radius + (t.radius || 14)) {
+                if (v.sp1) {
+                    applyStatusEffect(t, 'slow', 500);
+                }
+            }
+        }
+
+        // AFFECT PROJECTILES: homes to the enemy then spins TRYING to hit again
+        for (let bi = 0; bi < bullets.length; bi++) {
+            const b = bullets[bi];
+            if (!b) continue;
+
+            // HC personal aura around Magnatar does not affect his own projectiles!
+            if (v.isPersonalAura && b.ownerId === v.ownerId) continue;
+            if (v.isPersonalAura && b.isMagnatarBeacon) continue;
+            if (b.isMagnatarBeacon && b.ownerId === v.ownerId && v.isPersonalAura) continue;
+
+            const dist = Math.hypot(b.x - v.x, b.y - v.y);
+            if (dist <= v.radius) {
+                b.isMagnetized = true;
+
+                // Extend projectile lifespan so it completes homing + orbital spirals
+                if (b.life != null && b.maxLife != null) {
+                    b.maxLife = Math.max(b.maxLife, b.life + 1.4);
+                }
+
+                // SP2: Kinetic Induction (first time projectile enters, extend vortex duration and charge super)
+                if (v.sp2 && !b._magnatarSP2Triggered) {
+                    b._magnatarSP2Triggered = true;
+                    v.expiresAt = Math.min(v.expiresAt + 350, now + 8000);
+                    const owner = getEntityById(v.ownerId);
+                    if (owner) {
+                        if (owner.id === player.id) {
+                            superCharge = clamp(superCharge + 4, 0, 100);
+                            if (typeof updateSuperButton === 'function') updateSuperButton();
+                        } else {
+                            owner.superCharge = clamp((owner.superCharge || 0) + 4, 0, 100);
+                        }
+                    }
+                }
+
+                // Periodic hit reset: allows projectile to hit targets repeatedly on every orbital pass!
+                if (!b._lastMagnetHitReset || now - b._lastMagnetHitReset > 220) {
+                    b._lastMagnetHitReset = now;
+                    b.hitIds = {};
+                }
+
+                if (v.isPersonalAura) {
+                    // --- HYPERCHARGE PERSONAL SINGULARITY BARRIER: PROJECTILES GO AROUND THE PLAYER ---
+                    const dx = b.x - v.x;
+                    const dy = b.y - v.y;
+                    const distToPlayer = Math.hypot(dx, dy) || 1;
+                    const angleFromPlayer = Math.atan2(dy, dx);
+                    const curSpd = Math.max(540, Math.hypot(b.vx, b.vy) || 540);
+
+                    // Initialize or maintain smooth spin direction around the player
+                    if (!b._magnetSpinDir) {
+                        const cross = dx * (b.vy || 0) - dy * (b.vx || 0);
+                        b._magnetSpinDir = cross >= 0 ? 1 : -1;
+                    }
+                    const spinDir = b._magnetSpinDir;
+                    const tangentAngle = angleFromPlayer + (Math.PI / 2) * spinDir;
+
+                    // Projectiles orbit at a safe radius around the player (90-105px within the 180px barrier)
+                    const targetOrbitR = 95;
+                    let radialSpeed = 0;
+                    if (distToPlayer < 75) {
+                        // Firm outward repulsion: keeps projectile safely away from player so it goes AROUND
+                        radialSpeed = Math.min(650, (75 - distToPlayer) * 16 + 260);
+                    } else if (distToPlayer > targetOrbitR) {
+                        // Centripetal inward pull to maintain stable orbit around the player (-50% center pull force)
+                        radialSpeed = -Math.min(180, (distToPlayer - targetOrbitR) * 1.6);
+                    }
+
+                    const targetVx = Math.cos(tangentAngle) * curSpd + Math.cos(angleFromPlayer) * radialSpeed;
+                    const targetVy = Math.sin(tangentAngle) * curSpd + Math.sin(angleFromPlayer) * radialSpeed;
+
+                    const steerFactor = 0.32;
+                    b.vx = b.vx * (1 - steerFactor) + targetVx * steerFactor;
+                    b.vy = b.vy * (1 - steerFactor) + targetVy * steerFactor;
+                } else {
+                    // --- OFFENSIVE VORTEX (GROUND BEACON OR ATTACHED ENEMY) ---
+                    // Identify target focus point (attached enemy entity or vortex center)
+                    let focusX = v.x;
+                    let focusY = v.y;
+                    if (v.attachedEntityId) {
+                        const ent = getEntityById(v.attachedEntityId);
+                        if (ent && ent.hp > 0) {
+                            focusX = ent.x;
+                            focusY = ent.y;
+                        }
+                    }
+
+                    const distToFocus = Math.hypot(b.x - focusX, b.y - focusY);
+                    const curSpd = Math.max(500, Math.hypot(b.vx, b.vy) || 500);
+
+                    // State: Has the bullet reached/struck the target enemy yet?
+                    if (!b._magnatarReachedTarget) {
+                        // --- PHASE 1: DIRECT HOMING TO ENEMY (Center pull force -50%) ---
+                        const homeAngle = Math.atan2(focusY - b.y, focusX - b.x);
+                        const steerHoming = 0.115;
+                        b.vx = b.vx * (1 - steerHoming) + Math.cos(homeAngle) * curSpd * steerHoming;
+                        b.vy = b.vy * (1 - steerHoming) + Math.sin(homeAngle) * curSpd * steerHoming;
+
+                        // Transition to Phase 2 once it reaches the target or passes through its center
+                        if (distToFocus <= 36) {
+                            b._magnatarReachedTarget = true;
+                            b._magnetSpinDir = Math.sin(b.vx * (focusY - b.y) - b.vy * (focusX - b.x)) >= 0 ? 1 : -1;
+                            b.hitIds = {}; // Fresh hit registration for subsequent passes
+                        }
+                    } else {
+                        // --- PHASE 2: ORBITAL SPIN TRYING TO HIT AGAIN ---
+                        // Whirl around while centripetal acceleration repeatedly steers it back inwards to strike the enemy again!
+                        const angleToFocus = Math.atan2(focusY - b.y, focusX - b.x);
+                        const spinDir = b._magnetSpinDir || 1;
+                        const tangentAngle = angleToFocus + (Math.PI / 2) * spinDir;
+
+                        // Centripetal inward whip + orbital velocity (Center pull force -50%: 276 max, 102 base, 186 dist scale)
+                        const pullStrength = Math.min(276, 102 + (distToFocus / v.radius) * 186);
+                        const spinStrength = Math.max(440, curSpd * 0.95);
+
+                        const targetVx = Math.cos(angleToFocus) * pullStrength + Math.cos(tangentAngle) * spinStrength;
+                        const targetVy = Math.sin(angleToFocus) * pullStrength + Math.sin(tangentAngle) * spinStrength;
+
+                        const steerFactor = 0.17;
+                        b.vx = b.vx * (1 - steerFactor) + targetVx * steerFactor;
+                        b.vy = b.vy * (1 - steerFactor) + targetVy * steerFactor;
+                    }
+                }
+            }
+        }
+    }
+
+    // --- BOLZNSTIEN PENDING STRIKES, SUPER & CHAIN LIGHTNING UPDATE ---
+    // (Runs every frame in the main game update loop)
+    for (let si = bolznstienPendingStrikes.length - 1; si >= 0; si--) {
+        const s = bolznstienPendingStrikes[si];
+        if (!s) { bolznstienPendingStrikes.splice(si, 1); continue; }
+        if (now >= s.triggerAt) {
+            bolznstienPendingStrikes.splice(si, 1);
+            // Visual thunderbolt crash & electric shockwave
+            explosions.push({
+                x: s.x,
+                y: s.y,
+                radius: s.radius,
+                life: 0,
+                maxLife: 0.38,
+                color: s.isHyper ? 'rgba(224, 86, 253, 0.85)' : 'rgba(0, 245, 212, 0.85)',
+                isBolznstienStrike: true,
+                isHyper: s.isHyper
+            });
+            if (typeof shakeScreen === 'function') shakeScreen(s.isHyper ? 7 : 5, 160);
+
+            // Deal AoE damage to enemies in radius
+            const sOwner = getEntityById(s.ownerId);
+            const targets = s.ownerId === player.id ? bots : [player, ...bots];
+            for (const t of targets) {
+                if (!t || t.hp <= 0 || t.id === s.ownerId) continue;
+                if (sOwner && areAlliedEntities(sOwner, t)) continue;
+                const dist = Math.hypot(t.x - s.x, t.y - s.y);
+                if (dist <= s.radius + (t.radius || 14)) {
+                    checkHit(t, { ownerBrawler: 'bolznstien', damage: s.damage, pierce: true, ownerId: s.ownerId, hitIds: {} }, -1);
+                    if (s.sp1) {
+                        applyStatusEffect(t, 'slow', 1500);
+                        spawnFloatingText(t.x, t.y - 28, '⚡ 35% SLOW', '#00f5d4');
+                    }
+                }
+            }
+            // Sky lightning is an area hit, so power boxes and enemy vaults in
+            // its visible circle take the same strike instead of being ignored
+            // just because they are stored as world objects rather than bots.
+            if (sOwner) {
+                for (const wall of [...destructibleWalls]) {
+                    if (!wall || wall.hp <= 0 || !isHeaterLockableBox(wall)) continue;
+                    if (!canHeaterTargetWall(sOwner, wall)) continue;
+                    if (!rectCircleCollides(wall.x, wall.y, wall.w, wall.h, s.x, s.y, s.radius)) continue;
+                    applyHeaterBoxDamage(sOwner, wall, s.damage);
+                }
+            }
+        }
+    }
+
+    // Update chocolate puddles
+    for (let cpi = chocolatePuddles.length - 1; cpi >= 0; cpi--) {
+        const cp = chocolatePuddles[cpi];
+        if (now >= cp.expiresAt) { chocolatePuddles.splice(cpi, 1); continue; }
+        for (const t of [player, ...bots]) {
+            if (!t || t.hp <= 0 || t.id === cp.ownerId || areAlliedEntities(getEntityById(cp.ownerId), t)) continue;
+            if (Math.hypot(t.x - cp.x, t.y - cp.y) <= cp.radius) {
+                t.slowUntil = Math.max(t.slowUntil || 0, now + 500);
+            }
+        }
+    }
+    // Update chocolate shell status
+    for (const t of [player, ...bots]) {
+        if (t && t.inChocolateShell) {
+            t.chocolateShellHp = Math.max(0, (t.chocolateShellHp || 0) - (dt * 1166));
+            if (t.chocolateShellHp <= 0 || now >= (t.chocolateShellUntil || 0)) {
+                t.inChocolateShell = false;
+                t.chocolateShellHp = 0;
+            }
+        }
+    }
+    // Carmela Quad Slam handling: click to slam
+    for (const ent of [player, ...bots]) {
+        if (ent && (ent.carmelaSuperHandsLeft || 0) > 0 && now < (ent.carmelaSuperUntil || 0)) {
+            // passive slam timer if bot or triggered
+            if (!ent._lastCarmelaSlamAt || now - ent._lastCarmelaSlamAt >= 1000) {
+                ent._lastCarmelaSlamAt = now;
+                ent.carmelaSuperHandsLeft--;
+                const isHyper = !!ent.carmelaSuperIsHyper;
+                const slamTargets = ent.id === player.id ? bots : [player, ...bots];
+                const slamVictim = slamTargets.find(t => t && t.hp > 0 && t.id !== ent.id && !areAlliedEntities(ent, t));
+                const slamX = slamVictim ? slamVictim.x : ent.x + (Math.random() - 0.5) * 200;
+                const slamY = slamVictim ? slamVictim.y : ent.y + (Math.random() - 0.5) * 200;
+                explosions.push({ x: slamX, y: slamY, radius: 90, life: 0, maxLife: 0.35, color: 'rgba(230, 126, 34, 0.7)' });
+                for (const t of slamTargets) {
+                    if (!t || t.hp <= 0 || t.id === ent.id || areAlliedEntities(ent, t)) continue;
+                    if (Math.hypot(t.x - slamX, t.y - slamY) <= 90) {
+                        checkHit(t, { ownerBrawler: 'carmela_fudge', damage: 1800, pierce: true, super: true, ownerId: ent.id, hitIds: {} }, -1);
+                        if (isHyper) {
+                            t.slowUntil = now + 2500;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // G2 Shock Trails: spawn puddles while bolznstienSpeedUntil is active
+    const allLivingBrawlers = [player, ...bots].filter(e => e && e.hp > 0);
+    for (const ent of allLivingBrawlers) {
+        if ((ent.bolznstienSpeedUntil || 0) > now && (!ent._lastBolzTrailAt || now - ent._lastBolzTrailAt > 180)) {
+            ent._lastBolzTrailAt = now;
+            bolznstienShockTrails.push({ x: ent.x, y: ent.y, ownerId: ent.id, expiresAt: now + 2400 });
+        }
+        // Super Electric Eyes: Channeling 4 electric chains in cone + CHAIN LIGHTNING BUFF (-40% damage)
+        if ((ent.bolznstienSuperUntil || 0) > now) {
+            if (!ent.bolznstienLastSuperTick || now - ent.bolznstienLastSuperTick >= 140) {
+                ent.bolznstienLastSuperTick = now;
+                const isHyper = !!ent.bolznstienSuperIsHyper;
+                const baseRange = isHyper ? 480 : 240;
+                const range = Math.round(baseRange * 1.40); // +40% range: 336px normal, 672px HC
+                const coneAngle = 0.58 * 1.40; // +40% cone width
+                let aimAng = 0;
+                if (ent.id === player.id) {
+                    const wm = typeof getMouseWorld === 'function' ? getMouseWorld() : null;
+                    aimAng = wm ? Math.atan2(wm.y - ent.y, wm.x - ent.x) : (ent.dir || 0);
+                } else {
+                    aimAng = ent.aimAngle != null ? ent.aimAngle : (ent.dir || 0);
+                }
+                // Super damage -30%
+                const tickDmg = Math.round(((ent.level || 11) * 24 + 190) * 0.70);
+
+                // Use the complete combat roster for both player and bot casts.
+                // Team filtering below determines valid enemies; constructing a
+                // different pool for player casts previously made some team-mode
+                // enemy layouts invisible to Electric Eyes.
+                const targets = [player, ...bots];
+                let totalDealtThisTick = 0;
+                const primaryHitTargets = [];
+
+                for (const t of targets) {
+                    if (!t || t.hp <= 0 || t.id === ent.id || areAlliedEntities(ent, t)) continue;
+                    const d = Math.hypot(t.x - ent.x, t.y - ent.y);
+                    if (d <= range + (t.radius || 14)) {
+                        const targetAng = Math.atan2(t.y - ent.y, t.x - ent.x);
+                        let diff = Math.abs(targetAng - aimAng);
+                        while (diff > Math.PI) diff = Math.abs(diff - 2 * Math.PI);
+                        if (diff <= coneAngle) {
+                            checkHit(t, { ownerBrawler: 'bolznstien', damage: tickDmg, pierce: true, super: true, ownerId: ent.id, hitIds: {} }, -1);
+                            totalDealtThisTick += tickDmg;
+                            primaryHitTargets.push(t);
+                            spawnFloatingText(t.x, t.y - 15, `-${tickDmg}`, isHyper ? '#e056fd' : '#00f5d4');
+                            if (isHyper) {
+                                t.bolznstienDmgDebuffUntil = now + 4000;
+                                const lastDebuffAt = t._lastBolzDebuffFloatAt || 0;
+                                if (now - lastDebuffAt > 800) {
+                                    t._lastBolzDebuffFloatAt = now;
+                                    spawnFloatingText(t.x, t.y - 35, '⚡ WEAKENED -40%', '#e056fd');
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Electric Eyes is a continuous lightning attack, not a bullet,
+                // so it needs an explicit world-object pass. Use the same cone
+                // geometry as fighters and the shared box/vault damage helper.
+                // A per-tick set prevents one wall from being processed twice.
+                const struckWorldObjects = new Set();
+                for (const wall of [...destructibleWalls]) {
+                    if (!wall || wall.hp <= 0 || !isHeaterLockableBox(wall)) continue;
+                    if (!canHeaterTargetWall(ent, wall)) continue;
+                    const wallId = getDestructibleWallHitId(wall);
+                    if (struckWorldObjects.has(wallId)) continue;
+                    const wx = wall.x + wall.w * 0.5;
+                    const wy = wall.y + wall.h * 0.5;
+                    const wallRadius = Math.hypot(wall.w, wall.h) * 0.5;
+                    const d = Math.hypot(wx - ent.x, wy - ent.y);
+                    if (d > range + wallRadius) continue;
+                    const targetAng = Math.atan2(wy - ent.y, wx - ent.x);
+                    let diff = Math.abs(targetAng - aimAng);
+                    while (diff > Math.PI) diff = Math.abs(diff - 2 * Math.PI);
+                    if (diff > coneAngle) continue;
+                    struckWorldObjects.add(wallId);
+                    applyHeaterBoxDamage(ent, wall, tickDmg);
+                    totalDealtThisTick += tickDmg;
+                    bolznstienChainArcs.push({
+                        x1: ent.x, y1: ent.y,
+                        x2: wx, y2: wy,
+                        expiresAt: now + 160,
+                        isHyper
+                    });
+                }
+
+                // --- RELAYING CHAIN LIGHTNING (40% LESS DAMAGE) ---
+                // Primary cone victims are deliberately not pre-marked as chained.
+                // This lets lightning from one struck enemy arc into another struck
+                // enemy, then lets that recipient relay the chain onward. A global
+                // visited set still allows each enemy to receive chain damage only
+                // once per Super tick, preventing loops and runaway recursion.
+                const chainDmg = Math.round(tickDmg * 0.20);
+                // Each hop searches a full circle around its current victim, so
+                // the chain may turn, branch, or travel behind Bolznstien rather
+                // than being constrained to the original Super aim line.
+                const chainHopRange = 330; // +50% per-hop range (220 -> 330)
+                const visitedChained = new Set([ent.id]);
+
+                let currentChainHop = [...primaryHitTargets];
+                while (currentChainHop.length > 0) {
+                    const nextChainHop = [];
+                    for (const sourceNode of currentChainHop) {
+                        for (const candidate of targets) {
+                            if (!candidate || candidate.hp <= 0 || candidate.id === ent.id || areAlliedEntities(ent, candidate)) continue;
+                            if (candidate.id === sourceNode.id) continue;
+                            if (visitedChained.has(candidate.id)) continue;
+
+                            const dist = Math.hypot(candidate.x - sourceNode.x, candidate.y - sourceNode.y);
+                            if (dist <= chainHopRange) {
+                                visitedChained.add(candidate.id);
+                                checkHit(candidate, { ownerBrawler: 'bolznstien', damage: chainDmg, pierce: true, super: true, ownerId: ent.id, hitIds: {}, isBolznstienChain: true }, -1);
+                                totalDealtThisTick += chainDmg;
+                                if (isHyper) candidate.bolznstienDmgDebuffUntil = now + 4000;
+                                bolznstienChainArcs.push({
+                                    x1: sourceNode.x, y1: sourceNode.y,
+                                    x2: candidate.x, y2: candidate.y,
+                                    expiresAt: now + 160,
+                                    isHyper: isHyper
+                                });
+                                spawnFloatingText(candidate.x, candidate.y - 15, `-${chainDmg}`, isHyper ? '#e056fd' : '#00f5d4');
+                                if (!candidate._lastChainFloatAt || now - candidate._lastChainFloatAt > 600) {
+                                    candidate._lastChainFloatAt = now;
+                                    spawnFloatingText(candidate.x, candidate.y - 32, '⚡ CHAIN -80%', isHyper ? '#e056fd' : '#00f5d4');
+                                }
+                                nextChainHop.push(candidate);
+                            }
+                        }
+                    }
+                    currentChainHop = nextChainHop;
+                }
+
+            }
+        }
+    }
+
+        // Update Rager War Totems (Raged Area)
+    for (let wti = ragerWarTotems.length - 1; wti >= 0; wti--) {
+        const totem = ragerWarTotems[wti];
+        if (now >= totem.expiresAt) {
+            ragerWarTotems.splice(wti, 1);
+            continue;
+        }
+
+        const totemOwner = getEntityById(totem.ownerId);
+        const allies = [player, ...bots].filter(e => e && e.hp > 0 && areAlliedEntities(totem, e));
+        const enemies = [player, ...bots].filter(e => e && e.hp > 0 && !areAlliedEntities(totem, e));
+
+        // Buff allies inside
+        for (const ally of allies) {
+            const dist = Math.hypot(ally.x - totem.x, ally.y - totem.y);
+            if (dist <= totem.radius) {
+                ally.ragerDmgBuffUntil = now + 300; // +15% damage handled in checkHit
+                ally.ragerSp2HealActive = totem.hasSp2;
+
+                // Auto-fire attack every 1s
+                if (!ally._lastRagerAutoFireAt || now - ally._lastRagerAutoFireAt >= 1000) {
+                    ally._lastRagerAutoFireAt = now;
+                    // Find closest enemy or aim direction
+                    let closestEnemy = null;
+                    let closestD = 900;
+                    for (const enemy of enemies) {
+                        const ed = Math.hypot(enemy.x - ally.x, enemy.y - ally.y);
+                        if (ed < closestD) { closestD = ed; closestEnemy = enemy; }
+                    }
+                    const fireAng = closestEnemy ? Math.atan2(closestEnemy.y - ally.y, closestEnemy.x - ally.x) : (ally.dir || 0);
+                    if (ally.id === player.id) {
+                        fire(fireAng, false);
+                    } else {
+                        fireBot(ally, fireAng, false);
+                    }
+                    spawnFloatingText(ally.x, ally.y - 30, '⚡ RAGE AUTO-FIRE!', totem.isHyper ? '#d25bff' : '#ff4757');
+                }
+            }
+        }
+
+        // HC: Slow enemies reload by 40% inside
+        if (totem.isHyper) {
+            for (const enemy of enemies) {
+                const dist = Math.hypot(enemy.x - totem.x, enemy.y - totem.y);
+                if (dist <= totem.radius) {
+                    enemy.ragerReloadSlowUntil = now + 300;
+                }
+            }
+        }
+    }
+
+    // Update G2 shock trails
+    for (let ti = bolznstienShockTrails.length - 1; ti >= 0; ti--) {
+        const tr = bolznstienShockTrails[ti];
+        if (now >= tr.expiresAt) { bolznstienShockTrails.splice(ti, 1); continue; }
+        const trOwner = getEntityById(tr.ownerId);
+        const targets = tr.ownerId === player.id ? bots : [player, ...bots];
+        for (const t of targets) {
+            if (!t || t.hp <= 0 || t.id === tr.ownerId) continue;
+            if (trOwner && areAlliedEntities(trOwner, t)) continue;
+            if (Math.hypot(t.x - tr.x, t.y - tr.y) <= 32 + (t.radius || 14)) {
+                if (!t._lastShockTrailDmgAt || now - t._lastShockTrailDmgAt > 400) {
+                    t._lastShockTrailDmgAt = now;
+                    checkHit(t, { ownerBrawler: 'bolznstien', damage: 160, pierce: true, ownerId: tr.ownerId, hitIds: {} }, -1);
+                }
+            }
+        }
+    }
+
+    // Update Chain Lightning Arcs
+    for (let ci = bolznstienChainArcs.length - 1; ci >= 0; ci--) {
+        if (now >= bolznstienChainArcs[ci].expiresAt) bolznstienChainArcs.splice(ci, 1);
     }
 
     for(let i=explosions.length-1; i>=0; i--){
@@ -44849,9 +48531,15 @@ let heistFeverActive = false;
        if(player.reloadDebuffUntil && now < player.reloadDebuffUntil) currentReloadTime *= 1.4;
        if(player.trinketHyperReloadUntil && now < player.trinketHyperReloadUntil) currentReloadTime /= 1.10;
        if(player.trinketComebackUntil && now < player.trinketComebackUntil) currentReloadTime /= 1.10;
-       if (selectedBrawler === 'minigunnin' ) {
-           if (now - lastShot > (selectedBrawler === 'minigunnin' ? 1000 : 500)) currentReloadTime = (selectedBrawler === 'minigunnin' ? 30 : 25); // Fast reload out of combat
-           else currentReloadTime = 999999; // Don't reload while firing recently
+       if (selectedBrawler === 'minigunnin' || selectedBrawler === 'oil_maker') {
+           let fastDelay = selectedBrawler === 'oil_maker' ? 380 : 1000;
+           let reloadTime = selectedBrawler === 'oil_maker' ? 24 : 30;
+           if (selectedBrawler === 'oil_maker' && (selectedStar === 'long' || selectedStar === 'sp2')) {
+               const nearFire = oilMakerPuddles.some(p => p.ignited && Math.hypot(p.x - player.x, p.y - player.y) <= 120);
+               if (nearFire) reloadTime /= 1.25;
+           }
+           if (now - lastShot > fastDelay) currentReloadTime = reloadTime;
+           else currentReloadTime = 999999;
        } else if (selectedBrawler === 'beam') {
            const isStunned = now < (player.stunUntil || 0);
            if ((mouse.down || mobileInput.attackActive) && !isStunned) currentReloadTime = 999999;
@@ -44867,7 +48555,7 @@ let heistFeverActive = false;
        // Jetpack's reload clock is completely paused during flight.
        if (!(selectedBrawler === 'jetpack' && player.jetpackFlight)) ammoReloadTimer += dt * 1000;
        if(ammoReloadTimer >= currentReloadTime){
-           ammo = selectedBrawler === 'minigunnin' ? Math.min(maxAmmo, ammo + 1) : ammo + 1;
+           ammo = (selectedBrawler === 'minigunnin' || selectedBrawler === 'oil_maker') ? Math.min(maxAmmo, ammo + 1) : ammo + 1;
            ammoReloadTimer -= currentReloadTime;
               if(ammo >= maxAmmo) {
                   if(!player.hunterFullAmmoSince) player.hunterFullAmmoSince = performance.now();
@@ -45049,7 +48737,7 @@ let heistFeverActive = false;
           if((t.pickleJarSpawnsLeft||0)>0&&now>=(t.pickleJarNextSpawnAt||0)){
               const owner=getEntityById(t.ownerId);
               const livingCount=bots.filter(p=>p.isPeterPickleMinion&&p.ownerId===t.ownerId&&p.hp>0&&!p.isDead).length;
-              const livingCap=t.pickleJarHyper?24:12;
+              const livingCap=t.pickleJarHyper?20:12;
               if(owner&&livingCount<livingCap){
                   const a=Math.random()*Math.PI*2;spawnPeterPickleMinion(owner,t.x+Math.cos(a)*28,t.y+Math.sin(a)*28,!!t.pickleJarHyper);
                   t.pickleJarSpawnsLeft--;t.pickleJarNextSpawnAt=now+(t.pickleJarSpawnInterval||1135);
@@ -45181,7 +48869,7 @@ let heistFeverActive = false;
           }
       }
 
-      if(t.isHypercharged && !t.isBoss && performance.now() > (t.hyperchargeUntil || 0)) {
+      if(t.isHypercharged && !t.isBoss && performance.now() > (t.hyperchargeUntil || 0) && !(isRankedMatch && activeRankedModifier === 'always_hyper') && !(isRankedMatch && activeRankedModifierSecondary === 'always_hyper') && !((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper'))) {
           t.isHypercharged = false; t.hyperChargeCharge = 0;
       }
 
@@ -45561,6 +49249,7 @@ let heistFeverActive = false;
               if (t.isArenaForgeMinion && enemyStructure) forcedObjectiveTarget = enemyStructure;
               else if ((t.arenaForgeEnergy || 0) >= 3 && ownCore) forcedObjectiveTarget = { x: ownCore.x, y: ownCore.y, id: 'center' };
               else if (structureThreat && (assignedDefender || Math.hypot(structureThreat.x-t.x,structureThreat.y-t.y)<520)) forcedObjectiveTarget = structureThreat;
+              else if (arenaForgeBeacon && !t.isArenaForgeMinion) forcedObjectiveTarget = {x:arenaForgeBeacon.x+(botAi.slot%2?45:-45),y:arenaForgeBeacon.y,id:'forge_capture'};
               else if (nearbyEnergy) forcedObjectiveTarget = nearbyEnergy;
               else if (waveRally && enemyStructure && Math.hypot(waveRally.x-t.x,waveRally.y-t.y)>145) forcedObjectiveTarget = waveRally;
               else if (assignedCamp && !waveRally) forcedObjectiveTarget = assignedCamp;
@@ -45606,6 +49295,55 @@ let heistFeverActive = false;
                   }
               }
               forcedObjectiveTarget = zoneEnemy || getBotControlAnchor(t, botAi);
+          } else if (isKnockoutMode && knockoutState) {
+              // Bots 3.0: Knockout Elimination & Toxic Storm Intelligence
+              const s = knockoutState;
+              const center = { x: WORLD_W * 0.5, y: WORLD_H * 0.5 };
+              const distToCenter = Math.hypot(t.x - center.x, t.y - center.y);
+              const safeRadius = Math.max(160, (s.stormRadius || 1800) - 150);
+              if (distToCenter > safeRadius) {
+                  forcedObjectiveTarget = { x: center.x, y: center.y, id: 'center' };
+              } else if (botAi.hpPct < 0.35) {
+                  const cover = findBotCoverPoint(t, center);
+                  if (cover) forcedObjectiveTarget = cover;
+              } else {
+                  const livingEnemies = getBotLivingEnemies(t);
+                  if (livingEnemies.length > 0) {
+                      let focusEnemy = null;
+                      let focusScore = Infinity;
+                      for (const enemy of livingEnemies) {
+                          const score = getBotEnemyScore(t, enemy, botAi, nowTarget);
+                          if (score < focusScore) { focusScore = score; focusEnemy = enemy; }
+                      }
+                      if (focusEnemy) forcedObjectiveTarget = focusEnemy;
+                  }
+              }
+          } else if (isBraweBallMode && braweBallState && braweBallState.ball) {
+              // Bots 3.0: Brawe Ball 3v3 Integrated Objective Routing
+              const ball = braweBallState.ball;
+              const goalY = t.team === 'player' ? 120 : WORLD_H - 120;
+              if (ball.carrier === t.id) {
+                  const distToGoal = Math.abs(goalY - t.y);
+                  if (distToGoal <= 580) {
+                      forcedObjectiveTarget = { x: 900 + (Math.random() - 0.5) * 160, y: goalY, id: 'center' };
+                  } else {
+                      const nearBarricade = (t.team === 'player' && t.y > 340 && t.y < 580) || (t.team === 'enemy' && t.y > 1840 && t.y < 2060);
+                      const targetX = (nearBarricade && t.x > 700 && t.x < 1100) ? (t.x < 900 ? 620 : 1180) : 900;
+                      forcedObjectiveTarget = { x: targetX, y: goalY, id: 'center' };
+                  }
+              } else if (ball.carrier) {
+                  const carrierEnt = ball.carrier === player.id ? player : bots.find(bt => bt.id === ball.carrier);
+                  if (carrierEnt) {
+                      if (areAlliedEntities(t, carrierEnt)) {
+                          const flankSide = (t.slot % 2 === 0 ? -180 : 180);
+                          forcedObjectiveTarget = { x: carrierEnt.x + flankSide, y: carrierEnt.y + (t.team === 'player' ? -160 : 160), id: 'center' };
+                      } else {
+                          forcedObjectiveTarget = carrierEnt;
+                      }
+                  }
+              } else {
+                  forcedObjectiveTarget = { x: ball.x, y: ball.y, id: 'center' };
+              }
           }
       }
       if (forcedObjectiveTarget) {
@@ -45762,6 +49500,12 @@ let heistFeverActive = false;
           if (t.brawler === 'minigunnin' && t.selectedStar === 'long') {
               activeBotSpeed += (100 - (t.minigunAmmo || 100)) * 0.5;
           }
+          if (t.bolznstienSpeedUntil && nowTarget < t.bolznstienSpeedUntil) activeBotSpeed *= 1.30;
+      if (t.brawler === 'carmela_fudge') {
+          if (t.carmelaFudgeForm === 'fudge') activeBotSpeed = 275;
+          else activeBotSpeed = 260;
+      }
+      if (t.carmelaSpeedUntil && nowTarget < t.carmelaSpeedUntil) activeBotSpeed *= 1.30;
           if (t.moneySpeedUntil && nowTarget < t.moneySpeedUntil) activeBotSpeed *= 1.15;
           if (t.seraSpeedUntil && nowTarget < t.seraSpeedUntil) activeBotSpeed *= 1.20;
           if (t.hunterSpeedUntil && nowTarget < t.hunterSpeedUntil) activeBotSpeed *= (t.hunterHcMark ? 1.288 : 1.15);
@@ -45940,7 +49684,12 @@ let heistFeverActive = false;
                  if (t.brawler === 'parrot') {
                       const attackRate = t.parrotSp2 ? 1040 : 1300; 
                       if (!isStunned && target && !target.isPowerup && !target.isBox && distToTarget <= 300 && performance.now() - t.lastShot > attackRate) {
-                          fire(t, target.x, target.y, true, false);
+                          const leadSeconds = getBotAimLeadSeconds(botAi, distToTarget);
+                          const leadX = distToTarget > 50 ? (target.vx || 0) * leadSeconds : 0;
+                          const leadY = distToTarget > 50 ? (target.vy || 0) * leadSeconds : 0;
+                          const aimX = target.x + leadX;
+                          const aimY = target.y + leadY;
+                          fire(t, aimX, aimY, true, false);
                       }
                   }
              } else if (t.brawler === 'skeletrooper') {
@@ -45992,7 +49741,9 @@ let heistFeverActive = false;
                        fireSuperBot(t, superX, superY);
                    } else {
                        // fire() applies its own velocity prediction for bots.
-                       fire(t, target.x, target.y, true, false);
+                       const aimX = target.x + leadX;
+                       const aimY = target.y + leadY;
+                       fire(t, aimX, aimY, true, false);
                    }
                }
              }
@@ -46055,7 +49806,7 @@ let heistFeverActive = false;
         aliveCount = hostileAlive + (teamAlive ? 1 : 0);
     } else {
         aliveCount = aliveBots.length + (player.hp > 0 ? 1 : 0);
-        if (!isCoreBreachIntroMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isBossFight && !isSoloTrial && (player.hp <= 0 || aliveBots.length === 0)) {
+        if (!isCoreBreachIntroMode && !isWeeFeeBossMode && !isBraweBallMode && !isKnockoutMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isBossFight && !isSoloTrial && (player.hp <= 0 || aliveBots.length === 0)) {
             gameOver = true;
         }
     }
@@ -46326,6 +50077,10 @@ let heistFeverActive = false;
           if (selectedBrawler === 'beast') {
               const state = getBeastSignatureState(player, now);
               return {label:`SIGNATURE (R) - ${state.label}`,value:state.active?state.remaining:(state.ready?5000:0),max:5000,color:'#ffd34f'};
+          }
+          if (selectedBrawler === 'boom_arang') {
+              const state=ensureBoomArangInstinctState(player,now);
+              return {label:state?.ready?'INSTINCT - RETURN RIDER READY':`INSTINCT - ${((state?.remaining||0)/1000).toFixed(1)}s`,value:9000-(state?.remaining||0),max:9000,color:'#62ef88'};
           }
           if (selectedBrawler === 'splitter') {
               const state=ensureSplitterInstinctState(player,now);
@@ -47119,6 +50874,530 @@ let heistFeverActive = false;
                 ctx.beginPath();
                 ctx.arc(0, 0, radius * 0.22, 0, Math.PI * 2);
                 ctx.fill();
+
+            } else if (brawlerId === 'oil_maker') {
+                // --- OIL MAKER 2.5D REFINERY CONTROLLER MODEL ---
+                ctx.translate(entity.x, drawY - attackKick * 2);
+                ctx.rotate(Math.sin(now * .006) * .03 + Math.sin(aim) * attackKick * .1);
+
+                const isHyper = entity === player ? !!isHypercharged : !!entity?.isHypercharged;
+
+                // 1. Dual Crude Oil Tanks on back
+                ctx.fillStyle = '#1c1917';
+                ctx.strokeStyle = isHyper ? '#f59e0b' : '#78716c';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.9, -radius * 0.6, radius * 0.45, radius * 0.9, 4);
+                ctx.roundRect(radius * 0.45, -radius * 0.6, radius * 0.45, radius * 0.9, 4);
+                ctx.fill();
+                ctx.stroke();
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.8, -radius * 0.1);
+                ctx.lineTo(-radius * 0.55, -radius * 0.1);
+                ctx.moveTo(radius * 0.55, -radius * 0.1);
+                ctx.lineTo(radius * 0.8, -radius * 0.1);
+                ctx.stroke();
+
+                // 2. Heavy Hazmat Torso & Rubber Apron
+                const coatGrad = ctx.createLinearGradient(-radius * 0.6, 0, radius * 0.6, 0);
+                coatGrad.addColorStop(0, '#292524');
+                coatGrad.addColorStop(0.5, '#44403c');
+                coatGrad.addColorStop(1, '#1c1917');
+                ctx.fillStyle = coatGrad;
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.65, -radius * 0.4, radius * 1.3, radius * 1.15, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                // 3. High-Vis Reflective Stripe
+                ctx.fillStyle = isHyper ? '#f59e0b' : '#fbbf24';
+                ctx.beginPath();
+                ctx.rect(-radius * 0.65, 0, radius * 1.3, radius * 0.22);
+                ctx.fill();
+
+                // 4. Heavy Brass Nozzle Lance (aimed forward)
+                ctx.save();
+                ctx.rotate(aim);
+                ctx.fillStyle = '#b45309';
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.roundRect(radius * 0.3, -radius * 0.2, radius * 0.95, radius * 0.4, 3);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = isHyper ? '#ef4444' : '#1c1917';
+                ctx.beginPath();
+                ctx.arc(radius * 1.3, 0, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // 5. Refinery Helmet & Visor
+                ctx.fillStyle = isHyper ? '#f59e0b' : '#d97706';
+                ctx.strokeStyle = '#78350f';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.5, radius * 0.45, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.28, -radius * 0.6, radius * 0.56, radius * 0.25, 3);
+                ctx.fill();
+                ctx.fillStyle = '#1c1917';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.15, -radius * 0.3, 3, 0, Math.PI * 2);
+                ctx.arc(radius * 0.15, -radius * 0.3, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (brawlerId === 'magnatar') {
+                // --- MAGNATAR 2.5D COSMIC DYNAMO MODEL ---
+                ctx.translate(entity.x, drawY - attackKick * 2);
+                ctx.rotate(Math.sin(now * .006) * .03 + Math.sin(aim) * attackKick * .1);
+
+                const isHyper = entity === player ? !!isHypercharged : !!entity?.isHypercharged;
+                const orbCharging = (entity === player ? (player.magnatarOrbCount || 1) : (entity.magnatarPendingFireOrbs || 1));
+
+                // Floating electromagnetic levitation field
+                ctx.save();
+                const floatOffset = Math.sin(now * 0.006) * 4;
+                ctx.translate(0, floatOffset);
+
+                // Magnetic aura glow
+                ctx.shadowColor = isHyper ? '#e056fd' : '#00d2ff';
+                ctx.shadowBlur = 16 + Math.sin(now * 0.01) * 6;
+                ctx.strokeStyle = isHyper ? '#f368e0' : '#00f5d4';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.ellipse(0, radius * 0.75, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 1. Armored Titanium Torso
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = '#334155';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.7, -radius * 0.45, radius * 1.4, radius * 1.25, 7);
+                ctx.fill();
+                ctx.stroke();
+
+                // 2. Glowing Electromagnetic Core Reactor
+                const corePulse = Math.sin(now * 0.008) * 0.2 + 0.8;
+                ctx.fillStyle = isHyper ? '#f368e0' : '#00d2ff';
+                ctx.beginPath();
+                ctx.arc(0, radius * 0.1, radius * 0.28 * corePulse, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 3. Left Hand: North Pole Gauntlet (Red N)
+                ctx.fillStyle = '#ff4757';
+                ctx.beginPath();
+                ctx.roundRect(-radius * 1.15, -radius * 0.25, radius * 0.35, radius * 0.7, 4);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.fillText('N', -radius * 0.98, radius * 0.15);
+
+                // 4. Right Hand: South Pole Gauntlet (Cyan S)
+                ctx.fillStyle = '#00d2ff';
+                ctx.beginPath();
+                ctx.roundRect(radius * 0.8, -radius * 0.25, radius * 0.35, radius * 0.7, 4);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.fillText('S', radius * 0.97, radius * 0.15);
+
+                // 5. Dynamo Helmet & Visor
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.55, radius * 0.45, 0, Math.PI * 2);
+                ctx.fill();
+                // Glowing visor slit
+                ctx.strokeStyle = isHyper ? '#ff66ff' : '#00f5d4';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.3, -radius * 0.55);
+                ctx.lineTo(radius * 0.3, -radius * 0.55);
+                ctx.stroke();
+
+                // 6. Orbiting magnetic planetary orbs (charges up to 3 or 6)
+                for (let oi = 0; oi < orbCharging; oi++) {
+                    const oAngle = (now * 0.006) + (oi * Math.PI * 2 / orbCharging);
+                    const ox = Math.cos(oAngle) * (radius * 1.35);
+                    const oy = Math.sin(oAngle) * (radius * 0.85);
+                    // Planet sphere
+                    ctx.fillStyle = isHyper ? '#e056fd' : '#00d2ff';
+                    ctx.beginPath();
+                    ctx.arc(ox, oy, 4.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Miniature planetary ring around charging orb
+                    ctx.strokeStyle = isHyper ? '#feca57' : '#ffffff';
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.ellipse(ox, oy, 7, 2.8, oAngle, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            } else if (brawlerId === 'rager') {
+                // ==========================================
+                // RAGER 2.5D LUMBERJACK BERSERKER MODEL
+                // ==========================================
+                const breath = Math.sin(now * 0.007) * 1.5;
+                const furyPulse = Math.sin(now * 0.012) * 2;
+
+                ctx.translate(entity.x, drawY - attackKick * 2);
+                ctx.rotate(Math.sin(now * .006) * .03 + Math.sin(aim) * attackKick * .1);
+
+                // 1. Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.38)';
+                ctx.beginPath();
+                ctx.ellipse(0, 14, 22, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 2. Leather Lumberjack Boots & Legs
+                ctx.fillStyle = '#3a2010';
+                ctx.fillRect(-12, 2, 9, 14);
+                ctx.fillRect(3, 2, 9, 14);
+
+                // 3. Plaid Flannel Vest & Broad Shoulders
+                ctx.fillStyle = '#b71540'; // Flannel red
+                ctx.beginPath();
+                ctx.roundRect(-16, -16 + breath, 32, 22, 5);
+                ctx.fill();
+                // Black plaid stripes
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-16, -6 + breath); ctx.lineTo(16, -6 + breath);
+                ctx.moveTo(-5, -16 + breath); ctx.lineTo(-5, 6 + breath);
+                ctx.moveTo(5, -16 + breath); ctx.lineTo(5, 6 + breath);
+                ctx.stroke();
+
+                // 4. Bear Fur Mantle / Collar
+                ctx.fillStyle = '#533519';
+                ctx.beginPath();
+                ctx.ellipse(0, -16 + breath, 18, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 5. Berserker Head & Beard
+                ctx.fillStyle = '#e0a97a'; // Flesh tone
+                ctx.beginPath();
+                ctx.arc(0, -26 + breath, 11, 0, Math.PI * 2);
+                ctx.fill();
+                // Thick auburn woodsman beard
+                ctx.fillStyle = '#833917';
+                ctx.beginPath();
+                ctx.moveTo(-9, -25 + breath);
+                ctx.lineTo(0, -13 + breath);
+                ctx.lineTo(9, -25 + breath);
+                ctx.fill();
+
+                // 6. Glowing Rage Eyes
+                ctx.fillStyle = '#ff1e56';
+                ctx.shadowColor = '#ff1e56';
+                ctx.shadowBlur = 8 + furyPulse;
+                ctx.fillRect(-5, -29 + breath, 3, 3);
+                ctx.fillRect(2, -29 + breath, 3, 3);
+                ctx.shadowBlur = 0;
+
+                // 7. Giant Dual-Headed Lumber Battle Axe
+                ctx.save();
+                ctx.translate(16, -14 + breath);
+                ctx.rotate(0.35 + Math.sin(now * 0.005) * 0.1);
+                // Wood handle
+                ctx.fillStyle = '#5c3317';
+                ctx.fillRect(-2, -34, 4, 48);
+                // Double steel axe head
+                ctx.fillStyle = '#95a5a6';
+                ctx.beginPath();
+                // Left blade
+                ctx.moveTo(-2, -28);
+                ctx.bezierCurveTo(-18, -36, -20, -12, -2, -18);
+                // Right blade
+                ctx.bezierCurveTo(18, -12, 20, -36, 2, -28);
+                ctx.fill();
+                // Silver sharp edge
+                ctx.strokeStyle = '#ecf0f1';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.restore();
+            } else if (brawlerId === 'carmela_fudge') {
+                const isFudge = entity.carmelaFudgeForm === 'fudge';
+                ctx.translate(entity.x, drawY - attackKick * 2);
+                ctx.rotate(Math.sin(now * .006) * .03 + Math.sin(aim) * attackKick * .1);
+
+                if (isFudge) {
+                    // --- FUDGE 2.5D MODEL (CHOCOLATE BEAST) ---
+                    // 1. Chocolate Beast Body
+                    const fudgeGrad = ctx.createRadialGradient(0, 0, radius * 0.2, 0, 0, radius * 1.1);
+                    fudgeGrad.addColorStop(0, '#5d4037');
+                    fudgeGrad.addColorStop(0.7, '#3e2723');
+                    fudgeGrad.addColorStop(1, '#1b0000');
+                    ctx.fillStyle = fudgeGrad;
+                    ctx.strokeStyle = '#8d6e63';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.ellipse(0, radius * 0.1, radius * 1.05, radius * 0.85, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Chocolate Drip Arms / Paws
+                    ctx.fillStyle = '#4e342e';
+                    ctx.beginPath();
+                    ctx.ellipse(-radius * 0.85, radius * 0.2, radius * 0.35, radius * 0.45, -0.2, 0, Math.PI * 2);
+                    ctx.ellipse(radius * 0.85, radius * 0.2, radius * 0.35, radius * 0.45, 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 2. Swirled Whipped Cream Top with Cherry
+                    ctx.fillStyle = '#fffaf0';
+                    ctx.strokeStyle = '#d7ccc8';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(0, -radius * 0.65, radius * 0.45, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Cherry
+                    ctx.fillStyle = '#d63031';
+                    ctx.beginPath();
+                    ctx.arc(0, -radius * 1.05, radius * 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Cherry stem
+                    ctx.strokeStyle = '#27ae60';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -radius * 1.2);
+                    ctx.quadraticCurveTo(radius * 0.15, -radius * 1.45, radius * 0.3, -radius * 1.35);
+                    ctx.stroke();
+
+                    // 3. Glowing Cocoa Eyes & Warm Grin
+                    ctx.fillStyle = '#f39c12';
+                    ctx.beginPath();
+                    ctx.arc(-radius * 0.35, -radius * 0.1, radius * 0.14, 0, Math.PI * 2);
+                    ctx.arc(radius * 0.35, -radius * 0.1, radius * 0.14, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(-radius * 0.33, -radius * 0.12, radius * 0.05, 0, Math.PI * 2);
+                    ctx.arc(radius * 0.37, -radius * 0.12, radius * 0.05, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Grin
+                    ctx.strokeStyle = '#1b0000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, radius * 0.12, radius * 0.25, 0.2, Math.PI - 0.2);
+                    ctx.stroke();
+                } else {
+                    // --- CARMELA 2.5D MODEL (CONFECTIONERY ARTISAN) ---
+                    // 1. Baker dress & apron
+                    const dressGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                    dressGrad.addColorStop(0, '#e67e22');
+                    dressGrad.addColorStop(0.5, '#d35400');
+                    dressGrad.addColorStop(1, '#a04000');
+                    ctx.fillStyle = dressGrad;
+                    ctx.strokeStyle = '#f39c12';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.roundRect(-radius * 0.75, -radius * 0.4, radius * 1.5, radius * 1.3, 8);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // White Apron
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.roundRect(-radius * 0.45, -radius * 0.25, radius * 0.9, radius * 1.0, 4);
+                    ctx.fill();
+                    // Candy Pocket on apron
+                    ctx.fillStyle = '#ff7675';
+                    ctx.beginPath();
+                    ctx.roundRect(-radius * 0.22, radius * 0.2, radius * 0.44, radius * 0.35, 2);
+                    ctx.fill();
+
+                    // 2. Caramel Twin-tails (bobbing)
+                    const hairSway = Math.sin(now * 0.007) * 0.1;
+                    ctx.fillStyle = '#f39c12';
+                    ctx.strokeStyle = '#d35400';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.ellipse(-radius * 0.85, -radius * 0.5, radius * 0.3, radius * 0.55, -0.3 + hairSway, 0, Math.PI * 2);
+                    ctx.ellipse(radius * 0.85, -radius * 0.5, radius * 0.3, radius * 0.55, 0.3 - hairSway, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // 3. Head & Baker's Toque (Chef Hat)
+                    ctx.fillStyle = '#ffeaa7';
+                    ctx.beginPath();
+                    ctx.arc(0, -radius * 0.55, radius * 0.48, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // White Baker Hat
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = '#dfe6e9';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.roundRect(-radius * 0.5, -radius * 1.25, radius * 1.0, radius * 0.55, 6);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(0, -radius * 1.25, radius * 0.35, Math.PI, 0);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Eyes & Smile
+                    ctx.fillStyle = '#2d3436';
+                    ctx.beginPath();
+                    ctx.arc(-radius * 0.18, -radius * 0.55, radius * 0.1, 0, Math.PI * 2);
+                    ctx.arc(radius * 0.18, -radius * 0.55, radius * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(-radius * 0.16, -radius * 0.58, radius * 0.04, 0, Math.PI * 2);
+                    ctx.arc(radius * 0.20, -radius * 0.58, radius * 0.04, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#d63031';
+                    ctx.lineWidth = 1.8;
+                    ctx.beginPath();
+                    ctx.arc(0, -radius * 0.45, radius * 0.14, 0.1, Math.PI - 0.1);
+                    ctx.stroke();
+
+                    // 4. Quad Slam Floating Hands (if active)
+                    if ((entity.carmelaSuperHandsLeft || 0) > 0) {
+                        for (let h = 0; h < (entity.carmelaSuperHandsLeft || 4); h++) {
+                            const hAngle = -Math.PI * 0.8 + (h * Math.PI * 0.53);
+                            const hDist = radius * 1.55;
+                            const bob = Math.sin(now * 0.009 + h * 1.6) * 5;
+                            const hx = Math.cos(hAngle) * hDist;
+                            const hy = Math.sin(hAngle) * (hDist * 0.7) - radius * 0.6 + bob;
+
+                            ctx.save();
+                            ctx.translate(hx, hy);
+                            ctx.shadowColor = '#f1c40f';
+                            ctx.shadowBlur = 8;
+                            ctx.fillStyle = '#f39c12';
+                            ctx.strokeStyle = '#d35400';
+                            ctx.lineWidth = 1.5;
+                            ctx.beginPath();
+                            ctx.arc(0, 0, 7, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.stroke();
+                            for (let fi = -1.5; fi <= 1.5; fi += 1) {
+                                ctx.fillRect(fi * 2.8 - 1, -10, 2.2, 5);
+                            }
+                            ctx.restore();
+                        }
+                    }
+                }
+            } else if (brawlerId === 'bolznstien') {
+                // --- BOLZNSTIEN 2.5D FRANKEN-MONSTER MODEL ---
+                ctx.translate(entity.x, drawY - attackKick * 2);
+                ctx.rotate(Math.sin(now * .006) * .03 + Math.sin(aim) * attackKick * .1);
+
+                const isHyper = entity === player ? !!isHypercharged : !!entity?.isHypercharged;
+                const isSuperActive = (entity.bolznstienSuperUntil || 0) > now;
+                const speedBoostActive = (entity.bolznstienSpeedUntil || 0) > now;
+
+                // High-voltage electric aura
+                if (isHyper || isSuperActive || speedBoostActive) {
+                    ctx.save();
+                    const auraPulse = 0.75 + Math.sin(now * 0.012) * 0.25;
+                    ctx.shadowColor = isHyper ? '#e056fd' : '#00f5d4';
+                    ctx.shadowBlur = 18 + auraPulse * 12;
+                    ctx.strokeStyle = isHyper ? '#f368e0' : '#00cec9';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius * 1.3, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 1. Broad Shoulders / Ragged Leather Vest
+                ctx.fillStyle = '#2d3436';
+                ctx.strokeStyle = '#1e272e';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.85, -radius * 0.4, radius * 1.7, radius * 1.35, 8);
+                ctx.fill();
+                ctx.stroke();
+
+                // 2. Heavy Metal Neck Bolts with crackling sparks
+                ctx.fillStyle = '#b2bec3';
+                ctx.strokeStyle = '#636e72';
+                ctx.lineWidth = 2;
+                // Left bolt
+                ctx.beginPath();
+                ctx.roundRect(-radius * 1.05, -radius * 0.1, radius * 0.25, radius * 0.25, 2);
+                ctx.fill();
+                ctx.stroke();
+                // Right bolt
+                ctx.beginPath();
+                ctx.roundRect(radius * 0.8, -radius * 0.1, radius * 0.25, radius * 0.25, 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // 3. Frankenstein Head (Pale Electric-Green)
+                ctx.fillStyle = '#00b894';
+                ctx.strokeStyle = '#006266';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.65, -radius * 1.1, radius * 1.3, radius * 1.15, 10);
+                ctx.fill();
+                ctx.stroke();
+
+                // 4. Forehead Stitches
+                ctx.strokeStyle = '#2d3436';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.45, -radius * 0.85);
+                ctx.lineTo(radius * 0.45, -radius * 0.85);
+                ctx.stroke();
+                for (let sx = -radius * 0.35; sx <= radius * 0.35; sx += radius * 0.22) {
+                    ctx.beginPath();
+                    ctx.moveTo(sx, -radius * 0.98);
+                    ctx.lineTo(sx, -radius * 0.72);
+                    ctx.stroke();
+                }
+
+                // 5. Electric Glowing Eyes
+                const eyeColor = isHyper ? '#f368e0' : (isSuperActive ? '#00f5d4' : '#81ecec');
+                ctx.save();
+                ctx.shadowColor = eyeColor;
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = eyeColor;
+                ctx.beginPath();
+                ctx.arc(-radius * 0.28, -radius * 0.45, radius * 0.18, 0, Math.PI * 2);
+                ctx.arc(radius * 0.28, -radius * 0.45, radius * 0.18, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.28, -radius * 0.45, radius * 0.08, 0, Math.PI * 2);
+                ctx.arc(radius * 0.28, -radius * 0.45, radius * 0.08, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // 6. Jagged mouth
+                ctx.strokeStyle = '#2d3436';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.32, -radius * 0.15);
+                ctx.lineTo(-radius * 0.1, -radius * 0.08);
+                ctx.lineTo(radius * 0.1, -radius * 0.18);
+                ctx.lineTo(radius * 0.32, -radius * 0.1);
+                ctx.stroke();
+
+                // 7. Electric sparks jumping between neck bolts
+                if (isHyper || isSuperActive || Math.random() < 0.35) {
+                    ctx.strokeStyle = isHyper ? '#e056fd' : '#00f5d4';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-radius * 0.95, -radius * 0.05);
+                    const midX = (Math.random() - 0.5) * radius * 0.6;
+                    const midY = -radius * 0.2 - Math.random() * radius * 0.3;
+                    ctx.lineTo(midX, midY);
+                    ctx.lineTo(radius * 0.9, -radius * 0.05);
+                    ctx.stroke();
+                }
             } else if (brawlerId === 'sir_cheeseburger') {
                 // --- SIR CHEESEBURGER KNIGHT 2.5D MODEL ---
                 ctx.translate(entity.x, drawY - attackKick * 3);
@@ -47634,6 +51913,7 @@ let heistFeverActive = false;
   }
 
   function render(){
+    const now = performance.now();
     // Camera follow player or living teammate when dead in squad/team modes
     let cameraTargetX = Number.isFinite(player.x) ? player.x : WORLD_W * 0.5;
     let cameraTargetY = Number.isFinite(player.y) ? player.y : WORLD_H * 0.5;
@@ -47641,15 +51921,15 @@ let heistFeverActive = false;
         cameraTargetX = player.blinkeyeActiveEye.x;
         cameraTargetY = player.blinkeyeActiveEye.y;
     }
-    if (player.hp <= 0 && (isDuoShowdown || isTrioShowdownMode || isObjectiveMode || isConstructionMode || isBrickVaultMode || isDamageFillerMode || isMirrorMode)) {
+    if (player.hp <= 0 && (isDuoShowdown || isTrioShowdownMode || isBraweBallMode || isKnockoutMode || isObjectiveMode || isConstructionMode || isBrickVaultMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode)) {
         const ally = bots.find(b => b.isTeammate && b.hp > 0) || bots.find(b => b.team === 'player' && b.hp > 0);
         if (ally && Number.isFinite(ally.x) && Number.isFinite(ally.y)) {
             cameraTargetX = ally.x;
             cameraTargetY = ally.y;
         }
     }
-    camX = cameraTargetX - innerWidth/2;
-    camY = cameraTargetY - innerHeight/2;
+    camX = cameraTargetX - innerWidth/(2 * CAMERA_ZOOM);
+    camY = cameraTargetY - innerHeight/(2 * CAMERA_ZOOM);
     
     if (performance.now() < screenShakeUntil && Number.isFinite(screenShakeAmount)) {
         camX += (Math.random() - 0.5) * screenShakeAmount;
@@ -47658,6 +51938,7 @@ let heistFeverActive = false;
 
     ctx.clearRect(0,0,innerWidth,innerHeight);
     ctx.save();
+    ctx.scale(CAMERA_ZOOM, CAMERA_ZOOM);
     ctx.translate(-camX, -camY);
 
     // Rendering is the dominant cost in crowded matches. Keep simulation and
@@ -47668,8 +51949,8 @@ let heistFeverActive = false;
     const decorativeFxStride = visualPressure ? 4 : 1;
     const simplifyExplosionFx = explosions.length > (LOW_POWER_DEVICE ? 28 : 80);
     const isWorldVisualVisible = (x, y, margin = 120) => Number.isFinite(x) && Number.isFinite(y)
-        && x >= camX - margin && x <= camX + innerWidth + margin
-        && y >= camY - margin && y <= camY + innerHeight + margin;
+        && x >= camX - margin && x <= camX + innerWidth / CAMERA_ZOOM + margin
+        && y >= camY - margin && y <= camY + innerHeight / CAMERA_ZOOM + margin;
 
     // shared angle variable for aim helpers
     let ang = 0;
@@ -47684,6 +51965,9 @@ let heistFeverActive = false;
     renderCoreBreachIntro();
     renderCorruptedShowdown();
     renderLavaBossEvent();
+    if (isBraweBallMode) renderBraweBallWorld(ctx);
+    if (isKnockoutMode) renderKnockoutWorld(ctx);
+    if (isWeeFeeBossMode) renderWeeFeeBossWorld(ctx);
     if (isBlinkEyeDodgeMode) renderBlinkEyeDodgeWorld(ctx);
     
     // Draw only the visible section of the grid. The old full-world paths
@@ -47849,6 +52133,20 @@ let heistFeverActive = false;
 
     
 
+    if (isArenaForgeMode && arenaForgeBeacon) {
+        const b = arenaForgeBeacon;
+        ctx.save();
+        ctx.fillStyle = 'rgba(92,210,230,0.08)';
+        ctx.strokeStyle = b.contested ? '#ffe18a' : b.progress < 0 ? '#ff778d' : '#68edc1';
+        ctx.lineWidth = 3;
+        ctx.beginPath();ctx.arc(b.x,b.y,b.radius,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.lineWidth=7;ctx.beginPath();ctx.arc(b.x,b.y,b.radius,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.abs(b.progress));ctx.stroke();
+        ctx.fillStyle='#10263b';ctx.fillRect(b.x-30,b.y-30,60,60);
+        ctx.strokeRect(b.x-30,b.y-30,60,60);
+        ctx.fillStyle='#e1fcff';ctx.font='bold 15px sans-serif';ctx.textAlign='center';
+        ctx.fillText(b.label,b.x,b.y-48);ctx.fillText(`${Math.round(Math.abs(b.progress)*100)}%`,b.x,b.y+6);
+        ctx.restore();
+    }
     // Arena Forge Jump Pads
     for (const pad of (typeof arenaForgeJumpPads !== 'undefined' ? arenaForgeJumpPads : [])) {
         if (!isWorldVisualVisible(pad.x, pad.y, (pad.radius || 34) + 20)) continue;
@@ -48417,7 +52715,7 @@ let heistFeverActive = false;
           }
 
           for (const [ownerId, poles] of Object.entries(polesByOwner)) {
-              const ownerEntity = ownerId === String(player.id) ? player : (typeof bots !== 'undefined' ? bots.find(bt => bt && String(bt.id) === ownerId) : null);
+              const ownerEntity = ownerId === String(player.id) ? player : ((isWeeFeeBossMode && weefeeBossState?.bossEntities ? weefeeBossState.bossEntities.find(bt => bt && String(bt.id) === ownerId) : null) || (typeof bots !== 'undefined' ? bots.find(bt => bt && String(bt.id) === ownerId) : null));
               const is5G = ownerEntity && now < (ownerEntity.weefeeMobileDataUntil || 0);
               const isHyper = ownerEntity && isEntityHyperchargedNow(ownerEntity, now);
 
@@ -48582,6 +52880,15 @@ let heistFeverActive = false;
                       ctx.textAlign = 'center';
                       ctx.fillText('⚡5G⚡', 0, -42);
                   }
+                  if (pole.isDestructible && pole.maxHp) {
+                      const barW = 34;
+                      const barH = 5;
+                      const hpPct = clamp(pole.hp / pole.maxHp, 0, 1);
+                      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                      ctx.fillRect(-barW / 2, -44, barW, barH);
+                      ctx.fillStyle = hpPct > 0.4 ? '#00f5d4' : '#ff4757';
+                      ctx.fillRect(-barW / 2, -44, barW * hpPct, barH);
+                  }
 
                   ctx.restore();
               }
@@ -48643,6 +52950,148 @@ let heistFeverActive = false;
 
             ctx.restore();
         }
+    }
+
+    // Oil Maker Puddles — Amber-style connected fluid pools with zero shadowBlur lag
+    // 1. Draw connecting bridges between neighboring oil puddles
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (let pi = 0; pi < oilMakerPuddles.length; pi++) {
+        const p1 = oilMakerPuddles[pi];
+        for (let pj = pi + 1; pj < oilMakerPuddles.length; pj++) {
+            const p2 = oilMakerPuddles[pj];
+            const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+            const connectDist = p1.radius + p2.radius + 20;
+            if (dist <= connectDist) {
+                const bothBurning = p1.ignited && p2.ignited;
+                ctx.strokeStyle = bothBurning ? 'rgba(239, 68, 68, 0.85)' : '#141110';
+                ctx.lineWidth = Math.min(p1.radius, p2.radius) * 1.6;
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+
+                if (!bothBurning && !p1.ignited && !p2.ignited) {
+                    ctx.strokeStyle = 'rgba(217, 119, 6, 0.35)';
+                    ctx.lineWidth = Math.min(p1.radius, p2.radius) * 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                } else if (bothBurning) {
+                    ctx.strokeStyle = 'rgba(254, 240, 138, 0.9)';
+                    ctx.lineWidth = Math.min(p1.radius, p2.radius) * 0.75;
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+    ctx.restore();
+
+    // 2. Draw individual puddle nodes
+    for (const puddle of oilMakerPuddles) {
+        if (!isWorldVisualVisible(puddle.x, puddle.y, puddle.radius + 40)) continue;
+        ctx.save();
+        ctx.translate(puddle.x, puddle.y);
+        const pNow = performance.now();
+        if (puddle.ignited) {
+            const flamePulse = 1 + Math.sin(pNow * 0.015) * 0.08;
+            // Lightweight glow halo without expensive canvas shadowBlur
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.22)';
+            ctx.beginPath();
+            ctx.arc(0, 0, puddle.radius * flamePulse * 1.25, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Outer fiery red body
+            ctx.fillStyle = 'rgba(220, 38, 38, 0.88)';
+            ctx.beginPath();
+            ctx.arc(0, 0, puddle.radius * flamePulse, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Vibrant orange mantle
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.arc(0, 0, puddle.radius * flamePulse * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Searing yellow core
+            ctx.fillStyle = '#fef08a';
+            ctx.beginPath();
+            ctx.arc(0, 0, puddle.radius * flamePulse * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Dark crude oil pool with organic slick sheen
+            ctx.fillStyle = '#141110';
+            ctx.beginPath();
+            ctx.arc(0, 0, puddle.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(217, 119, 6, 0.40)';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, puddle.radius * 0.88, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(68, 64, 60, 0.35)';
+            ctx.beginPath();
+            ctx.ellipse(-puddle.radius * 0.2, -puddle.radius * 0.2, puddle.radius * 0.45, puddle.radius * 0.25, -0.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    // Oil Maker Barrels
+    for (const barrel of oilMakerBarrels) {
+        if (!isWorldVisualVisible(barrel.x, barrel.y, barrel.radius + 40)) continue;
+        ctx.save();
+        ctx.translate(barrel.x, barrel.y);
+        if (barrel.ignited) {
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.3)';
+            ctx.beginPath();
+            ctx.arc(0, 0, barrel.radius * 1.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        const drumGrad = ctx.createLinearGradient(-barrel.radius, 0, barrel.radius, 0);
+        drumGrad.addColorStop(0, '#44403c');
+        drumGrad.addColorStop(0.35, '#292524');
+        drumGrad.addColorStop(0.7, '#1c1917');
+        drumGrad.addColorStop(1, '#0c0a09');
+        ctx.fillStyle = drumGrad;
+        ctx.strokeStyle = barrel.ignited ? '#f59e0b' : '#78716c';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, barrel.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        ctx.arc(0, 0, barrel.radius * 0.65, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(barrel.ignited ? '🔥' : '🛢️', 0, 0);
+
+        const hpRatio = clamp(barrel.hp / barrel.maxHp, 0, 1);
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(-22, -barrel.radius - 12, 44, 5);
+        ctx.fillStyle = barrel.ignited ? '#ef4444' : '#f59e0b';
+        ctx.fillRect(-22, -barrel.radius - 12, 44 * hpRatio, 5);
+        ctx.strokeStyle = '#292524';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-22, -barrel.radius - 12, 44, 5);
+
+        ctx.restore();
     }
 
     function drawAntiRoyalFrontBlocker(entity,drawY){
@@ -49325,6 +53774,34 @@ let heistFeverActive = false;
       ctx.fillText(getSmoothDisplayedHp(t), t.x, hpY + 5.5);
       ctx.textAlign = 'left';
     drawEntityStatusChips(t, t.x, hpY - (t.shield > 0 ? 42 : 25), false);
+      if ((t.chocolateCoverage || 0) > 0 && !t.inChocolateShell) {
+          const chocoPct = clamp((t.chocolateCoverage || 0) / 100, 0, 1);
+          const chocoY = hpY - (t.shield > 0 ? 52 : 35);
+          ctx.save();
+          ctx.fillStyle = 'rgba(28, 14, 6, 0.9)';
+          ctx.beginPath();
+          ctx.roundRect(t.x - 22, chocoY - 7, 44, 8, 3);
+          ctx.fill();
+          
+          const chocoGrad = ctx.createLinearGradient(t.x - 22, 0, t.x + 22, 0);
+          chocoGrad.addColorStop(0, '#5d4037');
+          chocoGrad.addColorStop(0.7, '#795548');
+          chocoGrad.addColorStop(1, '#d7ccc8');
+          ctx.fillStyle = chocoGrad;
+          ctx.beginPath();
+          ctx.roundRect(t.x - 21, chocoY - 6, 42 * chocoPct, 6, 2);
+          ctx.fill();
+          
+          ctx.strokeStyle = chocoPct >= 0.75 ? '#ffc107' : '#8d6e63';
+          ctx.lineWidth = chocoPct >= 0.75 ? 1.5 : 1.0;
+          ctx.strokeRect(t.x - 22, chocoY - 7, 44, 8);
+          
+          ctx.fillStyle = chocoPct >= 0.75 ? '#fff3b0' : '#d7ccc8';
+          ctx.font = 'bold 7px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('🍫 ' + Math.round(t.chocolateCoverage) + '%', t.x, chocoY - 9);
+          ctx.restore();
+      }
       if ((t.xrayRevealedUntil || 0) > performance.now()) {
           const shownAmmo=Math.max(0,Math.min(t.maxAmmo||3,Number.isFinite(t.ammo)?t.ammo:3));
           const ay=hpY+11;
@@ -49746,11 +54223,12 @@ let heistFeverActive = false;
           ctx.textAlign = 'center';
           ctx.fillText('FLOSS', player.x, drawY - 23);
           ctx.textAlign = 'left';
-      } else if (selectedBrawler === 'minigunnin' || selectedBrawler === 'steamer' || selectedBrawler === 'beam' ) {
+      } else if (selectedBrawler === 'minigunnin' || selectedBrawler === 'steamer' || selectedBrawler === 'beam' || selectedBrawler === 'oil_maker') {
           ctx.fillStyle = 'rgba(0,0,0,0.5)';
           ctx.fillRect(player.x - 24, drawY - 20, 48, 4);
           let barColor = '#f4a261';
           if (selectedBrawler === 'steamer') barColor = '#7fd3ff';
+          else if (selectedBrawler === 'oil_maker') barColor = '#f59e0b';
                     else if (selectedBrawler === 'beam') {
               const isSuperGolden = performance.now() < (player.beamSuperGoldenUntil || 0);
               barColor = isSuperGolden ? '#ffd700' : (isHypercharged ? '#a800ff' : '#00ffff');
@@ -49764,6 +54242,118 @@ let heistFeverActive = false;
           ctx.fillRect(player.x - 24, drawY - 20, 48, 4);
           ctx.fillStyle = player.draflygonFlightHyper ? '#ff3860' : '#2ed573';
           ctx.fillRect(player.x - 24, drawY - 20, 48 * Math.min(1, Math.max(0, flightAmmo / flightMax)), 4);
+      } else if (selectedBrawler === 'carmela_fudge') {
+          const isFudge = player.carmelaFudgeForm === 'fudge';
+          if (!isFudge) {
+              // Carmela form: 1 continuous hold-to-charge caramel ammo bar
+              const barW = 48;
+              const barH = 6;
+              const barX = player.x - 24;
+              const barY = drawY - 21;
+              const chargePct = player.carmelaChargePct || 0;
+              const isCharging = (player.carmelaChargeStart || 0) > 0 && chargePct > 0;
+              const reloadFrac = Math.min(1, Math.max(0, ammo / maxAmmo));
+
+              ctx.fillStyle = 'rgba(28, 14, 4, 0.88)';
+              ctx.beginPath();
+              ctx.roundRect(barX, barY, barW, barH, 3);
+              ctx.fill();
+
+              const displayPct = isCharging ? chargePct : reloadFrac;
+              const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+              if (isCharging) {
+                  if (chargePct >= 0.90) {
+                      grad.addColorStop(0, '#f39c12');
+                      grad.addColorStop(0.5, '#f1c40f');
+                      grad.addColorStop(1, '#ff3838');
+                  } else if (chargePct >= 0.60) {
+                      grad.addColorStop(0, '#e67e22');
+                      grad.addColorStop(1, '#f1c40f');
+                  } else if (chargePct >= 0.15) {
+                      grad.addColorStop(0, '#d35400');
+                      grad.addColorStop(1, '#e67e22');
+                  } else {
+                      grad.addColorStop(0, '#b33939');
+                      grad.addColorStop(1, '#e67e22');
+                  }
+              } else {
+                  grad.addColorStop(0, '#d35400');
+                  grad.addColorStop(1, '#f39c12');
+              }
+
+              ctx.save();
+              if (isCharging && chargePct >= 0.90) {
+                  ctx.shadowColor = '#f1c40f';
+                  ctx.shadowBlur = 10;
+              }
+              ctx.fillStyle = grad;
+              ctx.beginPath();
+              ctx.roundRect(barX, barY, barW * displayPct, barH, 3);
+              ctx.fill();
+              ctx.restore();
+
+              ctx.strokeStyle = (isCharging && chargePct >= 0.90) ? '#f1c40f' : '#e67e22';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.roundRect(barX, barY, barW, barH, 3);
+              ctx.stroke();
+
+              // Charging Feedback & Tier Labels
+              let tierText = 'HOLD TO CHARGE';
+              let tierColor = '#f39c12';
+              if (isCharging) {
+                  if (chargePct <= 0.15) {
+                      tierText = 'TAP';
+                      tierColor = '#e67e22';
+                  } else if (chargePct <= 0.60) {
+                      tierText = 'HALF PULL';
+                      tierColor = '#f1c40f';
+                  } else if (chargePct <= 0.90) {
+                      tierText = 'FULL PULL';
+                      tierColor = '#f39c12';
+                  } else {
+                      tierText = 'SLINGSHOT!';
+                      tierColor = '#fff200';
+                  }
+              } else if (ammo < 1) {
+                  tierText = 'RELOADING';
+                  tierColor = '#b33939';
+              }
+
+              ctx.fillStyle = tierColor;
+              ctx.font = 'bold 7px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(tierText, player.x, barY - 3);
+              ctx.textAlign = 'left';
+          } else {
+              // Fudge form: 3 chocolate ammo bars with dark cocoa styling
+              for (let i = 0; i < maxAmmo; i++) {
+                  ctx.fillStyle = 'rgba(24, 12, 6, 0.88)';
+                  ctx.beginPath();
+                  ctx.roundRect(player.x - 24 + i * 17, drawY - 21, 14, 6, 3);
+                  ctx.fill();
+
+                  const floorAmmo = Math.floor(ammo);
+                  if (floorAmmo > i) {
+                      const chocoGrad = ctx.createLinearGradient(0, drawY - 21, 0, drawY - 15);
+                      chocoGrad.addColorStop(0, '#8d6e63');
+                      chocoGrad.addColorStop(0.5, '#5d4037');
+                      chocoGrad.addColorStop(1, '#3e2723');
+                      ctx.fillStyle = chocoGrad;
+                      ctx.beginPath();
+                      ctx.roundRect(player.x - 24 + i * 17, drawY - 21, 14, 6, 3);
+                      ctx.fill();
+                      ctx.strokeStyle = '#d7ccc8';
+                      ctx.lineWidth = 0.8;
+                      ctx.stroke();
+                  } else if (floorAmmo === i) {
+                      const currentReloadTime = getReloadTime(selectedBrawler);
+                      const frac = (ammo - floorAmmo) + (ammoReloadTimer / currentReloadTime);
+                      ctx.fillStyle = '#6d4c41';
+                      ctx.fillRect(player.x - 24 + i * 17, drawY - 20, 14 * Math.min(1, frac), 4);
+                  }
+              }
+          }
       } else {
            for(let i=0; i<maxAmmo; i++){
               let ammoColor = '#f4a261';
@@ -50785,7 +55375,343 @@ let heistFeverActive = false;
 
           ctx.restore();
       }
-            if (selectedBrawler === 'sir_cheeseburger' && !aimingSuper) {
+      if (selectedBrawler === 'oil_maker' && !aimingSuper) {
+          ctx.save();
+          const range = 560;
+          ctx.translate(player.x, player.y);
+          ctx.rotate(ang);
+          ctx.strokeStyle = isHypercharged ? '#f59e0b' : '#d97706';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(player.radius + 10, 0);
+          ctx.lineTo(range, 0);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = isHypercharged ? 'rgba(245, 158, 11, 0.15)' : 'rgba(217, 119, 6, 0.12)';
+          ctx.beginPath();
+          ctx.moveTo(player.radius + 10, 0);
+          ctx.lineTo(range, -45);
+          ctx.lineTo(range, 45);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+      }
+      if (selectedBrawler === 'magnatar' && !aimingSuper) {
+          ctx.save();
+          const range = 884;
+          ctx.translate(player.x, player.y);
+          ctx.rotate(ang);
+          const strokeCol = isHypercharged ? '#e056fd' : '#00d2ff';
+          ctx.strokeStyle = strokeCol;
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([8, 8]);
+          ctx.beginPath();
+          ctx.moveTo(player.radius + 12, 0);
+          ctx.lineTo(range, 0);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const count = player.magnatarOrbCount || 1;
+          const startOrbitR = count === 1 ? 0 : (count === 2 ? 40 : (count === 3 ? 48 : (count === 4 ? 56 : 64)));
+          const maxOrbitR = count === 1 ? 0 : (count === 2 ? 128 : (count === 3 ? 160 : (count === 4 ? 190 : 224)));
+          const orbitR = startOrbitR;
+
+          // If charging multiple orbs: render expanding orbital channel bounds and helical corkscrew path
+          if (count > 1) {
+              const startX = player.radius + 12;
+              // 1. Orbital channel boundary lines expanding outward with range
+              ctx.strokeStyle = isHypercharged ? 'rgba(224, 86, 253, 0.35)' : 'rgba(0, 210, 255, 0.30)';
+              ctx.lineWidth = 1.5;
+              ctx.setLineDash([6, 6]);
+              ctx.beginPath();
+              ctx.moveTo(startX, -startOrbitR);
+              ctx.lineTo(range, -maxOrbitR);
+              ctx.moveTo(startX, startOrbitR);
+              ctx.lineTo(range, maxOrbitR);
+              ctx.stroke();
+              ctx.setLineDash([]);
+
+              // 2. Helical corkscrew wave previewing orbital rotation swinging wider over range
+              ctx.strokeStyle = isHypercharged ? 'rgba(243, 104, 224, 0.45)' : 'rgba(0, 245, 212, 0.40)';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              const waveStart = player.radius + 16;
+              for (let wx = waveStart; wx <= range; wx += 8) {
+                  const frac = (wx - waveStart) / Math.max(1, range - waveStart);
+                  const curR = startOrbitR + (maxOrbitR - startOrbitR) * frac;
+                  const wy = Math.sin((wx - waveStart) * 0.042 - now * 0.0034) * curR;
+                  if (wx === waveStart) ctx.moveTo(wx, wy);
+                  else ctx.lineTo(wx, wy);
+              }
+              ctx.stroke();
+
+              // 3. Rotating target reticle ring at max range
+              ctx.strokeStyle = strokeCol;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(range, 0, maxOrbitR, 0, Math.PI * 2);
+              ctx.stroke();
+          }
+
+          // Orbiting charge indicators around launch point
+          const muzzleX = player.radius + 32;
+          const rot = count > 1 ? now * 0.0034 : 0;
+          for (let oi = 0; oi < count; oi++) {
+              const oAng = rot + (oi * Math.PI * 2 / count);
+              const ox = count > 1 ? muzzleX + Math.cos(oAng) * (orbitR * 0.7) : 60;
+              const oy = count > 1 ? Math.sin(oAng) * orbitR : 0;
+              ctx.fillStyle = isHypercharged ? '#e056fd' : '#00d2ff';
+              ctx.shadowColor = strokeCol;
+              ctx.shadowBlur = 8;
+              ctx.beginPath();
+              ctx.arc(ox, oy, 6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.shadowBlur = 0;
+          }
+          ctx.restore();
+      }
+      if (selectedBrawler === 'oil_maker' && aimingSuper) {
+          ctx.save();
+          const range = 550;
+          const wm = getMouseWorld();
+          const targetDist = Math.min(range, Math.hypot(wm.x - player.x, wm.y - player.y));
+          const targetX = player.x + Math.cos(ang) * targetDist;
+          const targetY = player.y + Math.sin(ang) * targetDist;
+          const ruptureRadius = isHypercharged ? 140 : 100;
+
+          ctx.strokeStyle = isHypercharged ? '#f59e0b' : '#d97706';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(player.x, player.y);
+          ctx.lineTo(targetX, targetY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = isHypercharged ? 'rgba(245, 158, 11, 0.25)' : 'rgba(217, 119, 6, 0.20)';
+          ctx.strokeStyle = isHypercharged ? '#f59e0b' : '#d97706';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(targetX, targetY, 26, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.strokeStyle = isHypercharged ? 'rgba(245, 158, 11, 0.5)' : 'rgba(217, 119, 6, 0.4)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(targetX, targetY, ruptureRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+      }
+      if (selectedBrawler === 'magnatar' && aimingSuper) {
+          ctx.save();
+          const range = 660;
+          const vortexR = isHypercharged ? 308 : 220; // +40% size
+          const wm = getMouseWorld();
+          const targetDist = Math.min(range, Math.hypot(wm.x - player.x, wm.y - player.y));
+          let targetX = player.x + Math.cos(ang) * targetDist;
+          let targetY = player.y + Math.sin(ang) * targetDist;
+
+          // Soft magnetic auto-lock preview: snaps within 85px to nearest active enemy
+          const lockTargets = (typeof bots !== 'undefined' && Array.isArray(bots)) ? bots : [];
+          let lockEnemy = null;
+          let lockDist = 85;
+          for (const t of lockTargets) {
+              if (!t || t.hp <= 0 || t.id === player.id || (typeof areAlliedEntities === 'function' && areAlliedEntities(player, t))) continue;
+              const d = Math.hypot(t.x - targetX, t.y - targetY);
+              if (d < lockDist) {
+                  lockDist = d;
+                  lockEnemy = t;
+              }
+          }
+          if (lockEnemy) {
+              targetX = lockEnemy.x;
+              targetY = lockEnemy.y;
+          }
+
+          const strokeCol = isHypercharged ? '#e056fd' : '#00d2ff';
+          const fillCol = isHypercharged ? 'rgba(224, 86, 253, 0.22)' : 'rgba(0, 210, 255, 0.20)';
+
+          // Trajectory beam with animated flux dashes
+          ctx.strokeStyle = strokeCol;
+          ctx.lineWidth = 2.5;
+          ctx.lineDashOffset = -now * 0.025;
+          ctx.setLineDash([10, 8]);
+          ctx.beginPath();
+          ctx.moveTo(player.x, player.y);
+          ctx.lineTo(targetX, targetY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Animated magnetic directional chevrons along trajectory
+          const throwDist = Math.hypot(targetX - player.x, targetY - player.y);
+          if (throwDist > 50) {
+              const beamAng = Math.atan2(targetY - player.y, targetX - player.x);
+              const numChevrons = Math.min(6, Math.floor(throwDist / 60));
+              for (let ci = 1; ci <= numChevrons; ci++) {
+                  const frac = (ci / (numChevrons + 1) + (now * 0.001) % (1 / (numChevrons + 1)));
+                  const cx = player.x + Math.cos(beamAng) * (throwDist * frac);
+                  const cy = player.y + Math.sin(beamAng) * (throwDist * frac);
+                  ctx.strokeStyle = isHypercharged ? '#f368e0' : '#00f5d4';
+                  ctx.lineWidth = 2;
+                  ctx.beginPath();
+                  ctx.moveTo(cx - Math.cos(beamAng - 0.5) * 8, cy - Math.sin(beamAng - 0.5) * 8);
+                  ctx.lineTo(cx, cy);
+                  ctx.lineTo(cx - Math.cos(beamAng + 0.5) * 8, cy - Math.sin(beamAng + 0.5) * 8);
+                  ctx.stroke();
+              }
+          }
+
+          // Landing Beacon Vortex Area with rotating magnetic lines
+          ctx.fillStyle = fillCol;
+          ctx.strokeStyle = strokeCol;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(targetX, targetY, vortexR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Rotating spiral reticle inside landing vortex
+          ctx.save();
+          ctx.translate(targetX, targetY);
+          ctx.rotate(now * 0.002);
+          ctx.strokeStyle = isHypercharged ? 'rgba(243, 104, 224, 0.45)' : 'rgba(0, 245, 212, 0.45)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([8, 8]);
+          ctx.beginPath();
+          ctx.arc(0, 0, vortexR * 0.65, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+
+          // If locked on enemy: Draw soft-lock targeting reticle & label
+          if (lockEnemy) {
+              ctx.save();
+              ctx.translate(lockEnemy.x, lockEnemy.y);
+              ctx.strokeStyle = '#ff4757';
+              ctx.lineWidth = 3;
+              const rSize = 26 + Math.sin(now * 0.015) * 4;
+              // Corner brackets
+              ctx.beginPath();
+              ctx.moveTo(-rSize, -rSize + 8); ctx.lineTo(-rSize, -rSize); ctx.lineTo(-rSize + 8, -rSize);
+              ctx.moveTo(rSize, -rSize + 8); ctx.lineTo(rSize, -rSize); ctx.lineTo(rSize - 8, -rSize);
+              ctx.moveTo(-rSize, rSize - 8); ctx.lineTo(-rSize, rSize); ctx.lineTo(-rSize + 8, rSize);
+              ctx.moveTo(rSize, rSize - 8); ctx.lineTo(rSize, rSize); ctx.lineTo(rSize - 8, rSize);
+              ctx.stroke();
+
+              ctx.fillStyle = '#ffffff';
+              ctx.shadowColor = '#ff4757';
+              ctx.shadowBlur = 8;
+              ctx.font = 'bold 11px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('🎯 🧲 LOCKED ON', 0, -rSize - 6);
+              ctx.restore();
+          }
+
+          // In Hypercharge: preview the personal vortex aura around the player
+          if (isHypercharged) {
+              ctx.save();
+              ctx.strokeStyle = 'rgba(224, 86, 253, 0.8)';
+              ctx.fillStyle = 'rgba(224, 86, 253, 0.12)';
+              ctx.lineWidth = 2;
+              ctx.setLineDash([6, 6]);
+              ctx.lineDashOffset = now * 0.02;
+              ctx.beginPath();
+              ctx.arc(player.x, player.y, vortexR, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.fillStyle = '#e056fd';
+              ctx.font = 'bold 11px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('⚡ PERSONAL HC VORTEX ⚡', player.x, player.y - vortexR - 8);
+              ctx.restore();
+          }
+
+          ctx.restore();
+      }
+            if (selectedBrawler === 'rager' && !aimingSuper) {
+          // Timber Slam: 420px line, 120px wide
+          const aimAng = Math.atan2(mouse.worldY - player.y, mouse.worldX - player.x);
+          const range = 420;
+          ctx.save();
+          ctx.translate(player.x, player.y);
+          ctx.rotate(aimAng);
+          ctx.fillStyle = 'rgba(139, 69, 19, 0.22)';
+          ctx.strokeStyle = '#d35400';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.roundRect(0, -60, range, 120, 10);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+      }
+      if (selectedBrawler === 'rager' && aimingSuper) {
+          // Raged Area placement: 600px throw range, 240px area
+          const aimDist = Math.hypot(mouse.worldX - player.x, mouse.worldY - player.y);
+          const aimAng = Math.atan2(mouse.worldY - player.y, mouse.worldX - player.x);
+          const clampedDist = Math.min(aimDist, 600);
+          const placeX = player.x + Math.cos(aimAng) * clampedDist;
+          const placeY = player.y + Math.sin(aimAng) * clampedDist;
+
+          ctx.save();
+          // Range ring
+          ctx.strokeStyle = 'rgba(255, 71, 87, 0.4)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, 600, 0, Math.PI * 2);
+          ctx.stroke();
+          // Placement circle
+          ctx.fillStyle = isHypercharged ? 'rgba(210, 91, 255, 0.25)' : 'rgba(255, 71, 87, 0.25)';
+          ctx.strokeStyle = isHypercharged ? '#d25bff' : '#ff4757';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(placeX, placeY, 240, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+      }
+      if (selectedBrawler === 'bolznstien' && !aimingSuper) {
+          ctx.save();
+          const range = 600;
+          ctx.translate(player.x, player.y);
+          ctx.rotate(ang);
+          ctx.strokeStyle = isHypercharged ? '#e056fd' : '#00f5d4';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 8]);
+          ctx.beginPath();
+          ctx.moveTo(player.radius + 12, 0);
+          ctx.lineTo(range, 0);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          // Strike target circle indicator
+          ctx.fillStyle = isHypercharged ? 'rgba(224, 86, 253, 0.25)' : 'rgba(0, 245, 212, 0.22)';
+          ctx.beginPath();
+          ctx.arc(range, 0, isHypercharged ? 110 : 65, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+      }
+      if (selectedBrawler === 'bolznstien' && aimingSuper) {
+          ctx.save();
+          const range = isHypercharged ? 672 : 336; // +40% range: 336 normal, 672 HC
+          const coneAngle = 0.55 * 1.40; // +40% cone width
+          ctx.translate(player.x, player.y);
+          ctx.rotate(ang);
+          ctx.fillStyle = isHypercharged ? 'rgba(224, 86, 253, 0.25)' : 'rgba(0, 245, 212, 0.20)';
+          ctx.strokeStyle = isHypercharged ? '#e056fd' : '#00f5d4';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(player.radius + 8, 0);
+          ctx.arc(0, 0, range, -coneAngle, coneAngle);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+      }
+      if (selectedBrawler === 'sir_cheeseburger' && !aimingSuper) {
           ctx.save();
           const combo = player.sirCheeseDmgBonus || 0;
           const range = isHypercharged ? 150 : 90;
@@ -50812,7 +55738,7 @@ let heistFeverActive = false;
 
           ctx.restore();
       }
-      if (selectedBrawler === 'blinkeye' && !aimingSuper) {
+      if (isBlinkEyePlayerActive() && !aimingSuper) {
           ctx.save();
           const maxRange = isHypercharged ? 740 : 696;
           const traced = traceRicochetPath(player.x, player.y, ang, maxRange, 2, 16, 2.0);
@@ -50838,7 +55764,7 @@ let heistFeverActive = false;
           }
           ctx.restore();
       }
-      if (selectedBrawler === 'blinkeye' && aimingSuper) {
+      if (isBlinkEyePlayerActive() && aimingSuper) {
           ctx.save();
           const steerDist = isHypercharged ? 460 : 360;
           const targetPtX = player.x + Math.cos(ang) * steerDist;
@@ -53487,6 +58413,7 @@ let heistFeverActive = false;
         const pulse=1+Math.sin(performance.now()/120)*.08;ctx.save();ctx.strokeStyle='#fff0a8';ctx.shadowColor='#fff0a8';ctx.shadowBlur=18;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(entity.x,entity.y-entity.radius-13,18*pulse,6*pulse,0,0,Math.PI*2);ctx.stroke();ctx.restore();
     }
 
+
     for(const checkpoint of fastpassCheckpoints){
         const life=clamp((checkpoint.expiresAt-performance.now())/5000,0,1),pulse=1+Math.sin(performance.now()/130)*.08;ctx.save();ctx.globalAlpha=.45+.45*life;ctx.strokeStyle='#55efff';ctx.shadowColor='#55efff';ctx.shadowBlur=18;ctx.lineWidth=5;ctx.setLineDash([10,6]);ctx.beginPath();ctx.arc(checkpoint.x,checkpoint.y,checkpoint.radius*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(68,231,255,.12)';ctx.beginPath();ctx.arc(checkpoint.x,checkpoint.y,checkpoint.radius,0,Math.PI*2);ctx.fill();ctx.restore();
     }
@@ -53585,20 +58512,21 @@ let heistFeverActive = false;
     // though collision had grown. This makes the powered-up footprint clear
     // for every projectile renderer without replacing its unique artwork.
     for (const b of bullets) {
-      if (!b || !(b.slopSizeMultiplier > 1)) continue;
-      if (!isWorldVisualVisible(b.x, b.y, 90)) continue;
-      const radius = Math.max(7, (b.super ? 8 : 5) * (b.hitboxMod || 1));
+      const isGiant = typeof isGiantProjectilesActive === 'function' && isGiantProjectilesActive();
+      if (!b || (!isGiant && !(b.slopSizeMultiplier > 1))) continue;
+      if (!isWorldVisualVisible(b.x, b.y, 120)) continue;
+      const radius = Math.max(9, (b.super ? 14 : 9) * (b.hitboxMod || 1) * (isGiant ? 1.15 : 1));
       ctx.save();
-      ctx.globalAlpha = .52;
-      ctx.fillStyle = b.hyperVisual ? '#ef8cff' : '#62eaff';
+      ctx.globalAlpha = isGiant ? .68 : .52;
+      ctx.fillStyle = isGiant ? '#ff70a6' : (b.hyperVisual ? '#ef8cff' : '#62eaff');
       ctx.shadowColor = ctx.fillStyle;
-      ctx.shadowBlur = Math.min(32, radius * .9);
+      ctx.shadowBlur = Math.min(45, radius * 1.1);
       ctx.beginPath();
       ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.globalAlpha = .92;
-      ctx.strokeStyle = '#eaffff';
-      ctx.lineWidth = Math.max(1.5, Math.min(4, radius * .12));
+      ctx.globalAlpha = .95;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(2, Math.min(5, radius * .15));
       ctx.stroke();
       ctx.restore();
     }
@@ -54278,13 +59206,13 @@ let heistFeverActive = false;
           ctx.arc(b.x, b.y, Math.max(4, drawRadius * 0.55), 0, Math.PI * 2);
           ctx.fill();
           continue;
-      } else if (b.isBoomArang) {
+      } else if (b.isBoomArang || b.isBoomArangSide) {
           const spinAngle = (performance.now() * 0.012) % (Math.PI * 2);
           ctx.save();
           ctx.translate(b.x, b.y);
           ctx.rotate(spinAngle);
           
-          ctx.strokeStyle = b.super ? '#ff5500' : '#ffb300';
+          ctx.strokeStyle = b.hyperVisual ? '#bc70ff' : (b.boomArangRide ? '#62ef88' : (b.super ? '#ff5500' : '#ffb300'));
           ctx.lineWidth = b.super ? 6 : 4;
           ctx.lineCap = 'round';
           
@@ -55838,6 +60766,471 @@ let heistFeverActive = false;
           ctx.restore();
           continue;
       }
+
+      else if (b.isMagnatarOrb) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+
+          const r = b.radius || 16;
+          const isHyper = !!b.isHyper;
+          const spinBase = b.spinOffset || 0;
+
+          // 1. Solar Corona & Stellar Core (The Central Star)
+          ctx.shadowColor = isHyper ? '#e056fd' : '#00d2ff';
+          ctx.shadowBlur = 20;
+
+          // Undulating solar flares / corona rays
+          ctx.fillStyle = isHyper ? 'rgba(243, 104, 224, 0.32)' : 'rgba(0, 245, 212, 0.28)';
+          const numFlares = 6;
+          ctx.beginPath();
+          for (let fi = 0; fi < numFlares; fi++) {
+              const flareAng = (fi * Math.PI * 2) / numFlares + now * 0.0036;
+              const flareLen = r * 0.78 + Math.sin(now * 0.014 + fi * 1.5) * 3.2;
+              const fx = Math.cos(flareAng) * flareLen;
+              const fy = Math.sin(flareAng) * flareLen;
+              if (fi === 0) ctx.moveTo(fx, fy);
+              else ctx.lineTo(fx, fy);
+          }
+          ctx.closePath();
+          ctx.fill();
+
+          // Central Sun sphere
+          const sunGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 0.45);
+          sunGrad.addColorStop(0, '#ffffff');
+          sunGrad.addColorStop(0.5, isHyper ? '#f368e0' : '#ffeaa7');
+          sunGrad.addColorStop(1, isHyper ? '#6c5ce7' : '#00d2ff');
+          ctx.fillStyle = sunGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, r * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 2. 2.5D Tilted Orbital Tracks (elliptical planetary orbits)
+          ctx.shadowBlur = 0;
+          ctx.lineWidth = 1.2;
+
+          // Orbit Track 1 (Inner)
+          ctx.strokeStyle = isHyper ? 'rgba(243, 104, 224, 0.32)' : 'rgba(0, 210, 255, 0.28)';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, r * 0.72, r * 0.42, 0.15, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Orbit Track 2 (Mid)
+          ctx.strokeStyle = isHyper ? 'rgba(224, 86, 253, 0.32)' : 'rgba(0, 245, 212, 0.28)';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, r * 1.15, r * 0.65, -0.22, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Orbit Track 3 (Outer)
+          ctx.strokeStyle = isHyper ? 'rgba(162, 155, 254, 0.32)' : 'rgba(9, 132, 227, 0.28)';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, r * 1.55, r * 0.88, 0.08, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // 3. Planet 1: Inner Terrestrial / Molten Planet (Fast Keplerian orbit)
+          const p1Ang = now * 0.0085 + spinBase;
+          const p1x = Math.cos(p1Ang) * (r * 0.72);
+          const p1y = Math.sin(p1Ang) * (r * 0.42);
+          const rot1x = p1x * Math.cos(0.15) - p1y * Math.sin(0.15);
+          const rot1y = p1x * Math.sin(0.15) + p1y * Math.cos(0.15);
+          ctx.fillStyle = isHyper ? '#ff7675' : '#ff9f43';
+          ctx.beginPath();
+          ctx.arc(rot1x, rot1y, 2.6, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 4. Planet 2: Ringed Gas Giant (Medium Keplerian orbit, Saturn-like rings)
+          const p2Ang = now * 0.0048 + spinBase * 1.4 + 2.09;
+          const p2x = Math.cos(p2Ang) * (r * 1.15);
+          const p2y = Math.sin(p2Ang) * (r * 0.65);
+          const rot2x = p2x * Math.cos(-0.22) - p2y * Math.sin(-0.22);
+          const rot2y = p2x * Math.sin(-0.22) + p2y * Math.cos(-0.22);
+
+          // Draw Gas Giant body
+          ctx.fillStyle = isHyper ? '#feca57' : '#f39c12';
+          ctx.beginPath();
+          ctx.arc(rot2x, rot2y, 4.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Draw Saturn-like planetary rings tilted around Planet 2
+          ctx.save();
+          ctx.translate(rot2x, rot2y);
+          ctx.rotate(0.45);
+          ctx.strokeStyle = isHyper ? '#ffeaa7' : '#f1c40f';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 7.2, 2.6, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+
+          // 5. Planet 3: Outer Ice Giant with Revolving Moonlet (Slow Keplerian orbit)
+          const p3Ang = now * 0.0028 + spinBase * 0.7 + 4.18;
+          const p3x = Math.cos(p3Ang) * (r * 1.55);
+          const p3y = Math.sin(p3Ang) * (r * 0.88);
+          const rot3x = p3x * Math.cos(0.08) - p3y * Math.sin(0.08);
+          const rot3y = p3x * Math.sin(0.08) + p3y * Math.cos(0.08);
+
+          // Draw Ice Giant body
+          ctx.fillStyle = isHyper ? '#a29bfe' : '#00d2d3';
+          ctx.beginPath();
+          ctx.arc(rot3x, rot3y, 3.4, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Tiny Moonlet orbiting Planet 3
+          const moonAng = now * 0.016 + spinBase;
+          const moonX = rot3x + Math.cos(moonAng) * 6.2;
+          const moonY = rot3y + Math.sin(moonAng) * 3.6;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(moonX, moonY, 1.4, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 6. Hypercharge bonus: Exotic celestial comet / rogue dwarf planet
+          if (isHyper) {
+              const p4Ang = now * 0.0062 + spinBase * 1.8 + 1.1;
+              const p4x = Math.cos(p4Ang) * (r * 1.85);
+              const p4y = Math.sin(p4Ang) * (r * 0.55);
+              ctx.fillStyle = '#ff6b81';
+              ctx.shadowColor = '#ff4757';
+              ctx.shadowBlur = 8;
+              ctx.beginPath();
+              ctx.arc(p4x, p4y, 2.2, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Ion trail connecting comet to core
+              ctx.strokeStyle = 'rgba(255, 107, 129, 0.35)';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(p4x, p4y);
+              ctx.lineTo(p4x - Math.cos(p4Ang) * 8, p4y - Math.sin(p4Ang) * 4);
+              ctx.stroke();
+          }
+
+          ctx.restore();
+          continue;
+      }
+      else if (b.isOilMakerCrude) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const ang = Math.atan2(b.vy, b.vx);
+          ctx.rotate(ang);
+          ctx.shadowColor = b.isHyper ? '#d946ef' : '#292524';
+          ctx.shadowBlur = b.isHyper ? 14 : 8;
+          ctx.fillStyle = b.isHyper ? '#7e22ce' : '#1c1917';
+          ctx.strokeStyle = b.isHyper ? '#f0abfc' : '#f59e0b';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 14, 7, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = b.isHyper ? '#e879f9' : '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(2, 0, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          continue;
+      }
+      else if (b.isMagnatarBeacon) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(now * 0.012);
+          ctx.shadowColor = '#00d2ff';
+          ctx.shadowBlur = 16;
+          ctx.font = '24px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🧲', 0, 0);
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'rager' && b.isRagerTimber) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(b.angle || 0);
+          
+          // Heavy timber trunk log falling forward
+          ctx.shadowColor = b.hyperVisual ? '#d25bff' : '#8B4513';
+          ctx.shadowBlur = b.hyperVisual ? 18 : 10;
+          
+          // Outer bark log
+          ctx.fillStyle = b.hyperVisual ? '#5b1d7d' : '#5c3317';
+          ctx.beginPath();
+          ctx.roundRect(-42, -18, 84, 36, 8);
+          ctx.fill();
+
+          // Inner wood grain
+          ctx.fillStyle = b.hyperVisual ? '#a855f7' : '#a0522d';
+          ctx.beginPath();
+          ctx.roundRect(-36, -14, 72, 28, 6);
+          ctx.fill();
+
+          // Tree ring cuts
+          ctx.strokeStyle = b.hyperVisual ? '#e0aaff' : '#d2b48c';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.ellipse(36, 0, 4, 12, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Pine needles / leaves attached
+          ctx.fillStyle = b.hyperVisual ? '#c084fc' : '#27ae60';
+          for (let leaf = -28; leaf <= 28; leaf += 18) {
+              ctx.beginPath();
+              ctx.moveTo(leaf, -18);
+              ctx.lineTo(leaf + 8, -26);
+              ctx.lineTo(leaf + 16, -18);
+              ctx.fill();
+          }
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'rager' && b.isRagerSplinter) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(Math.atan2(b.vy, b.vx));
+          ctx.fillStyle = '#f39c12';
+          ctx.beginPath();
+          ctx.moveTo(14, 0);
+          ctx.lineTo(-10, -5);
+          ctx.lineTo(-6, 0);
+          ctx.lineTo(-10, 5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'carmela_fudge') {
+          ctx.save();
+          const ang = Math.atan2(b.vy, b.vx);
+          const isHc = !!b.isHyper;
+
+          if (b.isCarmelaHand) {
+              ctx.translate(b.x, b.y);
+              ctx.rotate(ang);
+              const chargePct = b.chargePct || 0;
+              const isFullCharge = chargePct >= 0.90;
+
+              ctx.shadowColor = isHc ? '#e056fd' : (isFullCharge ? '#f1c40f' : '#e67e22');
+              ctx.shadowBlur = isFullCharge ? 18 : 8;
+
+              // Elastic caramel stretch trail
+              ctx.strokeStyle = 'rgba(230, 126, 34, 0.6)';
+              ctx.lineWidth = 4 + chargePct * 3;
+              ctx.beginPath();
+              ctx.moveTo(-28 - chargePct * 12, 0);
+              ctx.quadraticCurveTo(-14, Math.sin(performance.now() * 0.02) * 4, 0, 0);
+              ctx.stroke();
+
+              // Caramel taffy arm body
+              const armGrad = ctx.createLinearGradient(-24, 0, 16, 0);
+              armGrad.addColorStop(0, '#d35400');
+              armGrad.addColorStop(0.5, '#e67e22');
+              armGrad.addColorStop(1, '#f39c12');
+              ctx.fillStyle = armGrad;
+              ctx.beginPath();
+              ctx.roundRect(-22, -6, 26, 12, 5);
+              ctx.fill();
+
+              // Candy Palm
+              ctx.fillStyle = '#f39c12';
+              ctx.strokeStyle = '#d35400';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.arc(6, 0, 9, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+
+              // 4 Flexing Candy/Caramel Fingers
+              for (let f = -1.5; f <= 1.5; f += 1) {
+                  const fSpread = f * 3.5;
+                  const fLen = 14 + (1 - Math.abs(f) * 0.2) * 6;
+                  ctx.fillStyle = isFullCharge ? '#ffeaa7' : '#f39c12';
+                  ctx.beginPath();
+                  ctx.roundRect(8, fSpread - 2, fLen, 4, 2);
+                  ctx.fill();
+                  ctx.stroke();
+              }
+
+              // Trailing caramel drip beads
+              ctx.fillStyle = '#e67e22';
+              for (let d = 1; d <= 3; d++) {
+                  const dx = -20 - d * 10;
+                  const dy = Math.sin(performance.now() * 0.015 + d) * 5;
+                  ctx.beginPath();
+                  ctx.arc(dx, dy, 3.5 - d * 0.7, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+
+              ctx.restore();
+              continue;
+          } else if (b.isFudgeGlob) {
+              ctx.translate(b.x, b.y);
+              ctx.rotate(ang);
+
+              ctx.shadowColor = isHc ? '#e056fd' : '#795548';
+              ctx.shadowBlur = isHc ? 16 : 8;
+
+              // Trailing chocolate drop trail
+              ctx.fillStyle = 'rgba(62, 39, 35, 0.65)';
+              for (let d = 1; d <= 3; d++) {
+                  ctx.beginPath();
+                  ctx.arc(-d * 12, Math.sin(performance.now() * 0.02 + d) * 3, 4 - d * 0.8, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+
+              // Glossy Chocolate Glob
+              const globGrad = ctx.createRadialGradient(2, -2, 2, 0, 0, 13);
+              globGrad.addColorStop(0, '#8d6e63');
+              globGrad.addColorStop(0.55, '#4e342e');
+              globGrad.addColorStop(1, '#1b0000');
+              ctx.fillStyle = globGrad;
+              ctx.strokeStyle = '#d7ccc8';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.ellipse(0, 0, 13, 10, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+
+              // Whipped Cream Dollop on top
+              ctx.fillStyle = '#fffaf0';
+              ctx.beginPath();
+              ctx.arc(0, -5, 5, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Rainbow candy sprinkles!
+              const sprinkleColors = ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#ff6b81'];
+              for (let s = 0; s < 5; s++) {
+                  ctx.fillStyle = sprinkleColors[s % sprinkleColors.length];
+                  const sx = -6 + (s * 3.2);
+                  const sy = ((s % 2) ? 1 : -2) + Math.sin(s * 1.5) * 2;
+                  ctx.fillRect(sx, sy, 2.5, 2.5);
+              }
+
+              ctx.restore();
+              continue;
+          } else if (b.isFudgeSuperBoulder) {
+              ctx.translate(b.x, b.y);
+              ctx.rotate((b.life || 0) * 10);
+
+              ctx.shadowColor = isHc ? '#e056fd' : '#3e2723';
+              ctx.shadowBlur = isHc ? 26 : 14;
+
+              // Large confectionery chocolate boulder
+              const boulderR = 24;
+              const bGrad = ctx.createRadialGradient(-6, -6, 4, 0, 0, boulderR);
+              bGrad.addColorStop(0, '#6d4c41');
+              bGrad.addColorStop(0.6, '#3e2723');
+              bGrad.addColorStop(1, '#1b0000');
+              ctx.fillStyle = bGrad;
+              ctx.strokeStyle = '#d7ccc8';
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.arc(0, 0, boulderR, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+
+              // Caramel syrup drizzle swirling across boulder
+              ctx.strokeStyle = '#f39c12';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.arc(0, 0, boulderR * 0.65, 0.4, Math.PI * 1.2);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(0, 0, boulderR * 0.4, Math.PI * 0.8, Math.PI * 1.9);
+              ctx.stroke();
+
+              // Candied Cherry on boulder
+              ctx.fillStyle = '#d63031';
+              ctx.beginPath();
+              ctx.arc(0, -boulderR * 0.85, 6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(-2, -boulderR * 0.85 - 2, 2, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.restore();
+              continue;
+          } else if (b.isCarmelaBurst) {
+              const lifePct = clamp((b.life || 0) / (b.maxLife || 0.2), 0, 1);
+              const curR = (b.radius || 150) * lifePct;
+
+              ctx.translate(b.x, b.y);
+              ctx.strokeStyle = `rgba(243, 156, 18, ${1 - lifePct})`;
+              ctx.lineWidth = 5 * (1 - lifePct);
+              ctx.beginPath();
+              ctx.arc(0, 0, curR, 0, Math.PI * 2);
+              ctx.stroke();
+
+              ctx.fillStyle = `rgba(230, 126, 34, ${(1 - lifePct) * 0.35})`;
+              ctx.beginPath();
+              ctx.arc(0, 0, curR, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.restore();
+              continue;
+          }
+          ctx.restore();
+      }
+      else if (b.ownerBrawler === 'bolznstien' && b.isBolznstienBolt) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const ang = Math.atan2(b.vy, b.vx);
+          ctx.rotate(ang);
+          const isHc = !!b.hyperVisual;
+          const sz = (b.hitboxMod || 1);
+
+          ctx.shadowColor = isHc ? '#e056fd' : '#00f5d4';
+          ctx.shadowBlur = isHc ? 24 : 16;
+
+          // Trailing electric wake behind the projectile
+          ctx.strokeStyle = isHc ? 'rgba(224, 86, 253, 0.75)' : 'rgba(0, 245, 212, 0.75)';
+          ctx.lineWidth = 2.5 * sz;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          const trailSteps = 5;
+          for (let ts = 1; ts <= trailSteps; ts++) {
+              const tx = -ts * 12 * sz;
+              const ty = (Math.sin(ts * 3 + performance.now() * 0.03) * 8) * sz;
+              ctx.lineTo(tx, ty);
+          }
+          ctx.stroke();
+
+          // Electric jagged lightning bolt core
+          ctx.strokeStyle = isHc ? '#f368e0' : '#00cec9';
+          ctx.lineWidth = 5 * sz;
+          ctx.beginPath();
+          ctx.moveTo(-24 * sz, 0);
+          ctx.lineTo(-14 * sz, -8 * sz);
+          ctx.lineTo(-2 * sz, 6 * sz);
+          ctx.lineTo(10 * sz, -6 * sz);
+          ctx.lineTo(24 * sz, 0);
+          ctx.stroke();
+
+          // High-voltage white-hot inner lightning
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2.5 * sz;
+          ctx.beginPath();
+          ctx.moveTo(-22 * sz, 0);
+          ctx.lineTo(-13 * sz, -6 * sz);
+          ctx.lineTo(-2 * sz, 5 * sz);
+          ctx.lineTo(9 * sz, -5 * sz);
+          ctx.lineTo(22 * sz, 0);
+          ctx.stroke();
+
+          // Front plasma tip + radiating sparks
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(24 * sz, 0, 5 * sz, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = isHc ? '#f368e0' : '#00f5d4';
+          ctx.lineWidth = 2 * sz;
+          ctx.beginPath();
+          ctx.moveTo(24 * sz, -7 * sz); ctx.lineTo(24 * sz, 7 * sz);
+          ctx.moveTo(17 * sz, 0); ctx.lineTo(31 * sz, 0);
+          ctx.stroke();
+
+          ctx.restore();
+          continue;
+      }
       else if (b.ownerBrawler === 'sir_cheeseburger' && b.isSirCheeseburgerSlice) {
           ctx.save();
           ctx.translate(b.x, b.y);
@@ -56737,6 +62130,260 @@ let heistFeverActive = false;
           ctx.arc(b.x, b.y, b.super?6:3, 0, Math.PI*2); 
       }
       ctx.fill(); 
+    }
+
+        // Render Rager War Totems & Raged Areas
+    for (const totem of ragerWarTotems) {
+        ctx.save();
+        const nowMs = performance.now();
+        const pulse = Math.sin(nowMs * 0.006) * 6;
+        const isHc = !!totem.isHyper;
+
+        // 1. Outer War Ring
+        ctx.strokeStyle = isHc ? '#d25bff' : '#ff4757';
+        ctx.lineWidth = isHc ? 4.5 : 3.0;
+        ctx.shadowColor = isHc ? '#d25bff' : '#ff4757';
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = isHc ? 'rgba(168, 85, 247, 0.16)' : 'rgba(255, 71, 87, 0.14)';
+        ctx.beginPath();
+        ctx.arc(totem.x, totem.y, totem.radius + pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 2. Inner Fury Glyphs
+        ctx.strokeStyle = isHc ? 'rgba(224, 170, 255, 0.4)' : 'rgba(255, 165, 2, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(totem.x, totem.y, totem.radius * 0.55, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 3. Center War Totem Pole
+        ctx.translate(totem.x, totem.y);
+        ctx.fillStyle = '#4a2511';
+        ctx.fillRect(-8, -32, 16, 32);
+        // Carved beast head top
+        ctx.fillStyle = isHc ? '#9333ea' : '#c0392b';
+        ctx.beginPath();
+        ctx.arc(0, -36, 14, 0, Math.PI * 2);
+        ctx.fill();
+        // Glowing eyes
+        ctx.fillStyle = '#fffa65';
+        ctx.fillRect(-6, -40, 3, 3);
+        ctx.fillRect(3, -40, 3, 3);
+        // War banner ribbons
+        ctx.fillStyle = isHc ? '#c084fc' : '#ff4757';
+        ctx.beginPath();
+        ctx.moveTo(8, -30);
+        ctx.lineTo(26 + Math.sin(nowMs * 0.008) * 4, -26);
+        ctx.lineTo(8, -20);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    // Render Bolznstien Pending Electric Strikes on Ground
+    for (const s of bolznstienPendingStrikes) {
+        if (!s || !isWorldVisualVisible(s.x, s.y, s.radius + 60)) continue;
+        const remaining = Math.max(0, s.triggerAt - performance.now());
+        const progress = 1 - (remaining / 800); // 0 -> 1 as 0.8s elapses
+        ctx.save();
+        ctx.shadowColor = s.isHyper ? '#e056fd' : '#00f5d4';
+        ctx.shadowBlur = 14;
+        ctx.strokeStyle = s.isHyper ? 'rgba(224, 86, 253, 0.85)' : 'rgba(0, 245, 212, 0.85)';
+        ctx.lineWidth = 2.5;
+        // Outer warning ring
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        // Inner converging electric ring
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius * Math.max(0.1, 1 - progress), 0, Math.PI * 2);
+        ctx.stroke();
+        // Electric rune crosshair
+        ctx.beginPath();
+        ctx.moveTo(s.x - 12, s.y); ctx.lineTo(s.x + 12, s.y);
+        ctx.moveTo(s.x, s.y - 12); ctx.lineTo(s.x + 12, s.y);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+
+    // Render Magnatar Magnetic Vortices
+    for (const v of magnatarVortices) {
+        if (!v || !isWorldVisualVisible(v.x, v.y, v.radius + 50)) continue;
+        ctx.save();
+        ctx.translate(v.x, v.y);
+        const rot = now * 0.003;
+        const isPersonal = !!v.isPersonalAura;
+
+        ctx.shadowColor = v.isHyper ? '#e056fd' : '#00d2ff';
+        ctx.shadowBlur = 18;
+
+        // Outer boundary
+        ctx.strokeStyle = v.isHyper ? 'rgba(224, 86, 253, 0.75)' : 'rgba(0, 210, 255, 0.75)';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.arc(0, 0, v.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Swirling flux spiral lines
+        for (let arm = 0; arm < 4; arm++) {
+            const startAng = rot + (arm * Math.PI / 2);
+            ctx.beginPath();
+            ctx.strokeStyle = v.isHyper ? 'rgba(243, 104, 224, 0.45)' : 'rgba(0, 245, 212, 0.45)';
+            ctx.lineWidth = 2;
+            for (let rad = 15; rad < v.radius; rad += 10) {
+                const spiralAng = startAng + (rad / v.radius) * Math.PI;
+                const px = Math.cos(spiralAng) * rad;
+                const py = Math.sin(spiralAng) * rad;
+                if (rad === 15) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+        }
+
+        // Center core attractor beacon
+        ctx.beginPath();
+        ctx.arc(0, 0, 18, 0, Math.PI * 2);
+        ctx.fillStyle = v.isHyper ? 'rgba(224, 86, 253, 0.85)' : 'rgba(0, 210, 255, 0.85)';
+        ctx.fill();
+
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(isPersonal ? '🛡️🧲' : '🧲', 0, 0);
+
+        ctx.restore();
+    }
+
+    // Render Bolznstien G2 Shock Trails
+    for (const tr of bolznstienShockTrails) {
+        if (!tr || !isWorldVisualVisible(tr.x, tr.y, 60)) continue;
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 245, 212, 0.22)';
+        ctx.strokeStyle = 'rgba(0, 245, 212, 0.65)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(tr.x, tr.y, 24, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Render Bolznstien Super: 6 Electric Hand Chains (+40% hands & range) + Chain Lightning
+    const allBolzEntities = [player, ...bots].filter(e => e && e.hp > 0 && (e.bolznstienSuperUntil || 0) > performance.now());
+    for (const ent of allBolzEntities) {
+        const isHyper = !!ent.bolznstienSuperIsHyper;
+        const range = isHyper ? 672 : 336; // +40% range: 336px normal, 672px HC
+        let aimAng = 0;
+        if (ent.id === player.id) {
+            const wm = typeof getMouseWorld === 'function' ? getMouseWorld() : null;
+            aimAng = wm ? Math.atan2(wm.y - ent.y, wm.x - ent.x) : (ent.dir || 0);
+        } else {
+            aimAng = ent.aimAngle != null ? ent.aimAngle : (ent.dir || 0);
+        }
+        // 6 electric chains (+40% hands and spread)
+        const offsets = [-0.38, -0.23, -0.08, 0.08, 0.23, 0.38];
+
+        ctx.save();
+        ctx.shadowColor = isHyper ? '#e056fd' : '#00f5d4';
+        ctx.shadowBlur = isHyper ? 26 : 18;
+
+        for (let c = 0; c < 6; c++) {
+            const chainAng = aimAng + offsets[c];
+            const steps = 9;
+            const stepLen = range / steps;
+            ctx.strokeStyle = isHyper ? '#f368e0' : '#00cec9';
+            ctx.lineWidth = isHyper ? 4.5 : 3.2;
+            ctx.beginPath();
+            ctx.moveTo(ent.x, ent.y);
+
+            let curX = ent.x;
+            let curY = ent.y;
+            for (let s = 1; s <= steps; s++) {
+                const targetSegX = ent.x + Math.cos(chainAng) * (s * stepLen);
+                const targetSegY = ent.y + Math.sin(chainAng) * (s * stepLen);
+                const jitter = (Math.random() - 0.5) * (s < steps ? 24 : 8);
+                const nextX = targetSegX - Math.sin(chainAng) * jitter;
+                const nextY = targetSegY + Math.cos(chainAng) * jitter;
+                ctx.lineTo(nextX, nextY);
+                curX = nextX;
+                curY = nextY;
+            }
+            ctx.stroke();
+
+            // Inner white-hot core
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+
+            // Electric hand grasping fingers at tips (+40% size)
+            ctx.strokeStyle = isHyper ? '#f368e0' : '#81ecec';
+            ctx.lineWidth = 2.6;
+            ctx.beginPath();
+            const fingerOffsets = [-0.42, -0.14, 0.14, 0.42];
+            for (const fOff of fingerOffsets) {
+                const fAng = chainAng + fOff;
+                const fLen = (22 + Math.random() * 8) * 1.40; // +40% larger electric hand claws
+                const knuckleX = curX + Math.cos(fAng) * (fLen * 0.5) + (Math.random() - 0.5) * 7;
+                const knuckleY = curY + Math.sin(fAng) * (fLen * 0.5) + (Math.random() - 0.5) * 7;
+                const tipX = curX + Math.cos(fAng) * fLen;
+                const tipY = curY + Math.sin(fAng) * fLen;
+                ctx.moveTo(curX, curY);
+                ctx.lineTo(knuckleX, knuckleY);
+                ctx.lineTo(tipX, tipY);
+            }
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    for (const cp of chocolatePuddles) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(93, 64, 55, 0.55)';
+        ctx.strokeStyle = '#3e2723';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cp.x, cp.y, cp.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+    for (const target of [player, ...bots]) {
+        if (target && target.inChocolateShell) {
+            drawChocolateShell(ctx, target);
+        }
+    }
+    // Render Bolznstien Super Chain Lightning Arcs
+    for (const ca of bolznstienChainArcs) {
+        if (!ca) continue;
+        ctx.save();
+        ctx.shadowColor = ca.isHyper ? '#e056fd' : '#00f5d4';
+        ctx.shadowBlur = 18;
+        ctx.strokeStyle = ca.isHyper ? '#f368e0' : '#00cec9';
+        ctx.lineWidth = 3.8;
+        ctx.beginPath();
+        ctx.moveTo(ca.x1, ca.y1);
+        const chainSteps = 6;
+        const dx = (ca.x2 - ca.x1) / chainSteps;
+        const dy = (ca.y2 - ca.y1) / chainSteps;
+        const perpX = -(ca.y2 - ca.y1) / Math.max(1, Math.hypot(ca.x2 - ca.x1, ca.y2 - ca.y1));
+        const perpY = (ca.x2 - ca.x1) / Math.max(1, Math.hypot(ca.x2 - ca.x1, ca.y2 - ca.y1));
+        for (let cs = 1; cs <= chainSteps; cs++) {
+            const jitter = cs === chainSteps ? 0 : (Math.random() - 0.5) * 26;
+            const px = ca.x1 + dx * cs + perpX * jitter;
+            const py = ca.y1 + dy * cs + perpY * jitter;
+            ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.restore();
     }
 
     // Modern structural walls. These replace the old flat OG rectangles visually.
@@ -57647,7 +63294,7 @@ let heistFeverActive = false;
         const visualRadius = Math.max(80, Number(ex?.radius) || 0) + 80;
         if (!ex || !isWorldVisualVisible(ex.x, ex.y, visualRadius)) continue;
         if ((ex.isParticle || ex.isSteamPuff) && decorativeFxStride > 1 && (decorativeFxSeen++ % decorativeFxStride) !== 0) continue;
-        const preserveWarningDetail = /warning|telegraph/i.test(String(ex.fxKind || ''));
+        const preserveWarningDetail = /warning|telegraph/i.test(String(ex.fxKind || '')) || !!ex.isBolznstienStrike;
         if (simplifyExplosionFx && !preserveWarningDetail && !ex.isParticle && !ex.isSteamPuff) {
             const simpleAlpha = Math.max(0, 1 - ex.life / Math.max(0.01, ex.maxLife || 0.2));
             const simpleRadius = Math.max(4, Number(ex.radius) || 18);
@@ -57680,6 +63327,77 @@ let heistFeverActive = false;
             ctx.beginPath();
             ctx.ellipse(baseR * stretch * 0.2, 0, baseR * (stretch * 0.62), baseR * 0.45, 0, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
+            continue;
+        }
+        if (ex.isBolznstienStrike) {
+            const lifeFrac = ex.life / Math.max(0.01, ex.maxLife || 0.38);
+            const alpha = Math.max(0, 1 - lifeFrac);
+            const isHc = !!ex.isHyper;
+            const coreColor = isHc ? '#f368e0' : '#00f5d4';
+            const auraColor = isHc ? 'rgba(224, 86, 253, ' : 'rgba(0, 245, 212, ';
+
+            ctx.save();
+            ctx.shadowColor = coreColor;
+            ctx.shadowBlur = isHc ? 28 : 20;
+
+            // 1. Massive Sky Lightning Thunderbolt dropping from ex.y - 700 to ex.y
+            const boltTopY = ex.y - 680;
+            const segments = 12;
+            const dySeg = (ex.y - boltTopY) / segments;
+
+            ctx.lineWidth = 10 * alpha;
+            ctx.strokeStyle = coreColor;
+            ctx.beginPath();
+            ctx.moveTo(ex.x, boltTopY);
+            for (let s = 1; s <= segments; s++) {
+                const segY = boltTopY + s * dySeg;
+                const jitter = (s === segments ? 0 : (Math.sin(s * 5 + performance.now() * 0.02) * 26 + (s % 2 === 0 ? 14 : -14)));
+                const segX = ex.x + jitter;
+                ctx.lineTo(segX, segY);
+
+                // Branching forks
+                if (s === 4 || s === 8) {
+                    const forkX = segX + (s === 4 ? -48 : 48);
+                    const forkY = segY + 45;
+                    ctx.moveTo(segX, segY);
+                    ctx.lineTo(forkX, forkY);
+                    ctx.moveTo(segX, segY);
+                }
+            }
+            ctx.stroke();
+
+            // Inner white-hot lightning core
+            ctx.lineWidth = 4 * alpha;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            // 2. Ground Impact Shockwave Ring with radial jagged electric teeth
+            const currentR = ex.radius * (0.35 + lifeFrac * 0.65);
+            ctx.lineWidth = 4.5 * alpha;
+            ctx.strokeStyle = auraColor + (0.95 * alpha) + ')';
+            ctx.beginPath();
+            ctx.arc(ex.x, ex.y, currentR, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Ground radial electric spokes
+            ctx.lineWidth = 2 * alpha;
+            ctx.strokeStyle = '#ffffff';
+            ctx.beginPath();
+            const numSpokes = 8;
+            for (let sp = 0; sp < numSpokes; sp++) {
+                const spAng = (sp * Math.PI * 2) / numSpokes + (performance.now() * 0.005);
+                ctx.moveTo(ex.x + Math.cos(spAng) * (currentR * 0.35), ex.y + Math.sin(spAng) * (currentR * 0.35));
+                ctx.lineTo(ex.x + Math.cos(spAng) * (currentR * 1.2), ex.y + Math.sin(spAng) * (currentR * 1.2));
+            }
+            ctx.stroke();
+
+            // Center blinding electric flare
+            ctx.fillStyle = auraColor + (0.65 * alpha) + ')';
+            ctx.beginPath();
+            ctx.arc(ex.x, ex.y, currentR * 0.55, 0, Math.PI * 2);
+            ctx.fill();
+
             ctx.restore();
             continue;
         }
@@ -58158,6 +63876,7 @@ let heistFeverActive = false;
         ctx.fill();
     }
 
+    if (isBraweBallMode && typeof renderBraweBallEntity === 'function') renderBraweBallEntity(ctx);
     ctx.textAlign = 'center';
     ctx.font = 'bold 14px sans-serif';
     for(const ft of floatingTexts){
@@ -58287,8 +64006,8 @@ let heistFeverActive = false;
             ctx.fillText(`${who}: ${next.showdownRespawnRallied ? 'RALLY ' : ''}RESPAWN ${left.toFixed(1)}s`, innerWidth/2 - 125, 74);
         }
     }
-    if ((isObjectiveMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isConstructionMode || isDamageFillerMode || isBrickVaultMode || isMirrorMode || isTraining || isSoloTdMode) && player.hp <= 0 && !gameOver) {
-        const delay = isObjectiveMode ? OBJECTIVE_RESPAWN_SECONDS
+    if ((isBraweBallMode || isObjectiveMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isConstructionMode || isDamageFillerMode || isBrickVaultMode || isMirrorMode || isTraining || isSoloTdMode) && player.hp <= 0 && !gameOver) {
+        const delay = isBraweBallMode ? 5.0 : (isObjectiveMode ? OBJECTIVE_RESPAWN_SECONDS
             : (isArenaForgeMode ? getArenaForgeRespawnSeconds('player')
             : (isTugZoneMode ? TUG_ZONE_RESPAWN_SECONDS
             : (isConstructionMode ? CONSTRUCTION_RESPAWN_SECONDS
@@ -58296,7 +64015,7 @@ let heistFeverActive = false;
             : (isBrickVaultMode ? BRICK_VAULT_RESPAWN_SECONDS
             : (isMirrorMode ? MIRROR_RESPAWN_SECONDS
             : (isTraining ? 1.5
-            : (isSoloTdMode ? 5.0 : MARKED_MAYHEM_RESPAWN_SECONDS))))))));
+            : (isSoloTdMode ? 5.0 : MARKED_MAYHEM_RESPAWN_SECONDS)))))))));
         const left = Math.max(0, delay - (player.respawnTimer || 0));
         const panelW = Math.min(360, innerWidth - 28);
         const panelX = (innerWidth - panelW) / 2;
@@ -58841,7 +64560,6 @@ let heistFeverActive = false;
     }
 
         // HUD panel
-        const now = performance.now();
         const playerProgress = getSelectedProgress();
         // HUD panel with hypercharge glow for Outlit
         const hudX = 20;
@@ -59028,6 +64746,15 @@ let heistFeverActive = false;
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(`THE IMPOSSIBLE  |  DODGES ${dodges}  |  AIM READS ${reads}  |  ADAPTATION ${adaptation}%`, innerWidth/2, 56);
+    } else if (isBraweBallMode) {
+        renderBraweBallHUD(ctx);
+        ctx.textAlign = 'left';
+    } else if (isKnockoutMode) {
+        renderKnockoutHUD(ctx);
+        ctx.textAlign = 'left';
+    } else if (isWeeFeeBossMode) {
+        renderWeeFeeBossHUD(ctx);
+        ctx.textAlign = 'left';
     } else if (isBlinkEyeDodgeMode) {
         renderBlinkEyeDodgeHUD(ctx);
         ctx.textAlign = 'left';
@@ -59052,6 +64779,8 @@ let heistFeverActive = false;
         ctx.fillText(`🪞 MIRROR 5V5 - ${mirrorModeBrawler.toUpperCase()} ONLY - FIRST TO ${MIRROR_KILL_GOAL} KILLS 🪞`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     }
+
+    if ((isRankedMatch || isCustomMutatorMatch) && !gameOver) renderRankedModifierHUD(ctx);
 
     if(gameOver){
         if (!hasHandledGameOver) {
@@ -59142,10 +64871,22 @@ let heistFeverActive = false;
                 matchText = won ? 'YOUR TRIO SURVIVED!' : 'YOUR TRIO WAS ELIMINATED!';
                 rankText = `Trios left at end: ${Math.max(0, aliveCount)}`;
             } else if (isBlinkEyeDodgeMode) {
-                won = blinkEyeDodgeState?.won || (blinkEyeDodgeState?.bossDefeated) || ((blinkEyeDodgeState?.bossCurrentHp || 1) <= 0);
+                const s = blinkEyeDodgeState;
+                const cleared = s?.stagesCleared || (s?.stage > 1 ? s.stage - 1 : 0) || (s?.won || s?.bossDefeated ? 1 : 0);
+                won = cleared >= 1 || !!s?.won || !!s?.bossDefeated || ((s?.bossCurrentHp || 1) <= 0);
                 rankNum = won ? 1 : 2;
-                matchText = won ? '🏆 BOSS DEFEATED! 1 VS THE EYES VICTORY!' : '👁️ THE EYES OVERWHELMED YOU!';
-                rankText = `Boss Damage: ${(blinkEyeDodgeState?.totalDamageDealt || 0).toLocaleString()} | Dodges: ${blinkEyeDodgeState?.dodges || 0} | Best Streak: x${blinkEyeDodgeState?.bestStreak || 0}`;
+                if (won) {
+                    if (cleared >= 3 || s?.won) {
+                        matchText = '🏆 YOU WIN! ALL 3 STAGES CONQUERED!';
+                    } else if (cleared >= 1) {
+                        matchText = '🏆 YOU WIN! STAGE ' + cleared + ' VICTORY (⚡ POWER PLAY)!';
+                    } else {
+                        matchText = '🏆 YOU WIN! 1 VS THE EYES VICTORY!';
+                    }
+                } else {
+                    matchText = '👁️ THE EYES OVERWHELMED YOU — TRY AGAIN!';
+                }
+                rankText = `Stages Cleared: ${cleared} | Highest Stage: ${s?.stage || 1} ${s?.hasPowerPlayModifier ? '(⚡ Power Play Active)' : ''} | Damage: ${(s?.totalDamageDealt || 0).toLocaleString()} | Dodges: ${s?.dodges || 0}`;
             } else if (isImpossibleMode) {
                 const impossibleBot = bots.find((bot) => bot.isImpossibleAI);
                 won = player.hp > 0 && (!impossibleBot || impossibleBot.hp <= 0 || impossibleBot.isDead);
@@ -59169,6 +64910,18 @@ let heistFeverActive = false;
                 } else {
                     rankText = `Your team ${yourTotal.toLocaleString()} / ${damageFillerGoal.toLocaleString()} | Enemy ${enemyTotal.toLocaleString()} / ${damageFillerGoal.toLocaleString()}`;
                 }
+            } else if (isBraweBallMode) {
+                const s = braweBallState;
+                won = (s?.scores?.player || 0) > (s?.scores?.enemy || 0);
+                rankNum = won ? 1 : 2;
+                matchText = won ? '⚽ BRAWE BALL VICTORY! ⚽' : 'DEFEATED ON THE PITCH!';
+                rankText = 'Final Score: Blue ' + (s?.scores?.player || 0) + ' - ' + (s?.scores?.enemy || 0) + ' Red' + (s?.isOvertime ? ' (Overtime)' : '');
+            } else if (isKnockoutMode) {
+                const s = knockoutState;
+                won = (s?.roundWins?.player || 0) > (s?.roundWins?.enemy || 0);
+                rankNum = won ? 1 : 2;
+                matchText = won ? '🥊 KNOCKOUT MATCH VICTORY! 🥊' : 'KNOCKED OUT!';
+                rankText = 'Rounds: Blue ' + (s?.roundWins?.player || 0) + ' - ' + (s?.roundWins?.enemy || 0) + ' Red (Best of 3)';
             } else if (isMirrorMode) {
                 won = mirrorWinnerTeam === 'player';
                 const yourKills = Math.round(mirrorKills.player || 0);
@@ -59176,6 +64929,11 @@ let heistFeverActive = false;
                 rankNum = won ? 1 : Math.max(2, aliveCount + 1);
                 matchText = won ? 'YOUR TEAM HIT 20 KILLS!' : 'ENEMY TEAM HIT 20 KILLS!';
                 rankText = `Mirror ${mirrorModeBrawler.toUpperCase()} | Your team ${yourKills}/${MIRROR_KILL_GOAL} | Enemy ${enemyKills}/${MIRROR_KILL_GOAL}`;
+            } else if (isMagnatarShowdownMode) {
+                rankNum = player.hp > 0 ? 1 : (aliveCount + 1);
+                rankText = "Rank: " + (player.hp > 0 ? "1st" : (rankNum + ["th","st","nd","rd"][rankNum>3?0:rankNum]));
+                won = rankNum <= 4;
+                matchText = won ? (rankNum === 1 ? "🧲 SINGULARITY SUPREMACY! 🧲" : "SURVIVED THE ORBO SWARM!") : "COLLAPSED BY ORBO SWARM!";
             } else {
                 rankNum = player.hp > 0 ? 1 : (aliveCount+1);
                 rankText = "Rank: " + (player.hp > 0 ? "1st" : (rankNum + ["th","st","nd","rd"][rankNum>3?0:rankNum]));
@@ -60443,6 +66201,97 @@ function buildBlinkEyeDodgeMap() {
     addArenaWallStrip(cx + 270, cy + 270, 90, 90, { wallType: 'arena', hp: 99999, isPowerBox: false });
 }
 
+function spawnBlinkEyeDodgeStage(stageNumber = 1) {
+    const now = performance.now();
+    const cx = WORLD_W * 0.5;
+    const cy = WORLD_H * 0.5;
+
+    const megaBossHp = 45000 + (stageNumber - 1) * 15000;
+    const megaBossDamage = 620 + (stageNumber - 1) * 80;
+    const megaBossSpeed = 230 + (stageNumber - 1) * 20;
+
+    const bossEntities = [
+        {
+            id: 'boss_blinkeye_master_s' + stageNumber,
+            name: stageNumber >= 2 ? '👑 MEGA BOSS BLINKEYE (STAGE ' + stageNumber + ')' : '👑 MEGA BOSS BLINKEYE',
+            subName: stageNumber >= 2 ? 'Empowered Oculus Master' : 'All-Seeing Master Sniper',
+            isBoss: true,
+            isMegaBossBlinkeye: true,
+            brawler: 'blinkeye',
+            x: cx,
+            y: cy - 380,
+            vx: 180 * (stageNumber % 2 === 0 ? -1 : 1),
+            vy: 90,
+            speed: megaBossSpeed,
+            radius: 36 + Math.min(8, (stageNumber - 1) * 2),
+            hp: megaBossHp,
+            maxHp: megaBossHp,
+            damage: megaBossDamage,
+            aim: Math.PI / 2,
+            attackKick: 0,
+            attackKickUntil: 0,
+            enraged: stageNumber >= 3,
+            isHypercharged: stageNumber >= 2,
+            hyperchargeActive: stageNumber >= 2,
+            hitFlashUntil: 0,
+            defeated: false,
+            nextShotAt: now + 1000,
+            nextRetinalFlashAt: now + Math.max(1800, 3500 - (stageNumber - 1) * 500),
+            nextSuperEyeAt: now + Math.max(2200, 4000 - (stageNumber - 1) * 600)
+        }
+    ];
+
+    const sentinelCount = Math.min(8, 2 + (stageNumber - 1) * 2);
+    const eyeConfigs = [
+        { name: 'ALPHA', color: '#00e5ff', angle: 0.25 * Math.PI, dist: 420 },
+        { name: 'BETA', color: '#ffa726', angle: 0.75 * Math.PI, dist: 420 },
+        { name: 'GAMMA', color: '#00ff88', angle: 1.25 * Math.PI, dist: 460 },
+        { name: 'DELTA', color: '#d946ef', angle: 1.75 * Math.PI, dist: 460 },
+        { name: 'EPSILON', color: '#ff3366', angle: 0.0 * Math.PI, dist: 500 },
+        { name: 'OMEGA', color: '#ffd700', angle: 1.0 * Math.PI, dist: 500 },
+        { name: 'ZETA', color: '#38bdf8', angle: 0.5 * Math.PI, dist: 520 },
+        { name: 'SIGMA', color: '#a855f7', angle: 1.5 * Math.PI, dist: 520 }
+    ];
+
+    const sentinelHp = 15000 + (stageNumber - 1) * 4000;
+    const sentinelDamage = 400 + (stageNumber - 1) * 60;
+    const sentinelSpeed = 260 + (stageNumber - 1) * 25;
+
+    for (let i = 0; i < sentinelCount; i++) {
+        const cfg = eyeConfigs[i];
+        const spawnX = cx + Math.cos(cfg.angle) * cfg.dist;
+        const spawnY = cy + Math.sin(cfg.angle) * cfg.dist;
+        bossEntities.push({
+            id: 'boss_all_seeing_' + cfg.name.toLowerCase() + '_s' + stageNumber,
+            name: '🔮 ALL-SEEING EYE (' + cfg.name + ')',
+            subName: 'Stage ' + stageNumber + ' Sentinel Eye',
+            isBoss: true,
+            isSteeredEyeBoss: true,
+            x: clamp(spawnX, 100, WORLD_W - 100),
+            y: clamp(spawnY, 100, WORLD_H - 100),
+            vx: Math.cos(cfg.angle + Math.PI / 2) * sentinelSpeed,
+            vy: Math.sin(cfg.angle + Math.PI / 2) * sentinelSpeed,
+            speed: sentinelSpeed,
+            radius: 46,
+            hp: sentinelHp,
+            maxHp: sentinelHp,
+            damage: sentinelDamage,
+            irisColor: cfg.color,
+            pupilSize: 0.42,
+            blinkUntil: 0,
+            nextBlinkAt: now + 1500 + i * 800,
+            squish: 1.0,
+            squishAngle: 0,
+            enraged: stageNumber >= 3,
+            hitFlashUntil: 0,
+            defeated: false,
+            nextMissileAt: now + 1200 + i * 600
+        });
+    }
+
+    return bossEntities;
+}
+
 function initBlinkEyeDodgeState() {
     const now = performance.now();
     const cx = WORLD_W * 0.5;
@@ -60455,94 +66304,15 @@ function initBlinkEyeDodgeState() {
     powerups.length = 0;
     cubes.length = 0;
 
-    const bossEntities = [
-        {
-            id: 'boss_blinkeye_master',
-            name: '👑 MEGA BOSS BLINKEYE',
-            subName: 'All-Seeing Master Sniper',
-            isBoss: true,
-            isMegaBossBlinkeye: true,
-            brawler: 'blinkeye',
-            x: cx,
-            y: cy - 380,
-            vx: 180,
-            vy: 90,
-            speed: 230,
-            radius: 36,
-            hp: 45000,
-            maxHp: 45000,
-            damage: 620,
-            aim: Math.PI / 2,
-            attackKick: 0,
-            attackKickUntil: 0,
-            enraged: false,
-            isHypercharged: false,
-            hyperchargeActive: false,
-            hitFlashUntil: 0,
-            defeated: false,
-            nextShotAt: now + 1200,
-            nextRetinalFlashAt: now + 3500,
-            nextSuperEyeAt: now + 4000
-        },
-        {
-            id: 'boss_all_seeing_alpha',
-            name: '🔮 ALL-SEEING EYE (ALPHA)',
-            subName: 'Steered Sentinel Eye',
-            isBoss: true,
-            isSteeredEyeBoss: true,
-            x: cx - 420,
-            y: cy + 100,
-            vx: 240,
-            vy: -180,
-            speed: 260,
-            radius: 46,
-            hp: 15000,
-            maxHp: 15000,
-            damage: 400,
-            irisColor: '#00e5ff',
-            pupilSize: 0.42,
-            blinkUntil: 0,
-            nextBlinkAt: now + 2000,
-            squish: 1.0,
-            squishAngle: 0,
-            enraged: false,
-            hitFlashUntil: 0,
-            defeated: false,
-            nextMissileAt: now + 1600
-        },
-        {
-            id: 'boss_all_seeing_beta',
-            name: '🔥 ALL-SEEING EYE (BETA)',
-            subName: 'Steered Sentinel Eye',
-            isBoss: true,
-            isSteeredEyeBoss: true,
-            x: cx + 420,
-            y: cy + 100,
-            vx: -240,
-            vy: -200,
-            speed: 260,
-            radius: 46,
-            hp: 15000,
-            maxHp: 15000,
-            damage: 400,
-            irisColor: '#ffa726',
-            pupilSize: 0.42,
-            blinkUntil: 0,
-            nextBlinkAt: now + 3000,
-            squish: 1.0,
-            squishAngle: 0,
-            enraged: false,
-            hitFlashUntil: 0,
-            defeated: false,
-            nextMissileAt: now + 2400
-        }
-    ];
-
+    const bossEntities = spawnBlinkEyeDodgeStage(1);
     const totalMax = bossEntities.reduce((sum, e) => sum + e.maxHp, 0);
 
     blinkEyeDodgeState = {
         startedAt: now,
         timeSurvived: 0,
+        stage: 1,
+        hasPowerPlayModifier: false,
+        transitioningStage: false,
         bossMaxHp: totalMax,
         bossCurrentHp: totalMax,
         bossDisplayHp: totalMax,
@@ -60561,7 +66331,7 @@ function initBlinkEyeDodgeState() {
 
     setTimeout(() => {
         spawnFloatingText(player.x, player.y - 75, '👁️ BOSS BATTLE: 1 VS MEGA BLINKEYE! 👁️', '#ffd34f');
-        setTimeout(() => spawnFloatingText(player.x, player.y - 45, 'DODGE RICOCHET LASERS & ALL-SEEING EYES!', '#38e8ff'), 400);
+        setTimeout(() => spawnFloatingText(player.x, player.y - 45, 'STAGE 1: DODGE LASERS & SENTINEL EYES!', '#38e8ff'), 400);
     }, 300);
 }
 
@@ -60584,18 +66354,72 @@ function updateBlinkEyeDodge(dt, now) {
     s.bossCurrentHp = s.giantEyes.reduce((sum, e) => sum + Math.max(0, e.hp), 0);
     s.bossDisplayHp += (s.bossCurrentHp - s.bossDisplayHp) * 0.12;
 
-    // Victory Check: All Boss Entities Defeated!
+    // Power Play Modifier Player Turbo Boosts in BlinkEye Dodge
+    if (s.hasPowerPlayModifier) {
+        player.super = Math.min(1, (player.super || 0) + dt * 0.10);
+        player.hypercharge = Math.min(1, (player.hypercharge || 0) + dt * 0.07);
+        player.speedMultiplier = Math.max(player.speedMultiplier || 1, 1.30);
+    }
+
+    // Victory & Stage Progression Check
     const allDefeated = s.giantEyes.every(e => e.hp <= 0 || e.defeated);
-    if (allDefeated && !s.won) {
-        s.won = true;
-        s.bossDefeated = true;
-        spawnFloatingText(player.x, player.y - 75, '🏆 MEGA BLINKEYE DEFEATED! 🏆', '#ffd34f');
+    if (allDefeated && !s.transitioningStage && !s.won) {
+        s.transitioningStage = true;
+        const currentStage = s.stage || 1;
+        s.stagesCleared = Math.max(s.stagesCleared || 0, currentStage);
+        const nextStage = currentStage + 1;
+
+        spawnFloatingText(player.x, player.y - 85, '🏆 YOU WIN! STAGE ' + currentStage + ' CLEARED! 🏆', '#ffd34f');
         setTimeout(() => {
-            spawnFloatingText(player.x, player.y - 45, 'VICTORY! YOU CONQUERED THE OCULUS!', '#2ed573');
+            spawnFloatingText(player.x, player.y - 55, '⚡ POWER PLAY MODIFIER ACTIVATED! ⚡', '#d946ef');
         }, 350);
+
+        if (currentStage >= 3) {
+            s.won = true;
+            s.bossDefeated = true;
+            setTimeout(() => {
+                spawnFloatingText(player.x, player.y - 25, '🏆 1 VS THE EYES ULTIMATE VICTORY! 🏆', '#2ed573');
+            }, 750);
+            setTimeout(() => {
+                gameOver = true;
+            }, 1800);
+            return;
+        }
+
         setTimeout(() => {
-            gameOver = true;
-        }, 1400);
+            spawnFloatingText(player.x, player.y - 25, '🔥 STAGE ' + nextStage + ': MORE EYES AWAKEN! 🔥', '#ff4757');
+        }, 750);
+
+        explosions.push({
+            x: cx,
+            y: cy,
+            radius: 580,
+            life: 0,
+            maxLife: 0.65,
+            color: 'rgba(217, 70, 239, 0.45)'
+        });
+
+        s.funnyMissiles.length = 0;
+
+        setTimeout(() => {
+            if (!isBlinkEyeDodgeMode || !blinkEyeDodgeState || player.hp <= 0) return;
+            s.stage = nextStage;
+            s.hasPowerPlayModifier = true;
+            s.transitioningStage = false;
+
+            player.hp = player.maxHp;
+            doHeal(player, player.maxHp);
+            player.shield = Math.max(player.shield || 0, 4500);
+
+            const newBossEntities = spawnBlinkEyeDodgeStage(s.stage);
+            s.giantEyes = newBossEntities;
+            const newTotalMax = newBossEntities.reduce((sum, e) => sum + e.maxHp, 0);
+            s.bossMaxHp = newTotalMax;
+            s.bossCurrentHp = newTotalMax;
+            s.bossDisplayHp = newTotalMax;
+
+            spawnFloatingText(player.x, player.y - 65, '⚡ STAGE ' + s.stage + ': ' + newBossEntities.length + ' EYES ACTIVE! ⚡', '#00e5ff');
+        }, 1800);
         return;
     }
 
@@ -60932,6 +66756,33 @@ function renderBlinkEyeDodgeWorld(ctx) {
     const cy = WORLD_H * 0.5;
     const arenaRadius = 920;
 
+    // Power Play Player Aura
+    if (s.hasPowerPlayModifier && player && player.hp > 0) {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        const ppPulse = Math.sin(now * 0.012) * 4;
+        const ppRadius = (player.radius || 24) + 14 + ppPulse;
+        ctx.strokeStyle = "#d946ef";
+        ctx.lineWidth = 3.5;
+        ctx.shadowColor = "#00e5ff";
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(0, 0, ppRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        for (let k = 0; k < 4; k++) {
+            const sparkAngle = (now * 0.006) + (k * Math.PI * 0.5);
+            const sx = Math.cos(sparkAngle) * ppRadius;
+            const sy = Math.sin(sparkAngle) * ppRadius;
+            ctx.fillStyle = k % 2 === 0 ? "#00e5ff" : "#ffd700";
+            ctx.shadowColor = ctx.fillStyle;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
     // Arena Perimeter Ocular Field
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 167, 38, 0.45)';
@@ -61201,28 +67052,33 @@ function renderBlinkEyeDodgeHUD(ctx) {
     const displayPct = clamp(s.bossDisplayHp / s.bossMaxHp, 0, 1);
 
     ctx.save();
-    const boxW = Math.min(580, innerWidth - 36);
+    const boxW = Math.min(620, innerWidth - 36);
     const boxX = innerWidth * 0.5 - boxW * 0.5;
     const boxY = 20;
-    const boxH = 68;
+    const boxH = 72;
+
+    const isPP = !!s.hasPowerPlayModifier;
 
     // Panel Background
     ctx.fillStyle = 'rgba(18, 12, 28, 0.92)';
-    ctx.strokeStyle = '#ffa726';
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = 'rgba(255, 167, 38, 0.5)';
-    ctx.shadowBlur = 16;
+    ctx.strokeStyle = isPP ? '#d946ef' : '#ffa726';
+    ctx.lineWidth = isPP ? 3.5 : 2.5;
+    ctx.shadowColor = isPP ? 'rgba(217, 70, 239, 0.65)' : 'rgba(255, 167, 38, 0.5)';
+    ctx.shadowBlur = isPP ? 22 : 16;
     ctx.beginPath();
     ctx.roundRect(boxX, boxY, boxW, boxH, 14);
     ctx.fill();
     ctx.stroke();
 
     // Boss Header Title
-    ctx.fillStyle = '#ffd34f';
+    ctx.fillStyle = isPP ? '#f0abfc' : '#ffd34f';
     ctx.font = '900 13px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.shadowBlur = 0;
-    ctx.fillText('👁️ BOSS BATTLE: 1 VS MEGA BLINKEYE 👁️', innerWidth * 0.5, boxY + 20);
+    const stageTitle = isPP
+        ? '⚡ STAGE ' + (s.stage || 1) + ' • POWER PLAY MODIFIER ACTIVE ⚡'
+        : '👁️ STAGE ' + (s.stage || 1) + ' • BOSS BATTLE: 1 VS ' + (s.giantEyes?.length || 3) + ' EYES 👁️';
+    ctx.fillText(stageTitle, innerWidth * 0.5, boxY + 20);
 
     // Grand Boss Health Bar (Dual-Layer)
     const barX = boxX + 16;
@@ -61244,9 +67100,15 @@ function renderBlinkEyeDodgeHUD(ctx) {
 
     // Gradient Health Fill
     const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
-    grad.addColorStop(0, '#ffa726');
-    grad.addColorStop(0.5, '#ffd166');
-    grad.addColorStop(1, '#00e5ff');
+    if (isPP) {
+        grad.addColorStop(0, '#d946ef');
+        grad.addColorStop(0.5, '#00e5ff');
+        grad.addColorStop(1, '#ffe600');
+    } else {
+        grad.addColorStop(0, '#ffa726');
+        grad.addColorStop(0.5, '#ffd166');
+        grad.addColorStop(1, '#00e5ff');
+    }
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.roundRect(barX, barY, barW * hpPct, barH, 8);
@@ -61256,19 +67118,1873 @@ function renderBlinkEyeDodgeHUD(ctx) {
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 11px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`BOSS HP: ${s.bossCurrentHp.toLocaleString()} / ${s.bossMaxHp.toLocaleString()} (${Math.round(hpPct * 100)}%)`, innerWidth * 0.5, barY + 12);
+    ctx.fillText('STAGE ' + (s.stage || 1) + ' TOTAL HP: ' + s.bossCurrentHp.toLocaleString() + ' / ' + s.bossMaxHp.toLocaleString() + ' (' + Math.round(hpPct * 100) + '%)', innerWidth * 0.5, barY + 12);
 
     // Bottom Stats Row
     ctx.fillStyle = '#f1f2f6';
     ctx.font = '700 11px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`🎯 DODGES: ${s.dodges}  |  🔥 STREAK: x${s.streak}  |  💥 DAMAGE: ${(s.totalDamageDealt || 0).toLocaleString()}  |  ⏱️ ${s.timeSurvived.toFixed(1)}s`, innerWidth * 0.5, boxY + 58);
+    ctx.fillText('🎯 DODGES: ' + s.dodges + '  |  🔥 STREAK: x' + s.streak + '  |  💥 DAMAGE: ' + (s.totalDamageDealt || 0).toLocaleString() + '  |  ⏱️ ' + s.timeSurvived.toFixed(1) + 's', innerWidth * 0.5, boxY + 61);
 
+    ctx.restore();
+}
+
+
+// ============================================================================
+// BOSS BATTLE: 1 vs MEGA WEEFEE (BOT WIFI WITH UNLIMITED SIGNAL POLES)
+// ============================================================================
+
+function buildWeeFeeBossMap() {
+    WORLD_W = 2000;
+    WORLD_H = 2000;
+    walls.length = 0;
+    destructibleWalls.length = 0;
+    bushes.length = 0;
+    waterTiles.length = 0;
+    weefeePoles.length = 0;
+    weefeeShockwaves.length = 0;
+    bullets.length = 0;
+    powerups.length = 0;
+    cubes.length = 0;
+    explosions.length = 0;
+    floatingTexts.length = 0;
+
+    // Arena Perimeter Bounds
+    const t = 40;
+    walls.push({ x: 0, y: 0, w: WORLD_W, h: t });
+    walls.push({ x: 0, y: WORLD_H - t, w: WORLD_W, h: t });
+    walls.push({ x: 0, y: 0, w: t, h: WORLD_H });
+    walls.push({ x: WORLD_W - t, y: 0, w: t, h: WORLD_H });
+
+    // 4 High-tech Server Relay Pillar Obstacles
+    const pillars = [
+        { x: 520, y: 520, w: 90, h: 90 },
+        { x: 1390, y: 520, w: 90, h: 90 },
+        { x: 520, y: 1390, w: 90, h: 90 },
+        { x: 1390, y: 1390, w: 90, h: 90 }
+    ];
+    for (const p of pillars) {
+        walls.push({ x: p.x, y: p.y, w: p.w, h: p.h, isPillar: true, cyberStyle: true });
+    }
+
+    // Player initial spawn
+    player.x = 1000;
+    player.y = 1550;
+    player.vx = 0;
+    player.vy = 0;
+    player.powerCubes = 0;
+}
+
+function initWeeFeeBossState() {
+    weefeePoles.length = 0;
+    weefeeShockwaves.length = 0;
+    weefeeBossState = {
+        stage: 1,
+        maxStages: 3,
+        stagesCleared: 0,
+        stageTitle: '2.4GHz Broadband',
+        bossEntities: [],
+        bossMaxHp: 24000,
+        bossCurrentHp: 24000,
+        bossDisplayHp: 24000,
+        totalDamageDealt: 0,
+        polesDestroyed: 0,
+        packetsCollected: 0,
+        timeSurvived: 0,
+        won: false,
+        lost: false,
+        stageTransitionUntil: 0,
+        dataPickups: [],
+        floatingTexts: [],
+        orbitalStrikes: [],
+        hasPowerPlayModifier: false,
+        activeDialogue: {
+            speaker: 'Mega WeeFee',
+            avatar: '📶',
+            subtext: '5G NETWORK NODE',
+            text: 'CONNECTING TO 2.4GHz BROADBAND... UNLIMITED POLE EMISSION INITIALIZED!',
+            until: performance.now() + 4500
+        }
+    };
+    spawnWeeFeeBossStage(1);
+}
+
+function spawnWeeFeeBossStage(stageNumber) {
+    if (!weefeeBossState) return;
+    const s = weefeeBossState;
+    s.stage = stageNumber;
+    s.bossEntities = [];
+    const now = performance.now();
+
+    if (stageNumber === 1) {
+        s.stageTitle = '2.4GHz Broadband';
+        s.bossMaxHp = 24000;
+        s.hasPowerPlayModifier = false;
+        s.activeDialogue = {
+            speaker: 'Mega WeeFee',
+            avatar: '📶',
+            subtext: 'STAGE 1: 2.4GHz BROADBAND',
+            text: 'UNLIMITED POLES ONLINE! I NEVER RUN OUT OF BANDWIDTH!',
+            until: now + 4200
+        };
+
+        const boss = {
+            id: 'weefee_boss_main',
+            name: 'Mega WeeFee (Node-01)',
+            brawler: 'weefee',
+            brawlerId: 'weefee',
+            x: 1000,
+            y: 700,
+            vx: 0,
+            vy: 0,
+            radius: 46,
+            hp: 24000,
+            maxHp: 24000,
+            isMegaBossWeeFee: true,
+            isBoss: true,
+            isHypercharged: false,
+            weefeeMobileDataUntil: 0,
+            selectedStar: 'sp2',
+            attackCooldown: 1.2,
+            poleDeployCooldown: 2.5,
+            hitFlashUntil: 0
+        };
+        s.bossEntities.push(boss);
+
+        // Pre-deploy 4 perimeter signal poles forming initial network polygon
+        const starterPositions = [
+            { x: 800, y: 650 },
+            { x: 1200, y: 650 },
+            { x: 750, y: 1050 },
+            { x: 1250, y: 1050 }
+        ];
+        for (const pos of starterPositions) {
+            spawnWeeFeePole(boss, pos.x, pos.y, false);
+        }
+    } else if (stageNumber === 2) {
+        s.stageTitle = '5G Ultra-Wideband Overclock';
+        s.bossMaxHp = 36000;
+        s.hasPowerPlayModifier = false;
+        s.activeDialogue = {
+            speaker: 'Mega WeeFee',
+            avatar: '⚡',
+            subtext: 'STAGE 2: 5G OVERCLOCK',
+            text: '5G ULTRA-WIDEBAND ENGAGED! HIGH-FREQUENCY PULSES & ROUTER DRONES!',
+            until: now + 4500
+        };
+
+        const boss = {
+            id: 'weefee_boss_main',
+            name: 'Mega WeeFee [5G OVERCLOCK]',
+            brawler: 'weefee',
+            brawlerId: 'weefee',
+            x: 1000,
+            y: 700,
+            vx: 0,
+            vy: 0,
+            radius: 48,
+            hp: 36000,
+            maxHp: 36000,
+            isMegaBossWeeFee: true,
+            isBoss: true,
+            isHypercharged: false,
+            weefeeMobileDataUntil: Infinity, // Permanent 5G overclock!
+            selectedStar: 'sp2',
+            attackCooldown: 0.8,
+            poleDeployCooldown: 1.6,
+            hitFlashUntil: 0
+        };
+        s.bossEntities.push(boss);
+
+        // Spawn 2 Router Sub-Drones
+        const drones = [
+            { id: 'weefee_drone_1', name: 'Router Drone α', x: 700, y: 600 },
+            { id: 'weefee_drone_2', name: 'Router Drone β', x: 1300, y: 600 }
+        ];
+        for (const d of drones) {
+            s.bossEntities.push({
+                id: d.id,
+                name: d.name,
+                brawler: 'weefee',
+                brawlerId: 'weefee',
+                x: d.x,
+                y: d.y,
+                vx: 0,
+                vy: 0,
+                radius: 26,
+                hp: 6000,
+                maxHp: 6000,
+                isMegaBossWeeFee: true,
+                isSubDrone: true,
+                weefeeMobileDataUntil: Infinity,
+                attackCooldown: 1.5,
+                poleDeployCooldown: 3.5,
+                hitFlashUntil: 0
+            });
+            s.bossMaxHp += 6000;
+        }
+    } else if (stageNumber === 3) {
+        s.stageTitle = '6G Orbital Satellite Mesh';
+        s.bossMaxHp = 48000;
+        s.hasPowerPlayModifier = true; // Player gets turbo Power Play modifier!
+        s.activeDialogue = {
+            speaker: 'Mega WeeFee',
+            avatar: '🛰️',
+            subtext: 'STAGE 3: 6G ORBITAL SATELLITE MESH',
+            text: '6G SATELLITE MESH ACTIVATED! POWER PLAY MODIFIER UNLOCKED FOR PLAYER!',
+            until: now + 5000
+        };
+
+        const boss = {
+            id: 'weefee_boss_main',
+            name: 'Mega WeeFee [6G ORBITAL GOD]',
+            brawler: 'weefee',
+            brawlerId: 'weefee',
+            x: 1000,
+            y: 700,
+            vx: 0,
+            vy: 0,
+            radius: 52,
+            hp: 48000,
+            maxHp: 48000,
+            isMegaBossWeeFee: true,
+            isBoss: true,
+            isHypercharged: true,
+            weefeeMobileDataUntil: Infinity,
+            selectedStar: 'sp2',
+            attackCooldown: 0.6,
+            poleDeployCooldown: 1.1,
+            orbitalStrikeCooldown: 3.2,
+            hitFlashUntil: 0
+        };
+        s.bossEntities.push(boss);
+
+        // Spawn 2 High-bandwidth Relay Sub-Drones
+        const drones = [
+            { id: 'weefee_drone_3', name: 'Relay Satellite α', x: 650, y: 700 },
+            { id: 'weefee_drone_4', name: 'Relay Satellite β', x: 1350, y: 700 }
+        ];
+        for (const d of drones) {
+            s.bossEntities.push({
+                id: d.id,
+                name: d.name,
+                brawler: 'weefee',
+                brawlerId: 'weefee',
+                x: d.x,
+                y: d.y,
+                vx: 0,
+                vy: 0,
+                radius: 28,
+                hp: 8000,
+                maxHp: 8000,
+                isMegaBossWeeFee: true,
+                isSubDrone: true,
+                isHypercharged: true,
+                weefeeMobileDataUntil: Infinity,
+                attackCooldown: 1.2,
+                poleDeployCooldown: 3.0,
+                hitFlashUntil: 0
+            });
+            s.bossMaxHp += 8000;
+        }
+    }
+
+    s.bossCurrentHp = s.bossEntities.reduce((acc, e) => acc + e.hp, 0);
+    s.bossDisplayHp = s.bossCurrentHp;
+}
+
+function updateWeeFeeBoss(dt, now) {
+    if (!isWeeFeeBossMode || !weefeeBossState) return;
+    const s = weefeeBossState;
+
+    if (gameOver || (typeof matchOver !== "undefined" && matchOver)) return;
+
+    s.timeSurvived += dt;
+
+    // Check player loss
+    if (player.hp <= 0 && !s.lost) {
+        s.lost = true;
+        gameOver = true;
+        matchOver = true;
+        return;
+    }
+
+    // 1. Boss and Sub-drone AI Movement and Combat
+    for (const ent of s.bossEntities) {
+        if (ent.hp <= 0) continue;
+
+        // Smooth AI motion & kiting
+        const targetX = ent.isSubDrone ? (ent.id.endsWith('1') || ent.id.endsWith('3') ? player.x - 280 : player.x + 280) : 1000 + Math.sin(now * 0.0014) * 350;
+        const targetY = ent.isSubDrone ? player.y - 260 + Math.cos(now * 0.002) * 90 : 650 + Math.cos(now * 0.001) * 180;
+
+        const dx = targetX - ent.x;
+        const dy = targetY - ent.y;
+        const dist = Math.hypot(dx, dy);
+        const speed = ent.isSubDrone ? 220 : (s.stage === 1 ? 190 : (s.stage === 2 ? 235 : 270));
+
+        if (dist > 15) {
+            ent.vx = (dx / dist) * speed;
+            ent.vy = (dy / dist) * speed;
+            ent.x = clamp(ent.x + ent.vx * dt, 80, WORLD_W - 80);
+            ent.y = clamp(ent.y + ent.vy * dt, 80, WORLD_H - 80);
+        }
+
+        // Unlimited Pole Deployment
+        ent.poleDeployCooldown -= dt;
+        if (ent.poleDeployCooldown <= 0) {
+            ent.poleDeployCooldown = ent.isSubDrone ? 3.5 : (s.stage === 1 ? 2.6 : (s.stage === 2 ? 1.6 : 1.1));
+            // Scatter poles dynamically across arena around entities or toward player
+            const ang = Math.random() * Math.PI * 2;
+            const deployDist = 120 + Math.random() * (ent.isSubDrone ? 250 : 480);
+            const px = clamp(ent.x + Math.cos(ang) * deployDist, 100, WORLD_W - 100);
+            const py = clamp(ent.y + Math.sin(ang) * deployDist, 100, WORLD_H - 100);
+            spawnWeeFeePole(ent, px, py, ent.isHypercharged);
+        }
+
+        // Wi-Fi Data Packet Attack
+        ent.attackCooldown -= dt;
+        if (ent.attackCooldown <= 0 && dist < 1200) {
+            ent.attackCooldown = ent.isSubDrone ? 1.4 : (s.stage === 1 ? 1.1 : (s.stage === 2 ? 0.8 : 0.55));
+            const baseAngle = Math.atan2(player.y - ent.y, player.x - ent.x);
+            const spreadAngles = ent.isSubDrone ? [0] : (s.stage === 1 ? [-0.2, 0, 0.2] : [-0.3, -0.12, 0.12, 0.3]);
+            for (const off of spreadAngles) {
+                const ang = baseAngle + off;
+                bullets.push({
+                    ownerBrawler: 'weefee',
+                    x: ent.x + Math.cos(ang) * (ent.radius + 8),
+                    y: ent.y + Math.sin(ang) * (ent.radius + 8),
+                    vx: Math.cos(ang) * (s.stage >= 2 ? 660 : 540),
+                    vy: Math.sin(ang) * (s.stage >= 2 ? 660 : 540),
+                    life: 0,
+                    maxLife: 1.8,
+                    damage: ent.isSubDrone ? 420 : (s.stage === 1 ? 520 : (s.stage === 2 ? 680 : 820)),
+                    pierce: false,
+                    ownerId: ent.id,
+                    isWifiPacketProj: true,
+                    hitIds: {}
+                });
+            }
+        }
+
+        // Stage 3 Orbital Satellite Strikes
+        if (s.stage === 3 && !ent.isSubDrone) {
+            ent.orbitalStrikeCooldown = (ent.orbitalStrikeCooldown || 3.0) - dt;
+            if (ent.orbitalStrikeCooldown <= 0) {
+                ent.orbitalStrikeCooldown = 3.2;
+                // Target player location with warning reticle
+                s.orbitalStrikes.push({
+                    x: player.x,
+                    y: player.y,
+                    radius: 95,
+                    life: 1.2,
+                    maxLife: 1.2,
+                    fired: false
+                });
+            }
+        }
+    }
+
+    // Process Stage 3 Orbital Satellite Strikes
+    for (let i = s.orbitalStrikes.length - 1; i >= 0; i--) {
+        const os = s.orbitalStrikes[i];
+        os.life -= dt;
+        if (os.life <= 0 && !os.fired) {
+            os.fired = true;
+            explosions.push({ x: os.x, y: os.y, radius: os.radius, life: 0, maxLife: 0.35, color: '#00ffff' });
+            if (Math.hypot(player.x - os.x, player.y - os.y) <= os.radius + player.radius) {
+                checkHit(player, { damage: 1200, ownerBrawler: 'weefee', ownerId: 'weefee_boss_main', pierce: true, super: true }, -1);
+                spawnFloatingText(player.x, player.y - 30, '⚡ 6G BEAM HIT! -1200', '#ff0055');
+            }
+            s.orbitalStrikes.splice(i, 1);
+        }
+    }
+
+    // 2. Player Bullets vs Boss Entities & Destructible Signal Poles
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        if (!b) continue;
+
+        // Player bullet hitting boss entities
+        if (b.ownerId === player.id) {
+            for (const ent of s.bossEntities) {
+                if (ent.hp <= 0) continue;
+                b.hitIds = b.hitIds || {};
+                if (b.hitIds[ent.id]) continue;
+
+                const dist = Math.hypot(ent.x - b.x, ent.y - b.y);
+                if (dist <= ent.radius + (b.radius || 12)) {
+                    b.hitIds[ent.id] = true;
+                    const dmg = Math.round(b.damage || 850);
+                    ent.hp = Math.max(0, ent.hp - dmg);
+                    ent.hitFlashUntil = now + 140;
+                    s.totalDamageDealt += dmg;
+
+                    // Grant Super & Hypercharge charge
+                    const chargeGain = b.isSuper ? 14 : 9;
+                    superCharge = clamp(superCharge + chargeGain, 0, 100);
+                    hyperChargeCharge = clamp(hyperChargeCharge + chargeGain * 0.8, 0, 100);
+                    updateHyperButton();
+                    if (typeof updateSuperButton === 'function') updateSuperButton();
+
+                    s.floatingTexts.push({
+                        x: ent.x + (Math.random() - 0.5) * 36,
+                        y: ent.y - ent.radius - 12,
+                        text: '-' + dmg,
+                        color: b.isSuper ? '#ffd700' : '#ffffff',
+                        life: 0.75,
+                        maxLife: 0.75,
+                        vy: -35
+                    });
+
+                    // 12% chance to drop a bonus data packet
+                    if (Math.random() < 0.12) {
+                        s.dataPickups.push({
+                            x: ent.x + (Math.random() - 0.5) * 60,
+                            y: ent.y + (Math.random() - 0.5) * 60,
+                            radius: 18,
+                            life: 20.0,
+                            pulse: 0
+                        });
+                    }
+
+                    if (!b.pierce) {
+                        bullets.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+
+            // Player bullet hitting destructible poles
+            for (let pIdx = weefeePoles.length - 1; pIdx >= 0; pIdx--) {
+                const pole = weefeePoles[pIdx];
+                if (!pole || !pole.isDestructible || (pole.hp || 0) <= 0) continue;
+                b.hitIds = b.hitIds || {};
+                if (b.hitIds[pole.id]) continue;
+
+                const dist = Math.hypot(pole.x - b.x, pole.y - b.y);
+                if (dist <= 26 + (b.radius || 12)) {
+                    b.hitIds[pole.id] = true;
+                    const dmg = Math.round(b.damage || 850);
+                    pole.hp = Math.max(0, pole.hp - dmg);
+                    s.floatingTexts.push({
+                        x: pole.x,
+                        y: pole.y - 30,
+                        text: '-' + dmg,
+                        color: '#ffdd59',
+                        life: 0.6,
+                        maxLife: 0.6,
+                        vy: -30
+                    });
+
+                    if (pole.hp <= 0) {
+                        weefeePoles.splice(pIdx, 1);
+                        s.polesDestroyed = (s.polesDestroyed || 0) + 1;
+                        explosions.push({ x: pole.x, y: pole.y, radius: 65, life: 0, maxLife: 0.25, color: '#ff3f34' });
+                        s.floatingTexts.push({
+                            x: pole.x,
+                            y: pole.y - 45,
+                            text: '💥 POLE JAMMED!',
+                            color: '#ff5e57',
+                            life: 1.0,
+                            maxLife: 1.0,
+                            vy: -35
+                        });
+                        // Drop data packet pickup
+                        s.dataPickups.push({
+                            x: pole.x,
+                            y: pole.y,
+                            radius: 18,
+                            life: 20.0,
+                            pulse: 0
+                        });
+                    }
+
+                    if (!b.pierce) {
+                        bullets.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Update Boss Health Totals and Check Stage Progression
+    let livingHp = 0;
+    let mainBossAlive = false;
+    for (const ent of s.bossEntities) {
+        if (ent.hp > 0) {
+            livingHp += ent.hp;
+            if (ent.id === 'weefee_boss_main') mainBossAlive = true;
+        }
+    }
+    s.bossCurrentHp = livingHp;
+    s.bossDisplayHp += (livingHp - s.bossDisplayHp) * Math.min(1, dt * 6);
+
+    if (!mainBossAlive && s.stageTransitionUntil === 0) {
+        s.stagesCleared = Math.max(s.stagesCleared, s.stage);
+        if (s.stage < s.maxStages) {
+            s.stageTransitionUntil = now + 2000;
+            s.activeDialogue = {
+                speaker: 'Mega WeeFee',
+                avatar: '⚠️',
+                subtext: 'BANDWIDTH OVERFLOW',
+                text: 'BANDWIDTH SATURATION DETECTED! OVERCLOCKING TO NEXT FREQUENCY!',
+                until: now + 3500
+            };
+        } else if (!s.won) {
+            s.won = true;
+            s.activeDialogue = {
+                speaker: 'Mega WeeFee',
+                avatar: '💥',
+                subtext: 'CONNECTION TERMINATED',
+                text: 'SYSTEM OVERHEAT... NETWORK OFFLINE... YOU HAVE DISCONNECTED THE MESH!',
+                until: now + 6000
+            };
+            setTimeout(() => {
+                gameOver = true;
+                matchOver = true;
+            }, 1200);
+        }
+    }
+
+    if (s.stageTransitionUntil > 0 && now >= s.stageTransitionUntil) {
+        s.stageTransitionUntil = 0;
+        spawnWeeFeeBossStage(s.stage + 1);
+    }
+
+    // 4. Update Data Pickups & Player Collection
+    for (let i = s.dataPickups.length - 1; i >= 0; i--) {
+        const pk = s.dataPickups[i];
+        pk.life -= dt;
+        pk.pulse += dt * 5;
+        if (pk.life <= 0) {
+            s.dataPickups.splice(i, 1);
+            continue;
+        }
+
+        const dist = Math.hypot(player.x - pk.x, player.y - pk.y);
+        if (dist <= player.radius + pk.radius + 10) {
+            s.dataPickups.splice(i, 1);
+            s.packetsCollected = (s.packetsCollected || 0) + 1;
+            doHeal(player, 150);
+            superCharge = clamp(superCharge + 10, 0, 100);
+            hyperChargeCharge = clamp(hyperChargeCharge + 8, 0, 100);
+            updateHyperButton();
+            if (typeof updateSuperButton === 'function') updateSuperButton();
+            s.floatingTexts.push({
+                x: player.x,
+                y: player.y - 40,
+                text: '⚡ +150 HP & +10% SUPER!',
+                color: '#0be881',
+                life: 0.9,
+                maxLife: 0.9,
+                vy: -35
+            });
+            explosions.push({ x: pk.x, y: pk.y, radius: 45, life: 0, maxLife: 0.2, color: '#0be881' });
+        }
+    }
+
+    // 5. Update Floating Combat Texts
+    for (let i = s.floatingTexts.length - 1; i >= 0; i--) {
+        const ft = s.floatingTexts[i];
+        ft.life -= dt;
+        ft.y += (ft.vy || -30) * dt;
+        if (ft.life <= 0) {
+            s.floatingTexts.splice(i, 1);
+        }
+    }
+}
+
+function renderWeeFeeBossWorld(ctx) {
+    if (!isWeeFeeBossMode || !weefeeBossState) return;
+    const s = weefeeBossState;
+    const now = performance.now();
+
+    // 1. Render Stage 3 Orbital Strike Warning Reticles
+    for (const os of s.orbitalStrikes) {
+        ctx.save();
+        ctx.translate(os.x, os.y);
+        const p = 1 - clamp(os.life / os.maxLife, 0, 1);
+        ctx.strokeStyle = 'rgba(0, 245, 212, ' + (0.4 + p * 0.5) + ')';
+        ctx.fillStyle = 'rgba(0, 245, 212, ' + (p * 0.22) + ')';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, os.radius * (1 - p * 0.15), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, os.radius * p, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡ 6G BEAM INBOUND', 0, -os.radius - 8);
+        ctx.restore();
+    }
+
+    // 2. Render Data Packet Pickups
+    for (const pk of s.dataPickups) {
+        ctx.save();
+        ctx.translate(pk.x, pk.y);
+        const pulse = 1 + Math.sin(pk.pulse) * 0.15;
+        ctx.fillStyle = 'rgba(0, 245, 212, 0.28)';
+        ctx.beginPath();
+        ctx.arc(0, 0, pk.radius * pulse * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#0be881';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-pk.radius, -pk.radius, pk.radius * 2, pk.radius * 2, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('💾', 0, 0);
+        ctx.restore();
+    }
+
+    // 3. Render Boss Entities (Mega WeeFee and Sub-Drones)
+    for (const ent of s.bossEntities) {
+        if (ent.hp <= 0) continue;
+
+        ctx.save();
+        ctx.translate(ent.x, ent.y);
+
+        // Cyber Aura
+        const auraRadius = ent.radius + 12 + Math.sin(now * 0.006) * 4;
+        const auraGrad = ctx.createRadialGradient(0, 0, ent.radius * 0.3, 0, 0, auraRadius);
+        auraGrad.addColorStop(0, ent.isHypercharged ? 'rgba(217, 70, 239, 0.7)' : 'rgba(0, 245, 212, 0.65)');
+        auraGrad.addColorStop(1, 'rgba(0, 245, 212, 0)');
+        ctx.fillStyle = auraGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, auraRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Authentic 2.5D Vector Fighter Model using BraweRosterVisuals
+        if (typeof BraweRosterVisuals !== 'undefined' && BraweRosterVisuals.draw) {
+            BraweRosterVisuals.draw(ctx, ent, ent.y, 'weefee', null, now, true);
+        } else {
+            // High-fidelity fallback vector model
+            ctx.fillStyle = ent.isSubDrone ? '#0f3460' : '#16213e';
+            ctx.strokeStyle = '#00f5d4';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, ent.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.font = (ent.radius * 0.9) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('📶', 0, 0);
+        }
+
+        // Overhead Health Bar & Name
+        ctx.fillStyle = '#00f5d4';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(ent.name, 0, -ent.radius - 20);
+
+        const barW = ent.radius * 2.2;
+        const barH = 6;
+        const barX = -barW / 2;
+        const barY = -ent.radius - 12;
+        const hpPct = clamp(ent.hp / ent.maxHp, 0, 1);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = ent.isHypercharged ? '#d946ef' : '#00f5d4';
+        ctx.fillRect(barX, barY, barW * hpPct, barH);
+        ctx.restore();
+    }
+
+    // 4. Floating Combat Texts
+    for (const ft of s.floatingTexts) {
+        ctx.save();
+        const alpha = clamp(ft.life / (ft.maxLife || 1), 0, 1);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = ft.color;
+        ctx.font = 'bold 14px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 6;
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+    }
+
+    // 5. Story Comic Dialogue Banner
+    if (s.activeDialogue && now < s.activeDialogue.until) {
+        const d = s.activeDialogue;
+        const innerWidth = window.innerWidth;
+        const bannerW = Math.min(640, innerWidth - 40);
+        const bannerH = 75;
+        const bannerX = (innerWidth - bannerW) / 2;
+        const bannerY = window.innerHeight - 150;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(10, 25, 35, 0.95)';
+        ctx.strokeStyle = '#00f5d4';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(0, 245, 212, 0.7)';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = '32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(d.avatar || '📶', bannerX + 40, bannerY + bannerH / 2);
+
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#00f5d4';
+        ctx.font = 'bold 12px system-ui, sans-serif';
+        ctx.fillText((d.speaker || 'Mega WeeFee').toUpperCase() + '  •  ' + (d.subtext || ''), bannerX + 75, bannerY + 24);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px system-ui, sans-serif';
+        ctx.fillText('"' + d.text + '"', bannerX + 75, bannerY + 48);
+        ctx.restore();
+    }
+}
+
+function renderWeeFeeBossHUD(ctx) {
+    if (!isWeeFeeBossMode || !weefeeBossState) return;
+    const s = weefeeBossState;
+    const innerWidth = window.innerWidth;
+    const boxW = Math.min(600, innerWidth - 32);
+    const boxH = 96;
+    const boxX = (innerWidth - boxW) / 2;
+    const boxY = 16;
+    const isPP = !!s.hasPowerPlayModifier;
+
+    // Panel Background
+    ctx.fillStyle = 'rgba(10, 25, 35, 0.94)';
+    ctx.strokeStyle = s.stage === 3 ? '#d946ef' : '#00f5d4';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = s.stage === 3 ? 'rgba(217, 70, 239, 0.7)' : 'rgba(0, 245, 212, 0.6)';
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxW, boxH, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    // Stage Header Title
+    ctx.fillStyle = s.stage === 3 ? '#d946ef' : '#00f5d4';
+    ctx.font = 'bold 13px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('📶 BOSS BATTLE • STAGE ' + (s.stage || 1) + ' [' + (s.stageTitle || 'ACTIVE') + '] 📶', innerWidth / 2, boxY + 22);
+
+    // Health Bar
+    const barW = boxW - 32;
+    const barH = 14;
+    const barX = boxX + 16;
+    const barY = boxY + 32;
+    const hpPct = clamp(s.bossDisplayHp / (s.bossMaxHp || 1), 0, 1);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW, barH, 8);
+    ctx.fill();
+
+    const grad = ctx.createLinearGradient(barX, barY, barX + barW, barY);
+    grad.addColorStop(0, '#00f5d4');
+    grad.addColorStop(0.5, '#00ff88');
+    grad.addColorStop(1, '#d946ef');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW * hpPct, barH, 8);
+    ctx.fill();
+
+    // Health Text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('STAGE ' + (s.stage || 1) + ' HP: ' + Math.round(s.bossCurrentHp).toLocaleString() + ' / ' + Math.round(s.bossMaxHp).toLocaleString(), innerWidth / 2, barY + 11);
+
+    // Stats Row
+    ctx.fillStyle = '#f1f2f6';
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    const mins = Math.floor(s.timeSurvived / 60);
+    const secs = Math.floor(s.timeSurvived % 60).toString().padStart(2, '0');
+    const poleCount = (weefeePoles && weefeePoles.length) || 0;
+    ctx.fillText('⏱️ ' + mins + ':' + secs + '  |  📶 ACTIVE POLES: ' + poleCount + ' (UNLIMITED)  |  💥 JAMMED: ' + (s.polesDestroyed || 0) + '  |  💾 PACKETS: ' + (s.packetsCollected || 0), innerWidth / 2, boxY + 70);
+
+    // Power Play Modifier Indicator in Stage 3
+    if (isPP) {
+        ctx.fillStyle = '#f39c12';
+        ctx.font = 'bold 10px system-ui, sans-serif';
+        ctx.fillText('⚡ 6G MESH OVERLOAD • PLAYER TURBO RECHARGE & SPEED ACTIVE ⚡', innerWidth / 2, boxY + 86);
+    }
+}
+
+
+// ============================================================================
+// BRAWE BALL 3V3 GAME MODE ENGINE
+// ============================================================================
+
+function buildBraweBallMap() {
+    WORLD_W = 1800;
+    WORLD_H = 2400;
+    if (!braweBallState) {
+        initBraweBallState();
+    } else if (braweBallState.ball) {
+        braweBallState.ball.x = 900;
+        braweBallState.ball.y = 1200;
+        braweBallState.ball.vx = 0;
+        braweBallState.ball.vy = 0;
+        braweBallState.ball.carrier = null;
+        braweBallState.ball.isSuperShot = false;
+        braweBallState.ball.trail.length = 0;
+    }
+    destructibleWalls.length = 0;
+    if (typeof bushZones !== 'undefined') bushZones.length = 0;
+    if (typeof waterZones !== 'undefined') waterZones.length = 0;
+    cubes.length = 0;
+    powerups.length = 0;
+    explosions.length = 0;
+    floatingTexts.length = 0;
+
+    const t = 40;
+    const addBoundaryWall = (x, y, w, h) => {
+        destructibleWalls.push({ x, y, w, h, hp: 999999, maxHp: 999999, indestructible: true, isArenaWall: true });
+    };
+
+    // Arena side boundary walls
+    addBoundaryWall(0, 0, t, WORLD_H);
+    addBoundaryWall(WORLD_W - t, 0, t, WORLD_H);
+
+    // Goal Opening: width 360, centered at x = 900 (from 720 to 1080)
+    const goalLeft = 720;
+    const goalRight = 1080;
+
+    // Top Goal Boundaries (Red Goal)
+    addBoundaryWall(0, 0, goalLeft, t);
+    addBoundaryWall(goalRight, 0, WORLD_W - goalRight, t);
+    // Top Goal Net box sides
+    addBoundaryWall(goalLeft - t, 0, t, 120);
+    addBoundaryWall(goalRight, 0, t, 120);
+
+    // Bottom Goal Boundaries (Blue Goal)
+    addBoundaryWall(0, WORLD_H - t, goalLeft, t);
+    addBoundaryWall(goalRight, WORLD_H - t, WORLD_W - goalRight, t);
+    // Bottom Goal Net box sides
+    addBoundaryWall(goalLeft - t, WORLD_H - 120, t, 120);
+    addBoundaryWall(goalRight, WORLD_H - 120, t, 120);
+
+    // Midfield & Defensive Obstacles (Destructible by Super Kick!)
+    addArenaWallStrip(WORLD_W * 0.5 - 200, WORLD_H * 0.5 - 40, 110, 80, { hp: 4500, wallType: 'ball_barrier' });
+    addArenaWallStrip(WORLD_W * 0.5 + 90, WORLD_H * 0.5 - 40, 110, 80, { hp: 4500, wallType: 'ball_barrier' });
+
+    // Top goal defense barricade
+    addArenaWallStrip(WORLD_W * 0.5 - 140, 420, 280, 60, { hp: 4500, wallType: 'goal_barrier' });
+
+    // Bottom goal defense barricade
+    addArenaWallStrip(WORLD_W * 0.5 - 140, WORLD_H - 480, 280, 60, { hp: 4500, wallType: 'goal_barrier' });
+
+    // Sideline stealth bushes
+    if (typeof bushZones !== 'undefined') {
+        bushZones.push({ x: 60, y: WORLD_H * 0.5 - 220, w: 140, h: 440 });
+        bushZones.push({ x: WORLD_W - 200, y: WORLD_H * 0.5 - 220, w: 140, h: 440 });
+    }
+}
+
+function initBraweBallState() {
+    braweBallState = {
+        ball: {
+            x: 900,
+            y: 1200,
+            vx: 0,
+            vy: 0,
+            radius: 26,
+            carrier: null,
+            lastKicker: null,
+            isSuperShot: false,
+            spinAngle: 0,
+            trail: []
+        },
+        scores: { player: 0, enemy: 0 },
+        matchTimer: 150,
+        isOvertime: false,
+        celebratingUntil: 0,
+        celebrationTeam: null,
+        celebrationText: ''
+    };
+}
+
+function kickBraweBall(entity, targetX, targetY, isSuper = false) {
+    if (!braweBallState || !braweBallState.ball) return;
+    const b = braweBallState.ball;
+    b.carrier = null;
+    b.lastKicker = entity.id;
+    b.isSuperShot = isSuper;
+
+    const dx = targetX - entity.x;
+    const dy = targetY - entity.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const speed = isSuper ? 1380 : 880;
+
+    b.vx = (dx / dist) * speed;
+    b.vy = (dy / dist) * speed;
+    b.x = entity.x + (dx / dist) * (entity.radius + b.radius + 8);
+    b.y = entity.y + (dy / dist) * (entity.radius + b.radius + 8);
+
+    entity._ballCooldownUntil = performance.now() + 450;
+
+    explosions.push({
+        x: b.x,
+        y: b.y,
+        radius: isSuper ? 55 : 30,
+        life: 0,
+        maxLife: 0.22,
+        color: isSuper ? '#ff3838' : '#2ed573'
+    });
+    spawnFloatingText(entity.x, entity.y - 36, isSuper ? '🔥 SUPER SHOT!' : '⚽ PASS!', isSuper ? '#ff4757' : '#2ed573');
+}
+
+function updateBraweBall(dt) {
+    if (!isBraweBallMode || !braweBallState) return;
+    const s = braweBallState;
+    const b = s.ball;
+    const now = performance.now();
+
+    // Goal Celebration intermission
+    if (s.celebratingUntil > 0) {
+        if (now >= s.celebratingUntil) {
+            s.celebratingUntil = 0;
+            // Reset positions
+            restoreRespawningEntity(player, getBraweBallSpawnPoint('player', 0, 3));
+            let pSlot = 1, eSlot = 0;
+            for (const bot of bots) {
+                if (!bot || bot.hp <= 0) continue;
+                const team = bot.team === 'player' ? 'player' : 'enemy';
+                const slot = team === 'player' ? pSlot++ : eSlot++;
+                restoreRespawningEntity(bot, getBraweBallSpawnPoint(team, slot, 3));
+            }
+            // Reset Ball to Center
+            b.x = WORLD_W * 0.5;
+            b.y = WORLD_H * 0.5;
+            b.vx = 0;
+            b.vy = 0;
+            b.carrier = null;
+            b.isSuperShot = false;
+            b.trail.length = 0;
+            spawnFloatingText(b.x, b.y - 36, '⚽ KICK-OFF!', '#ffd166');
+        }
+        return;
+    }
+
+    if (gameOver || (typeof matchOver !== "undefined" && matchOver)) return;
+
+    // Match Timer
+    s.matchTimer -= dt;
+    if (s.matchTimer <= 0) {
+        if (s.scores.player !== s.scores.enemy) {
+            gameOver = true;
+            won = s.scores.player > s.scores.enemy;
+            return;
+        } else if (!s.isOvertime) {
+            s.isOvertime = true;
+            destructibleWalls.length = 0; // Demolish all pitch barricades for overtime!
+            spawnFloatingText(WORLD_W * 0.5, WORLD_H * 0.5, '⏱️ OVERTIME! NEXT GOAL WINS!', '#f39c12');
+            explosions.push({ x: WORLD_W * 0.5, y: WORLD_H * 0.5, radius: 120, life: 0, maxLife: 0.4, color: '#f39c12' });
+        }
+    }
+
+    // Ball Trail
+    if (Math.hypot(b.vx, b.vy) > 60) {
+        b.trail.push({ x: b.x, y: b.y, life: 0.25, isSuper: b.isSuperShot });
+        b.spinAngle += (Math.hypot(b.vx, b.vy) * 0.015) * dt;
+    }
+    for (let i = b.trail.length - 1; i >= 0; i--) {
+        b.trail[i].life -= dt;
+        if (b.trail[i].life <= 0) b.trail.splice(i, 1);
+    }
+
+    // Ball Carrier Logic
+    if (b.carrier) {
+        const carrier = b.carrier === player.id ? player : bots.find(bt => bt.id === b.carrier);
+        if (!carrier || carrier.hp <= 0) {
+            b.carrier = null;
+        } else if ((carrier.stunUntil && now < carrier.stunUntil) || (carrier.slowUntil && now < carrier.slowUntil && carrier.isFrozen)) {
+            b.carrier = null;
+            spawnFloatingText(carrier.x, carrier.y - 34, 'DROPPED BALL!', '#ff4757');
+        } else {
+            b.x = carrier.x;
+            b.y = carrier.y + (carrier.team === 'player' ? -carrier.radius - 8 : carrier.radius + 8);
+            b.vx = 0;
+            b.vy = 0;
+        }
+    } else {
+        // Loose Ball Motion & Physics
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.vx *= Math.pow(0.93, dt * 60);
+        b.vy *= Math.pow(0.93, dt * 60);
+        if (Math.hypot(b.vx, b.vy) < 15) { b.vx = 0; b.vy = 0; }
+
+        // Left & Right Wall Bounces
+        if (b.x - b.radius < 40) {
+            b.x = 40 + b.radius;
+            b.vx = Math.abs(b.vx) * 0.85;
+        } else if (b.x + b.radius > WORLD_W - 40) {
+            b.x = WORLD_W - 40 - b.radius;
+            b.vx = -Math.abs(b.vx) * 0.85;
+        }
+
+        // Goal Line Detection
+        const isGoalX = b.x >= 720 && b.x <= 1080;
+        if (b.y <= 120 && isGoalX) {
+            // Blue Team (Player) Scores!
+            s.scores.player++;
+            s.celebratingUntil = now + 1600;
+            s.celebrationTeam = 'player';
+            s.celebrationText = '⚽ BLUE TEAM SCORED! ⚽';
+            explosions.push({ x: b.x, y: b.y, radius: 90, life: 0, maxLife: 0.5, color: '#2ed573' });
+            spawnFloatingText(WORLD_W * 0.5, 300, '⚽ GOAL FOR BLUE! ⚽', '#2ed573');
+            if (s.scores.player >= 2 || s.isOvertime) {
+                setTimeout(() => { gameOver = true; won = true; }, 800);
+            }
+            return;
+        } else if (b.y >= WORLD_H - 120 && isGoalX) {
+            // Red Team (Enemy) Scores!
+            s.scores.enemy++;
+            s.celebratingUntil = now + 1600;
+            s.celebrationTeam = 'enemy';
+            s.celebrationText = '⚽ RED TEAM SCORED! ⚽';
+            explosions.push({ x: b.x, y: b.y, radius: 90, life: 0, maxLife: 0.5, color: '#ff4757' });
+            spawnFloatingText(WORLD_W * 0.5, WORLD_H - 300, '⚽ GOAL FOR RED! ⚽', '#ff4757');
+            if (s.scores.enemy >= 2 || s.isOvertime) {
+                setTimeout(() => { gameOver = true; won = false; }, 800);
+            }
+            return;
+        } else {
+            // Backline non-goal wall bounces
+            if (b.y - b.radius < 40) {
+                b.y = 40 + b.radius;
+                b.vy = Math.abs(b.vy) * 0.85;
+            } else if (b.y + b.radius > WORLD_H - 40) {
+                b.y = WORLD_H - 40 - b.radius;
+                b.vy = -Math.abs(b.vy) * 0.85;
+            }
+        }
+
+        // Destructible Wall Collisions
+        for (let i = destructibleWalls.length - 1; i >= 0; i--) {
+            const w = destructibleWalls[i];
+            if (!w || w.hp <= 0) continue;
+            if (b.x + b.radius > w.x && b.x - b.radius < w.x + w.w &&
+                b.y + b.radius > w.y && b.y - b.radius < w.y + w.h) {
+                if (b.isSuperShot && !w.indestructible) {
+                    w.hp = 0;
+                    destructibleWalls.splice(i, 1);
+                    explosions.push({ x: w.x + w.w/2, y: w.y + w.h/2, radius: 60, life: 0, maxLife: 0.3, color: '#ff4757' });
+                    spawnFloatingText(w.x + w.w/2, w.y, '💥 WALL BROKEN!', '#ff6b6b');
+                } else {
+                    // Bounce off
+                    b.vy = -b.vy * 0.85;
+                    b.vx = -b.vx * 0.85;
+                }
+            }
+        }
+
+        // Loose Ball Pickup by living fighters
+        const candidates = [player, ...bots].filter(e => e && e.hp > 0 && now >= (e._ballCooldownUntil || 0));
+        for (const ent of candidates) {
+            if (Math.hypot(ent.x - b.x, ent.y - b.y) <= ent.radius + b.radius) {
+                b.carrier = ent.id;
+                b.isSuperShot = false;
+                b.vx = 0;
+                b.vy = 0;
+                spawnFloatingText(ent.x, ent.y - 32, '⚽ BALL CLAIMED', ent.team === 'player' ? '#2ed573' : '#ff4757');
+                break;
+            }
+        }
+    }
+
+    // Bot AI for Brawe Ball with Wall-Sliding & Obstacle Routing
+    for (const bot of bots) {
+        if (!bot || bot.hp <= 0) continue;
+
+        let targetX = b.x;
+        let targetY = b.y;
+
+        if (b.carrier === bot.id) {
+            // Carrier: advance toward enemy goal
+            const goalY = bot.team === 'player' ? 120 : WORLD_H - 120;
+            const distToGoal = Math.abs(goalY - bot.y);
+
+            // If close enough to goal, shoot!
+            if (distToGoal <= 560) {
+                const aimX = 900 + (Math.random() - 0.5) * 180;
+                if (bot.superCharge >= 100) {
+                    kickBraweBall(bot, aimX, goalY, true);
+                    bot.superCharge = 0;
+                } else {
+                    kickBraweBall(bot, aimX, goalY, false);
+                }
+                continue;
+            }
+
+            // Route around goal defense barricades (at y=420 or y=1920, x=760..1040)
+            const nearBarricade = (bot.team === 'player' && bot.y > 340 && bot.y < 580) ||
+                                  (bot.team === 'enemy' && bot.y > 1840 && bot.y < 2060);
+            if (nearBarricade && bot.x > 700 && bot.x < 1100) {
+                // Steer towards nearest open flank
+                targetX = bot.x < 900 ? 620 : 1180;
+                targetY = goalY;
+            } else {
+                targetX = 900;
+                targetY = goalY;
+            }
+        } else if (b.carrier) {
+            // Teammate or opponent has ball: support or defend!
+            const carrierEnt = b.carrier === player.id ? player : bots.find(bt => bt.id === b.carrier);
+            if (carrierEnt) {
+                if (carrierEnt.team === bot.team) {
+                    // Support carrier: advance slightly ahead on flank
+                    targetX = carrierEnt.x + (bot.x < carrierEnt.x ? -160 : 160);
+                    targetY = carrierEnt.y + (bot.team === 'player' ? -180 : 180);
+                } else {
+                    // Intercept enemy carrier!
+                    targetX = carrierEnt.x;
+                    targetY = carrierEnt.y;
+                }
+            }
+        }
+
+        // Steer toward target with wall sliding
+        const dx = targetX - bot.x;
+        const dy = targetY - bot.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const speed = bot.speed || 165;
+        bot.vx = (dx / dist) * speed;
+        bot.vy = (dy / dist) * speed;
+
+        // Try movement with Wall Collision & Sliding
+        const nextX = clamp(bot.x + bot.vx * dt, 65, WORLD_W - 65);
+        const nextY = clamp(bot.y + bot.vy * dt, 65, WORLD_H - 65);
+
+        let hitX = false;
+        let hitY = false;
+        for (const w of destructibleWalls) {
+            if (w.hp <= 0) continue;
+            if (rectCircleCollides(w.x, w.y, w.w, w.h, nextX, bot.y, bot.radius + 4)) {
+                hitX = true;
+            }
+            if (rectCircleCollides(w.x, w.y, w.w, w.h, bot.x, nextY, bot.radius + 4)) {
+                hitY = true;
+            }
+        }
+
+        if (!hitX) {
+            bot.x = nextX;
+        } else {
+            // Slide along Y
+            bot.y = clamp(bot.y + (dy !== 0 ? Math.sign(dy) : 1) * speed * dt, 65, WORLD_H - 65);
+        }
+
+        if (!hitY) {
+            bot.y = nextY;
+        } else {
+            // Slide along X toward open lane
+            const slideDir = bot.x < WORLD_W * 0.5 ? -1 : 1;
+            bot.x = clamp(bot.x + slideDir * speed * dt, 65, WORLD_W - 65);
+        }
+    }
+}
+
+function renderBraweBallEntity(ctx) {
+    if (!isBraweBallMode || !braweBallState) return;
+    const s = braweBallState;
+    const b = s.ball;
+    if (!b) return;
+
+    // 2. Ball Trail
+    for (const pt of b.trail) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, pt.life / 0.25);
+        ctx.fillStyle = pt.isSuper ? '#ff4757' : '#2ed573';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, b.radius * (pt.life / 0.25), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // 3. Ball
+    ctx.save();
+    ctx.translate(b.x, b.y);
+
+    // Ball Ground Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.40)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, b.radius * 1.15, b.radius * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Super Shot fiery glow
+    if (b.isSuperShot) {
+        const grad = ctx.createRadialGradient(0, 0, b.radius * 0.5, 0, 0, b.radius * 2.2);
+        grad.addColorStop(0, '#ff4757');
+        grad.addColorStop(1, 'rgba(255, 71, 87, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, 0, b.radius * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Ball Outer Pulsing Aura
+    ctx.save();
+    const pulse = 1.0 + Math.sin(performance.now() / 180) * 0.08;
+    ctx.strokeStyle = b.isSuperShot ? '#ff4757' : (b.carrier ? '#ffd166' : 'rgba(46, 213, 115, 0.85)');
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, b.radius * pulse + 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Ball Sphere
+    ctx.rotate(b.spinAngle);
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#1e272e';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Soccer Pattern
+    ctx.fillStyle = '#2f3542';
+    ctx.beginPath();
+    ctx.arc(0, 0, b.radius * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 5; i++) {
+        const ang = (i * Math.PI * 2) / 5;
+        ctx.beginPath();
+        ctx.arc(Math.cos(ang) * (b.radius * 0.75), Math.sin(ang) * (b.radius * 0.75), b.radius * 0.24, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+
+    // 4. Carrier Ring
+    if (b.carrier) {
+        const carrier = b.carrier === player.id ? player : bots.find(bt => bt.id === b.carrier);
+        if (carrier && carrier.hp > 0) {
+            ctx.save();
+            ctx.strokeStyle = carrier.team === 'player' ? '#2ed573' : '#ff4757';
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.arc(carrier.x, carrier.y, carrier.radius + 12, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+}
+
+function renderBraweBallWorld(ctx) {
+    if (!isBraweBallMode || !braweBallState) return;
+    const s = braweBallState;
+    const b = s.ball;
+
+    // 1. Pitch Markings
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.lineWidth = 4;
+
+    // Midfield Line & Center Circle
+    ctx.beginPath();
+    ctx.moveTo(40, WORLD_H * 0.5);
+    ctx.lineTo(WORLD_W - 40, WORLD_H * 0.5);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(WORLD_W * 0.5, WORLD_H * 0.5, 220, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Goal Lines
+    ctx.strokeStyle = '#ff4757';
+    ctx.beginPath();
+    ctx.moveTo(720, 120);
+    ctx.lineTo(1080, 120);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#2ed573';
+    ctx.beginPath();
+    ctx.moveTo(720, WORLD_H - 120);
+    ctx.lineTo(1080, WORLD_H - 120);
+    ctx.stroke();
+    ctx.restore();
+
+    // 2. Ball Trail
+    for (const pt of b.trail) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, pt.life / 0.25);
+        ctx.fillStyle = pt.isSuper ? '#ff4757' : '#2ed573';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, b.radius * (pt.life / 0.25), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // 3. Ball
+    ctx.save();
+    ctx.translate(b.x, b.y);
+
+    // Ball Ground Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 8, b.radius * 1.1, b.radius * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Super Shot fiery glow
+    if (b.isSuperShot) {
+        const grad = ctx.createRadialGradient(0, 0, b.radius * 0.5, 0, 0, b.radius * 2);
+        grad.addColorStop(0, 'rgba(255, 71, 87, 0.85)');
+        grad.addColorStop(1, 'rgba(255, 71, 87, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, 0, b.radius * 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Ball Outer Pulsing Aura
+    ctx.save();
+    const pulse = 1.0 + Math.sin(performance.now() / 180) * 0.08;
+    ctx.strokeStyle = b.isSuperShot ? '#ff4757' : (b.carrier ? '#ffd166' : 'rgba(46, 213, 115, 0.85)');
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, b.radius * pulse + 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Ball Sphere
+    ctx.rotate(b.spinAngle);
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#1e272e';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Soccer Pattern
+    ctx.fillStyle = '#2f3542';
+    ctx.beginPath();
+    ctx.arc(0, 0, b.radius * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 5; i++) {
+        const ang = (i * Math.PI * 2) / 5;
+        ctx.beginPath();
+        ctx.arc(Math.cos(ang) * (b.radius * 0.75), Math.sin(ang) * (b.radius * 0.75), b.radius * 0.24, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+
+    // 4. Carrier Ring
+    if (b.carrier) {
+        const carrier = b.carrier === player.id ? player : bots.find(bt => bt.id === b.carrier);
+        if (carrier && carrier.hp > 0) {
+            ctx.save();
+            ctx.strokeStyle = carrier.team === 'player' ? '#2ed573' : '#ff4757';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(carrier.x, carrier.y, carrier.radius + 10, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    // 5. Celebration Banner
+    if (s.celebratingUntil > performance.now()) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(0, window.innerHeight * 0.35, window.innerWidth, 110);
+        ctx.fillStyle = s.celebrationTeam === 'player' ? '#2ed573' : '#ff4757';
+        ctx.font = '900 38px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(s.celebrationText, window.innerWidth * 0.5, window.innerHeight * 0.35 + 70);
+        ctx.restore();
+    }
+}
+
+function renderBraweBallHUD(ctx) {
+    if (!isBraweBallMode || !braweBallState) return;
+    const s = braweBallState;
+    const b = s.ball;
+    const innerWidth = window.innerWidth;
+    const innerHeight = window.innerHeight;
+
+    // Full Screen Goal Celebration Banner
+    if (s.celebratingUntil > performance.now()) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+        ctx.fillRect(0, innerHeight * 0.35, innerWidth, 120);
+        ctx.fillStyle = s.celebrationTeam === 'player' ? '#2ed573' : '#ff4757';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.font = '900 42px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeText(s.celebrationText, innerWidth * 0.5, innerHeight * 0.35 + 60);
+        ctx.fillText(s.celebrationText, innerWidth * 0.5, innerHeight * 0.35 + 60);
+        ctx.restore();
+    }
+    const boxW = 320;
+    const boxH = 58;
+    const boxX = (innerWidth - boxW) * 0.5;
+    const boxY = 16;
+
+    ctx.save();
+    // Off-Screen Ball Tracker Arrow
+    if (b && (!b.carrier || b.carrier !== player.id)) {
+        const screenBallX = b.x - camX;
+        const screenBallY = b.y - camY;
+        const margin = 45;
+        const isOffScreen = screenBallX < margin || screenBallX > innerWidth - margin ||
+                            screenBallY < margin || screenBallY > innerHeight - margin;
+        if (isOffScreen) {
+            const centerScreenX = innerWidth * 0.5;
+            const centerScreenY = innerHeight * 0.5;
+            const angle = Math.atan2(screenBallY - centerScreenY, screenBallX - centerScreenX);
+            const clampX = clamp(centerScreenX + Math.cos(angle) * (innerWidth * 0.45), margin, innerWidth - margin);
+            const clampY = clamp(centerScreenY + Math.sin(angle) * (innerHeight * 0.45), margin + 30, innerHeight - margin);
+
+            ctx.save();
+            ctx.translate(clampX, clampY);
+            // Glowing Indicator Pill
+            ctx.fillStyle = 'rgba(10, 20, 38, 0.92)';
+            ctx.strokeStyle = '#ffd166';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, 22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Ball icon
+            ctx.font = '18px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('⚽', 0, 0);
+
+            // Pointer tip
+            ctx.rotate(angle);
+            ctx.fillStyle = '#ffd166';
+            ctx.beginPath();
+            ctx.moveTo(25, 0);
+            ctx.lineTo(16, -7);
+            ctx.lineTo(16, 7);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // Scoreboard Container
+    ctx.fillStyle = 'rgba(12, 22, 38, 0.94)';
+    ctx.strokeStyle = '#2ed573';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxW, boxH, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    // Scores
+    ctx.font = '900 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#2ed573';
+    ctx.fillText('🔵 ' + (s.scores.player || 0), boxX + 65, boxY + 38);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('-', boxX + boxW * 0.5, boxY + 36);
+
+    ctx.fillStyle = '#ff4757';
+    ctx.font = '900 24px sans-serif';
+    ctx.fillText((s.scores.enemy || 0) + ' 🔴', boxX + boxW - 65, boxY + 38);
+
+    // Timer / Overtime
+    const mins = Math.floor(Math.max(0, s.matchTimer) / 60);
+    const secs = Math.floor(Math.max(0, s.matchTimer) % 60).toString().padStart(2, '0');
+    ctx.fillStyle = s.isOvertime ? '#f39c12' : '#dff9fb';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText(s.isOvertime ? '⏱️ OVERTIME' : '⏱️ ' + mins + ':' + secs, boxX + boxW * 0.5, boxY + 52);
+    ctx.restore();
+}
+
+
+// ============================================================================
+// KNOCKOUT 3V3 GAME MODE ENGINE
+// ============================================================================
+
+function buildKnockoutMap() {
+    WORLD_W = 2000;
+    WORLD_H = 2000;
+    destructibleWalls.length = 0;
+    if (typeof bushZones !== 'undefined') bushZones.length = 0;
+    if (typeof waterZones !== 'undefined') waterZones.length = 0;
+    cubes.length = 0;
+    powerups.length = 0;
+    explosions.length = 0;
+    floatingTexts.length = 0;
+
+    const t = 40;
+    const addBoundaryWall = (x, y, w, h) => {
+        destructibleWalls.push({ x, y, w, h, hp: 999999, maxHp: 999999, indestructible: true, isArenaWall: true });
+    };
+    addBoundaryWall(0, 0, WORLD_W, t);
+    addBoundaryWall(0, WORLD_H - t, WORLD_W, t);
+    addBoundaryWall(0, 0, t, WORLD_H);
+    addBoundaryWall(WORLD_W - t, 0, t, WORLD_H);
+
+    // Center Courtyard Barricades
+    addArenaWallStrip(WORLD_W * 0.5 - 130, WORLD_H * 0.5 - 130, 260, 60, { hp: 5500, wallType: 'knockout_center' });
+    addArenaWallStrip(WORLD_W * 0.5 - 130, WORLD_H * 0.5 + 70, 260, 60, { hp: 5500, wallType: 'knockout_center' });
+
+    // Side Lane Barriers
+    addArenaWallStrip(400, WORLD_H * 0.5 - 160, 80, 320, { hp: 6000, wallType: 'knockout_flank' });
+    addArenaWallStrip(WORLD_W - 480, WORLD_H * 0.5 - 160, 80, 320, { hp: 6000, wallType: 'knockout_flank' });
+
+    // Stealth Bushes
+    if (typeof bushZones !== 'undefined') {
+        bushZones.push({ x: 240, y: WORLD_H * 0.5 - 180, w: 130, h: 360 });
+        bushZones.push({ x: WORLD_W - 370, y: WORLD_H * 0.5 - 180, w: 130, h: 360 });
+        bushZones.push({ x: WORLD_W * 0.5 - 90, y: WORLD_H * 0.5 - 40, w: 180, h: 80 });
+    }
+}
+
+function initKnockoutState() {
+    knockoutState = {
+        currentRound: 1,
+        maxRounds: 3,
+        roundWins: { player: 0, enemy: 0 },
+        roundTimer: 60,
+        stormRadius: 1800,
+        stormActive: false,
+        intermissionUntil: 0,
+        roundWinner: null,
+        announcementText: '🥊 ROUND 1 — FIGHT!',
+        announcementUntil: performance.now() + 2500
+    };
+}
+
+function isKnockoutFighter(entity) {
+    if (!entity) return false;
+    if (entity === player || entity.id === player.id) return true;
+    return !entity.isPet && !entity.isSummon && !entity.isDummy &&
+        !entity.isStructure && !entity.noRespawn && !entity.isTrainingBot &&
+        (entity.team === 'player' || entity.team === 'enemy');
+}
+
+function clearKnockoutRoundEntities() {
+    for (let i = bots.length - 1; i >= 0; i--) {
+        if (!isKnockoutFighter(bots[i])) bots.splice(i, 1);
+    }
+    bullets.length = 0;
+    explosions.length = 0;
+    powerups.length = 0;
+    healingPods.length = 0;
+    pendingClones.length = 0;
+}
+
+function updateKnockout(dt) {
+    if (!isKnockoutMode || !knockoutState) return;
+    const s = knockoutState;
+    const now = performance.now();
+
+    // Enforce No Respawns During Active Round
+    player.respawnTimer = 0;
+    for (const bot of bots) bot.respawnTimer = 0;
+
+    // Round Intermission
+    if (s.intermissionUntil > 0) {
+        if (now >= s.intermissionUntil) {
+            s.intermissionUntil = 0;
+            s.currentRound++;
+            s.roundTimer = 60;
+            s.stormActive = false;
+            s.stormRadius = 1800;
+            s.announcementText = '🥊 ROUND ' + s.currentRound + ' — FIGHT!';
+            s.announcementUntil = now + 2400;
+
+            clearKnockoutRoundEntities();
+            // Revive and reset positions for the six actual round fighters.
+            restoreRespawningEntity(player, getKnockoutSpawnPoint('player', 0, 3));
+            let pSlot = 1, eSlot = 0;
+            for (const bot of bots) {
+                if (!isKnockoutFighter(bot)) continue;
+                const team = bot.team === 'player' ? 'player' : 'enemy';
+                const slot = team === 'player' ? pSlot++ : eSlot++;
+                restoreRespawningEntity(bot, getKnockoutSpawnPoint(team, slot, 3));
+            }
+        }
+        return;
+    }
+
+    if (gameOver || (typeof matchOver !== "undefined" && matchOver)) return;
+
+    // Round Timer & Toxic Storm
+    s.roundTimer -= dt;
+    if (s.roundTimer <= 35) {
+        s.stormActive = true;
+        s.stormRadius = Math.max(220, s.stormRadius - 55 * dt);
+
+        // Damage entities caught in the storm
+        const centerX = WORLD_W * 0.5;
+        const centerY = WORLD_H * 0.5;
+        const allLiving = [player, ...bots].filter(e => isKnockoutFighter(e) && e.hp > 0);
+        for (const ent of allLiving) {
+            if (Math.hypot(ent.x - centerX, ent.y - centerY) > s.stormRadius) {
+                ent.hp = Math.max(0, ent.hp - 800 * dt);
+                if (ent.hp <= 0) ent.isDead = true;
+            }
+        }
+    }
+
+    // Check Round Winner
+    const livingPlayerTeam = [player, ...bots].filter(e => isKnockoutFighter(e) && e.team === 'player' && e.hp > 0).length;
+    const livingEnemyTeam = bots.filter(e => isKnockoutFighter(e) && e.team === 'enemy' && e.hp > 0).length;
+
+    let roundDecided = false;
+    let roundWinTeam = null;
+
+    if (livingPlayerTeam <= 0 && livingEnemyTeam > 0) {
+        roundDecided = true;
+        roundWinTeam = 'enemy';
+    } else if (livingEnemyTeam <= 0 && livingPlayerTeam > 0) {
+        roundDecided = true;
+        roundWinTeam = 'player';
+    } else if (s.roundTimer <= 0) {
+        roundDecided = true;
+        roundWinTeam = livingPlayerTeam >= livingEnemyTeam ? 'player' : 'enemy';
+    }
+
+    if (roundDecided && roundWinTeam && Object.hasOwn(s.roundWins, roundWinTeam) && s.intermissionUntil === 0) {
+        s.roundWins[roundWinTeam]++;
+        if (s.roundWins[roundWinTeam] >= 2) {
+            // Match Won!
+            gameOver = true;
+            won = roundWinTeam === 'player';
+            return;
+        } else {
+            // Next Round Intermission
+            s.intermissionUntil = now + 2400;
+            s.announcementText = '🥊 ROUND ' + s.currentRound + ' WON BY ' + (roundWinTeam === 'player' ? 'BLUE' : 'RED') + '!';
+            s.announcementUntil = now + 2400;
+            spawnFloatingText(WORLD_W * 0.5, WORLD_H * 0.5, s.announcementText, roundWinTeam === 'player' ? '#2ed573' : '#ff4757');
+        }
+    }
+}
+
+function renderKnockoutWorld(ctx) {
+    if (!isKnockoutMode || !knockoutState) return;
+    const s = knockoutState;
+
+    // Poison Storm Circle
+    if (s.stormActive) {
+        const centerX = WORLD_W * 0.5;
+        const centerY = WORLD_H * 0.5;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.75)';
+        ctx.lineWidth = 5;
+        ctx.setLineDash([12, 8]);
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, s.stormRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Announcement Banner
+    if (s.announcementUntil > performance.now()) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(10, 15, 30, 0.88)';
+        ctx.fillRect(0, window.innerHeight * 0.38, window.innerWidth, 80);
+        ctx.fillStyle = '#ffd166';
+        ctx.font = '900 28px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(s.announcementText, window.innerWidth * 0.5, window.innerHeight * 0.38 + 50);
+        ctx.restore();
+    }
+}
+
+function renderKnockoutHUD(ctx) {
+    if (!isKnockoutMode || !knockoutState) return;
+    const s = knockoutState;
+    const innerWidth = window.innerWidth;
+    const boxW = 340;
+    const boxH = 58;
+    const boxX = (innerWidth - boxW) * 0.5;
+    const boxY = 16;
+
+    const livingPlayerTeam = [player, ...bots].filter(e => e && e.team === 'player' && e.hp > 0).length;
+    const livingEnemyTeam = bots.filter(e => e && e.team === 'enemy' && e.hp > 0).length;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(12, 22, 38, 0.94)';
+    ctx.strokeStyle = '#ff4757';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxW, boxH, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    // Round Win Pips
+    const pPips = (s.roundWins.player >= 1 ? '●' : '○') + (s.roundWins.player >= 2 ? '●' : '○');
+    const ePips = (s.roundWins.enemy >= 1 ? '●' : '○') + (s.roundWins.enemy >= 2 ? '●' : '○');
+
+    ctx.font = '900 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#2ed573';
+    ctx.fillText('🔵 ' + pPips, boxX + 65, boxY + 28);
+
+    ctx.fillStyle = '#ffd166';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('ROUND ' + (s.currentRound || 1) + ' / 3', boxX + boxW * 0.5, boxY + 24);
+
+    ctx.fillStyle = '#ff4757';
+    ctx.font = '900 18px sans-serif';
+    ctx.fillText(ePips + ' 🔴', boxX + boxW - 65, boxY + 28);
+
+    // Living counts & Storm warning
+    ctx.fillStyle = '#dff9fb';
+    ctx.font = 'bold 11px sans-serif';
+    const stormText = s.stormActive ? ' ⚠️ STORM CLOSING' : ' ⏱️ ' + Math.ceil(Math.max(0, s.roundTimer)) + 's';
+    ctx.fillText(livingPlayerTeam + ' Alive vs ' + livingEnemyTeam + ' Alive •' + stormText, boxX + boxW * 0.5, boxY + 48);
+    ctx.restore();
+}
+
+
+// ============================================================================
+// RANKED MODIFIER HUD BADGE
+// ============================================================================
+
+function renderRankedModifierHUD(ctx) {
+    if ((!isRankedMatch && !isCustomMutatorMatch) || !activeRankedModifier) return;
+    const mod1 = RANKED_MODIFIERS[activeRankedModifier];
+    const mod2 = activeRankedModifierSecondary ? RANKED_MODIFIERS[activeRankedModifierSecondary] : null;
+    const mod3 = activeRankedModifierTertiary ? RANKED_MODIFIERS[activeRankedModifierTertiary] : null;
+    if (!mod1 && !mod2 && !mod3) return;
+
+    const innerWidth = window.innerWidth;
+    const badgeW = mod3 ? 500 : (mod2 ? 400 : 280);
+    const badgeH = 26;
+    const badgeX = (innerWidth - badgeW) * 0.5;
+    const badgeY = 78;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(10, 20, 36, 0.92)';
+    ctx.strokeStyle = mod3 ? '#00f5d4' : (mod2 ? '#ff9ff3' : (mod1?.color || '#ffd166'));
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    if (mod3) {
+        ctx.fillStyle = '#ffffff';
+        const label1 = (mod1?.icon || '⚡') + ' ' + (mod1?.name || '').toUpperCase();
+        const label2 = (mod2?.icon || '⚡') + ' ' + (mod2?.name || '').toUpperCase();
+        const label3 = (mod3?.icon || '⚡') + ' ' + (mod3?.name || '').toUpperCase();
+        ctx.fillText(`${label1}  •  ${label2}  •  ${label3}`, innerWidth * 0.5, badgeY + 17);
+    } else if (mod2) {
+        ctx.fillStyle = '#ffffff';
+        const label1 = (mod1?.icon || '⚡') + ' ' + (mod1?.name || '').toUpperCase();
+        const label2 = (mod2?.icon || '⚡') + ' ' + (mod2?.name || '').toUpperCase();
+        ctx.fillText(`${label1}  •  ${label2}`, innerWidth * 0.5, badgeY + 17);
+    } else {
+        ctx.fillStyle = mod1?.color || '#ffd166';
+        ctx.fillText((mod1?.icon || '⚡') + ' ' + (mod1?.name || 'Modifier').toUpperCase(), innerWidth * 0.5, badgeY + 17);
+    }
     ctx.restore();
 }
 
   loop();
 
   // expose for debugging (preserve earlier helpers)
-  window.__pureHTMLGame = Object.assign(window.__pureHTMLGame || {}, { player, bots, bullets, healingPods });
+  window.__pureHTMLGame = window.__pureHTMLGame || {};
+  Object.defineProperties(window.__pureHTMLGame, Object.getOwnPropertyDescriptors({
+    player,
+    bots,
+    bullets,
+    healingPods,
+    get braweBallState() { return braweBallState; },
+    get knockoutState() { return knockoutState; },
+    get WORLD_W() { return WORLD_W; },
+    get WORLD_H() { return WORLD_H; },
+    get isBraweBallMode() { return isBraweBallMode; },
+    get isKnockoutMode() { return isKnockoutMode; },
+    get isRankedMatch() { return isRankedMatch; },
+    set isRankedMatch(v) { isRankedMatch = v; },
+    get playing() { return playing; },
+    set playing(v) { playing = v; },
+    get gameOver() { return gameOver; },
+    set gameOver(v) { gameOver = v; },
+    get isHypercharged() { return isHypercharged; },
+    set isHypercharged(v) { isHypercharged = v; },
+    get hyperChargeCharge() { return hyperChargeCharge; },
+    set hyperChargeCharge(v) { hyperChargeCharge = v; },
+    get hyperchargeUntil() { return hyperchargeUntil; },
+    set hyperchargeUntil(v) { hyperchargeUntil = v; },
+    get activeRankedModifier() { return activeRankedModifier; },
+    set activeRankedModifier(v) { activeRankedModifier = v; },
+    get activeRankedModifierSecondary() { return activeRankedModifierSecondary; },
+    set activeRankedModifierSecondary(v) { activeRankedModifierSecondary = v; },
+    get activeRankedModifierTertiary() { return activeRankedModifierTertiary; },
+    set activeRankedModifierTertiary(v) { activeRankedModifierTertiary = v; },
+    get isCustomMutatorMatch() { return isCustomMutatorMatch; },
+    set isCustomMutatorMatch(v) { isCustomMutatorMatch = v; },
+    get isFriendlyFirePlusActive() { return isFriendlyFirePlusActive; },
+    get isSuperRate90Active() { return isSuperRate90Active; },
+    get grantFriendlyFirePlusBonus() { return grantFriendlyFirePlusBonus; },
+    get isGiantProjectilesActive() { return isGiantProjectilesActive; },
+    get applyGiantProjectilesModifier() { return applyGiantProjectilesModifier; },
+        get ragerWarTotems() { return ragerWarTotems; },
+    get castRagerSuper() { return castRagerSuper; },
+    get executeRagerG1() { return executeRagerG1; },
+    get executeRagerG2() { return executeRagerG2; },
+    get isBlinkEyePlayerActive() { return isBlinkEyePlayerActive; },
+    get player() { return player; },
+    get bots() { return bots; },
+    get bullets() { return bullets; },
+    get switchCarmelaFudgeForm() { return switchCarmelaFudgeForm; },
+    get castBolznstienSuper() { return castBolznstienSuper; },
+    get scheduleBolznstienStrikes() { return scheduleBolznstienStrikes; },
+    get executeBolznstienG1() { return executeBolznstienG1; },
+    get executeBolznstienG2() { return executeBolznstienG2; },
+    get magnatarVortices() { return magnatarVortices; },
+    get castMagnatarSuper() { return castMagnatarSuper; },
+    get deployMagnatarBeacon() { return deployMagnatarBeacon; },
+    get executeMagnatarG1() { return executeMagnatarG1; },
+    get executeMagnatarG2() { return executeMagnatarG2; },
+    get bolznstienPendingStrikes() { return bolznstienPendingStrikes; },
+    get bolznstienChainArcs() { return bolznstienChainArcs; },
+    get destructibleWalls() { return destructibleWalls; },
+    get isHeaterLockableBox() { return isHeaterLockableBox; },
+    get applyHeaterBoxDamage() { return applyHeaterBoxDamage; },
+    refreshHomeUI,
+    get openCustomMutatorPickerUI() { return openCustomMutatorPickerUI; },
+    get isRankedAboveBrickFume() { return isRankedAboveBrickFume; },
+    get RANKED_DIVISIONS() { return RANKED_DIVISIONS; },
+    get showdownMode() { return showdownMode; },
+    set showdownMode(v) { showdownMode = v; },
+    update,
+    restoreRespawningEntity,
+    launchShowdownMatch,
+    openRankedQueueUI,
+    getBotSteeredStep,
+    chooseBotWallWaypoint,
+    isBotShotObstructed,
+    findBotCoverPoint,
+    canBotMoveToPosition
+  }));
 })();

@@ -10,7 +10,7 @@ assert.match(game, /'portalo':\s*\{[\s\S]*?name:'Portalo'[\s\S]*?attack:'Portal 
 assert.match(game, /return \{ hp: Math\.round\(6800 \* scale\), dmg: Math\.round\(1500 \* scale\), speed: 260 \}/, 'Portalo uses the requested P11 HP, damage, and normal speed');
 assert.match(game, /brawler === 'portalo'\) base = 1700/, 'Portalo reloads in 1.7 seconds');
 
-assert.match(game, /PORTALO_TELEPORT_DISTANCE = ARENA_WALL_TILE \* 5/, 'Portal Shot displaces five tiles');
+assert.match(game, /PORTALO_TELEPORT_DISTANCE = ARENA_WALL_TILE \* 4\.5/, 'Portal Shot displaces four and a half tiles');
 assert.match(game, /damage:1500,pierce:false/, 'Portal Shot deals 1500 damage and does not pierce');
 assert.match(game, /getPortaloPortalDuration\(owner, !!projectile\.portaloHyperAtFire\)/, 'Portal Shot creates duration-aware linked portals');
 assert.match(game, /return \(hyper \|\| getEntityStarChoice\(owner\) === 'slow'\) \? 2500 : 1700/, 'Normal, Hyper, and Stable Portal durations are correct');
@@ -48,8 +48,6 @@ assert.match(game, /owner\.hp <= 0/, 'Portalo entities clean up when their owner
 assert.match(styles, /Mobile lobby: a compact, scrollable loadout-first flow/, 'The mobile lobby override is present');
 assert.match(styles, /min-height:100svh/, 'The mobile lobby respects the small viewport height');
 assert.match(styles, /#homeQuickActions\{[\s\S]*?overflow-x:auto/, 'Mobile progression actions are horizontally scrollable instead of overflowing');
-assert.match(game, /attachiesBtn\.id = 'attachiesBtn'/, 'Attachies has a stable visible shortcut id');
-assert.match(game, /visibleHomeShortcuts\.appendChild\(attachiesBtn\)/, 'Attachies is mounted in the visible home shortcut row');
-assert.match(styles, /#attachiesBtn\{[\s\S]*?white-space:nowrap/, 'Attachies remains compact and readable in the shortcut row');
+assert.doesNotMatch(game, /attachiesBtn\.id = 'attachiesBtn'/, 'The retired Attachies collection is no longer exposed on Home');
 
 console.log('Portalo and mobile-home regression suite passed.');

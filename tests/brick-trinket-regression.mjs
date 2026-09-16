@@ -68,7 +68,8 @@ assert.ok(slotMatch, 'Trinket slot helper exists');
 vm.runInContext(`function getTrinketSlotCount(level){${slotMatch[1]}};this.slots=getTrinketSlotCount;`, sandbox);
 assert.deepEqual([5,6,7,8,9,10,11].map(sandbox.slots), [0,1,1,2,2,3,3], 'Slots unlock exactly at P6/P8/P10');
 
-assert.match(source, /playerData\.coins\s*-=?\s*TRINKET_COST/, 'Buying subtracts the centralized 500-coin cost');
+assert.match(source, /const TRINKET_COST = 350/, 'Trinkets cost 350 coins');
+assert.match(source, /playerData\.coins\s*-=?\s*TRINKET_COST/, 'Buying subtracts the centralized Trinket cost');
 assert.match(source, /ownedTrinkets:[\s\S]{0,180}equippedTrinkets:/, 'Trinket ownership and equipment persist in saves');
 assert.match(source, /Math\.min\(2200,\s*player\.maxHp\s*\*\s*\.15\)/, 'Emergency Patch is 15% capped at 2200');
 assert.match(source, /trinketEmergencyPatchCooldownUntil\s*=\s*now\s*\+\s*24000/, 'Emergency Patch cooldown is 24 seconds');
