@@ -29,7 +29,7 @@ assert.match(game, /const damageableObject = !!\(dw\.isArenaWall[\s\S]{0,420}b\.
 assert.match(game, /function applyProjectileEndpointVaultDamage/, 'Projectile endpoints can damage vaults');
 assert.match(game, /if \(dw\.isVault\)[\s\S]{0,720}registerBrickVaultWallDamage/, 'Direct projectiles can damage vaults');
 assert.match(game, /function applyNonProjectileStructureDamage[\s\S]{0,1900}applyHeaterBoxDamage\(owner, wall, damage\)/, 'Non-projectile attacks retain the shared power-box and vault damage path alongside breakable metal walls');
-assert.match(game, /function AOEDamage[\s\S]{0,6200}applyNonProjectileStructureDamage\(owner, x, y, radius, wallDamage\)/, 'AOE and melee attacks share vault damage handling');
+assert.match(game, /function AOEDamage[\s\S]{0,12000}applyNonProjectileStructureDamage\(owner, x, y, radius, wallDamage\)/, 'AOE and melee attacks share vault damage handling');
 assert.match(game, /function resolveGhoulHaunt[\s\S]{0,3600}applyNonProjectileStructureDamage\(owner,handX,handY,46,structureDamage/, 'Ghoul hands damage power boxes and enemy vaults through the shared structure path');
 assert.match(game, /for\(let i=rings\.length-1[\s\S]{0,2600}applyNonProjectileStructureDamage\(ringOwner/, 'Expanding non-projectile rings damage power boxes and enemy vaults');
 assert.match(game, /function updateSnapperWaves[\s\S]{0,4200}applyHeaterBoxDamage\(owner,wall,w\.mini\?600:1800\)/, 'Snapper waves damage each power box or enemy vault once');

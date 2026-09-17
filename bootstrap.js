@@ -32,7 +32,7 @@ if (legacyCanvas) legacyCanvas.style.display = 'block';
 if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
-const RELEASE_TOKEN = '20260916-forge-captures1';
+const RELEASE_TOKEN = '20260917-forge-surge-repairs1';
 
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {

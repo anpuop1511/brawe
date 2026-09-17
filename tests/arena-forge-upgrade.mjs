@@ -37,7 +37,7 @@ const forgeMapStart = game.indexOf('function buildArenaForgeMap()');
 const forgeMapEnd = game.indexOf('function buildMarkedMayhemMap()', forgeMapStart);
 assert.ok(forgeMapStart >= 0 && forgeMapEnd > forgeMapStart, 'Arena Forge map builder exists');
 const forgeMap = game.slice(forgeMapStart, forgeMapEnd);
-assert.doesNotMatch(forgeMap, /addArenaWallStrip|\bwall\(/, 'Arena Forge contains zero wall tiles');
+assert.match(forgeMap, /wallType:\s*'forge_lane'/, 'Arena Forge map uses tactical forge lane walls');
 assert.match(game, /arenaForgeBeacon\.label \|\| 'FORGE BOT'/, 'Capturable bots have a clear in-world visual label');
 
 console.log('Arena Forge upgrade regression suite passed.');

@@ -17,6 +17,10 @@ await page.route('**/*',async route=>{
    body=s.slice(0,i)+`window.__forgeTest={run(mode){
     showdownMode=mode;isRankedMatch=false;launchShowdownMatch();
     const routing=isArenaForgeMode, noWalls=destructibleWalls.length===0, fighters=getArenaForgeCombatants(null,true).length;
+    const pet={id:'test-pet',ownerId:player.id},sibling={id:'test-sibling',ownerId:player.id};
+    const petSafety=areAlliedEntities(player,pet)&&areAlliedEntities(pet,sibling)&&getEntityTeam(pet)==='player';
+    const healTarget={hp:100,maxHp:1000};doHeal(healTarget,-1000);doHeal(healTarget,NaN);
+    const safeHealing=healTarget.hp===100;
     arenaForgeHelpPanel?.remove();arenaForgeHelpPanel=null;arenaForgePrepUntil=0;
     const startPowers=[...arenaForgeCapturedAttackPowers.player];
     arenaForgeTimer=12;updateArenaForgeBeacon(0);
@@ -37,18 +41,30 @@ await page.route('**/*',async route=>{
     fireArenaForgeCapturedHyperAttacks(player,0,performance.now());const capped=count===bullets.length;
     const rockets=bullets.filter(b=>b.isRocketeerMain).length;
     const finite=bullets.every(b=>[b.x,b.y,b.vx,b.vy,b.damage].every(Number.isFinite));
+    let surgeSafe=true;
+    if(mode==='arena_forge_minion_surge'){
+      enemy.hp=0;enemy.lastDamagerId=player.id;enemy.arenaForgeDeathCounted=false;
+      handleArenaForgeDeath(enemy);
+      const first=bots.filter(e=>e.isMinionSurgeUnit).length;
+      handleArenaForgeDeath(enemy);
+      const another=contenders.find(e=>e!==enemy&&e!==player&&e.team!=='player');
+      another.hp=0;another.lastDamagerId=player.id;handleArenaForgeDeath(another);
+      const surgeUnit=bots.find(e=>e.isMinionSurgeUnit);
+      arenaForgeTimer+=13;surgeUnit.hp=0;surgeUnit.lastDamagerId=player.id;handleArenaForgeDeath(surgeUnit);
+      surgeSafe=first===5&&bots.filter(e=>e.isMinionSurgeUnit).length===5&&bots.filter(e=>e.isMinionSurgeUnit).every(e=>e.speed<=390);
+    }
     for(let n=0;n<30;n++)update(1/60);
-    return {routing,noWalls,fighters,startPowers,spawned,half,contested,captured,boss,count,capped,rockets,finite};
+    return {routing,noWalls,fighters,startPowers,spawned,half,contested,captured,boss,count,capped,rockets,finite,surgeSafe,petSafety,safeHealing};
    }};`+s.slice(i);
   }
   await route.fulfill({status:200,body,contentType:{'.js':'text/javascript','.html':'text/html','.css':'text/css'}[path.extname(file)]||'application/octet-stream'});
  }catch{await route.fulfill({status:404,body:''});}
 });
 try{
- for(const mode of ['arena_forge','arena_forge_overclocked']){
+ for(const mode of ['arena_forge','arena_forge_overclocked','arena_forge_minion_surge']){
   await page.goto('http://brawe.test/');await page.waitForFunction(()=>!!window.__forgeTest);
   const r=await page.evaluate(m=>__forgeTest.run(m),mode);
-  for(const key of ['routing','noWalls','spawned','half','contested','captured','boss','capped','finite'])assert.equal(r[key],true,mode+': '+key);
+  for(const key of ['routing','noWalls','spawned','half','contested','captured','boss','capped','finite','surgeSafe','petSafety','safeHealing'])assert.equal(r[key],true,mode+': '+key);
   assert.equal(r.fighters,6);assert.equal(r.rockets,mode.endsWith('overclocked')?12:3);
   assert.equal(r.startPowers.length,mode.endsWith('overclocked')?4:0);
   console.log(mode,JSON.stringify(r));
