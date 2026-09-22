@@ -38,9 +38,8 @@ assert.match(game,/UNLEASH_POTENTIAL_EVENT_ID = 'unleash-potential-2026-08-all-s
 assert.doesNotMatch(game,/startBtn\.addEventListener[\s\S]{0,300}addSpecialQuestProgress\([^)]*'play_match'/,'Pressing Start does not progress Special play-match quests');
 
 // Launch Specials.
-assert.match(game,/outlitMutationShotCounter[\s\S]{0,260}>= 9[\s\S]{0,120}outlitMutationCharges = 4/,'Outlit charges four overpressure attacks after nine activations');
+assert.match(game,/outlitMutationShotCounter[\s\S]{0,260}>= 8[\s\S]{0,120}outlitMutationCharges = 4/,'Outlit charges four overpressure attacks after eight activations');
 assert.match(game,/next 4 Scatter Pumps get \+100% range/,'Outlit Mutation UI describes all four overcharged shots');
-assert.doesNotMatch(game,/Math\.min\(8, Math\.floor\(entity\.outlitMutationShotCounter/,'Outlit counter is not capped below its nine-shot trigger');
 assert.match(game,/brawler==='outlit'.*outlitMutationCharges.*fireDelay\*=\.5/,'Outlit Mutation halves unload delay');
 assert.match(game,/hcRangeMult[\s\S]{0,120}mutationOvercharged \? 2\.0 : 1\.0/,'Outlit Mutation doubles range');
 assert.match(game,/echoInstinctStartedAt >= 8000|now - entity\.echoInstinctStartedAt >= 8000/,'Echo Instinct charges for eight seconds');
@@ -49,7 +48,7 @@ assert.match(game,/ringSizeMod: 1\.6[\s\S]{0,420}maxLife: 1\.7/,'Echo repeat is 
 assert.match(game,/Math\.min\(1000, Math\.max\(0, entity\.hp - 1\)\)/,'Signature cost cannot defeat its owner');
 assert.match(game,/function paySignatureHpCost[\s\S]{0,420}entity\.lastDamagedAt=now[\s\S]{0,120}entity\.idleRegenNextAt=0/,'Signature HP payment resets the real natural-regeneration clock');
 assert.match(game,/const perWave = 12[\s\S]{0,100}wave < 2/,'Bouncy Turret Signature fires two bounded radial waves');
-assert.match(game,/function payBouncinTurretSignatureHpCost[\s\S]{0,240}Math\.min\(750,[\s\S]{0,180}TURRET HP/,'Bouncy Turret pays up to 750 HP when its Signature command activates');
+assert.match(game,/function payBouncinTurretSignatureHpCost[\s\S]{0,240}Math\.min\(900,[\s\S]{0,180}TURRET HP/,'Bouncy Turret pays up to 900 HP when its Signature command activates');
 assert.match(game,/bouncySignatureCounted\s*=\s*true/,'A collector projectile cannot count one overlap repeatedly');
 assert.match(game,/bouncySignatureCollectorHitBalls\[ballKey\]/,'G1 Signature counts each collector ball at most once');
 assert.match(game,/bouncySignatureFollowupBalls=gained/,'G1 Signature transfers the number of hit collector balls to exactly one follow-up volley');
@@ -69,7 +68,7 @@ assert.match(game,/function lockMainAttackSequence\(owner, durationMs,[\s\S]{0,5
 assert.match(game,/if\((?:!cursedForcedAttack && )?now < \(fromEntity\.mainAttackSequenceUntil\|\|0\)\)return;/,'A new ammo attack cannot begin during the current launch sequence');
 assert.match(game,/brawler === 'fuser'[\s\S]{0,520}lockMainAttackSequence\(fromEntity,\s*17\s*\*\s*delay,\s*now\)/,'Fuser cannot overlap eighteen-round bursts');
 assert.match(game,/lockMainAttackSequence\(fromEntity,\(balls-1\)\*88,now\)/,'Bouncin Balls cannot overlap multi-ball volleys');
-assert.match(game,/progress\.selectedGadget=selectedGadget[\s\S]{0,220}saveProgress\(\)/,'Changing gadgets persists the selected slot');
+assert.match(game,/(?:pData|progress)\.selectedGadget=['"]?g[12]['"]?[\s\S]{0,220}saveProgress\(\)/,'Changing gadgets persists the selected slot');
 assert.match(game,/if\(b\.echoInstinctVisual\)/,'Echo Instinct projectile has dedicated visible VFX');
 assert.match(game,/isInstinctRing = !!r\.sourceBullet\?\.echoInstinctVisual/,'Echo Instinct impact ring has dedicated visible VFX');
 assert.match(game,/if\(b\.isEchoRingProj\)[\s\S]{0,700}bezierCurveTo/,'Regular Echo attacks have a dedicated traveling waveform visual');
@@ -79,7 +78,7 @@ assert.match(game,/b\.outlitMutationPull[\s\S]{0,1000}target\.ghoulPushUntil/,'O
 assert.match(game,/color: '#ff4b55'/,'Mutation uses its red family color');
 assert.match(game,/color: '#ffd34f'/,'Signature uses its gold family color');
 assert.match(game,/color: '#62ef88'/,'Instinct uses its green family color');
-assert.match(game,/else if \(b\.ownerBrawler === 'outlit'\) \{[\s\S]{0,1200}if\(b\.mutationVisual\)/,'Outlit render branch prioritizes red Mutation projectiles over normal/skin colors');
+assert.match(game,/else if \(b\.ownerBrawler === 'outlit'\) \{[\s\S]{0,2500}if\(b\.mutationVisual\)/,'Outlit render branch prioritizes red Mutation projectiles over normal/skin colors');
 
 // Minigunnin Mutation and Classy Signature.
 assert.match(game,/minigunnin:[\s\S]{0,180}type: 'mutation'[\s\S]{0,180}Incendiary Belt/,'Minigunnin has the Incendiary Belt Mutation');

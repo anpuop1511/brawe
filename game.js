@@ -263,13 +263,21 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(7200 * scale), dmg: Math.round(1320 * scale), strikeDmg: Math.round(1650 * scale), speed: 265 };
         }
+        if (brawlerId === 'looma') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6600 * scale), dmg: Math.round(1450 * scale), speed: 270 };
+        }
+        if (brawlerId === 'badbat') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6400 * scale), dmg: Math.round(1400 * scale), batDmg: Math.round(300 * scale), speed: 280 };
+        }
         if (brawlerId === 'magnatar') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(864 * scale), speed: 270 };
         }
         if (brawlerId === 'oil_maker') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(8000 * scale), dmg: Math.round(520 * scale), speed: 260 };
+            return { hp: Math.round(8000 * scale), dmg: Math.round(468 * scale), speed: 260 };
         }
         if (brawlerId === 'sir_cheeseburger') {
             const scale = 0.55 + (level - 1) * 0.045;
@@ -1106,6 +1114,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         on_fire:{name:'ON FIRE',requirement:'Reach a 10-win streak'},
         tower_toopled:{name:'TOWER TOOPLED',requirement:'Clear Tower Trouble: Grand Tour with fewer than 3 knockouts'},
         tower_duelar:{name:'TOWER DUELAR',requirement:'Complete all 5 floors of Tower Duels Weekend'},
+        chaos_climber:{name:'CHAOS CLIMBER',requirement:'Conquer all 10 floors of Chaos Crown'},
         core_corruptor:{name:'CORE CORRUPTOR',requirement:'Defeat the Lava Villain on Impossible II'},
         corrupted:{name:'CORRUPTED',requirement:'Defeat the Lava Villain on Impossible V'},
         final_form:{name:'FINAL FORM',requirement:'Defeat the Lava Villain on Impossible XV'},
@@ -2851,7 +2860,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
   
   function getNativeAmmoCapacity(brawlerId){
-      if(brawlerId==='minigunnin'||brawlerId==='steamer'||brawlerId==='beam'||brawlerId==='oil_maker')return 100;
+      if(brawlerId==='oil_maker')return 120;
+      if(brawlerId==='minigunnin'||brawlerId==='steamer'||brawlerId==='beam')return 100;
       if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack'||brawlerId==='the_deleter')return 1;
       if(brawlerId==='demon'||brawlerId==='fastpass')return 2;
       if(brawlerId==='rocketeer')return 4;
@@ -2900,6 +2910,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     player.ghoulSuperUntil = 0;
     player.ghoulSuperStartedAt = 0;
     player.ghoulShadowSpeedUntil = 0;
+    player.dashaholicSuperCharges = 0;
+    player.dashaholicSuperSubCharge = 0;
+    player.dashaholicSignatureArmed = '';
+    player.dashaholicSignatureCooldownUntil = 0;
+    player.dashaholicHealingAuraUntil = 0;
+    player.dashaholicSignatureReloadUntil = 0;
+    player.dashaholicCcShieldUntil = 0;
     player.jackTradeStage = 1;
     player.jackTradeHotStreak = 0;
     player.jackTradeJackpotArmed = false;
@@ -2955,6 +2972,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         player.outlitMutationShotCounter = 0;
         player.outlitMutationCharges = 0;
         player.outlitMutationReadyAt = 0;
+        player.crystilaMutationShotCounter = 0;
+        player.crystilaMutationCharges = 0;
+        player.crystilaGlassInvulnUntil = 0;
         player.echoInstinctStartedAt = performance.now();
         player.echoInstinctReady = false;
         player.echoInstinctReadyAt = 0;
@@ -3080,7 +3100,9 @@ function updateGadgetInfo() {
               ? { g1: 'Rager G1: Cleave Timber', g2: 'Rager G2: Battle Cry' }
           : (selectedBrawler === 'magnatar'
               ? { g1: 'Magnatar G1: Polarity Inversion', g2: 'Magnatar G2: Flux Overcharge' }
-              : null)));
+          : (selectedBrawler === 'badbat'
+              ? { g1: 'BadBat G1: Wide Resonator (100% wider shockwave)', g2: 'BadBat G2: Colony Ward (+1000 bat overshield)' }
+              : null))));
       const activeUntil = getPlayerGadgetCooldownUntil(selectedGadget, performance.now());
       const cooldown = activeUntil > performance.now() ? ` — CD ${Math.ceil((activeUntil - performance.now()) / 1000)}s` : '';
       infoEl.textContent = `${names?.[selectedGadget] || label || 'Select a Tool'}${cooldown}`;
@@ -3089,8 +3111,11 @@ function updateGadgetInfo() {
   function updateGadgetButton() {
       if (!gadgetBtn) return;
       const now = performance.now();
+      if (typeof absorbLegacyPlayerGadgetCooldownWrite === 'function') {
+          absorbLegacyPlayerGadgetCooldownWrite(selectedGadget, now);
+      }
       const unlocked = isTraining || !!getSelectedProgress().gadgetUnlocked;
-      const activeUntil = getPlayerGadgetCooldownUntil(selectedGadget, now);
+      const activeUntil = typeof getPlayerGadgetCooldownUntil === 'function' ? getPlayerGadgetCooldownUntil(selectedGadget, now) : (gadgetCooldownUntil || 0);
       gadgetCooldownUntil = activeUntil;
       if (!unlocked) { gadgetBtn.textContent = 'Tool: Locked'; gadgetBtn.disabled = true; }
       else if (gadgetArmed) { gadgetBtn.textContent = 'Tool: Armed'; gadgetBtn.disabled = false; }
@@ -3156,6 +3181,20 @@ function updateGadgetInfo() {
       return {ready:true,mode:'sustain',label:'SUSTAIN VORTEX',castId:newestCastId};
   }
 
+  const BEAM_SIGNATURE_COOLDOWN_MS = 12000;
+  const BEAM_SIGNATURE_HP_COST = 2300;
+  function getBeamSignatureState(entity = player, now = performance.now()) {
+      if (!isSpecialAbilityAvailableForEntity(entity, 'beam')) return { ready: false, label: 'LOCKED' };
+      const cooldownLeft = Math.max(0, (entity.beamSignatureCooldownUntil || 0) - now);
+      if (cooldownLeft > 0) return { ready: false, label: `COOLDOWN ${(cooldownLeft / 1000).toFixed(1)}s`, cooldownLeft };
+      if (entity.hp <= BEAM_SIGNATURE_HP_COST) return { ready: false, label: `NEED ${BEAM_SIGNATURE_HP_COST + 1} HP` };
+      const hasSuperAmmo = entity.id === player.id
+          ? (superCharge >= 100 || now < (player.beamSuperGoldenUntil || 0))
+          : (now < (entity.beamSuperGoldenUntil || 0) || (entity.superCharge >= 100));
+      if (!hasSuperAmmo) return { ready: false, label: 'NEED SUPER AMMO' };
+      return { ready: true, label: 'PRISMATIC OVERDRIVE' };
+  }
+
   function paySignatureHpCost(entity) {
       if (!entity || entity.hp <= 1) return false;
       const cost = Math.min(1000, Math.max(0, entity.hp - 1));
@@ -3193,8 +3232,36 @@ function updateGadgetInfo() {
       return true;
   }
 
+  const DASHAHOLIC_SIGNATURE_COOLDOWN_MS = 15000;
+  function getDashaholicSignatureState(entity) {
+      const now = performance.now();
+      if (!entity) return { ready:false, label:'UNAVAILABLE' };
+      if (entity.dashaholicSignatureArmed) return { ready:false, label:`${entity.dashaholicSignatureArmed === 'g1' ? 'PHASE ECHO' : 'ADRENALINE FIELD'} ARMED` };
+      const cooldown = Math.max(0, (entity.dashaholicSignatureCooldownUntil || 0) - now);
+      if (cooldown > 0) return { ready:false, label:`COOLDOWN ${(cooldown / 1000).toFixed(1)}s` };
+      if (entity.hp <= 1) return { ready:false, label:'NEED HP' };
+      const gadget = entity.id === player.id ? selectedGadget : (entity.selectedGadget || 'g1');
+      return { ready:true, gadget, label:gadget === 'g1' ? 'PHASE ECHO' : 'ADRENALINE FIELD' };
+  }
+
   function activateSignatureAbility(entity = player) {
       const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
+      if (fighterId === 'dashaholic') {
+          const state = getDashaholicSignatureState(entity);
+          if (!state.ready) { spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9'); return false; }
+          const cost = Math.min(1200, Math.max(0, entity.hp - 1));
+          entity.hp = Math.max(1, entity.hp - cost);
+          const now = performance.now();
+          entity.lastDamagedAt = now;
+          entity.trinketLastCombatAt = now;
+          entity.idleRegenNextAt = 0;
+          entity.dashaholicSignatureArmed = state.gadget;
+          entity.dashaholicSignatureCooldownUntil = now + DASHAHOLIC_SIGNATURE_COOLDOWN_MS;
+          explosions.push({x:entity.x,y:entity.y,radius:76,life:0,maxLife:.32,color:'rgba(255,211,79,.72)',fxKind:'dashaholicSignature'});
+          spawnFloatingText(entity.x, entity.y - 48, `-${cost} HP · ${state.label}`, '#ffd34f');
+          updateSignatureButton();
+          return true;
+      }
       if (fighterId === 'mageny') {
           const state = getMagenySignatureState(entity);
           if (!state.ready) {
@@ -3262,6 +3329,35 @@ function updateGadgetInfo() {
           updateSignatureButton();
           return true;
       }
+      if (fighterId === 'beam') {
+          const state = getBeamSignatureState(entity);
+          if (!state.ready) {
+              spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9');
+              return false;
+          }
+          const now = performance.now();
+          if (entity.hp <= BEAM_SIGNATURE_HP_COST) return false;
+          entity.hp -= BEAM_SIGNATURE_HP_COST;
+          entity.lastDamagedAt = now;
+          entity.trinketLastCombatAt = now;
+          entity.idleRegenNextAt = 0;
+          entity.beamSignatureCooldownUntil = now + BEAM_SIGNATURE_COOLDOWN_MS;
+          entity.beamSuperGoldenUntil = now + 5000;
+          entity.beamSignatureSlowUntil = now + 5000;
+          if (entity.id === player.id) {
+              ammo = maxAmmo;
+              superCharge = 0;
+              addSpecialQuestProgress('beam', 'use_super', 1);
+              updateSuperButton();
+          } else {
+              entity.beamAmmo = 100;
+              entity.superCharge = 0;
+          }
+          explosions.push({ x: entity.x, y: entity.y, radius: 96, life: 0, maxLife: .40, color: 'rgba(255,215,0,.82)', legendary: true, fxKind: 'beamSignature' });
+          spawnFloatingText(entity.x, entity.y - 48, '-2300 HP · PRISMATIC OVERDRIVE', '#ffd700');
+          updateSignatureButton();
+          return true;
+      }
       if (fighterId !== 'bouncin_balls') return false;
       const state = getBouncinSignatureState(entity);
       if (!state.ready) {
@@ -3286,20 +3382,20 @@ function updateGadgetInfo() {
   }
 
   function updateSignatureButton() {
-      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny';
+      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic';
       const shouldShow = playing && signatureFighter && isSpecialAbilityAvailableForEntity(player, selectedBrawler);
       if (signatureTouchBtn) signatureTouchBtn.style.display = shouldShow ? 'flex' : 'none';
       if (signatureBtn) signatureBtn.style.display = shouldShow ? '' : 'none';
       if (!shouldShow) return;
-      const state = selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : getBouncinSignatureState(player)));
-      const costText = selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP'));
+      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : getBouncinSignatureState(player)))));
+      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP'))));
       if (signatureTouchBtn) {
           signatureTouchBtn.textContent = state.ready ? 'SIG' : '×';
           signatureTouchBtn.title = `Signature: ${state.label}${costText}`;
           signatureTouchBtn.classList.toggle('signature-ready', !!state.ready);
       }
       if (signatureBtn) {
-          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : ' · up to 1000 HP + 750 turret HP'))} (R)`;
+          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : ' · up to 1000 HP + 750 turret HP'))))} (R)`;
           signatureBtn.disabled = !state.ready;
           signatureBtn.classList.toggle('signature-ready', !!state.ready);
       }
@@ -3324,6 +3420,15 @@ function updateGadgetInfo() {
           return;
       }
       delete superBtn.dataset.lockedOutcome;
+      if (hasMultiSuper(selectedBrawler)) {
+          const uses = getBrawlerSuperCharges(player);
+          const maxUses = getBrawlerSuperMaxCharges(selectedBrawler, !!isHypercharged);
+          updateSuperUseIndicator(player);
+          superBtn.textContent = uses > 0 ? `Power Move: Ready · ${uses}/${maxUses} USES` : `Power Move: ${Math.floor(superCharge)}% · 0/${maxUses} USES`;
+          superBtn.disabled = uses < 1 && superCharge < 100;
+          return;
+      }
+      updateSuperUseIndicator(player);
       superBtn.textContent = superCharge >= 100 ? 'Power Move: Ready' : `Power Move: ${Math.floor(superCharge)}%`;
       superBtn.disabled = superCharge < 100;
   }
@@ -3396,7 +3501,7 @@ function updateGadgetInfo() {
           }
           const isMulti = hasMultiSuper(selectedBrawler);
           const charges = isMulti ? getBrawlerSuperCharges(player) : (superCharge >= 100 ? 1 : 0);
-          const charge = isMulti ? (charges > 0 ? 100 : Math.max(0, Math.min(100, Number(selectedBrawler === 'oil_maker' ? (player.oilMakerSubCharge || 0) : (player.steamerSubCharge || 0))))) : Math.max(0, Math.min(100, Number(superCharge) || 0));
+          const charge = isMulti ? (charges > 0 ? 100 : Math.max(0, Math.min(100, Number(selectedBrawler === 'oil_maker' ? (player.oilMakerSubCharge || 0) : (selectedBrawler === 'dashaholic' ? (player.dashaholicSuperSubCharge || superCharge || 0) : (player.steamerSubCharge || 0)))))) : Math.max(0, Math.min(100, Number(superCharge) || 0));
           superTouchBtn.style.setProperty('--mobile-charge', `${charge * 3.6}deg`);
           superTouchBtn.disabled = !!superBtn.disabled;
           superTouchBtn.classList.toggle('is-ready', (charges > 0 || charge >= 100) && !superBtn.disabled);
@@ -4091,6 +4196,70 @@ const bolznstienPendingStrikes = [];
   const oilMakerPuddles = [];
   const oilMakerBarrels = [];
   const oilMakerPendingPuddles = [];
+  const badbatSwarm = [];
+  const badbatShieldOrbs = [];
+  const loomaThreads = [];
+  const loomaWeaves = [];
+  function loomaStar(entity, slot) {
+      const value=entity?.id===player.id?selectedStar:entity?.selectedStar;
+      return value===slot||value===(slot==='sp1'?'slow':'long');
+  }
+  function loomaPointSegmentDistance(px,py,x1,y1,x2,y2) {
+      const dx=x2-x1,dy=y2-y1,len=Math.max(.001,dx*dx+dy*dy),t=clamp(((px-x1)*dx+(py-y1)*dy)/len,0,1);
+      return Math.hypot(px-(x1+dx*t),py-(y1+dy*t));
+  }
+  function placeLoomaAnchor(owner,x,y,hyper=false) {
+      const now=performance.now(), safe=findNearestOpenSpot(clamp(x,30,WORLD_W-30),clamp(y,30,WORLD_H-30),8,100);
+      const previous=owner.loomaLastAnchor;
+      owner.loomaLastAnchor={x:safe.x,y:safe.y,at:now};
+      if(!previous||now-(previous.at||0)>5000)return;
+      const duration=4000+(loomaStar(owner,'sp2')?2000:0);
+      loomaThreads.push({id:nextId++,ownerId:owner.id,x1:previous.x,y1:previous.y,x2:safe.x,y2:safe.y,until:now+duration,hitAt:{},shieldThread:!!owner.loomaShieldThreadArmed});
+      owner.loomaShieldThreadArmed=false;
+      if(owner.id===player.id){gadgetArmed=false;updateGadgetButton();}else owner.gadgetArmed=false;
+      while(loomaThreads.filter(t=>t.ownerId===owner.id).length>2){const index=loomaThreads.findIndex(t=>t.ownerId===owner.id);if(index>=0)loomaThreads.splice(index,1);else break;}
+      if(hyper){
+          explosions.push({x:(previous.x+safe.x)/2,y:(previous.y+safe.y)/2,radius:72,life:0,maxLife:.3,color:'rgba(215,85,255,.78)',fxKind:'loomaHyperKnot'});
+          for(const target of [player,...bots])if(target&&target.hp>0&&!areAlliedEntities(owner,target)&&loomaPointSegmentDistance(target.x,target.y,previous.x,previous.y,safe.x,safe.y)<85)checkHit(target,{ownerBrawler:'looma',ownerId:owner.id,damage:600,pierce:true,super:true,hitIds:{}},-1);
+      }
+  }
+  function fireLoomaNeedle(owner,targetX,targetY,hyper=false) {
+      const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11),stats=getScaledStats('looma',level),maxRange=690,speed=860;
+      const angle=Math.atan2(targetY-owner.y,targetX-owner.x),distance=clamp(Math.hypot(targetX-owner.x,targetY-owner.y),90,maxRange);
+      const anchorX=owner.x+Math.cos(angle)*distance,anchorY=owner.y+Math.sin(angle)*distance;
+      bullets.push({id:nextId++,ownerBrawler:'looma',isLoomaNeedle:true,x:owner.x+Math.cos(angle)*22,y:owner.y+Math.sin(angle)*22,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:0,maxLife:distance/speed,damage:stats.dmg,pierce:false,ownerId:owner.id,hitIds:{},hitboxMod:1.18,hyperVisual:hyper});
+      placeLoomaAnchor(owner,anchorX,anchorY,hyper);
+  }
+  function castLoomaSuper(owner,x,y,hyper=false) {
+      const ang=Math.atan2(y-owner.y,x-owner.x),dist=Math.min(580,Math.hypot(x-owner.x,y-owner.y));
+      loomaWeaves.push({id:nextId++,ownerId:owner.id,x:owner.x+Math.cos(ang)*dist,y:owner.y+Math.sin(ang)*dist,radius:hyper?230:205,arms:hyper?8:6,until:performance.now()+5000,lastHitAt:{},hyper});
+      explosions.push({x:owner.x+Math.cos(ang)*dist,y:owner.y+Math.sin(ang)*dist,radius:hyper?230:205,life:0,maxLife:.5,color:hyper?'rgba(190,65,255,.8)':'rgba(42,224,210,.68)',fxKind:'loomaWeave'});
+  }
+  function executeLoomaG1(owner) {
+      let cut=0;
+      for(let i=loomaThreads.length-1;i>=0;i--){const t=loomaThreads[i];if(t.ownerId!==owner.id)continue;const mx=(t.x1+t.x2)/2,my=(t.y1+t.y2)/2;for(const target of [player,...bots])if(target&&target.hp>0&&!areAlliedEntities(owner,target)&&Math.hypot(target.x-mx,target.y-my)<115)checkHit(target,{ownerBrawler:'looma',ownerId:owner.id,damage:600,pierce:true,super:true,hitIds:{}},-1);explosions.push({x:mx,y:my,radius:115,life:0,maxLife:.3,color:'#ff73cb'});loomaThreads.splice(i,1);cut++;}
+      if(!cut)spawnFloatingText(owner.x,owner.y-35,'NO THREADS','#9cc7da');
+  }
+  function updateLoomaEffects(now,dt) {
+      for(let i=loomaThreads.length-1;i>=0;i--){const t=loomaThreads[i],owner=getEntityById(t.ownerId);if(!owner||owner.hp<=0||now>=t.until){loomaThreads.splice(i,1);continue;}for(const target of [player,...bots]){if(!target||target.hp<=0||target.id===owner.id)continue;const touching=loomaPointSegmentDistance(target.x,target.y,t.x1,t.y1,t.x2,t.y2)<(target.radius||16)+8;if(!touching)continue;if(areAlliedEntities(owner,target)){if(t.shieldThread&&now-(t.hitAt[target.id]||0)>1500){t.hitAt[target.id]=now;grantShield(target,900,Math.max(3000,target.shieldMax||0));}continue;}if(now-(t.hitAt[target.id]||0)<900)continue;t.hitAt[target.id]=now;checkHit(target,{ownerBrawler:'looma',ownerId:owner.id,damage:700,pierce:true,super:true,hitIds:{}},-1);target.slowUntil=Math.max(target.slowUntil||0,now+(loomaStar(owner,'sp1')?1200:650));if(loomaStar(owner,'sp2'))doHeal(owner,250);}}
+      for(let i=loomaWeaves.length-1;i>=0;i--){const w=loomaWeaves[i],owner=getEntityById(w.ownerId);if(!owner||now>=w.until){loomaWeaves.splice(i,1);continue;}const phase=(now/650)%(Math.PI*2);for(const target of [player,...bots]){if(!target||target.hp<=0||areAlliedEntities(owner,target))continue;const dx=target.x-w.x,dy=target.y-w.y,d=Math.hypot(dx,dy);if(d>w.radius+25)continue;const a=Math.atan2(dy,dx),sector=Math.abs(Math.sin((a-phase)*w.arms/2));if(sector<.23&&now-(w.lastHitAt[target.id]||0)>700){w.lastHitAt[target.id]=now;checkHit(target,{ownerBrawler:'looma',ownerId:owner.id,damage:950,pierce:true,super:true,hitIds:{}},-1);if(w.hyper)applyKnockback(target,target.x+(target.x-w.x),target.y+(target.y-w.y),-35,now);}}}
+  }
+  function renderLoomaEffects(ctx) {
+      const now=performance.now();ctx.save();ctx.lineCap='round';
+      for(const owner of [player,...bots]){
+          const anchor=owner?.loomaLastAnchor;if(!anchor||now-(anchor.at||0)>5000)continue;
+          const pulse=1+Math.sin(now/120)*.12;ctx.save();ctx.translate(anchor.x,anchor.y);ctx.rotate(now/500);ctx.shadowColor='#ff69cd';ctx.shadowBlur=18;ctx.strokeStyle='#ffe4fa';ctx.fillStyle='rgba(255,70,190,.3)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,13*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-18,0);ctx.lineTo(18,0);ctx.moveTo(0,-18);ctx.lineTo(0,18);ctx.stroke();ctx.restore();
+      }
+      for(const t of loomaThreads){const fade=clamp((t.until-now)/700,0,1);ctx.strokeStyle=t.shieldThread?`rgba(105,240,255,${fade})`:`rgba(255,105,205,${fade})`;ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=12;ctx.lineWidth=7;ctx.setLineDash([16,9]);ctx.beginPath();ctx.moveTo(t.x1,t.y1);ctx.lineTo(t.x2,t.y2);ctx.stroke();for(const p of [[t.x1,t.y1],[t.x2,t.y2]]){ctx.fillStyle='#f7dcff';ctx.beginPath();ctx.arc(p[0],p[1],9,0,Math.PI*2);ctx.fill();}}
+      ctx.setLineDash([]);for(const w of loomaWeaves){const phase=(now/650)%(Math.PI*2);ctx.strokeStyle=w.hyper?'#db62ff':'#52f0dc';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=16;ctx.lineWidth=6;ctx.beginPath();ctx.arc(w.x,w.y,w.radius,0,Math.PI*2);ctx.stroke();for(let k=0;k<w.arms;k++){const a=phase+k*Math.PI*2/w.arms;ctx.beginPath();ctx.moveTo(w.x,w.y);ctx.lineTo(w.x+Math.cos(a)*w.radius,w.y+Math.sin(a)*w.radius);ctx.stroke();}ctx.fillStyle=w.hyper?'#7b2cff':'#167d88';ctx.beginPath();ctx.arc(w.x,w.y,22,0,Math.PI*2);ctx.fill();}
+      if(selectedBrawler==='looma'&&player?.hp>0){
+          const wm=getMouseWorld(),angle=Math.atan2(wm.y-player.y,wm.x-player.x),distance=clamp(Math.hypot(wm.x-player.x,wm.y-player.y),90,aimingSuper?580:690),tx=player.x+Math.cos(angle)*distance,ty=player.y+Math.sin(angle)*distance;
+          ctx.setLineDash([10,7]);ctx.lineDashOffset=-now/35;ctx.strokeStyle=aimingSuper?'#56f3df':'#ff8ddb';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(tx,ty);ctx.stroke();ctx.setLineDash([]);
+          if(aimingSuper){ctx.fillStyle='rgba(52,235,213,.13)';ctx.strokeStyle=isHypercharged?'#db62ff':'#56f3df';ctx.lineWidth=3;ctx.beginPath();ctx.arc(tx,ty,isHypercharged?230:205,0,Math.PI*2);ctx.fill();ctx.stroke();}
+          else {const anchor=player.loomaLastAnchor,ready=anchor&&now-(anchor.at||0)<=5000;if(ready){ctx.strokeStyle='rgba(255,105,205,.55)';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(anchor.x,anchor.y);ctx.lineTo(tx,ty);ctx.stroke();}ctx.fillStyle=ready?'#ff8ddb':'#dffaff';ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=12;ctx.beginPath();ctx.arc(tx,ty,12,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.font='900 13px sans-serif';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText(ready?'SHOT 2: CONNECT THREAD':'SHOT 1: PLACE ANCHOR',player.x,player.y-54);}
+      }
+      ctx.restore();
+  }
   const _origBulletsPush = bullets.push.bind(bullets);
   bullets.push = function(...items) {
       if (typeof isGiantProjectilesActive === 'function' && isGiantProjectilesActive()) {
@@ -4314,8 +4483,8 @@ const bolznstienPendingStrikes = [];
         const ARENA_FORGE_ENRAGE_HP_PCT = 0.35;
         const ARENA_FORGE_UPGRADE_MAX = 3;
         const ARENA_FORGE_AUTO_UPGRADE_MS = 30000;
-        const ARENA_FORGE_MAX_BONUS_LEVELS = 12;
-        const ARENA_FORGE_BLUEPRINT_LEVELS = [2, 4, 6, 8, 10, 12];
+        const ARENA_FORGE_MAX_BONUS_LEVELS = 20;
+        const ARENA_FORGE_BLUEPRINT_LEVELS = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
         const ARENA_FORGE_LEVEL_HP_PCT = 0.05;
         const ARENA_FORGE_LEVEL_DAMAGE_PCT = 0.05;
         const ARENA_FORGE_CAMPS_OPEN_SECONDS = 45;
@@ -4473,9 +4642,11 @@ const bolznstienPendingStrikes = [];
             rager: 1.0,
         bolznstien: 1.0,
             magnatar: 1.0,
-            oil_maker: 1.0
+            oil_maker: 1.0,
+            badbat: 1.0
         },
         reloadMsByBrawler: {
+            badbat: 1300,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -4532,8 +4703,9 @@ const bolznstienPendingStrikes = [];
             ,predator: 1500
         },
         fireDelayMsByBrawler: {
+            badbat: 200,
             carmela_fudge: 180,
-            oil_maker: 75,
+            oil_maker: 56,
             magnatar: 200,
             rager: 220,
         bolznstien: 200,
@@ -4618,6 +4790,7 @@ const bolznstienPendingStrikes = [];
             : 1.0;
         if ((entity.awakenatorSleepUntil || 0) > now) baseSlow = Math.min(baseSlow, 0.60);
         if (now < (entity.magenyResidualSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
+        if (now < (entity.beamSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.50);
         if (now < (entity.ridaSuperArmorUntil || 0)) {
             return 1 - (1 - baseSlow) * 0.65;
         }
@@ -4737,7 +4910,7 @@ const bolznstienPendingStrikes = [];
         projectile.hitIds = projectile.hitIds || {};
         if (projectile.hitIds[target.id]) return false;
         projectile.hitIds[target.id] = true;
-      const amount = projectile.relayShieldAmount || 1750;
+      const amount = projectile.relayShieldAmount || 1400;
       const cap = projectile.relayShieldCap || 7500;
         grantRelayShield(owner, amount, cap);
         grantRelayShield(target, amount, cap);
@@ -4761,7 +4934,7 @@ const bolznstienPendingStrikes = [];
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager'
+        'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -4829,6 +5002,8 @@ const bolznstienPendingStrikes = [];
             ramage: 'Epic',
             sir_cheeseburger: 'Epic',
             blinkeye: 'Epic',
+            badbat: 'Epic',
+            looma: 'Mythic',
 
             // Mythic (26)
             dashaholic: 'Mythic',
@@ -5054,6 +5229,16 @@ const bolznstienPendingStrikes = [];
                 playerData.brawlers.magnatar.hyperchargeUnlocked = true;
                 if (!playerData.brawlers.magnatar.selectedGadget) playerData.brawlers.magnatar.selectedGadget = 'g1';
                 if (!playerData.brawlers.magnatar.selectedStar || playerData.brawlers.magnatar.selectedStar === 'none') playerData.brawlers.magnatar.selectedStar = 'slow';
+            }
+            if (!playerData.brawlers.badbat) {
+                playerData.brawlers.badbat = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'sp1', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+            } else {
+                playerData.brawlers.badbat.level = Math.max(playerData.brawlers.badbat.level || 1, 11);
+                playerData.brawlers.badbat.gadgetUnlocked = true;
+                playerData.brawlers.badbat.starPowerUnlocked = true;
+                playerData.brawlers.badbat.hyperchargeUnlocked = true;
+                if (!playerData.brawlers.badbat.selectedGadget) playerData.brawlers.badbat.selectedGadget = 'g1';
+                if (!playerData.brawlers.badbat.selectedStar || playerData.brawlers.badbat.selectedStar === 'none') playerData.brawlers.badbat.selectedStar = 'sp1';
             }
             if (!playerData.soulSummoner || typeof playerData.soulSummoner !== 'object') {
                 playerData.soulSummoner = {};
@@ -5725,6 +5910,188 @@ const bolznstienPendingStrikes = [];
             spawnEffect: { type: 'icyZapSpawn', color: '#e0ffff', glow: true },
             takedownEffect: { type: 'icyZapTakedown', color: '#00bfff', glow: true },
             deathEffect: { type: 'icyZapDeath', color: '#add8e6', glow: false }
+        },
+        'headless-bolznstien': {
+            id: 'headless-bolznstien',
+            name: 'Headless Bolznstien',
+            brawler: 'bolznstien',
+            rarity: 'mythic',
+            set: 'Forgeaween',
+            price: 199,
+            currency: 'gems',
+            icon: '🎃',
+            description: 'A towering headless blacksmith titan powered by glowing green ectoplasm and crackling graveyard lightning, carrying a sinister carved Jack-o\'-Lantern! Unlocked in the Season Pass.',
+            _displayColor: '#2ecc71',
+            isSeasonPassReward: true,
+            attackEffect: { type: 'spectralLightning', color: '#2ecc71', glow: true, trailColor: '#ff7700' },
+            superEffect: { type: 'pumpkinShockwave', color: '#ff7700', glow: true, trailColor: '#2ecc71' },
+            spawnEffect: { type: 'ectoplasmRise', color: '#2ecc71', glow: true },
+            takedownEffect: { type: 'pumpkinExplosion', color: '#ff7700', glow: true },
+            deathEffect: { type: 'headlessCollapse', color: '#2ecc71', glow: false }
+        },
+        'boneless-boomarang': {
+            id: 'boneless-boomarang',
+            name: 'Boneless Boomarang',
+            brawler: 'boom_arang',
+            rarity: 'epic',
+            set: 'Forgeaween',
+            price: 149,
+            currency: 'gems',
+            icon: '🦴',
+            description: 'An animated skeletal warrior armed with razor-sharp bone boomerangs carved from cursed spinal ribs! Unlocked by completing all 4 stages of the Forgeaween Quest.',
+            _displayColor: '#e0e6ed',
+            isQuestReward: true,
+            attackEffect: { type: 'boneBoomerang', color: '#f0f3f6', glow: true, trailColor: '#00f5d4' },
+            superEffect: { type: 'spectralRibcage', color: '#00f5d4', glow: true, trailColor: '#f0f3f6' },
+            spawnEffect: { type: 'cryptAwaken', color: '#00f5d4', glow: true },
+            takedownEffect: { type: 'boneShatter', color: '#f0f3f6', glow: true },
+            deathEffect: { type: 'skeletonScatter', color: '#e0e6ed', glow: false }
+        },
+        'master-overlord': {
+            id: 'master-overlord',
+            name: 'Master Overlord',
+            brawler: 'overlord',
+            rarity: 'legendary',
+            set: 'Forgeaween',
+            price: 299,
+            currency: 'gems',
+            icon: '👑',
+            description: 'A regal nether-monarch draped in midnight obsidian and gold-threaded void robes, crowned with hovering nether-spires and wielding cosmic doom.',
+            _displayColor: '#9b59b6',
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'cosmicDoomOrb', color: '#9b59b6', glow: true, trailColor: '#f1c40f' },
+            superEffect: { type: 'abyssalVortex', color: '#8e44ad', glow: true, trailColor: '#e74c3c' },
+            spawnEffect: { type: 'netherAscension', color: '#9b59b6', glow: true },
+            takedownEffect: { type: 'voidImplosion', color: '#8e44ad', glow: true },
+            deathEffect: { type: 'monarchBanish', color: '#2c3e50', glow: false }
+        },
+        'emperor-overlord': {
+            id: 'emperor-overlord',
+            name: 'Emperor Overlord',
+            brawler: 'overlord',
+            rarity: 'legendary',
+            set: 'Forgeaween',
+            price: 299,
+            currency: 'gems',
+            icon: '👑',
+            description: 'A regal nether-monarch draped in midnight obsidian and gold-threaded void robes, crowned with hovering nether-spires and wielding cosmic doom.',
+            _displayColor: '#9b59b6',
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'cosmicDoomOrb', color: '#9b59b6', glow: true, trailColor: '#f1c40f' },
+            superEffect: { type: 'abyssalVortex', color: '#8e44ad', glow: true, trailColor: '#e74c3c' },
+            spawnEffect: { type: 'netherAscension', color: '#9b59b6', glow: true },
+            takedownEffect: { type: 'voidImplosion', color: '#8e44ad', glow: true },
+            deathEffect: { type: 'monarchBanish', color: '#2c3e50', glow: false }
+        },
+        'pumkinomer': {
+            id: 'pumkinomer',
+            name: 'Pumkinomer',
+            brawler: 'homer',
+            rarity: 'mythic',
+            set: 'Forgeaween',
+            price: 199,
+            currency: 'gems',
+            icon: '🎃',
+            description: 'Homer transformed into a grinning pumpkin scarecrow who hurls explosive Jack-o\'-Lantern bombs and volatile trick-or-treat candy buckets!',
+            _displayColor: '#ff7700',
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'flamingPumpkin', color: '#ff7700', glow: true, trailColor: '#f39c12' },
+            superEffect: { type: 'candyBucketDetonation', color: '#e67e22', glow: true, trailColor: '#e74c3c' },
+            spawnEffect: { type: 'patchworkSprout', color: '#ff7700', glow: true },
+            takedownEffect: { type: 'pumpkinConfetti', color: '#f39c12', glow: true },
+            deathEffect: { type: 'scarecrowDeflate', color: '#d35400', glow: false }
+        },
+        'gentleman-homer': {
+            id: 'gentleman-homer',
+            name: 'Gentleman Homer',
+            brawler: 'homer',
+            rarity: 'mythic',
+            set: 'Classic Victorian',
+            price: 199,
+            currency: 'gems',
+            icon: '🎩',
+            description: 'A dapper gentleman armed with a fine porcelain tea launcher, polished brass pocket watch homing rounds, and an explosive trick-or-treat cane super!',
+            _displayColor: '#e1b12c',
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'gentlemanWatch', color: '#e1b12c', glow: true, trailColor: '#74b9ff' },
+            superEffect: { type: 'candyBucketDetonation', color: '#e67e22', glow: true, trailColor: '#e74c3c' },
+            spawnEffect: { type: 'teaArrival', color: '#e1b12c', glow: true },
+            takedownEffect: { type: 'pumpkinConfetti', color: '#f39c12', glow: true },
+            deathEffect: { type: 'scarecrowDeflate', color: '#d35400', glow: false }
+        },
+        'nightmare-outlit': {
+            id: 'nightmare-outlit',
+            name: 'Nightmare Outlit',
+            brawler: 'outlit',
+            rarity: 'hypercharge',
+            set: 'Forgeaween',
+            price: 349,
+            currency: 'gems',
+            icon: '😈',
+            description: 'A terrifying dark-matter apparition. Transfigures during Hypercharge into a colossal winged Nightmare Demon with abyssal rifts and reality-tearing surges!',
+            _displayColor: '#e000ff',
+            hyperTransform: true,
+            isHyperchargeSkin: true,
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'nightmareBeam', color: '#e000ff', glow: true, trailColor: '#8a2be2' },
+            superEffect: { type: 'abyssalRiftSurge', color: '#ff007f', glow: true, trailColor: '#e000ff' },
+            spawnEffect: { type: 'nightmareManifest', color: '#e000ff', glow: true },
+            takedownEffect: { type: 'abyssalExecution', color: '#ff007f', glow: true },
+            deathEffect: { type: 'nightmareDissolve', color: '#2a1a47', glow: false }
+        },
+        'abyss-trapper': {
+            id: 'abyss-trapper',
+            name: 'Abyss Trapper',
+            brawler: 'trapper',
+            rarity: 'legendary',
+            set: 'Forgotten Depths',
+            price: 299,
+            currency: 'gems',
+            icon: '🦈',
+            description: 'A deep-sea hunter with glowing jaw-gates, pressure-wave snares, and an abyssal sound fence.',
+            _displayColor: '#42f5d7',
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'abyssJawGate', color: '#42f5d7', glow: true, trailColor: '#087f8c' },
+            superEffect: { type: 'pressureFence', color: '#1dc8ff', glow: true, trailColor: '#42f5d7' },
+            spawnEffect: { type: 'depthBreach', color: '#42f5d7', glow: true },
+            takedownEffect: { type: 'sharkSnap', color: '#8affea', glow: true },
+            deathEffect: { type: 'abyssImplode', color: '#071d3a', glow: true }
+        },
+        'reactor-decayer': {
+            id: 'reactor-decayer',
+            name: 'Reactor Decayer',
+            brawler: 'decayer',
+            rarity: 'legendary',
+            set: 'Meltdown Unit',
+            price: 299,
+            currency: 'gems',
+            icon: '☢️',
+            description: 'A sealed reactor suit that fires toxic plasma, builds irradiated shields, and erupts into a containment storm.',
+            _displayColor: '#a8ff3e',
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'reactorPlasma', color: '#a8ff3e', glow: true, trailColor: '#31d158' },
+            superEffect: { type: 'containmentStorm', color: '#d7ff52', glow: true, trailColor: '#38ff8a' },
+            spawnEffect: { type: 'hazmatSeal', color: '#a8ff3e', glow: true },
+            takedownEffect: { type: 'biohazardStamp', color: '#d7ff52', glow: true },
+            deathEffect: { type: 'reactorScram', color: '#27382f', glow: true }
+        },
+        'prism-seraph-angel': {
+            id: 'prism-seraph-angel',
+            name: 'Prism Seraph Angel',
+            brawler: 'angel',
+            rarity: 'legendary',
+            set: 'Celestial Refraction',
+            price: 299,
+            currency: 'gems',
+            icon: '🌈',
+            description: 'A crystalline seraph whose light attacks refract into spectral trails and whose Super opens a radiant sanctuary.',
+            _displayColor: '#79e9ff',
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'prismLance', color: '#79e9ff', glow: true, trailColor: '#ff78d7' },
+            superEffect: { type: 'seraphSanctuary', color: '#fff2b8', glow: true, trailColor: '#79e9ff' },
+            spawnEffect: { type: 'prismDescent', color: '#ffffff', glow: true },
+            takedownEffect: { type: 'rainbowAscension', color: '#ff78d7', glow: true },
+            deathEffect: { type: 'shatteredHalo', color: '#79e9ff', glow: true }
         }
     };
     // Global fixed timestamp for Featured rotation (UTC).
@@ -5775,7 +6142,8 @@ const bolznstienPendingStrikes = [];
         'super-rare': { label: 'Super Rare', border: '#5df2c2', glow: '#5df2c2', effects: 'Custom attack effects only' },
         'epic': { label: 'Epic', border: '#9b59b6', glow: '#9b59b6', effects: 'Custom attack and super effects' },
         'mythic': { label: 'Mythic', border: '#ff6b6b', glow: '#ff6b6b', effects: 'Current visuals plus takedown effect' },
-        'legendary': { label: 'Legendary', border: '#ffd700', glow: '#ffd700', effects: 'Everything: spawn, attack, super, takedown, death' }
+        'legendary': { label: 'Legendary', border: '#ffd700', glow: '#ffd700', effects: 'Everything: spawn, attack, super, takedown, death' },
+        'hypercharge': { label: 'Hypercharge', border: '#ff00ff', glow: '#ff00ff', effects: 'Hypercharge Transfiguration: custom model, transformed form, and custom attack & super visuals' }
     };
 
     function getActiveSkinForBrawler(brawlerId) {
@@ -5873,8 +6241,11 @@ const bolznstienPendingStrikes = [];
         if (!effect) return;
         const color = effect.color || getSkinRarityMeta(skin.rarity).border;
         const radius = kind === 'spawn' ? 42 : (kind === 'death' ? 56 : 46);
-        const life = kind === 'spawn' ? 0.25 : 0.3;
-        const isLegendaryPulse = skin.rarity === 'legendary';
+        const isBespokeSkin = skin.set === 'Forgeaween' || ['headless-bolznstien', 'boneless-boomarang', 'master-overlord', 'emperor-overlord', 'pumkinomer', 'gentleman-homer', 'nightmare-outlit', 'hyperfusion-fuser', 'back-to-school-classy', 'classic-classy'].includes(skin.id);
+        const life = isBespokeSkin
+            ? (kind === 'spawn' ? 0.55 : (kind === 'death' ? 0.70 : 0.60))
+            : (kind === 'spawn' ? 0.25 : 0.3);
+        const isLegendaryPulse = skin.rarity === 'legendary' || skin.rarity === 'hypercharge' || isBespokeSkin;
 
         explosions.push({
             x: entity.x,
@@ -5892,6 +6263,15 @@ const bolznstienPendingStrikes = [];
         if (isLegendaryPulse) {
             const sparkCount = kind === 'death' ? 18 : (kind === 'takedown' ? 14 : 12);
             const sparkSpeed = kind === 'death' ? 240 : (kind === 'takedown' ? 210 : 180);
+            const bespokeParticleColor = (function() {
+                if (skin.id === 'headless-bolznstien') return kind === 'spawn' ? '#2ecc71' : (kind === 'death' ? '#27ae60' : '#ff7700');
+                if (skin.id === 'boneless-boomarang') return kind === 'spawn' ? '#00f5d4' : (kind === 'death' ? '#e0e6ed' : '#f0f3f6');
+                if (skin.id === 'master-overlord' || skin.id === 'emperor-overlord') return kind === 'spawn' ? '#9b59b6' : (kind === 'death' ? '#2c3e50' : '#f1c40f');
+                if (skin.id === 'pumkinomer' || skin.id === 'gentleman-homer') return kind === 'spawn' ? '#ff7700' : (kind === 'death' ? '#d35400' : (skin.id === 'gentleman-homer' ? '#74b9ff' : '#f39c12'));
+                if (skin.id === 'nightmare-outlit') return kind === 'spawn' ? '#e000ff' : (kind === 'death' ? '#2a1a47' : '#ff007f');
+                if (skin.id === 'icy-zapper-miser') return kind === 'spawn' ? '#e0ffff' : (kind === 'death' ? '#add8e6' : '#00bfff');
+                return kind === 'spawn' ? '#ffb84d' : (kind === 'death' ? '#ff5a1f' : '#ff8c2d');
+            })();
             for (let i = 0; i < sparkCount; i++) {
                 const ang = (Math.PI * 2 * i) / sparkCount + (Math.random() * 0.18 - 0.09);
                 explosions.push({
@@ -5902,9 +6282,7 @@ const bolznstienPendingStrikes = [];
                     radius: kind === 'death' ? 2.5 : 2,
                     life: 0,
                     maxLife: kind === 'death' ? 0.9 : 0.7,
-                    color: skin.id === 'icy-zapper-miser'
-                        ? (kind === 'spawn' ? '#e0ffff' : (kind === 'death' ? '#add8e6' : '#00bfff'))
-                        : (kind === 'spawn' ? '#ffb84d' : (kind === 'death' ? '#ff5a1f' : '#ff8c2d')),
+                    color: bespokeParticleColor,
                     isParticle: true,
                     legendary: true
                 });
@@ -6001,7 +6379,21 @@ const bolznstienPendingStrikes = [];
           {tier:22,title:'Time Fracture',free:{type:'packetSignal',packet:'time',amount:60},premium:{type:'gems',amount:12}},
           {tier:23,title:'Biome Convergence',free:{type:'souls',amount:100},premium:{type:'coins',amount:1400}},
           {tier:24,title:'Final Signal',free:{type:'packetSignal',group:'all',amount:20},premium:{type:'hyperTapper',amount:1}},
-          {tier:25,title:'CORE BREAKER',free:{type:'coins',amount:1600},premium:{type:'profileCosmetic',id:'core_breaker_aura'}}
+          {tier:25,title:'HEADLESS BOLZNSTIEN',free:{type:'coins',amount:1600},premium:{type:'skin',id:'headless-bolznstien',name:'Headless Bolznstien'}}
+      ];
+      const SEASON_4_PASS_ID = 'midnight-swarm-2026-s4';
+      const SEASON_4_NAME = 'Midnight Swarm';
+      const SEASON_4_FEATURED_BRAWLER = 'badbat';
+      const SEASON_4_PASS_TIERS = [
+          {tier:1,title:'Nocturnal Awakening',free:{type:'coins',amount:300},premium:{type:'profileCosmetic',id:'midnight_wings_frame'}},
+          {tier:2,title:'Bat Echoes',free:{type:'souls',amount:30},premium:{type:'gems',amount:5}},
+          {tier:3,title:'Sonic Resonator',free:{type:'coins',amount:400},premium:{type:'tapper',amount:1}},
+          {tier:4,title:'Colony Roost',free:{type:'souls',amount:40},premium:{type:'coins',amount:600}},
+          {tier:5,title:'Punk Studs',free:{type:'gems',amount:5},premium:{type:'profileCosmetic',id:'punk_bat_badge'}},
+          {tier:10,title:'Vampiric Crest',free:{type:'souls',amount:60},premium:{type:'superTapper',amount:1}},
+          {tier:15,title:'Frenzied Wings',free:{type:'coins',amount:800},premium:{type:'hyperTapper',amount:1}},
+          {tier:20,title:'Midnight Swarm Cache',free:{type:'gems',amount:10},premium:{type:'souls',amount:150}},
+          {tier:25,title:'BADBAT UNLOCK',free:{type:'coins',amount:2000},premium:{type:'brawler',id:'badbat',name:'BadBat'}}
       ];
       const SEASON_PREMIUM_UNLOCK_GEMS = 79;
       const SEASON_PREMIUM_UNLOCK_COINS = 6500;
@@ -6420,6 +6812,12 @@ const bolznstienPendingStrikes = [];
           { id:'awake_06', stage:6, kind:'win_match', title:'Lucid Victory', desc:'Win 6 matches.', target:6, rewards:{coins:700,gems:5} },
           { id:'awake_07', stage:7, kind:'deal_damage', title:'Awake Awakenator', desc:'Deal 200,000 damage to awaken him for free.', target:200000, rewards:{coins:800,gems:10,brawlerUnlock:'awakenator'} }
       ];
+      const BONELESS_BOOMARANG_QUESTS = [
+          { id: 'boneless_01', stage: 1, kind: 'play_match', title: 'Skeletal Prelude', desc: 'Play 3 matches in any game mode.', target: 3, rewards: { coins: 350, souls: 25 } },
+          { id: 'boneless_02', stage: 2, kind: 'deal_damage', title: 'Bone Crusher', desc: 'Deal 45,000 damage with any fighter.', target: 45000, rewards: { coins: 500, gems: 5 } },
+          { id: 'boneless_03', stage: 3, kind: 'win_match', title: 'Crypt Conquest', desc: 'Win 4 matches.', target: 4, rewards: { souls: 50, superTappers: 1 } },
+          { id: 'boneless_04', stage: 4, kind: 'defeat_enemies', title: 'Soul Harvest', desc: 'Defeat 18 enemies to claim the Epic Boneless Boomarang skin!', target: 18, rewards: { coins: 1000, gems: 10, skin: 'boneless-boomarang' } }
+      ];
       const COIN_ASCENT_QUESTS = [
           {id:'coin_ascent_01',stage:1,kind:'play_match',title:'Coin Ascent 1',desc:'Play 2 matches.',target:2,rewards:{coins:500}},
           {id:'coin_ascent_02',stage:2,kind:'deal_damage',title:'Coin Ascent 2',desc:'Deal 20,000 damage.',target:20000,rewards:{coins:500}},
@@ -6735,6 +7133,7 @@ const bolznstienPendingStrikes = [];
                   mega: {},
                   brawler: buildBrawlerQuest(),
                   awakenatorJourney: buildQuestBucket(AWAKENATOR_JOURNEY_QUESTS),
+                  bonelessBoomarang: buildQuestBucket(BONELESS_BOOMARANG_QUESTS),
                   coinAscent: buildQuestBucket(COIN_ASCENT_QUESTS),
                   megaKey: getLocalWeekKey(),
                   questXP: 0,
@@ -6751,6 +7150,7 @@ const bolznstienPendingStrikes = [];
           if (!playerData.questBoard.mega) playerData.questBoard.mega = {};
           if (!playerData.questBoard.brawler) playerData.questBoard.brawler = buildBrawlerQuest();
           playerData.questBoard.awakenatorJourney = mergeQuestBucket(playerData.questBoard.awakenatorJourney, AWAKENATOR_JOURNEY_QUESTS);
+          playerData.questBoard.bonelessBoomarang = mergeQuestBucket(playerData.questBoard.bonelessBoomarang, BONELESS_BOOMARANG_QUESTS);
           playerData.questBoard.coinAscent = mergeQuestBucket(playerData.questBoard.coinAscent, COIN_ASCENT_QUESTS);
           if (!playerData.questBoard.megaKey) playerData.questBoard.megaKey = getLocalWeekKey();
           if (!Number.isFinite(playerData.questBoard.questXP)) playerData.questBoard.questXP = 0;
@@ -6849,11 +7249,12 @@ const bolznstienPendingStrikes = [];
                   const limitedReady = isLimitedQuestActive() ? getQuestProgressCount(playerData.questBoard.limited) : 0;
                   const brawlerReady = getQuestProgressCount(playerData.questBoard.brawler);
                   const awakenatorReady = getQuestProgressCount(playerData.questBoard.awakenatorJourney);
+                  const bonelessReady = getQuestProgressCount(playerData.questBoard.bonelessBoomarang);
                   const coinAscentReady = getQuestProgressCount(playerData.questBoard.coinAscent);
                   const fullDamageReady = getFullOnDamageClaimableCount();
                   const seasonReady = getClaimableSeasonRewardCount();
                   const specialReady = getSpecialClaimableCount();
-                  el.textContent = String(dailyReady + weeklyReady + starterReady + limitedReady + brawlerReady + awakenatorReady + coinAscentReady + fullDamageReady + seasonReady + specialReady);
+                  el.textContent = String(dailyReady + weeklyReady + starterReady + limitedReady + brawlerReady + awakenatorReady + bonelessReady + coinAscentReady + fullDamageReady + seasonReady + specialReady);
               }
           } catch (e) {}
       }
@@ -6959,6 +7360,16 @@ const bolznstienPendingStrikes = [];
                   }
               }
           }
+          if (playerData.questBoard.bonelessBoomarang) {
+              const bonelessBucket = playerData.questBoard.bonelessBoomarang;
+              for (const quest of Object.values(bonelessBucket)) {
+                  if (!quest.completed && quest.kind === kind && isQuestStageUnlocked('bonelessBoomarang', bonelessBucket, quest)) {
+                      quest.progress = Math.min(quest.target, (quest.progress || 0) + amount);
+                      quest.completed = quest.progress >= quest.target;
+                      changed = true;
+                  }
+              }
+          }
           if (changed) { saveProgress(); updateQuestBadge(); }
           return changed;
       }
@@ -6981,6 +7392,15 @@ const bolznstienPendingStrikes = [];
               playerData.unlockedBrawlers[rewards.brawlerUnlock] = true;
               spawnFloatingText(innerWidth / 2, 120, `${brawlerData[rewards.brawlerUnlock]?.name || rewards.brawlerUnlock} UNLOCKED!`, '#ffd166');
           }
+          if (rewards.skin) {
+              const skin = skinsDatabase[rewards.skin];
+              if (skin) {
+                  if (!playerData.ownedSkins[skin.brawler]) playerData.ownedSkins[skin.brawler] = [];
+                  if (!playerData.ownedSkins[skin.brawler].includes(skin.id)) playerData.ownedSkins[skin.brawler].push(skin.id);
+                  playerData.selectedSkins[skin.brawler] = skin.id;
+                  spawnFloatingText(innerWidth / 2, 120, `${skin.name || 'SKIN'} UNLOCKED!`, '#00f0ff');
+              }
+          }
           quest.claimed = true;
           if (bucketName === 'brawler' && rewards.brawlerUnlock) playerData.questBoard.brawler = buildBrawlerQuest();
           saveProgress();
@@ -6996,6 +7416,7 @@ const bolznstienPendingStrikes = [];
               if (Number.isFinite(amount) && amount > 0) parts.push(`${amount.toLocaleString()} ${names[amount === 1 ? 0 : 1]}`);
           }
           if (rewards?.brawlerUnlock) parts.push(`Unlock ${brawlerData[rewards.brawlerUnlock]?.name || 'Fighter'}`);
+          if (rewards?.skin) parts.push(`Unlock ${skinsDatabase[rewards.skin]?.name || 'Exclusive Skin'}`);
           return parts.join(' · ') || 'No additional reward';
       }
 
@@ -7101,6 +7522,7 @@ const bolznstienPendingStrikes = [];
                   if (quest.rewards?.hyperTappers) rewardParts.push(`${quest.rewards.hyperTappers} Hyper Tapper`);
                   if (quest.rewards?.questXP) rewardParts.push(`${quest.rewards.questXP} Quest XP`);
                   if (quest.rewards?.brawlerUnlock) rewardParts.push(`Unlock ${brawlerData[quest.rewards.brawlerUnlock]?.name || quest.rewards.brawlerUnlock}`);
+                  if (quest.rewards?.skin) rewardParts.push(`Unlock ${skinsDatabase[quest.rewards.skin]?.name || 'Exclusive Skin'}`);
                   const reward = rewardParts.join(' / ') || 'None';
                   row.style.marginTop = '10px';
                   row.style.padding = '10px';
@@ -7434,6 +7856,7 @@ const bolznstienPendingStrikes = [];
               grid.appendChild(createColumn('Weekly Contracts', 'Refreshes every Thursday', 'weekly'));
               grid.appendChild(createColumn('Fighter Hunt', 'Weekly brawler recruitment', 'brawler'));
               grid.appendChild(createColumn('Awake Awakenator', 'Unlock Awakenator for free', 'awakenatorJourney'));
+              grid.appendChild(createColumn('Boneless Boomarang', '4-stage Epic skin trial', 'bonelessBoomarang'));
               grid.appendChild(createColumn('Coin Ascent', '20-stage coin ladder (10,000 Coins)', 'coinAscent'));
               grid.appendChild(createColumn('Starter Journey', 'One-time onboarding', 'starter'));
               return grid;
@@ -7666,6 +8089,17 @@ const bolznstienPendingStrikes = [];
       }
 
     const brawlerData = {
+      'looma': {
+          name:'Looma', role:'Controller', rarity:'Mythic', color:'#ff69cd',
+          desc:'A dimensional tailor who stitches dangerous thread lines directly across the arena.',
+          attack:'Needlecast', attackDesc:'Fires a long-range needle and plants an anchor. Every second anchor stitches a 4-second thread between them; enemies crossing it take 700 damage and are slowed.',
+          super:'Grand Weave', superDesc:'Throws a giant rotating loom for 5 seconds. Its six spinning threads repeatedly cut enemies caught inside.',
+          hyper:'TANGLED DIMENSION: Needlecast knots burst for 600 damage. Grand Weave gains eight arms, a larger radius, and tugs struck enemies inward.',
+          g1:'Snip Snap (Cut all active threads. Each thread bursts for 600 damage around its midpoint)',
+          g2:'Safety Stitch (Your next completed thread grants allies crossing it 900 shield)',
+          sp1:'Tight Stitch (Thread slows last 1.2 seconds instead of 0.65 seconds)',
+          sp2:'Endless Spool (Threads last 2 seconds longer and each enemy cut heals Looma for 250 HP)'
+      },
       'blinkeye': {
           name: 'BlinkEye',
           role: 'Marksman',
@@ -7703,7 +8137,7 @@ const bolznstienPendingStrikes = [];
           desc: 'A heavy-duty crude refinery engineer who floods the arena with viscous oil slicks, deploys explosive oil barrels, and sparks devastating chain infernos.',
           color: '#f59e0b',
           attack: 'Crude Spray',
-          attackDesc: 'Continuously streams sticky crude oil with a 100-capacity ammo bar. Crude travels farther and quickly settles into oil puddles on impact, while moving leaves an oil trail. Firing oil onto existing oil ignites it into blazing fire dealing 1,250x2 fire damage (2,500 total) and slowing enemies.',
+          attackDesc: 'Continuously streams sticky crude oil with a 120-capacity ammo bar. Crude travels farther and quickly settles into oil puddles on impact, while moving leaves an oil trail. Firing oil onto existing oil ignites it into blazing fire dealing 1,250x2 fire damage (2,500 total) and slowing enemies.',
           super: 'Oil Barrel',
           superDesc: 'Stores and can be used 3 times in a row (up to 5 times in Hypercharge). Deploys a 3,000 HP oil barrel that decays by 500 HP per second (6s lifetime). Upon reaching 0 HP or being destroyed, it ruptures into a ring of oil puddles around it.',
           hyper: 'High-Octane Overdrive: Main attack fires 2 wider purple crude streams per ammo use. Super capacity increases to 5 uses. Barrel destruction ruptures with +40% wider oil spread.',
@@ -7726,6 +8160,23 @@ const bolznstienPendingStrikes = [];
           g2: 'Flux Overcharge (Instantly charges your next attack to maximum orbs with +25% increased projectile size and damage)',
           sp1: 'Ferrous Drag (Enemies caught within the magnetic beacon are slowed by 30% by intense magnetic drag)',
           sp2: 'Kinetic Induction (Every projectile drawn into the magnetic vortex extends its duration by 0.35s and charges Magnatar\'s Super by 4%)'
+      },
+
+      'badbat': {
+          name: 'BadBat',
+          role: 'Damage Dealer',
+          rarity: 'Epic',
+          desc: 'A rebellious gothic punk bat who swings a wooden baseball bat to send sonic ground shockwaves, summoning aggressive ground-walking bats to hunt down and dash at marked prey.',
+          color: '#8a2be2',
+          attack: 'Sonic Ground Wave',
+          attackDesc: 'Slams a wooden baseball bat to unleash a wide ground shockwave (1,400 damage). Hitting an enemy marks them and summons 1 ground walking bat (up to 6 bats max at once). Bats freely roam within 40% range around BadBat, return to BadBat after striking, lock on with laser telegraphs, and dash to bite targets for 300 damage.',
+          super: 'Bat Colony Eruption',
+          superDesc: 'Summons a fierce colony of autonomous walking bats (560 HP each, max 6 bats at once) that roam within 40% range around BadBat, lock onto nearby enemies with telegraph laser lines, and dash to strike for 300 damage.',
+          hyper: 'Nocturnal Swarm: Main attack shockwave widens continuously as it travels forward. Summons max 6 persistent walking bats that roam within 40% range and attack relentlessly until destroyed. Bat strikes generate life-essence orbs returning +300 shield to BadBat.',
+          g1: 'Wide Resonator (Next Sonic Ground Wave shockwave is 100% wider for 2 seconds)',
+          g2: 'Colony Ward (Grants all currently active bats an immediate 1,000 HP overshield)',
+          sp1: 'Bat Bite Feast (Roaming and swarm bats heal BadBat for 50% of the damage dealt – +150 HP per strike)',
+          sp2: 'Frenzied Wings (Increases bat frenzy, reducing the attack interval from 1.4s down to 0.9s)'
       },
 
       'rager': {
@@ -7894,11 +8345,11 @@ const bolznstienPendingStrikes = [];
       },
 
       'unopcoloco': { name: 'UnoPcoLoco', role: 'Support', desc: 'Leaping scarf attack and healing whacks.', color: '#ff4d4d', attack: 'Scarf & Whack (1-2-3 combo)', attackDesc: 'Fires a locking scarf, followed by 2 short-range glove whacks that heal you.', super: 'Scarf Clonin (Jump & drop clones)', superDesc: 'Jumps with a scarf and drops 3 clones at the landing spot.', hyper: 'Super clones drop faster and deal more damage.', g1: 'Scarf Switch (Next attack is scarf)', g2: 'Stretchy Scarf (+30% range/heal)', sp1: 'Heavy Scarf (Jump does 50% splash)', sp2: 'Extra Clone (Super drops an extra clone at start)' },
-      'dashaholic': { name: 'Dashaholic', role: 'Assassin', desc: 'Slashes through enemies with piercing claws and dashes rapidly across the battlefield.', color: '#00ffcc', attack: 'Claw Slash', attackDesc: 'A piercing slash that damages all enemies in its path exactly once.', super: 'Unleash the Dashaholic', superDesc: 'Dashes forward at high speed, slashing anyone you pass through.', hyper: 'Super hits 3 times rapidly and stuns. Main attack fires a massive sweeping slash.', g1: 'Phase Dash (Short directional teleport)', g2: 'Adrenaline (Heal 1500 HP & Reload 1 ammo)', sp1: 'Vampiric Claws (Heal 15% from main attack)', sp2: 'Deep Cuts (Super leaves enemies bleeding)' },
+      'dashaholic': { name: 'Dashaholic', role: 'Assassin', desc: 'Slashes through enemies with piercing claws and stores two rapid Super dashes.', color: '#00ffcc', attack: 'Claw Slash', attackDesc: 'A wide piercing slash whose real hitbox matches its aiming cone.', super: 'Unleash the Dashaholic', superDesc: 'Stores 2 uses per full charge. Each use dashes forward and slashes enemies in the path.', hyper: 'Super hits 3 times rapidly and stuns. Main attack becomes Afterimage Crosscut: a larger, longer slash returns for a second 55%-damage hit.', g1: 'Phase Dash (Short directional teleport)', g2: 'Adrenaline (Heal 1200 HP & Reload 1 ammo)', sp1: 'Vampiric Claws (Heal 15% from main attack)', sp2: 'Deep Cuts (Super leaves enemies bleeding)' },
       'trapper': { name: 'Trapper', role: 'Controller', desc: 'Drops gates and musical fences to lock down zones.', color: '#5a7bff', attack: 'Slam Gate', attackDesc: 'Shoots a cone gate. Hit: burst damage + knockback. Miss: gate remains as a short wall.', super: 'Sound Fence', superDesc: 'Spawns a rectangular fence that traps enemies for a short duration and deals continuous music damage.', hyper: 'Double Gate: Slam Gate launches two parallel gates and roots struck enemies for 0.7s. Fence becomes larger, speeds allies and amplifies enemy damage taken.', g1: 'Bass Blast (Nearby knockback pulse)', g2: 'Quick Patch (Instant heal)', sp1: 'Encore Set (Super lasts longer)', sp2: 'Rhythm Rush (Gain speed after landing Slam)' },
       'classy': { name: 'Classy', role: 'Marksman', desc: 'Fires a fast burst of notes. Hits fill a Symphony bar. Full Symphony turns attacks gold and homing.', color: '#d4af37', attack: 'Note Burst', attackDesc: 'Fires 7 notes. Hits fill a Symphony bar. When full, next attack is gold and homes.', super: 'Bass Drop', superDesc: 'Drops an 8500 HP speaker. Near it, Classy fires 8 larger notes.', hyper: 'Attacks pierce. Speaker shoots at nearby enemies.', g1: 'Tuning Up (Instantly fills half Symphony)', g2: 'Fanfare (Fires notes in a wide fan)', sp1: 'Crescendo (Damage up per consecutive hit)', sp2: 'The Show Must Go On (Refills Symphony if speaker destroyed)' },
       'hyperorigin': { name: 'Hyperorigin', role: 'Tank', desc: 'A seismic tank that stores Origin Energy with each hit and detonates it in a purple shockwave super.', color: '#a66bff', attack: 'Origin Slam', attackDesc: 'After a short delay, slams 4 tiles in a straight line. Each enemy hit grants +1 Origin Energy.', super: 'Purple Unleashed', superDesc: 'Consumes all Origin Energy in a 360 smash. Enemies are suspended for 1s, then slammed down.', hyper: 'Become My Weakling: Main attacks weaken enemy damage by 40% for 1.2s. Super launches 3 mining fissures that each explode twice. Suspend has a brief warning telegraph before lift.', g1: 'Core Clamp (+3 Origin Energy)', g2: 'Fault Step (short dash + shield)', sp1: 'Gravity Core (wider, longer suspend super)', sp2: 'Deep Mantle (damage reduction at 5+ Energy)' },
-      'heater_miser': { name: 'Heater Miser', role: 'Support', desc: 'Latches a thermal beam to one target to ramp damage or healing over time.', color: '#ff8a5b', attack: 'Thermal Tether', attackDesc: 'Latch a beam to one ally or enemy. Ticks every 0.30s and ramps through 7 stages while connected.', super: 'Intergalactic Heat', superDesc: 'Launch a furnace that creates a 3.5-tile slow zone for 4s and deals 1200 damage over 3s to enemies inside.', hyper: 'Beam starts at the 300 ramp value. Furnace super also pulls enemies to center.', g1: 'Heat Valve (next tether hit gains burst + fast ramp start)', g2: 'Flux Splitter (tether chains to nearby target)', sp1: 'Thermal Reserve (stronger tether healing)', sp2: 'Combustion Core (larger, stronger furnace zone)' },
+      'heater_miser': { name: 'Heater Miser', role: 'Support', desc: 'Latches a thermal beam to one target to ramp damage or healing over time.', color: '#ff8a5b', attack: 'Thermal Tether', attackDesc: 'Latch a 5.4-tile beam to one ally or enemy. Ticks every 0.30s and ramps through 7 stronger stages while connected.', super: 'Intergalactic Heat', superDesc: 'Launch a furnace that creates a 3.5-tile slow zone for 4s and deals strong damage over 3s to enemies inside.', hyper: 'Beam begins partway through its ramp. Furnace super also pulls enemies to center.', g1: 'Heat Valve (next tether hit gains burst + fast ramp start)', g2: 'Flux Splitter (tether chains to nearby target)', sp1: 'Thermal Reserve (stronger tether healing)', sp2: 'Combustion Core (larger, stronger furnace zone)' },
       'minigunnin': { name: 'Minigunnin', role: 'Tank', desc: 'Hold to fire a massive cone of bullets. Gains Max HP on hit.', color: '#aaaaaa', attack: 'Minigun', attackDesc: 'Fires 20 larger bullets over 5 seconds in a tighter cone with slightly reduced range. Gets faster while firing.', super: 'Healing Fort', superDesc: 'Deploys a healing device surrounded by breakable walls.', hyper: 'Fort becomes a turret. Attack shoots 30% faster, 20% less spread, +1 bullet per shot.', g1: 'Overclock (Instant reload & burst)', g2: 'Fortify (Sacrifice 1000 Max HP for 3000 HP)', sp1: 'Desperate Measures (+175% HP gain below 30% ammo)', sp2: 'Ramp Up (Move faster while firing)' },
       'steamer': { name: 'Steamer', role: 'Controller', desc: 'Pressure engineer with a continuous steam bar and precision sweet-spot damage.', color: '#7fd3ff', attack: 'Steam Lance', attackDesc: 'Sprays a pressurized volumetric steam cone. Damage is highest in the sweet spot and slows by 10% at max range.', super: 'Railroad', superDesc: 'Starts match with 5 Super charges. Hold & aim Super to throw Steam Poles (up to 5). Tap Super / press E to Railroad Dash through placed poles in a high-speed circuit.', hyper: 'Overdrive Engine: Steamer rushes back and forth 2 times across tracks at blinding speed. Placed poles continuously vent boiling steam from their sides and violently explode with steam bursts as Steamer passes through them.', g1: 'Pressure Valve (Knockback burst + refill 50% ammo)', g2: 'Express Track (+25% speed and mobile pole placement)', sp1: 'Boiler Room Heat (Scald enemies kept in sweet spot for 1.5s with boiling steam)', sp2: 'Perfect Conductor (30% shield during super, steam trail lasts +1.5s)' },
       'bowlin_rida': { name: 'The Rida', role: 'Assassin', desc: 'Roll around the map like a bowling ball, gaining speed and knocking down pins!', color: '#ff3300', attack: 'Bowling Roll', attackDesc: 'Using ammo gives you an instant speed boost. Dealing damage by rolling into enemies.', super: 'Pin Strike', superDesc: 'Launch a massive bowling ball attack, becoming untargetable while dropping pins.', hyper: 'Super lasts 8s and drops more pins. Attack gains speed 20% faster.', g1: 'Drift Boost (Instant max speed & reload)', g2: 'Flame Shield (Heal 50% from next hit)', sp1: 'Scorching Trails (Leave fire trail at max speed)', sp2: 'Heavy Landing (Stun and damage when flight ends)' },
@@ -7913,7 +8364,7 @@ const bolznstienPendingStrikes = [];
       'peter_pickle': { name:'Peter Pickle', role:'Controller', desc:'A streak-based pickle thrower who fills the battlefield with living pickles.', color:'#79d66f', attack:'Pickle Pitch', attackDesc:'Fire a 1280-damage pickle. Consecutive hits grow its size by 30%, up to 420%; misses remove 2 streaks.', super:"Petah's Pickles", superDesc:'Throw 3 jars. Each jar spawns 4 living pickles, then disappears.', hyper:'Pickle Overflow: main attacks fire at maximum size. Super throws 6 double-HP jars.', g1:'Brine Boost (Next main attack gains one extra size stage)', g2:'Pocket Jar (Place a 1518 HP jar that releases 2 pickles)', sp1:'Perfect Pickle (Maximum-size attacks deal 12% more damage)', sp2:'Preserved Jars (Jars spawn a fifth pickle, with a slower 1.3s interval)' },
       'unstable': { name:'Unstable', role:'Controller', desc:'A genome summoner whose decaying containers release walking DNA.', color:'#52ddb3', attack:'Containment Failure', attackDesc:'Throw an 850 HP container. It loses a fixed 150 HP once per second and releases 3 walking DNA when destroyed. Maximum 3 main containers.', super:'Going Unstable', superDesc:'Spin and throw 6 containers that automatically open after 1.2 seconds. Their DNA has 1500 HP.', hyper:'Genome Overload: main attack throws 2 containers. Super throws 8 containers whose DNA has 1800 HP; DNA effects are doubled.', g1:'Forced Mutation (Destroy your oldest container and release its DNA immediately)', g2:'Loose Sample (Spawn walking DNA beside Unstable; owner pickup grants 8% max HP)', sp1:'Reinforced Containment (Container HP 850 > 1200)', sp2:'Hostile Genome (DNA deals 20% more damage to enemies)' },
       'homer': { name:'Homer', role:'Marksman', desc:'A learning sniper whose shots become better at tracking targets after every Super.', color:'#66d9ff', attack:'Learning Shot', attackDesc:'Fire a long-range 1800-damage sniper shot. Its homing starts at 10% and improves after using Super, up to 70%.', super:'Targeting Pair', superDesc:'Fire 2 fully homing projectiles and permanently improve main-attack homing by 8%.', hyper:'Perfect Lock: main attacks have at least 95% homing and Super fires 4 fully homing projectiles.', g1:'Perfect Read (Next main attack has 100% homing)', g2:'Live Calibration (Gain 20% homing for 6 seconds)', sp1:'Advanced Learning (Super improves homing by 12% instead of 8%; highly trained shots deal 12% more damage)', sp2:'Persistent Memory (Retain more targeting knowledge after being defeated)' },
-      'orbo': { name:'Orbo', role:'Marksman', desc:'A cosmic marksman who braids multiple orbs through one another across extreme range.', color:'#8b7dff', attack:'Crisscross Orbit', attackDesc:'Fire 4 weaving 575-damage orbs that crisscross four times over a very long path.', super:'Orbital Horizon', superDesc:'Launch a massive piercing orb through walls to the edge of the map.', hyper:'Total Orbit: main attack fires 6 orbs with double range. Super fires 3 massive orbs and each returns.', g1:'Dense Orbit (Next volley is wider, larger, and piercing)', g2:'Orbital Skip (Blink 240 units toward your aim and gain a 900 shield)', sp1:'Orb Resonance (Repeated hits from one volley deal 18% more damage)', sp2:'Gravity Horizon (Super slows enemies for 1.2 seconds)' },
+      'orbo': { name:'Orbo', role:'Marksman', desc:'A cosmic marksman who braids multiple orbs through one another across extreme range.', color:'#8b7dff', attack:'Crisscross Orbit', attackDesc:'Fire 4 weaving 575-damage orbs that crisscross four times over a very long path.', super:'Cosmic Candy Cannon', superDesc:'Charge briefly, then fire a blisteringly fast cosmic candy bolt across the entire map. It pierces every enemy and wall for 3700 damage.', hyper:'Total Orbit: main attack fires 6 orbs with double range. Cosmic Candy Cannon fires 3 returning candy bolts; each deals 2600 damage.', g1:'Dense Orbit (Next volley is wider, larger, and piercing)', g2:'Orbital Skip (Blink 240 units toward your aim and gain a 900 shield)', sp1:'Orb Resonance (Repeated hits from one volley deal 18% more damage)', sp2:'Gravity Horizon (Super slows enemies for 1.2 seconds)' },
       'predator': { name:'Predator', role:'Assassin', desc:'A close-range hunter who leaps through prey and pins a chosen target with repeated claw strikes.', color:'#a8d63f', attack:'Through the Prey', attackDesc:'Lock onto a nearby enemy and leap through them for 1850 damage. Without a target, leap a short distance.', super:'No Escape', superDesc:'Leap onto a target, stun them, and claw them 4 times while attached.', hyper:'Cross Hunt: main-attack impact also slashes sideways. Super slows its target after locking on.', g1:'Long Hunt (Next main attack has 35% more lock range)', g2:'Shed Skin (Cleanse movement control and recover 1000 HP)', sp1:'Crippling Pounce (Main attack slows its target for 1 second)', sp2:'Extra Claw (Super attacks 5 times instead of 4)' },
       'fuser': { name:'Fuser', role:'Damage Dealer', desc:'Outlit\'s evil twin fires a rapid eighteen-round burst down two parallel firing lanes.', color:'#ff4d6d', attack:'Eighteen-Fuse Salvo', attackDesc:'Fires 18 rapid bullets with 30% larger hitboxes in alternating parallel left and right lanes with +50% faster unload and +50% projectile speed.', super:'Wall-Fuser Barrage', superDesc:'Fires 14 massive piercing bullets (+96% total size) that break through walls with +50% projectile speed.', hyper:'Return to Sender: Super bullets return. Main attack unloads 50% faster with its two lanes clamped closer together, but its bullets never return.', g1:'Crossed Wires (Next attack swaps the left/right firing order and deals +20% damage)', g2:'Spare Magazine (Instantly reload 2 ammo)', sp1:'Live Fuse (Straight bullets explode at maximum range)', sp2:'Family Grudge (+12% damage to nearby enemies)' },
       'robber': { name:'Robber', role:'Skirmisher', desc:'A coin thief who snowballs every successful hit into a faster, larger stolen-coin barrage.', color:'#d9b44a', attack:'Stolen Fortune', attackDesc:'Starts with 1 row of coins. Every hit adds another row, up to 6; later rows travel faster.', super:'Grand Theft Ammo', superDesc:'Dash through an enemy and steal all of their ammo. Stealing 3 ammo expands Robber from 3 to as many as 6 ammo.', hyper:'Perfect Heist: Main attack always fires 8 rows. Super siphons 1 ammo per second for 3 seconds and can expand Robber to 7 ammo.', g1:'Smoke Bomb (Gain a 1600 shield after the next Super dash)', g2:'Counterfeit Stack (Instantly add 2 attack rows)', sp1:'Compound Interest (First hit adds 2 rows)', sp2:'Quick Hands (Stolen ammo reloads 25% faster)' },
@@ -7922,12 +8373,12 @@ const bolznstienPendingStrikes = [];
       'chickpig': { name:'Chickpig', role:'Controller / Summoner', desc:'A farmyard fighter serving poisonous eggs, rooting bacon, a rideable chicken and a ramming pig.', color:'#f2b35e', attack:'Breakfast Blast', attackDesc:'Fire cooked egg and bacon together. Egg poisons; bacon roots enemies for 0.6 seconds.', super:'Farmyard Rush', superDesc:'Ride a chicken for 40% extra speed for 5 seconds and summon a 4100 HP pig that repeatedly rams enemies.', hyper:'Breakfast Stampede: Eggs leave 2-second poison areas, bacon burns for 2 seconds, chicken grants 50% speed for 8 seconds, and the pig has 40% damage resistance while charging.', g1:'Sunny Side Up (Next egg heals 1200 on hit)', g2:'Grease Trap (Drop bacon grease that roots the next enemy)', sp1:'Thicker Bacon (Bacon root lasts 0.25s longer)', sp2:'Free Range (Chicken ride also grants 15% reload speed)' },
       'chickpig_pig': { name:'Ramming Pig', role:'Summon', color:'#ef8d93' },
       'upiedown': { name:'Upiedown', role:'Thrower / Controller', desc:'A pie-flinging baker who turns the entire arena upside down.', color:'#e69a63', attack:'Pie in the Sky', attackDesc:'Lob a larger 1700-damage pie. Its impact launches 4 mini pies outward; each explodes on contact or at maximum range.', super:'Upside-Down Pie', superDesc:'Flip the battlefield for 3 seconds. Enemies move 28% slower while Upiedown reloads 15% faster.', hyper:'Blueberry Breakdown: Main pies release 7 mini pies. The flipped arena becomes blueberry pie and poisons enemies for 5 seconds.', g1:'Fresh Filling (Next large pie heals Upiedown for 1200)', g2:'Pie Face (Burst nearby enemies back with a pie explosion)', sp1:'Second Slice (Mini-pie explosions are 20% larger)', sp2:'No Crust Left (Hitting all 4 mini pies restores 1 ammo)' },
-      'relay': { name:'Relay', role:'Support', desc:'A fragile shield engineer who reroutes incoming damage into a powerful linked device.', color:'#35d7e8', attack:'Shield Signal', attackDesc:'Fire a short-range orb for 1150 damage. Enemy hits grant Relay a 2000 shield; ally hits grant both Relay and that ally 2000 shield. Relay shields can reach 8500.', super:'Move My Damage', superDesc:'Deploy a 12000 HP Relay Device. While connected, 75% of damage aimed at Relay is moved into the device.', hyper:'Total Transfer: Shield Signal grants 2500 shield. The device has 16000 HP and takes 90% of Relay damage.', g1:'Emergency Transfer (Move up to 2000 of your shield into device HP)', g2:'Shared Connection (Nearest ally gains 50% damage transfer for 3s)', sp1:'Reinforced Signal (+25% device connection radius)', sp2:'Return to Sender (Destroyed device gives nearby allies 1500 shield)' },
+      'relay': { name:'Relay', role:'Support', desc:'A fragile shield engineer who reroutes incoming damage into a powerful linked device.', color:'#35d7e8', attack:'Shield Signal', attackDesc:'Fire a short-range orb for 1150 damage. Enemy hits grant Relay a 1400 shield; ally hits grant both Relay and that ally 1400 shield. Relay shields can reach 8500.', super:'Move My Damage', superDesc:'Deploy a 12000 HP Relay Device. While connected, 50% of damage aimed at Relay and nearby allies is moved into the device.', hyper:'Total Transfer: Shield Signal grants 1750 shield. The device has 16000 HP and takes 80% of team damage.', g1:'Emergency Transfer (Move up to 2000 of your shield into device HP)', g2:'Shared Connection (Nearest ally gains 50% damage transfer for 3s)', sp1:'Reinforced Signal (+25% device connection radius)', sp2:'Return to Sender (Destroyed device gives nearby allies 1500 shield)' },
       'warrior': { name:'Warrior', role:'Damage Dealer', desc:'A disciplined spear thrower who becomes a rapid-fire artillery fighter during Final Stand.', color:'#d9a441', attack:'Twin Spears', attackDesc:'Lobs 2 parallel spears over walls to an aimed landing area. Each spear deals 900 damage at Power 11.', super:'Final Stand', superDesc:'For 3 seconds, move 70% slower, reload 125% faster, and throw 3 spears per attack.', hyper:'Army of One: Final Stand throws 6 spears at 15% lower direct damage and only slows Warrior by 25%. Main attack landings explode for 280 area damage.', g1:'Spear Rain (Airborne spears land immediately with 20% less damage)', g2:'Battle Rush (Ignore Final Stand slow for 1.5s and reload 1 ammo)', sp1:'Perfect Formation (Two spears landing on one enemy deals 300 bonus damage)', sp2:'Hold the Line (20% damage reduction during Final Stand)' },
       'angel': { name:'Angel', role:'Support', desc:'A guardian support who lifts allies out of danger and denies lethal damage.', color:'#fff0a8', attack:'Guiding Light', attackDesc:'A light shot that damages and slows enemies, or heals and briefly lifts teammates.', super:'Second Life', superDesc:'Gain a 6-second blessing. Lethal damage restores about 75% max HP and grants 800ms of invulnerability.', hyper:'Team Takeback: Second Life protects the whole team for 5 seconds. Guiding Light fires a rapid triple burst.', g1:'Guardian Swap (Give Second Life to the nearest teammate)', g2:'Emergency Landing (Land lifted allies, heal 1600 and grant speed)', sp1:'Blessed Flight (Lifted allies gain a 900 shield on landing)', sp2:'Final Judgment (Second Life activation damages and knocks back nearby enemies)' },
       'demon': { name:'Demon', role:'Assassin', desc:'A demonic blade assassin who recalls his weapon or glides to its landing point.', color:'#d44763', attack:'Hellblade', attackDesc:'Throw a blade. For 1 second after it lands, move toward it to glide and retrieve it; otherwise it recalls and damages again.', super:'Demonic Doom', superDesc:'Create three blade clones that hook up to three enemies and pull them toward Demon.', hyper:'Doom’s Embrace: Fire a second spectral blade. During Demonic Doom’s pull, Demon gains 60% damage reduction.', g1:'Blade Swap (Instantly teleport to the grounded blade)', g2:'Barbed Recall (Next recall slows and heals on hit)', sp1:'Cut Both Ways (Outgoing plus returning hit deals 700 bonus)', sp2:'Hellbound Landing (Gliding grants a 1400 shield)' },
       'paradox': { name: 'Paradox', role: 'Controller', desc: 'A legendary Time Weaver who tunnels space-time, slows enemy fire, and rewinds position.', color: '#a8a2ff', attack: 'Temporal Skip', attackDesc: 'Fires a skip shot. Disappears instantly and teleports to max range, detonating in a splash explosion.', super: 'Relativity Zone', superDesc: 'Aim and place a large dome. Allied shots fly 10% faster; enemy shots fly 30% slower and track 30% less accurately.', hyper: 'Double Paradox: Places a stationary dome at the aim point and attaches a second mobile dome to Paradox. Attack skips twice as fast and stuns for 0.5s.', g1: 'Chronoshift (Rewind position 2 seconds ago and heal 1500 HP)', g2: 'Paradox Charge (Next attack sweeps full path for double damage)', sp1: 'Quantum Tangle (Skipped middle path pulls enemies towards explosion)', sp2: 'Temporal Fracture (Using Super grants 8s of side shots and a piercing middle sweep)' },
-      'beam': { name: 'Beam', role: 'Damage Dealer', desc: 'A continuous laser weapon that ramps up damage the longer it hits.', color: '#ffd700', attack: 'Focus Beam', attackDesc: 'Fires a continuous laser. Damage ramps up through 6 stages while firing.', super: 'The Golden Beam', superDesc: 'Turns the beam golden! Enemies hit are stunned for 0.75s.', hyper: 'Purple Ray of Roar: +23% range, faster ramp, last 25% ammo does +50% dmg.', g1: 'Prism Split (Wide 3-laser cone)', g2: 'Emergency Cooling (Consume 30% ammo to heal 2000 HP)', sp1: 'Thermal Resonance (25% shield at max ramp)', sp2: 'Overload Residue (Super leaves a burning trail)' },
+      'beam': { name: 'Beam', role: 'Damage Dealer', desc: 'A continuous laser weapon that ramps up damage the longer it hits.', color: '#ffd700', attack: 'Focus Beam', attackDesc: 'Fires a continuous laser. Damage ramps up through 6 stages while firing.', super: 'The Golden Beam', superDesc: 'Turns the beam golden! Grants +20% movement speed, refuels ammo, and stuns enemies hit for 0.75s.', hyper: 'Purple Ray of Roar: +23% range, faster ramp, last 25% ammo does +50% dmg.', g1: 'Prism Split (Wide 3-laser cone for 4s)', g2: 'Emergency Cooling (Consume 30% ammo to heal 2000 HP)', sp1: 'Thermal Resonance (25% shield at max ramp)', sp2: 'Crystal Refraction (+30% dmg to slowed targets & refracts into secondary lasers on wall/crystal hit)' },
       'outlit': { name: 'Outlit', role: 'Close-range', desc: 'Shotgun blast with strong point-blank damage.', color: '#ff9b42', attack: 'Scatter Pump', attackDesc: 'A compact shotgun blast with a tight spread and strong point-blank damage.', super: 'Boom Break', superDesc: 'Fires 3 oversized shock pellets that smoothly knock enemies back. Hitting metal arcs through up to 5 walls for 90%, 80%, 70%, 60%, then 50% damage.', hyper: 'Boom Break pierces enemies; Scatter Pump becomes tighter and faster.', g1: 'Next Shot Pierce', g2: 'Healing Pod', sp1: 'Shell Chill (Slows)', sp2: 'Long Boom (+35% Super Range)' },
       'echo': { name: 'Echo', role: 'Controller', desc: 'Fires expanding sound rings that control the battlefield.', color: '#ccaaff', attack: 'Sound Wave', attackDesc: 'Shoots a ring that grows in size as it travels.', super: 'Resonance', superDesc: 'Unleashes massive sound waves that pierce through enemies.', hyper: 'Super sound rings expand twice for double hits.', g1: 'Amplify (Bigger ring, less dmg)', g2: 'Shielding (Take reduced damage)', sp1: 'Reverb Heal (Heal 334 HP on hit)', sp2: 'Double Wave (Super shoots backwards too)' },
       'cheseypuff': { name: 'Cheseypuff', role: 'Marksman', desc: 'Long-range sniper that evolves projectiles.', color: '#ffdc78', attack: 'Cheese Ball', attackDesc: 'Fires a multi-stage projectile with 35% more range and 30% larger stages.', super: 'Cheese Aura', superDesc: 'Gains 30% damage reduction and damages nearby enemies over time.', hyper: 'Extra Aged: Cheese Ball no longer shrinks and its final stage bursts for 650 damage. Super lasts longer with 50% damage reduction and a trailing aura.', g1: 'Big Puff (Empowered shot)', g2: 'Cheese Trap (Slow field)', sp1: 'Sticky Cheese (Super drops fields)', sp2: 'Aged Cheese (Third attack stage)' },
@@ -7951,7 +8402,7 @@ const bolznstienPendingStrikes = [];
         'beast': { name: 'Beast', role: 'Assassin', desc: 'A feral claw fighter that slashes diagonally and transforms into a stronger beast.', color: '#ff3d6e', attack: 'Twin Claws', attackDesc: 'Alternating diagonal claw swipes that carve from right-to-left and left-to-right.', super: 'Unleash the Beast', superDesc: 'Transforms after 0.70 seconds for about 7 seconds. Beast form grants 15% max HP, 25% movement speed, poison claws, and split claws. You remain vulnerable during the transform.', hyper: 'Beast form lasts about 9 seconds with 35% movement speed. Main claws gain +20% range and split into 2 sideways claws on hit.', g1: 'Rending Grip (Next claw slows)', g2: 'Savage Surge (Start Beast mode with a speed burst)', sp1: 'Razor Pounce (Main attack gains tiny knockback)', sp2: 'Predator Instinct (Gain ammo on Beast hits)' },
             'amplifier': { name: 'Amplifier', role: 'Support', desc: 'Drops toolboxes and screws that swing fights with buff and debuff zones.', color: '#ffc04d', attack: 'Ampifin', attackDesc: 'Throws a toolbox. It drops for 2s at max range. Ally pickup: +15% damage for 1.7s. Enemy hit or touch: -15% damage for 1.3s.', super: 'Screws and Nuts', superDesc: 'Deploys a 5400 HP screw with a zone: allies +10% damage and +30% speed. Enemies -10% damage and -12% speed.', hyper: 'Power Tool: Ampifin grows 35%, pierces one enemy and drops 2.5s mini screw zones that cut enemy damage by 20%. The Super screw also gains +30% HP and shield ticks.', g1: 'Torque Snap (Next Ampifin applies stronger, longer damage-down)', g2: 'Quick Wrench (Instant heal, speed boost, 900 shield and drop a toolbox)', sp1: 'Overtighten (Screw zone buffs/debuffs are stronger)', sp2: 'Stabilizer (Larger screw zone and screw self-repairs over time)' },
             'skeleflying': { name: 'Skeleflying', role: 'Controller', desc: 'Drops explosive para-shoots and summons skyfall skeletroopers.', color: '#cfd4ff', attack: 'Para-Shoot Barrage', attackDesc: 'Fires 3 para-shoots in a cone. They fall and explode on landing.', super: 'Comin Down!', superDesc: 'Open 3 sky portals. Skeletroopers descend for 4s with visible landing spots, then land with mini swords and chase the nearest enemy.', hyper: 'Homin Skeles: troopers retarget while descending. Main attack also spawns a skeletrooper on each landing.', g1: 'Bone Beacon (Next attack para-shoots home and fly farther)', g2: 'Reinforce Drop (Spawn a skeletrooper at your feet with a short shield)', sp1: 'Heavy Bones (Troopers gain HP and sword damage)', sp2: 'Swift Chutes (Main and super land faster)' },
-            'crystila': { name: 'Crystila', role: 'Marksman', desc: 'Anime crystal duelist with shrinking arm shots and a reflective glass super.', color: '#86d7ff', attack: 'Crystal Arms: Detach!', attackDesc: 'Launches a crystal arm that shrinks while traveling. On hit, after 0.22s, a follow-up shard lunges forward for 50% distance.', super: 'Crystal Glass: Explode!', superDesc: 'Summons a moving glass reflector for 4s. Front-facing by default, reflects incoming projectiles and absorbs up to 6800 damage.', hyper: 'Overreflective: Main attack gains an extra returning crystal layer. Super becomes 360° and absorbs 13000 damage.', g1: 'Prism Edge (Next attack pierces and follow-up travels farther)', g2: 'Polish Guard (Repair glass HP or gain instant shield)', sp1: 'Shatter Chill (Reflected/follow-up shots slow)', sp2: 'Tempered Glass (+20% glass HP and +1s duration)' },
+            'crystila': { name: 'Crystila', role: 'Marksman', desc: 'Anime crystal duelist with shrinking arm shots and a reflective glass super.', color: '#86d7ff', attack: 'Crystal Arms: Detach!', attackDesc: 'Launches a crystal arm that shrinks while traveling. On hit, after 0.22s, a follow-up shard lunges forward for 50% distance.', super: 'Crystal Glass: Explode!', superDesc: 'Summons a persistent glass reflector. Front-facing by default, reflects incoming projectiles and absorbs up to 4000 damage.', hyper: 'Overreflective: Main attack gains an extra returning crystal layer. Super becomes 360°, absorbs 5000 damage, and is completely invulnerable for the first 3 seconds.', g1: 'Prism Edge (Next attack pierces and follow-up travels farther)', g2: 'Polish Guard (Repair glass HP or gain instant shield)', sp1: 'Shatter Chill (Reflected/follow-up shots slow)', sp2: 'Tempered Glass (+20% glass HP)' },
             'hope': { name: 'Hope', role: 'Marksman', desc: 'An emotional brawler whose attacks scale with her own HP — the more hope she has, the harder she hits.', color: '#ffd6ec', attack: 'Hopeful Shot', attackDesc: "Fires a glowing orb that deals damage equal to a % of the enemy's max HP based on your current HP. At full HP it deals 16% of enemy max HP; less HP means less damage.", super: 'You Broke My Hope', superDesc: 'Unleashes a piercing cry in a cone, stunning all enemies caught in it for 1.5s.', hyper: 'Hope Never Dies! Main attack always deals the Hyper maximum of 18% regardless of current HP. Super cone expands to 180° and stuns for 2s.', g1: 'Rally Cry (Next attack deals damage as if at full HP)', g2: 'Desperate Shield (Gain a shield equal to 25% of your missing HP)', sp1: 'Minimum Hope (Attack always deals at least 7% of enemy max HP)', sp2: 'Hopeful Voice (Super stun lasts +0.5s longer)' },
             'evil_doctor': { name: 'Evil Doctor', role: 'Specialist', desc: 'To infect or not to infect? Hit enemies to poison them or miss to heal yourself.', color: '#00cc66', attack: 'Infectious Shot', attackDesc: 'Fires a syringe. Hit: 600 poison damage ×3 ticks, with 30% less time between ticks. Miss: heal 220 ×4 ticks.', super: 'Spread My Virus!', superDesc: 'Release 6 DNA strands that home onto enemies. Each deals 500 on hit plus fast poison, then disappears.', hyper: 'Main attack applies both effects: poison on hit and heal. Hyper DNA kills release 6 more hyper DNA.', g1: 'Antidote (Cleanse debuffs + heal 1200)', g2: 'Overdose (Next shot adds +1 poison tick)', sp1: 'Chain Reaction (Every kill releases DNA. If it kills, spawn full DNA burst)', sp2: 'Adrenaline Miss (Missed shots give a short speed boost)' },
             'splitter': { name: 'The Splitter', role: 'Thrower', desc: 'A fractal artillery brawler whose shots multiply into precise projectile trees.', color: '#ffd166', attack: 'Fivecracker', attackDesc: 'Fire one non-piercing core that bursts into 5 side fragments on impact or at maximum range.', super: 'Infinite Division', superDesc: 'The core travels only 10% of its old distance before dividing into the immense-range 1 > 2 > 4 > 8 > 16 tree.', hyper: 'Tri-Split: Infinite Division fires in 3 directions around Splitter. Fivecracker opens into a huge five-way side fan.', g1: 'Short Fuse (Next grenade splits faster and blasts wider)', g2: 'Ring Burst (Throw 3 mini split grenades around you)', sp1: 'Heavy Fragments (Split grenades deal +12% damage)', sp2: 'Chain Lob (Main attack range +20%)' },
@@ -8085,7 +8536,7 @@ const bolznstienPendingStrikes = [];
                 color: '#00ff88',
                 desc: 'A cybernetic dart marksman whose attack permanently evolves as he deals damage, growing from a single precision dart into an unstoppable 8-dart volley.',
                 attack: 'Cyber Dart',
-                attackDesc: 'Fires precision darts dealing 320 damage each. Upgrades permanently during the match as damage is dealt: Stage 1 (1 dart), Stage 2 (2 center darts, 18,000 dmg), Stage 3 (+2 diagonal darts, 22,500 dmg), Stage 4 (center x2, left x2, right x2, 29,000 dmg), and Stage 5 (center x4, left x2, right x2 = 8 darts, 38,000 dmg).',
+                attackDesc: 'Fires evolving precision darts. Stage 1 deals 480 damage. Upgrade at 12,000 / 17,000 / 23,000 / 30,000 total damage to unlock increasingly larger multi-dart formations; evolved darts deal 320 damage each.',
                 super: 'Poison Darts',
                 superDesc: 'Empowers main attack with toxic darts for 4.0s (5.0s at Stages 4-5). Poison dart hits stack poison strength up to 1000 poison damage per tick, lasting 2.5s after the latest hit.',
                 hyper: 'Core Recoil: Main attack darts return toward Upgradart after reaching maximum range, dealing 30% damage (96 dmg) on hit. During Power Move, adds +1 dart to every firing direction (up to 11 darts total!).',
@@ -8198,8 +8649,8 @@ const bolznstienPendingStrikes = [];
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller',
-    carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller',
+    carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
         boomer:'Artillery', cluster:'Artillery', evil_doctor:'Artillery', fightnfire:'Artillery', rocketeer:'Artillery', skeleflying:'Artillery', splitter:'Artillery', trapper:'Artillery', upiedown:'Artillery',
@@ -8217,6 +8668,8 @@ const bolznstienPendingStrikes = [];
         rager: '🪓🪵',
     carmela_fudge: '🍬🍫',
     bolznstien: '⚡🧟',
+    badbat: '🦇🏏',
+    looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
         cursed: '🧿',
@@ -8308,21 +8761,28 @@ const bolznstienPendingStrikes = [];
         return brawlerPortraitIcons[brawlerId] || '⭐';
     }
 
-    const CUSTOM_BRAWLER_PORTRAITS = Object.freeze(['upgradart', 'carmela_fudge', 'evil_doctor', 'bouncin_balls', 'minigunnin', 'mageny', 'trampaheal', 'ramage', 'rocketeer', 'sir_cheeseburger', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager']);
+    const CUSTOM_BRAWLER_PORTRAITS = Object.freeze(['upgradart', 'carmela_fudge', 'evil_doctor', 'bouncin_balls', 'minigunnin', 'mageny', 'trampaheal', 'ramage', 'rocketeer', 'sir_cheeseburger', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat']);
     function hasCustomBrawlerPortrait(brawlerId) {
         return !!window.BraweRosterVisuals?.has(brawlerId) || CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId)
             || (brawlerId === 'classy' && getActiveSkinForBrawler('classy')?.id === 'back-to-school-classy')
-            || (brawlerId === 'fuser' && getActiveSkinForBrawler('fuser')?.id === 'hyperfusion-fuser');
+            || (brawlerId === 'fuser' && getActiveSkinForBrawler('fuser')?.id === 'hyperfusion-fuser')
+            || (brawlerId === 'bolznstien' && getActiveSkinForBrawler('bolznstien')?.id === 'headless-bolznstien')
+            || (brawlerId === 'boom_arang' && getActiveSkinForBrawler('boom_arang')?.id === 'boneless-boomarang')
+            || (brawlerId === 'overlord' && ['master-overlord', 'emperor-overlord'].includes(getActiveSkinForBrawler('overlord')?.id))
+            || (brawlerId === 'homer' && ['pumkinomer', 'gentleman-homer'].includes(getActiveSkinForBrawler('homer')?.id))
+            || (brawlerId === 'outlit' && getActiveSkinForBrawler('outlit')?.id === 'nightmare-outlit');
     }
     function getBrawlerPortraitMarkup(brawlerId) {
         if (!hasCustomBrawlerPortrait(brawlerId)) return getBrawlerPortraitIcon(brawlerId);
         const visualSkin = getActiveSkinForBrawler(brawlerId)?.id;
-        const bespokeSkin = (brawlerId === 'classy' && visualSkin === 'back-to-school-classy') || (brawlerId === 'fuser' && visualSkin === 'hyperfusion-fuser');
+        const bespokeSkin = (brawlerId === 'classy' && visualSkin === 'back-to-school-classy') || (brawlerId === 'fuser' && visualSkin === 'hyperfusion-fuser') || (brawlerId === 'boom_arang' && visualSkin === 'boneless-boomarang');
         if (!CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId) && !bespokeSkin) {
             return window.BraweRosterVisuals?.portrait(brawlerId, visualSkin) || getBrawlerPortraitIcon(brawlerId);
         }
         const isRankedRocketeer = brawlerId === 'rocketeer' && getActiveSkinForBrawler('rocketeer')?.id === 'ranked-rocketeer';
         const art = {
+            badbat: `<circle cx="50" cy="50" r="34" fill="#181124" stroke="#9d4edd" stroke-width="4"/><polygon points="24,44 14,14 36,28" fill="#241434" stroke="#7b2cbf" stroke-width="2"/><polygon points="76,44 86,14 64,28" fill="#241434" stroke="#7b2cbf" stroke-width="2"/><circle cx="18" cy="22" r="3" fill="none" stroke="#e0e0e0" stroke-width="1.8"/><path d="M28 38 C28 26 72 26 72 38 C72 64 60 76 50 78 C40 76 28 64 28 38 Z" fill="#2e1a42" stroke="#5a189a" stroke-width="2"/><path d="M22 75 L35 62 L50 74 L65 62 L78 75 L84 94 L16 94 Z" fill="#120c18" stroke="#3c096c" stroke-width="2"/><circle cx="30" cy="74" r="2.2" fill="#c77dff"/><circle cx="70" cy="74" r="2.2" fill="#c77dff"/><circle cx="50" cy="78" r="2.2" fill="#c77dff"/><ellipse cx="40" cy="46" rx="5" ry="3.5" fill="#ffea00"/><ellipse cx="60" cy="46" rx="5" ry="3.5" fill="#ffea00"/><circle cx="40" cy="46" r="1.8" fill="#120c18"/><circle cx="60" cy="46" r="1.8" fill="#120c18"/><path d="M47 52 L53 52 L50 56 Z" fill="#ff70a6"/><path d="M44 61 Q50 65 56 61" stroke="#ff70a6" stroke-width="1.5" fill="none"/><polygon points="45,61 47,66 46,61" fill="#ffffff"/><polygon points="55,61 53,66 54,61" fill="#ffffff"/><line x1="72" y1="80" x2="88" y2="34" stroke="#d4a373" stroke-width="6" stroke-linecap="round"/><line x1="72" y1="80" x2="76" y2="68" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round"/>`,
+            boom_arang: `<circle cx="50" cy="50" r="34" fill="#0f1724" stroke="#00f5d4" stroke-width="4"/><circle cx="50" cy="46" r="16" fill="#f5f6fa" stroke="#718093" stroke-width="2"/><circle cx="44" cy="45" r="4" fill="#0f1724"/><circle cx="56" cy="45" r="4" fill="#0f1724"/><circle cx="44" cy="45" r="2" fill="#00f5d4"/><circle cx="56" cy="45" r="2" fill="#00f5d4"/><path d="M46 54 L50 51 L54 54" stroke="#718093" stroke-width="2" fill="none"/><path d="M43 59 Q50 63 57 59" stroke="#718093" stroke-width="2" fill="none"/><path d="M18 28 Q6 48 18 68 Q24 50 18 28 Z" fill="#f5f6fa" stroke="#00f5d4" stroke-width="2"/><circle cx="14" cy="48" r="3" fill="#00f5d4"/><circle cx="18" cy="28" r="3.5" fill="#f5f6fa"/><circle cx="18" cy="68" r="3.5" fill="#f5f6fa"/>`,
             blinkeye: `<circle cx="50" cy="50" r="34" fill="#141a29" stroke="#ffa726" stroke-width="4"/><path d="M15 50 Q50 20 85 50 Q50 80 15 50 Z" fill="#222b40" stroke="#ffb74d" stroke-width="2.5"/><circle cx="50" cy="50" r="16" fill="#fff" stroke="#ffa726" stroke-width="2"/><circle cx="50" cy="50" r="10" fill="#ff7043"/><circle cx="50" cy="50" r="5" fill="#0d1117"/><circle cx="53" cy="47" r="2" fill="#fff"/><line x1="50" y1="26" x2="50" y2="74" stroke="#ffa726" stroke-width="1.5" stroke-dasharray="2,2"/><line x1="26" y1="50" x2="74" y2="50" stroke="#ffa726" stroke-width="1.5" stroke-dasharray="2,2"/>`,
 
                         weefee: `<circle cx="50" cy="50" r="34" fill="#0b1e28" stroke="#00f5d4" stroke-width="4"/><rect x="24" y="38" width="52" height="34" rx="7" fill="#132c3a" stroke="#00f5d4" stroke-width="2.5"/><line x1="33" y1="38" x2="27" y2="20" stroke="#00f5d4" stroke-width="3" stroke-linecap="round"/><circle cx="27" cy="20" r="3.5" fill="#00ff88"/><line x1="67" y1="38" x2="73" y2="20" stroke="#00f5d4" stroke-width="3" stroke-linecap="round"/><circle cx="73" cy="20" r="3.5" fill="#00ff88"/><rect x="33" y="46" width="34" height="18" rx="4" fill="#07141c" stroke="#58f0cf" stroke-width="1.5"/><rect x="37" y="56" width="4" height="5" rx="1" fill="#00ff88"/><rect x="44" y="53" width="4" height="8" rx="1" fill="#00ff88"/><rect x="51" y="50" width="4" height="11" rx="1" fill="#00ff88"/><rect x="58" y="47" width="4" height="14" rx="1" fill="#00ff88"/><circle cx="30" cy="65" r="2" fill="#ff4757"/><circle cx="70" cy="65" r="2" fill="#00f5d4"/>`,
@@ -8535,7 +8995,9 @@ const bolznstienPendingStrikes = [];
         magnatar: ['Projectile Attractor', 'Charge Attack'],
         carmela_fudge: ['Confectionery Stance Swap', 'Sticky Caramel & Chocolate Shell'],
         bolznstien: ['Delayed Sky Strike', 'Electric Damage Debuff'],
-        rager: ['War Totem', 'Knockback Cleave']
+        rager: ['War Totem', 'Knockback Cleave'],
+        badbat: ['Orbiting Bats Swarm', 'Conical Ground Sonic Wave'],
+        looma: ['Persistent Thread Traps', 'Rotating Area Control']
     };
 
     function getBrawlerTraits(id) {
@@ -8954,7 +9416,8 @@ const bolznstienPendingStrikes = [];
         entity.invulnerableUntil = Math.max(entity.invulnerableUntil || 0, now + 1000);
         entity.transformAnimUntil = Math.max(entity.transformAnimUntil || 0, now + 600);
         // Visual effects
-        explosions.push({ x: entity.x, y: entity.y, radius: 80, life: 0, maxLife: 0.6, color: '#caa0ff', legendary: true, fxKind: 'overlord' });
+        const ovSkin = getActiveSkinForBrawler('overlord');
+        explosions.push({ x: entity.x, y: entity.y, radius: 80, life: 0, maxLife: 0.6, color: '#caa0ff', legendary: true, fxKind: 'overlord', skinId: ovSkin?.id });
         explosions.push({ x: entity.x, y: entity.y, radius: 120, life: 0, maxLife: 0.4, color: 'rgba(200,120,255,0.18)' });
         spawnFloatingText(entity.x, entity.y - 30, entity === player ? 'YOU ARE THE OVERLORD' : 'OVERLORD!', '#d9a7ff');
     }
@@ -8963,6 +9426,49 @@ const bolznstienPendingStrikes = [];
   let aliveCount = MAX_BOTS + 1;
   let gameOver = false;
   let matchOver = false;
+  let hypeChainCount = 0;
+  let hypeChainUntil = 0;
+  let hypeChainFlashUntil = 0;
+  const HYPE_CHAIN_WINDOW_MS = 7000;
+
+  function resetHypeChain() {
+      hypeChainCount = 0;
+      hypeChainUntil = 0;
+      hypeChainFlashUntil = 0;
+  }
+
+  function registerHypeChainTakedown(target) {
+      if (!target || target.isDummy || target._hypeChainCounted) return;
+      const now = performance.now();
+      target._hypeChainCounted = true;
+      hypeChainCount = now <= hypeChainUntil ? hypeChainCount + 1 : 1;
+      hypeChainUntil = now + HYPE_CHAIN_WINDOW_MS;
+      hypeChainFlashUntil = now + 650;
+      if (hypeChainCount < 2) return;
+      const callout = hypeChainCount === 2 ? 'DOUBLE BONK!' : hypeChainCount === 3 ? 'TRIPLE TROUBLE!' : hypeChainCount === 4 ? 'FORGE FRENZY!' : 'UNSTOPPABLE x' + hypeChainCount + '!';
+      const color = hypeChainCount === 2 ? '#65f5ff' : hypeChainCount === 3 ? '#ffe45e' : hypeChainCount === 4 ? '#ff8b4d' : '#ff58dc';
+      spawnFloatingText(player.x, player.y - 58, callout, color);
+      explosions.push({ x: player.x, y: player.y, radius: 48 + Math.min(50, hypeChainCount * 8), life: 0, maxLife: .42, color, legendary: hypeChainCount >= 4, fxKind: 'hypeChain', ringCount: Math.min(5, hypeChainCount) });
+      screenShakeUntil = now + Math.min(260, 100 + hypeChainCount * 25);
+      screenShakeAmount = Math.min(9, 3 + hypeChainCount);
+  }
+
+  function renderHypeChainHud() {
+      if (!playing || gameOver || hypeChainCount < 2) return;
+      const now = performance.now();
+      if (now > hypeChainUntil) { resetHypeChain(); return; }
+      const remaining = Math.max(0, (hypeChainUntil - now) / HYPE_CHAIN_WINDOW_MS);
+      const flash = now < hypeChainFlashUntil ? 1 + (hypeChainFlashUntil - now) / 1300 : 1;
+      const w = Math.min(250, innerWidth * .48), h = 42, x = innerWidth / 2 - w / 2, y = 76;
+      ctx.save();
+      ctx.translate(innerWidth / 2, y + h / 2); ctx.scale(flash, flash); ctx.translate(-innerWidth / 2, -(y + h / 2));
+      ctx.fillStyle = 'rgba(5,12,28,.88)'; ctx.strokeStyle = hypeChainCount >= 5 ? '#ff58dc' : '#65f5ff'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, 13); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.beginPath(); ctx.roundRect(x + 8, y + h - 10, w - 16, 5, 3); ctx.fill();
+      ctx.fillStyle = hypeChainCount >= 5 ? '#ff58dc' : '#ffe45e'; ctx.beginPath(); ctx.roundRect(x + 8, y + h - 10, (w - 16) * remaining, 5, 3); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '900 17px sans-serif'; ctx.fillText('⚡ HYPE CHAIN x' + hypeChainCount, innerWidth / 2, y + 24);
+      ctx.restore();
+  }
   let fullOnDamageMatchTotal = 0;
   let fullOnDamageMatchCommitted = true;
   let lastShot = 0;
@@ -8978,10 +9484,22 @@ const bolznstienPendingStrikes = [];
   let gadgetCooldownBySlot = { g1: 0, g2: 0 };
   const GADGET_COOLDOWN_MS = 12000; // Balanced cooldown
   const GADGET_COOLDOWN_BY_BRAWLER = {
-      outlit: { g1: 12000, g2: 15000 },
-      echo: { g1: 11000, g2: 14000 },
-      cheseypuff: { g1: 12000, g2: 16000 },
-      decayer: { g1: 13000, g2: 15000 },
+      blinkeye: { g1: 11000, g2: 19000 },
+      weefee: { g1: 12000, g2: 13000 },
+      oil_maker: { g1: 11000, g2: 17000 },
+      magnatar: { g1: 14000, g2: 15000 },
+      rager: { g1: 15000, g2: 18000 },
+      badbat: { g1: 14000, g2: 15000 },
+      carmela_fudge: { g1: 8000, g2: 8000 },
+      bolznstien: { g1: 14000, g2: 15000 },
+      sir_cheeseburger: { g1: 13000, g2: 14000 },
+      anti_royal: { g1: 13000, g2: 15000 },
+      king: { g1: 14000, g2: 12000 },
+      cursed: { g1: 12000, g2: 13000 },
+      cinderion: { g1: 14000, g2: 16000 },
+      drainbow: { g1: 18000, g2: 15000 },
+      draflygon: { g1: 15000, g2: 13000 },
+      kage: { g1: 16000, g2: 13000 },
       unopcoloco: { g1: 11000, g2: 13000 },
       dashaholic: { g1: 14000, g2: 16000 },
       trapper: { g1: 12000, g2: 11000 },
@@ -8996,10 +9514,33 @@ const bolznstienPendingStrikes = [];
       chaird: { g1: 13000, g2: 15000 },
       forest: { g1: 16000, g2: 12000 },
       bouncin_balls: { g1: 12000, g2: 16000 },
+      copyphase: { g1: 16000, g2: 12000 },
+      sera_eclipse: { g1: 16000, g2: 16000 },
+      rocketeer: { g1: 12000, g2: 16000 },
+      peter_pickle: { g1: 12000, g2: 19000 },
+      unstable: { g1: 11000, g2: 19000 },
+      homer: { g1: 14000, g2: 15000 },
+      orbo: { g1: 14000, g2: 17000 },
+      predator: { g1: 12000, g2: 13000 },
+      fuser: { g1: 12000, g2: 13000 },
+      robber: { g1: 15000, g2: 13000 },
+      snapper: { g1: 14000, g2: 13000 },
+      jetpack: { g1: 11000, g2: 13000 },
+      chickpig: { g1: 11000, g2: 13000 },
+      upiedown: { g1: 11000, g2: 13000 },
+      relay: { g1: 15000, g2: 13000 },
+      warrior: { g1: 12000, g2: 16000 },
+      angel: { g1: 22000, g2: 15000 },
+      demon: { g1: 16000, g2: 15000 },
+      paradox: { g1: 11000, g2: 15000 },
+      beam: { g1: 13000, g2: 14000 },
+      outlit: { g1: 12000, g2: 15000 },
+      echo: { g1: 11000, g2: 14000 },
+      cheseypuff: { g1: 12000, g2: 16000 },
+      decayer: { g1: 13000, g2: 15000 },
       goonbob: { g1: 11000, g2: 14000 },
       tempo_maker: { g1: 12000, g2: 14000 },
       overlord: { g1: 12000, g2: 13000 },
-      copyphase: { g1: 16000, g2: 12000 },
       fightnfire: { g1: 12000, g2: 14000 },
       beast: { g1: 11000, g2: 15000 },
       amplifier: { g1: 12000, g2: 14000 },
@@ -9012,25 +9553,31 @@ const bolznstienPendingStrikes = [];
       hoop: { g1: 12000, g2: 14000 },
       screener: { g1: 12000, g2: 14000 },
       malakor: { g1: 14000, g2: 15000 },
+      boom_arang: { g1: 11000, g2: 17000 },
       teether: { g1: 12000, g2: 15000 },
       fuel: { g1: 12000, g2: 14000 },
       xray: { g1: 13000, g2: 15000 },
-      king: { g1: 14000, g2: 12000 },
-      anti_royal: { g1: 13000, g2: 15000 },
-      magnatar: { g1: 14000, g2: 15000 },
-      rager: { g1: 15000, g2: 18000 },
-    rager: {
-        attackDesc: 'Timber Slam: Rager chops a heavy timber trunk that crashes forward in a 420px path, dealing 2200 damage, knocking back enemies, and splintering debris.',
-        superDesc: 'Raged Area: Rager plants a War Totem for 7s. Allies inside gain +15% damage and automatically fire attacks every 1.0s without spending ammo.',
-        g1Desc: 'Cleave Timber: Instantly fells trees in a 360° sweep (180px), pushing enemies back 140px, dealing 950 damage, and breaking obstacles.',
-        g2Desc: 'Battle Cry: Rager roars, immediately granting himself and all allies +20% move speed and +30% Super charge for 3s.',
-        sp1Desc: 'Splinter Shrapnel: The timber trunk bursts into 4 cardinal splinter darts upon impact at max range, dealing 650 damage each.',
-        sp2Desc: 'Bloodlust Resurgence: Dealing damage or eliminating enemies inside the Raged Area heals Rager and allies for 40% of damage dealt.',
-        hyperDesc: 'Primal Frenzy: Raged Area duration increases by 30% and enemies inside have their reload speed slowed by 40%.'
-    },
-    carmela_fudge: { g1: 8000, g2: 8000 },
-    bolznstien: { g1: 14000, g2: 15000 },
-      sir_cheeseburger: { g1: 13000, g2: 14000 }
+      ice_cream: { g1: 11000, g2: 13000 },
+      swimmer: { g1: 11000, g2: 13000 },
+      boomer: { g1: 11000, g2: 13000 },
+      blade_vane: { g1: 11000, g2: 16000 },
+      daggershard: { g1: 11000, g2: 13000 },
+      adlof: { g1: 11000, g2: 19000 },
+      mageny: { g1: 12000, g2: 16000 },
+      trampaheal: { g1: 12000, g2: 13000 },
+      axeywaxy: { g1: 16000, g2: 13000 },
+      ramage: { g1: 12000, g2: 17000 },
+      upgradart: { g1: 12000, g2: 15000 },
+      cluster: { g1: 11000, g2: 13000 },
+      witch: { g1: 11000, g2: 19000 },
+      fastpass: { g1: 11000, g2: 19000 },
+      freestyle: { g1: 12000, g2: 19000 },
+      portalo: { g1: 18000, g2: 19000 },
+      ghoul: { g1: 14000, g2: 19000 },
+      jacktrade: { g1: 11000, g2: 15000 },
+      darkener: { g1: 14000, g2: 17000 },
+      awakenator: { g1: 11000, g2: 13000 },
+      looma: { g1: 14000, g2: 16000 }
   };
   function normalizeGadgetSlot(slot) {
       return slot === 'g2' ? 'g2' : 'g1';
@@ -9047,7 +9594,15 @@ const bolznstienPendingStrikes = [];
       return until;
   }
   function getPlayerGadgetCooldownUntil(slot = selectedGadget, now = performance.now()) {
+      if (isTraining && !isTutorialMode && trainingGadgetNoCooldown) {
+          gadgetCooldownUntil = 0;
+          gadgetCooldownBySlot.g1 = gadgetCooldownBySlot.g2 = 0;
+          return 0;
+      }
       const s = normalizeGadgetSlot(slot);
+      if (s === normalizeGadgetSlot(selectedGadget) && (gadgetCooldownUntil || 0) > (gadgetCooldownBySlot[s] || 0)) {
+          gadgetCooldownBySlot[s] = normalizeLegacyCooldownWrite(gadgetCooldownUntil, selectedBrawler, s, now);
+      }
       const until = gadgetCooldownBySlot[s] || 0;
       if (until && now >= until) {
           gadgetCooldownBySlot[s] = 0;
@@ -9067,6 +9622,28 @@ const bolznstienPendingStrikes = [];
           gadgetCooldownBySlot[s] = normalizeLegacyCooldownWrite(gadgetCooldownUntil, selectedBrawler, s, now);
       }
       gadgetCooldownUntil = getPlayerGadgetCooldownUntil(selectedGadget, now);
+  }
+  function registerGadgetActivation(entity = player, brawler = selectedBrawler, slot = selectedGadget, customCooldownMs = null) {
+      const isPlayer = !entity || entity.id === player.id;
+      const now = performance.now();
+      const s = normalizeGadgetSlot(slot);
+      const cdMs = customCooldownMs || getGadgetCooldownMsForBrawler(brawler, s);
+      const cdUntil = now + cdMs;
+      if (isPlayer) {
+          gadgetArmed = false;
+          gadgetCooldownUntil = cdUntil;
+          setPlayerGadgetCooldownUntil(cdUntil, s);
+          addEventQuestProgress('use_gadget');
+          progressSeasonPassQuest('use_gadget');
+          if (brawler === 'bouncin_balls') addSpecialQuestProgress('bouncin_balls', s === 'g1' ? 'use_g1' : 'use_g2', 1);
+          if (brawler === 'beam') addSpecialQuestProgress('beam', s === 'g1' ? 'use_g1' : 'use_g2', 1);
+          updateGadgetButton();
+      } else {
+          entity.gadgetArmed = false;
+          entity.gadgetCooldownUntil = cdUntil;
+          setEntityGadgetCooldownUntil(entity, cdUntil, s);
+      }
+      return cdUntil;
   }
   function syncSelectedGadgetCooldown() {
       selectedGadget = normalizeGadgetSlot(selectedGadget);
@@ -9369,7 +9946,7 @@ function isPowerPlayModifierActive(entity = player) {
     let rankedTeammatePicks = [];
     let rankedBans = { player: [], enemy: [] };
     let rankedDraftSummary = '';
-    const RANKED_TEAM_MODE_POOL = ['construction', 'objective', 'brawe_ball', 'knockout_3v3', 'brick_vault', 'knock_donate', 'trio'];
+    const RANKED_TEAM_MODE_POOL = ['knock_donate', 'arena_forge', 'brick_vault'];
 
     const RANKED_MODIFIERS = {
         'classic': {
@@ -9667,11 +10244,12 @@ function isPowerPlayModifierActive(entity = player) {
         const triggerAt = now + strikeDelay;
         const finalDmg = Math.round(strikeDmg * (sp1 ? 1.25 : 1.0));
         const strikeRadius = (isHyper ? 85 : 65) * (isHyper ? 1.3 : 1.0); // 30% bigger strike during HC
+        const ownerSkinId = getActiveSkinForBrawler(owner?.brawler || (owner?.id === player.id ? selectedBrawler : 'bolznstien'))?.id;
 
         if (isHyper) {
             // Center strike
             bolznstienPendingStrikes.push({
-                ownerId, x, y, triggerAt, damage: finalDmg, radius: strikeRadius, isHyper: true, sp1
+                ownerId, x, y, triggerAt, damage: finalDmg, radius: strikeRadius, isHyper: true, sp1, skinId: ownerSkinId
             });
             // 3 strikes in a triangle around it (radius ~62px offset)
             for (let k = 0; k < 3; k++) {
@@ -9684,12 +10262,13 @@ function isPowerPlayModifierActive(entity = player) {
                     damage: finalDmg,
                     radius: strikeRadius,
                     isHyper: true,
-                    sp1
+                    sp1,
+                    skinId: ownerSkinId
                 });
             }
         } else {
             bolznstienPendingStrikes.push({
-                ownerId, x, y, triggerAt, damage: finalDmg, radius: strikeRadius, isHyper: false, sp1
+                ownerId, x, y, triggerAt, damage: finalDmg, radius: strikeRadius, isHyper: false, sp1, skinId: ownerSkinId
             });
         }
     }
@@ -9970,7 +10549,12 @@ function isPowerPlayModifierActive(entity = player) {
         entity.bolznstienSuperUntil = now + duration;
         entity.bolznstienSuperIsHyper = isHyper;
         entity.bolznstienLastSuperTick = 0;
-        spawnFloatingText(entity.x, entity.y - 40, isHyper ? '⚡ FRANKEN-OVERLOAD! 🧟' : '⚡ ELECTRIC EYES! ⚡', isHyper ? '#e056fd' : '#00f5d4');
+        const skin = getActiveSkinForBrawler(entity.brawler || (entity.id === player.id ? selectedBrawler : 'bolznstien'));
+        if (skin?.id === 'headless-bolznstien') {
+            spawnFloatingText(entity.x, entity.y - 40, isHyper ? '🎃 SPECTRAL REAPING! 🎃' : '🎃 PUMPKIN SHOCKWAVE! 🎃', '#ff7700');
+        } else {
+            spawnFloatingText(entity.x, entity.y - 40, isHyper ? '⚡ FRANKEN-OVERLOAD! 🧟' : '⚡ ELECTRIC EYES! ⚡', isHyper ? '#e056fd' : '#00f5d4');
+        }
     }
 
     function executeBolznstienG1(entity) {
@@ -9997,16 +10581,894 @@ function isPowerPlayModifierActive(entity = player) {
                 applyKnockback(t, entity.x, entity.y, 220);
             }
         }
-        explosions.push({ x: entity.x, y: entity.y, radius: 140, life: 0, maxLife: 0.25, color: 'rgba(0, 245, 212, 0.65)' });
-        spawnFloatingText(entity.x, entity.y - 35, '⚡ INSTANT DISCHARGE!', '#00f5d4');
+        const skinId = getActiveSkinForBrawler(entity.brawler || (entity.id === player.id ? selectedBrawler : 'bolznstien'))?.id;
+        const isHeadless = skinId === 'headless-bolznstien';
+        explosions.push({ x: entity.x, y: entity.y, radius: 140, life: 0, maxLife: 0.25, color: isHeadless ? 'rgba(46, 204, 113, 0.75)' : 'rgba(0, 245, 212, 0.65)', skinId });
+        spawnFloatingText(entity.x, entity.y - 35, isHeadless ? '🎃 SPECTRAL DISCHARGE!' : '⚡ INSTANT DISCHARGE!', isHeadless ? '#2ecc71' : '#00f5d4');
     }
 
     function executeBolznstienG2(entity) {
         if (!entity) return;
         const now = performance.now();
         // G2: Conductive Surge - +30% movement speed for 4s and leaves shocking electric floor trails
+        const skinId = getActiveSkinForBrawler(entity.brawler || (entity.id === player.id ? selectedBrawler : 'bolznstien'))?.id;
+        const isHeadless = skinId === 'headless-bolznstien';
         entity.bolznstienSpeedUntil = now + 4000;
-        spawnFloatingText(entity.x, entity.y - 35, '⚡ CONDUCTIVE SURGE! (+30% SPD)', '#ffd166');
+        spawnFloatingText(entity.x, entity.y - 35, isHeadless ? '🎃 SPECTRAL SURGE! (+30% SPD)' : '⚡ CONDUCTIVE SURGE! (+30% SPD)', isHeadless ? '#2ecc71' : '#ffd166');
+    }
+
+    let nextBadBatId = 1;
+
+    function fireBadBatAttack(fromEntity, ang, isHyper) {
+        if (!fromEntity) return;
+        const now = performance.now();
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const stats = getScaledStats('badbat', level);
+        const dmg = stats.dmg || 1400;
+        const speed = 920;
+        const range = 440;
+        const isG1 = (fromEntity.badbatG1Until || 0) > now || !!fromEntity.badbatG1Active;
+        if (isG1) {
+            fromEntity.badbatG1Active = false;
+        }
+
+        // +50% Main Attack Size (42 base / 84 with G1)
+        const baseRadius = isG1 ? 84 : 42;
+        const maxLife = range / speed;
+
+        bullets.push({
+            ownerBrawler: 'badbat',
+            isBadBatWave: true,
+            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 14),
+            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 14),
+            vx: Math.cos(ang) * speed,
+            vy: Math.sin(ang) * speed,
+            life: 0,
+            maxLife: maxLife,
+            damage: dmg,
+            pierce: true,
+            pierceWalls: false,
+            ownerId: fromEntity.id,
+            hitIds: {},
+            isHyper: !!isHyper,
+            g1Active: isG1,
+            baseRadius: baseRadius,
+            radius: baseRadius,
+            ang: ang
+        });
+
+        fromEntity.visualAttackAt = now;
+        fromEntity.attackKick = 1.0;
+        fromEntity.visualAimAngle = ang;
+    }
+
+    function spawnBadBatOrbitingBats(owner, count = 1, targetId = null, isSuper = false, isHyper = false) {
+        if (!owner || owner.hp <= 0) return;
+        const totalAlive = badbatSwarm.filter(b => b.ownerId === owner.id && b.hp > 0);
+        const MAX_BADBAT_TOTAL = 6;
+        const toSpawn = Math.min(count, Math.max(0, MAX_BADBAT_TOTAL - totalAlive.length));
+        if (toSpawn <= 0) return;
+
+        const now = performance.now();
+        const BADBAT_ROAM_RANGE = 176; // 40% range around owner (440 range * 0.40)
+        for (let i = 0; i < toSpawn; i++) {
+            const spawnAng = (Math.PI * 2 / toSpawn) * i + Math.random() * 0.5;
+            const spawnDist = 28 + Math.random() * (BADBAT_ROAM_RANGE - 36);
+            const assignedTargetId = targetId || owner.badbatMarkedTargetId || null;
+            badbatSwarm.push({
+                id: nextBadBatId++,
+                ownerId: owner.id,
+                team: owner.team || (owner.id === player.id ? 'player' : 'enemy'),
+                x: owner.x + Math.cos(spawnAng) * Math.min(spawnDist, 40),
+                y: owner.y + Math.sin(spawnAng) * Math.min(spawnDist, 40),
+                vx: Math.cos(spawnAng) * 200,
+                vy: Math.sin(spawnAng) * 200,
+                hp: 560,
+                maxHp: 560,
+                shield: 0,
+                radius: 14,
+                isPet: true,
+                isBadBatMinion: true,
+                state: assignedTargetId ? 'pre_dash' : 'roam',
+                roamOffsetX: Math.cos(spawnAng) * spawnDist,
+                roamOffsetY: Math.sin(spawnAng) * spawnDist,
+                nextRoamRetarget: now + 800 + Math.random() * 1200,
+                targetId: assignedTargetId,
+                dashTargetId: assignedTargetId,
+                preDashTarget: assignedTargetId,
+                preDashUntil: assignedTargetId ? (now + 240) : 0,
+                markPulse: 0,
+                hitCount: 0,
+                maxHits: Infinity,
+                isSuperBat: !!isSuper,
+                isHyperBat: !!isHyper,
+                lastStrikeTime: now - 1500, // Attack immediately if enemies are in range
+                spawnedAt: now
+            });
+        }
+    }
+
+    function castBadBatSuper(entity, isHyper) {
+        if (!entity || entity.hp <= 0) return;
+        const now = performance.now();
+        const totalAlive = badbatSwarm.filter(b => b.ownerId === entity.id && b.hp > 0);
+        const MAX_BADBAT_TOTAL = 6;
+        const available = Math.max(0, MAX_BADBAT_TOTAL - totalAlive.length);
+        const batCount = Math.min(isHyper ? 6 : 4, available);
+        if (batCount <= 0) return;
+
+        const BADBAT_ROAM_RANGE = 176; // 40% range around owner (440 range * 0.40)
+        const enemies = (entity.id === player.id ? bots : [player, ...bots])
+            .filter(t => t && t.hp > 0 && t.id !== entity.id && !areAlliedEntities(entity, t) && !t.isDummy);
+
+        for (let i = 0; i < batCount; i++) {
+            const assignedTarget = enemies.length > 0 ? enemies[i % enemies.length] : null;
+            const ringAng = (Math.PI * 2 / batCount) * i + Math.random() * 0.4;
+            const roamDist = 32 + Math.random() * (BADBAT_ROAM_RANGE - 40);
+            const bat = {
+                id: nextBadBatId++,
+                ownerId: entity.id,
+                team: entity.team || (entity.id === player.id ? 'player' : 'enemy'),
+                x: entity.x + Math.cos(ringAng) * (entity.radius + 18),
+                y: entity.y + Math.sin(ringAng) * (entity.radius + 18),
+                vx: Math.cos(ringAng) * 450,
+                vy: Math.sin(ringAng) * 450,
+                hp: 560,
+                maxHp: 560,
+                shield: 0,
+                radius: 14,
+                isPet: true,
+                isBadBatMinion: true,
+                state: assignedTarget ? 'pre_dash' : 'roam',
+                roamOffsetX: Math.cos(ringAng) * roamDist,
+                roamOffsetY: Math.sin(ringAng) * roamDist,
+                nextRoamRetarget: now + 900 + Math.random() * 1200,
+                targetId: assignedTarget ? assignedTarget.id : null,
+                dashTargetId: assignedTarget ? assignedTarget.id : null,
+                preDashTarget: assignedTarget ? assignedTarget.id : null,
+                preDashUntil: assignedTarget ? (now + 220) : 0,
+                markPulse: 0,
+                hitCount: 0,
+                maxHits: Infinity,
+                isSuperBat: true,
+                isHyperBat: !!isHyper,
+                lastStrikeTime: now - 1500, // Autonomous instant engagement
+                spawnedAt: now
+            };
+            badbatSwarm.push(bat);
+        }
+
+        entity.visualSuperAt = now;
+        explosions.push({
+            ownerId: entity.id,
+            damage: 0,
+            isParticle: true,
+            isVisualOnly: true,
+            x: entity.x,
+            y: entity.y,
+            radius: 90,
+            life: 0,
+            maxLife: 0.35,
+            color: isHyper ? 'rgba(224, 86, 253, 0.85)' : 'rgba(123, 44, 191, 0.8)'
+        });
+        spawnFloatingText(entity.x, entity.y - 40, isHyper ? '🦇 NOCTURNAL SWARM! 🦇' : '🦇 BAT COLONY ERUPTION!', isHyper ? '#e056fd' : '#9d4edd');
+    }
+
+    function executeBadBatG1(entity) {
+        if (!entity || entity.hp <= 0) return;
+        const now = performance.now();
+        entity.badbatG1Until = now + 2000;
+        entity.badbatG1Active = true;
+        explosions.push({
+            x: entity.x,
+            y: entity.y,
+            radius: 70,
+            life: 0,
+            maxLife: 0.25,
+            color: 'rgba(157, 78, 221, 0.65)'
+        });
+        spawnFloatingText(entity.x, entity.y - 35, '🦇 WIDE RESONATOR (+100% WIDTH)', '#c77dff');
+    }
+
+    function executeBadBatG2(entity) {
+        if (!entity || entity.hp <= 0) return;
+        let shieldedCount = 0;
+        for (const bat of badbatSwarm) {
+            if (bat.ownerId === entity.id && bat.hp > 0) {
+                bat.shield = (bat.shield || 0) + 1000;
+                shieldedCount++;
+            }
+        }
+        explosions.push({
+            x: entity.x,
+            y: entity.y,
+            radius: 80,
+            life: 0,
+            maxLife: 0.28,
+            color: 'rgba(0, 245, 212, 0.65)'
+        });
+        spawnFloatingText(entity.x, entity.y - 35, `🦇 COLONY WARD (+1000 SHIELD${shieldedCount > 0 ? ` ×${shieldedCount}` : ''})`, '#00f5d4');
+    }
+
+    function updateBadBatSwarm(dt, now) {
+        const MAX_BADBAT_TOTAL = 6;
+        const BADBAT_ROAM_RANGE = 176; // 40% range of BadBat (440 range * 0.40)
+
+        // 1. Strict Total Cap — max 6 active bats per owner at any time
+        const ownerCounts = {};
+        for (let i = badbatSwarm.length - 1; i >= 0; i--) {
+            const b = badbatSwarm[i];
+            if (!b || b.hp <= 0) continue;
+            ownerCounts[b.ownerId] = (ownerCounts[b.ownerId] || 0) + 1;
+            if (ownerCounts[b.ownerId] > MAX_BADBAT_TOTAL) {
+                b.hp = 0;
+            }
+        }
+
+        // 2. Update Shield Orbs flying back to owners
+        for (let oi = badbatShieldOrbs.length - 1; oi >= 0; oi--) {
+            const orb = badbatShieldOrbs[oi];
+            if (!orb) { badbatShieldOrbs.splice(oi, 1); continue; }
+            const owner = getEntityById(orb.ownerId);
+            if (!owner || owner.hp <= 0) {
+                badbatShieldOrbs.splice(oi, 1);
+                continue;
+            }
+            const dx = owner.x - orb.x;
+            const dy = owner.y - orb.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist <= (owner.radius || 14) + 16 || dist < 20) {
+                doShield(owner, orb.amount || 300);
+                spawnFloatingText(owner.x, owner.y - 44, `+${orb.amount || 300} SHIELD 🛡️`, '#e056fd');
+                badbatShieldOrbs.splice(oi, 1);
+                continue;
+            }
+            const spd = 720;
+            orb.x += (dx / dist) * spd * dt;
+            orb.y += (dy / dist) * spd * dt;
+        }
+
+        // 3. Update Bat Minions
+        for (let bi = badbatSwarm.length - 1; bi >= 0; bi--) {
+            const bat = badbatSwarm[bi];
+            if (!bat || bat.hp <= 0) {
+                if (bat) {
+                    explosions.push({
+                        x: bat.x, y: bat.y,
+                        radius: bat.isSuperBat ? 36 : 24,
+                        life: 0, maxLife: 0.22,
+                        color: bat.isSuperBat ? 'rgba(196,78,255,0.75)' : 'rgba(123,44,191,0.7)'
+                    });
+                }
+                badbatSwarm.splice(bi, 1);
+                continue;
+            }
+
+            const owner = getEntityById(bat.ownerId);
+            if (!owner || owner.hp <= 0) {
+                bat.hp = 0;
+                badbatSwarm.splice(bi, 1);
+                continue;
+            }
+
+            // --- Animation ticks (Ground Walking & Dashing) ---
+            const isDashing = bat.state === 'dash_to';
+            const isWalking = bat.state === 'roam' || bat.state === 'orbit' || bat.state === 'pre_dash';
+            bat.wingFlap = ((bat.wingFlap || 0) + dt * (isDashing ? 22 : (isWalking ? 8 : 12))) % (Math.PI * 2);
+            bat.legPhase = ((bat.legPhase || 0) + dt * (isWalking ? 10 : 3)) % (Math.PI * 2);
+            bat.hopZ = isWalking ? Math.abs(Math.sin(bat.legPhase)) * 6 : (isDashing ? 2 : 8);
+
+            const hasSp1 = (owner.id === player.id ? selectedStar : owner.selectedStar) === 'slow' || (owner.id === player.id ? selectedStar : owner.selectedStar) === 'sp1';
+            const hasSp2 = (owner.id === player.id ? selectedStar : owner.selectedStar) === 'long' || (owner.id === player.id ? selectedStar : owner.selectedStar) === 'sp2';
+            const strikeInterval = hasSp2 ? 900 : 1400;
+
+            // --- Autonomous Target Resolution & Aggro ---
+            let target = null;
+            const enemies = (owner.id === player.id ? bots : [player, ...bots])
+                .filter(t => t && t.hp > 0 && t.id !== owner.id && !areAlliedEntities(owner, t) && !t.isDummy);
+
+            // 1. Prioritize marked enemies
+            const markedEnemy = enemies.find(e => (e.badbatMarkedUntil || 0) > now && Math.hypot(e.x - owner.x, e.y - owner.y) <= 720);
+            if (markedEnemy) {
+                target = markedEnemy;
+                bat.targetId = target.id;
+            } else if (bat.targetId) {
+                const current = getEntityById(bat.targetId);
+                if (current && current.hp > 0 && !areAlliedEntities(owner, current) && Math.hypot(current.x - owner.x, current.y - owner.y) <= 720) {
+                    target = current;
+                }
+            }
+
+            // 2. Otherwise acquire closest hostile enemy in aggro range (Autonomous Aggro)
+            if (!target && enemies.length > 0) {
+                let nearest = null, nearDist = 650;
+                for (const e of enemies) {
+                    const d = Math.hypot(e.x - bat.x, e.y - bat.y);
+                    if (d < nearDist) { nearDist = d; nearest = e; }
+                }
+                if (nearest) { target = nearest; bat.targetId = target.id; }
+            }
+
+            // ---- State machine ----
+            if (bat.state === 'roam' || bat.state === 'orbit') {
+                bat.state = 'roam';
+                if (bat.roamOffsetX === undefined || now >= (bat.nextRoamRetarget || 0)) {
+                    const rAng = Math.random() * Math.PI * 2;
+                    const rDist = 24 + Math.random() * (BADBAT_ROAM_RANGE - 32);
+                    bat.roamOffsetX = Math.cos(rAng) * rDist;
+                    bat.roamOffsetY = Math.sin(rAng) * rDist;
+                    bat.nextRoamRetarget = now + 900 + Math.random() * 1400;
+                }
+
+                const distFromOwner = Math.hypot(bat.x - owner.x, bat.y - owner.y);
+                let destX = owner.x + bat.roamOffsetX;
+                let destY = owner.y + bat.roamOffsetY;
+                let walkSpeed = 240;
+
+                // Leash enforcement: if bat drifted outside roam radius, pull straight back towards owner vigorously
+                if (distFromOwner > BADBAT_ROAM_RANGE) {
+                    destX = owner.x;
+                    destY = owner.y;
+                    walkSpeed = Math.min(880, 360 + (distFromOwner - BADBAT_ROAM_RANGE) * 4.5);
+                }
+
+                const toDestX = destX - bat.x;
+                const toDestY = destY - bat.y;
+                const toDestDist = Math.hypot(toDestX, toDestY);
+
+                if (toDestDist > 4) {
+                    bat.facing = Math.atan2(toDestY, toDestX);
+                    bat.x += (toDestX / toDestDist) * walkSpeed * dt;
+                    bat.y += (toDestY / toDestDist) * walkSpeed * dt;
+                } else {
+                    bat.nextRoamRetarget = now + 300 + Math.random() * 600;
+                }
+
+                // Check if target is ready to be locked and attacked autonomously
+                // (Only initiate pre_dash if bat is comfortably within tether leash of owner)
+                if (distFromOwner <= BADBAT_ROAM_RANGE + 30 && target && target.hp > 0 && !areAlliedEntities(owner, target)) {
+                    const distToTarget = Math.hypot(target.x - bat.x, target.y - bat.y);
+                    const distTargetToOwner = Math.hypot(target.x - owner.x, target.y - owner.y);
+                    if (distToTarget <= 600 && distTargetToOwner <= 650 && (now - (bat.lastStrikeTime || 0)) >= strikeInterval) {
+                        // Mark target and enter pre-dash telegraph!
+                        bat.state = 'pre_dash';
+                        bat.preDashTarget = target.id;
+                        bat.dashTargetId  = target.id;
+                        bat.preDashUntil  = now + 280;
+                        bat.markPulse     = 0;
+                        target.badbatLockonUntil = now + 350;
+                        target.badbatLockonFromBat = bat.id;
+                    }
+                }
+
+            } else if (bat.state === 'pre_dash') {
+                // Pre-dash telegraph: bat points straight at target, laser line locks on
+                bat.markPulse = ((bat.markPulse || 0) + dt * 20) % (Math.PI * 2);
+                const curTgt = (bat.dashTargetId ? getEntityById(bat.dashTargetId) : null) || target;
+                if (curTgt && curTgt.hp > 0 && !areAlliedEntities(owner, curTgt)) {
+                    bat.facing = Math.atan2(curTgt.y - bat.y, curTgt.x - bat.x);
+                    curTgt.badbatLockonUntil = now + 150;
+                    curTgt.badbatLockonFromBat = bat.id;
+                } else {
+                    bat.state = 'dash_back';
+                    bat.dashBackStartTime = now;
+                    continue;
+                }
+                if (now >= bat.preDashUntil) {
+                    bat.state = 'dash_to';
+                    bat.dashStartTime = now;
+                }
+
+            } else if (bat.state === 'dash_to') {
+                const curTarget = (bat.dashTargetId ? getEntityById(bat.dashTargetId) : null) || target;
+                if (!curTarget || curTarget.hp <= 0 || areAlliedEntities(owner, curTarget)) {
+                    bat.state = 'dash_back';
+                    bat.dashBackStartTime = now;
+                    continue;
+                }
+                const dx = curTarget.x - bat.x;
+                const dy = curTarget.y - bat.y;
+                const dist = Math.hypot(dx, dy);
+                const dashSpeed = 960;
+                if (dist > 1) bat.facing = Math.atan2(dy, dx);
+
+                // Ghost trails
+                if (!bat.ghostTrails) bat.ghostTrails = [];
+                bat.ghostTrails.push({ x: bat.x, y: bat.y, facing: bat.facing, alpha: 0.75, isSpr: bat.isSuperBat });
+                if (bat.ghostTrails.length > 6) bat.ghostTrails.shift();
+
+                const hitThreshold = (curTarget.radius || 16) + bat.radius + 18;
+                const stepDist = dashSpeed * dt;
+
+                // High-precision reliable hit detection (handles fast movement & near proximity)
+                if (dist <= hitThreshold || dist <= stepDist + 12) {
+                    // Snap to target contact
+                    if (dist > 1) {
+                        bat.x = curTarget.x - (dx / dist) * ((curTarget.radius || 14) + 6);
+                        bat.y = curTarget.y - (dy / dist) * ((curTarget.radius || 14) + 6);
+                    }
+
+                    checkHit(curTarget, {
+                        ownerBrawler: 'badbat',
+                        damage: 300,
+                        pierce: true,
+                        ownerId: owner.id,
+                        hitIds: {},
+                        isBadBatStrike: true
+                    }, -1);
+
+                    explosions.push({
+                        ownerId: owner.id,
+                        damage: 0,
+                        isParticle: true,
+                        isVisualOnly: true,
+                        x: curTarget.x, y: curTarget.y,
+                        radius: 36, life: 0, maxLife: 0.2,
+                        color: bat.isHyperBat ? 'rgba(224,86,253,0.95)' : 'rgba(157,78,221,0.9)'
+                    });
+
+                    if (hasSp1) {
+                        doHeal(owner, 150);
+                        spawnFloatingText(owner.x, owner.y - 32, '+150 LIFESTEAL 🩸', '#2ed573');
+                    }
+
+                    if (bat.isHyperBat || isEntityHyperchargedNow(owner, now)) {
+                        badbatShieldOrbs.push({ x: curTarget.x, y: curTarget.y, ownerId: owner.id, amount: 300 });
+                    }
+
+                    bat.hitCount = (bat.hitCount || 0) + 1;
+                    bat.lastStrikeTime = now;
+                    bat.dashBackStartTime = now;
+                    bat.state = 'dash_back';
+                } else {
+                    bat.x += (dx / dist) * stepDist;
+                    bat.y += (dy / dist) * stepDist;
+
+                    // Dash safety timeout to prevent getting lost if target teleported
+                    if (now - (bat.dashStartTime || now) > 1100) {
+                        bat.dashBackStartTime = now;
+                        bat.state = 'dash_back';
+                    }
+                }
+
+            } else if (bat.state === 'dash_back') {
+                const dx = owner.x - bat.x;
+                const dy = owner.y - bat.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 2) bat.facing = Math.atan2(dy, dx);
+
+                const returnSpeed = 880;
+                const returnStep = returnSpeed * dt;
+
+                // Return close to owner before entering roam mode again
+                if (dist <= 64 || dist <= returnStep + 8 || (now - (bat.dashBackStartTime || now)) > 1400) {
+                    bat.state = 'roam';
+                    bat.nextRoamRetarget = 0;
+                    bat.roamOffsetX = 0;
+                    bat.roamOffsetY = 0;
+                } else {
+                    bat.x += (dx / dist) * returnStep;
+                    bat.y += (dy / dist) * returnStep;
+                }
+            }
+
+            // ---- Damageability against EVERYTHING HOSTILE (Enemy Bullets, Hostile Explosions) ----
+            // 1. Bullet collisions with bat minion (BadBat & allies cannot damage own bats)
+            for (let bIndex = bullets.length - 1; bIndex >= 0; bIndex--) {
+                const b = bullets[bIndex];
+                if (!b || b.ownerId === owner.id || b.isBadBatWave || areAlliedEntities(getEntityById(b.ownerId), owner)) continue;
+                if (Math.hypot(b.x - bat.x, b.y - bat.y) <= (b.radius || 12) + bat.radius) {
+                    const bulletDmg = b.damage || 400;
+                    if (bat.shield > 0) {
+                        if (bat.shield >= bulletDmg) {
+                            bat.shield -= bulletDmg;
+                        } else {
+                            bat.hp -= (bulletDmg - bat.shield);
+                            bat.shield = 0;
+                        }
+                    } else {
+                        bat.hp -= bulletDmg;
+                    }
+                    spawnFloatingText(bat.x, bat.y - 20, `-${bulletDmg}`, '#ff4757');
+                    if (!b.pierce) bullets.splice(bIndex, 1);
+                    if (bat.hp <= 0) break;
+                }
+            }
+
+            // 2. Active Hostile Explosions / Area Damage against bat minion (BadBat & allies cannot damage own bats)
+            if (bat.hp > 0) {
+                for (const exp of explosions) {
+                    if (!exp || exp.life > 0.05 || !exp.radius) continue;
+                    if (exp.ownerId && (exp.ownerId === owner.id || areAlliedEntities(getEntityById(exp.ownerId), owner))) continue;
+                    if (!exp.damage || exp.damage <= 0 || exp.isParticle || exp.isVisualOnly) continue;
+                    if (Math.hypot(exp.x - bat.x, exp.y - bat.y) <= exp.radius + bat.radius) {
+                        const expDmg = exp.damage;
+                        if (bat.shield > 0) {
+                            if (bat.shield >= expDmg) {
+                                bat.shield -= expDmg;
+                            } else {
+                                bat.hp -= (expDmg - bat.shield);
+                                bat.shield = 0;
+                            }
+                        } else {
+                            bat.hp -= expDmg;
+                        }
+                        spawnFloatingText(bat.x, bat.y - 20, `-${expDmg}`, '#ff4757');
+                        if (bat.hp <= 0) break;
+                    }
+                }
+            }
+        }
+    }
+
+    function renderBadBatSwarm(ctx) {
+        const now = performance.now();
+
+        // 1. Draw shield orbs
+        for (const orb of badbatShieldOrbs) {
+            if (!orb) continue;
+            ctx.save();
+            ctx.globalAlpha = orb.alpha !== undefined ? orb.alpha : 0.9;
+            ctx.shadowColor = '#e056fd';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.arc(orb.x, orb.y, orb.radius || 9, 0, Math.PI * 2);
+            const gOrb = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.radius || 9);
+            gOrb.addColorStop(0, '#ffffff');
+            gOrb.addColorStop(0.4, '#e056fd');
+            gOrb.addColorStop(1, 'rgba(120,0,200,0)');
+            ctx.fillStyle = gOrb;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 2. Draw pre-dash telegraph laser lines to targets (High-contrast, animated tracking lock-on)
+        for (const bat of badbatSwarm) {
+            if (!bat || bat.hp <= 0 || bat.state !== 'pre_dash') continue;
+            const target = bat.dashTargetId ? getEntityById(bat.dashTargetId) : null;
+            if (!target || target.hp <= 0) continue;
+
+            ctx.save();
+            const mp = bat.markPulse || 0;
+            const lineAng = Math.atan2(target.y - bat.y, target.x - bat.x);
+            const lineDist = Math.hypot(target.x - bat.x, target.y - bat.y);
+
+            // Glowing Outer Laser Line
+            ctx.shadowColor = '#ff0055';
+            ctx.shadowBlur = 12;
+            ctx.strokeStyle = `rgba(255, 23, 68, ${0.75 + Math.sin(mp * 2.5) * 0.25})`;
+            ctx.lineWidth = 3.5;
+            ctx.setLineDash([10, 6]);
+            ctx.lineDashOffset = -now * 0.08;
+            ctx.beginPath();
+            ctx.moveTo(bat.x, bat.y);
+            ctx.lineTo(target.x, target.y);
+            ctx.stroke();
+
+            // Inner Crisp Core Laser Line
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([6, 10]);
+            ctx.lineDashOffset = -now * 0.08;
+            ctx.beginPath();
+            ctx.moveTo(bat.x, bat.y);
+            ctx.lineTo(target.x, target.y);
+            ctx.stroke();
+
+            // Animated pulsing energy beads rushing towards target
+            ctx.setLineDash([]);
+            const beadProgress = ((now * 0.003) % 1);
+            const beadX = bat.x + (target.x - bat.x) * beadProgress;
+            const beadY = bat.y + (target.y - bat.y) * beadProgress;
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#ff2a55';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(beadX, beadY, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Lock-on Target Crosshair & Telegraph Reticle
+            ctx.translate(target.x, target.y);
+            const lockPulse = 1 + Math.sin(mp * 3) * 0.12;
+            ctx.scale(lockPulse, lockPulse);
+
+            // Pulsing target aura ring
+            ctx.strokeStyle = 'rgba(255, 42, 85, 0.9)';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, (target.radius || 16) + 12, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 4 rotating reticle corner brackets
+            for (let k = 0; k < 4; k++) {
+                const a = (Math.PI / 2) * k + now * 0.0035;
+                const r1 = (target.radius || 16) + 8;
+                const r2 = (target.radius || 16) + 18;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+                ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
+                ctx.stroke();
+            }
+
+            // High-contrast Warning Lock-on Pill Badge
+            const pillW = 82;
+            const pillH = 16;
+            const pillY = -(target.radius || 16) - 24;
+            ctx.fillStyle = 'rgba(8, 0, 12, 0.9)';
+            ctx.beginPath();
+            ctx.roundRect(-pillW / 2, pillY - pillH / 2, pillW, pillH, 4);
+            ctx.fill();
+            ctx.strokeStyle = '#ff2a55';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.font = '900 9.5px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#ff3366';
+            ctx.shadowColor = '#000000';
+            ctx.shadowBlur = 3;
+            ctx.fillText('⚠️ BAT LOCK-ON', 0, pillY);
+            ctx.restore();
+        }
+
+        // 3. Draw bat minions
+        for (const bat of badbatSwarm) {
+            if (!bat || bat.hp <= 0) continue;
+            const bx = bat.x, by = bat.y;
+            const br = bat.radius || 14;
+            const facing = bat.facing || 0;
+            const wingFlap = bat.wingFlap || 0;
+            const legPhase = bat.legPhase || 0;
+            const hopZ = bat.hopZ || 0;
+            const isSpr = !!bat.isSuperBat;
+
+            // Ghost trails during dash
+            if (bat.ghostTrails && bat.ghostTrails.length > 0) {
+                for (let ti = 0; ti < bat.ghostTrails.length; ti++) {
+                    const gt = bat.ghostTrails[ti];
+                    const gAlpha = (ti + 1) / (bat.ghostTrails.length + 1) * 0.4;
+                    ctx.save();
+                    ctx.globalAlpha = gAlpha;
+                    ctx.translate(gt.x, gt.y);
+                    ctx.rotate(gt.facing);
+                    ctx.fillStyle = gt.isSpr ? '#a855f7' : '#7c3aed';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, br * 0.85, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            // Ground shadow
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(bx, by + br * 0.8, br * 0.95, br * 0.45, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Bat body container
+            ctx.save();
+            ctx.translate(bx, by - hopZ);
+            ctx.rotate(facing);
+
+            // ── Wings ──
+            const waveY = Math.sin(wingFlap) * br * 1.25;
+            // Left wing
+            ctx.beginPath();
+            ctx.moveTo(-br * 0.8, 0);
+            ctx.quadraticCurveTo(-br * 2.5, -br * 0.7 + waveY, -br * 0.2, -br * 0.7);
+            ctx.quadraticCurveTo(-br * 1.5, -br * 0.2, -br * 0.8, 0);
+            ctx.closePath();
+            ctx.fillStyle = isSpr ? '#8b24d6' : '#5b189a';
+            ctx.shadowColor = isSpr ? '#d946ef' : '#9d4edd';
+            ctx.shadowBlur = isSpr ? 14 : 6;
+            ctx.fill();
+            // Right wing
+            ctx.beginPath();
+            ctx.moveTo(br * 0.8, 0);
+            ctx.quadraticCurveTo(br * 2.5, -br * 0.7 + waveY, br * 0.2, -br * 0.7);
+            ctx.quadraticCurveTo(br * 1.5, -br * 0.2, br * 0.8, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // ── Body ──
+            ctx.beginPath();
+            ctx.arc(0, 0, br, 0, Math.PI * 2);
+            const bodyGrad = ctx.createRadialGradient(-br * 0.25, -br * 0.25, 0, 0, 0, br);
+            bodyGrad.addColorStop(0, isSpr ? '#8a30d0' : '#3a1460');
+            bodyGrad.addColorStop(1, isSpr ? '#250042' : '#120520');
+            ctx.fillStyle = bodyGrad;
+            ctx.shadowColor = isSpr ? '#c77dff' : '#9d4edd';
+            ctx.shadowBlur = isSpr ? 18 : 8;
+            ctx.fill();
+            ctx.strokeStyle = isSpr ? '#e0aaff' : '#a855f7';
+            ctx.lineWidth = isSpr ? 2.4 : 1.6;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // ── Pointy Bat Ears ──
+            ctx.beginPath();
+            ctx.moveTo(-br * 0.45, -br * 0.7);
+            ctx.lineTo(-br * 0.75, -br * 1.45);
+            ctx.lineTo(-br * 0.15, -br * 0.85);
+            ctx.closePath();
+            ctx.fillStyle = isSpr ? '#c084fc' : '#7e22ce';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(br * 0.45, -br * 0.7);
+            ctx.lineTo(br * 0.75, -br * 1.45);
+            ctx.lineTo(br * 0.15, -br * 0.85);
+            ctx.closePath();
+            ctx.fill();
+
+            // ── Eyes (Flash intense crimson/yellow during pre_dash telegraph) ──
+            const isPreDash = bat.state === 'pre_dash';
+            ctx.shadowColor = isPreDash ? '#ff0055' : '#facc15';
+            ctx.shadowBlur = isPreDash ? 14 : 7;
+            ctx.fillStyle = isPreDash ? '#ff3366' : '#fde047';
+            ctx.beginPath();
+            ctx.arc(-br * 0.3, -br * 0.15, 2.8, 0, Math.PI * 2);
+            ctx.arc(br * 0.3, -br * 0.15, 2.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            // Pupils
+            ctx.fillStyle = isPreDash ? '#ffffff' : '#1e102d';
+            ctx.beginPath();
+            ctx.arc(-br * 0.3, -br * 0.1, 1.3, 0, Math.PI * 2);
+            ctx.arc(br * 0.3, -br * 0.1, 1.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ── Vampire Fangs ──
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(-br * 0.2, br * 0.35);
+            ctx.lineTo(-br * 0.1, br * 0.65);
+            ctx.lineTo(0, br * 0.35);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(0, br * 0.35);
+            ctx.lineTo(br * 0.1, br * 0.65);
+            ctx.lineTo(br * 0.2, br * 0.35);
+            ctx.fill();
+
+            // ── Walking Paws / Legs ──
+            if (bat.state === 'roam' || bat.state === 'orbit' || bat.state === 'pre_dash') {
+                const legL = br * 0.65;
+                const stepA = Math.sin(legPhase) * 0.5;
+                ctx.strokeStyle = isSpr ? '#c084fc' : '#9333ea';
+                ctx.lineWidth = 2.2;
+                ctx.lineCap = 'round';
+                // Left leg
+                ctx.save();
+                ctx.rotate(-0.35 + stepA);
+                ctx.beginPath();
+                ctx.moveTo(-br * 0.35, br * 0.5);
+                ctx.lineTo(-br * 0.35 - Math.sin(0.3 - stepA) * legL, br * 0.5 + Math.cos(0.3 - stepA) * legL);
+                ctx.stroke();
+                ctx.restore();
+                // Right leg
+                ctx.save();
+                ctx.rotate(0.35 - stepA);
+                ctx.beginPath();
+                ctx.moveTo(br * 0.35, br * 0.5);
+                ctx.lineTo(br * 0.35 + Math.sin(0.3 + stepA) * legL, br * 0.5 + Math.cos(0.3 + stepA) * legL);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            ctx.restore();
+
+            // ── High-Visibility Overhead Health Bar (Crystal Clear, Stable, High-Contrast) ──
+            ctx.save();
+            const curHp = Math.max(0, Math.ceil(bat.hp || 0));
+            const maxHp = bat.maxHp || 560;
+            const hpPct = clamp(curHp / maxHp, 0, 1);
+            const barW = 46;
+            const barH = 9;
+            const barX = bx - barW / 2;
+            const barY = by - br - 18; // Stable anchor above bat
+
+            // Dark backdrop with outer shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+            ctx.shadowBlur = 4;
+            ctx.fillStyle = 'rgba(5, 8, 18, 0.95)';
+            ctx.beginPath();
+            ctx.roundRect(barX - 1.5, barY - 1.5, barW + 3, barH + 3, 4);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Health gradient fill
+            let hpColor1, hpColor2;
+            if (hpPct > 0.5) {
+                hpColor1 = '#10b981'; hpColor2 = '#34d399';
+            } else if (hpPct > 0.25) {
+                hpColor1 = '#f59e0b'; hpColor2 = '#fbbf24';
+            } else {
+                hpColor1 = '#ef4444'; hpColor2 = '#f87171';
+            }
+
+            if (hpPct > 0) {
+                const fillW = Math.max(5, barW * hpPct);
+                const hpGrad = ctx.createLinearGradient(barX, barY, barX + fillW, barY);
+                hpGrad.addColorStop(0, hpColor1);
+                hpGrad.addColorStop(1, hpColor2);
+                ctx.fillStyle = hpGrad;
+                ctx.beginPath();
+                ctx.roundRect(barX, barY, fillW, barH, 3);
+                ctx.fill();
+
+                // Subtle top highlight sheen
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+                ctx.beginPath();
+                ctx.roundRect(barX, barY, fillW, barH * 0.45, [3, 3, 0, 0]);
+                ctx.fill();
+            }
+
+            // High-contrast outer stroke
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.roundRect(barX, barY, barW, barH, 3);
+            ctx.stroke();
+
+            // Crisp White HP Number with Heavy Outline
+            ctx.font = '900 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.lineWidth = 2.4;
+            ctx.strokeStyle = '#000000';
+            ctx.strokeText(`${curHp}`, bx, barY + barH / 2 + 0.5);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(`${curHp}`, bx, barY + barH / 2 + 0.5);
+
+            // Super bat star badge
+            if (isSpr) {
+                ctx.font = 'bold 9px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#fbbf24';
+                ctx.shadowColor = '#000000';
+                ctx.shadowBlur = 3;
+                ctx.fillText('★', barX - 3, barY + barH / 2 + 0.5);
+            }
+
+            // Shield Bar (if overshield is active)
+            if (bat.shield > 0) {
+                const shY = barY - 8;
+                const shPct = clamp(bat.shield / (bat.maxShield || 1000), 0, 1);
+                ctx.fillStyle = 'rgba(5, 8, 18, 0.95)';
+                ctx.beginPath();
+                ctx.roundRect(barX - 1.5, shY - 1.5, barW + 3, 7, 3);
+                ctx.fill();
+
+                const shGrad = ctx.createLinearGradient(barX, shY, barX + barW * shPct, shY);
+                shGrad.addColorStop(0, '#06b6d4');
+                shGrad.addColorStop(1, '#38bdf8');
+                ctx.fillStyle = shGrad;
+                ctx.beginPath();
+                ctx.roundRect(barX, shY, Math.max(4, barW * shPct), 5, 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(barX, shY, barW, 5, 2);
+                ctx.stroke();
+
+                ctx.font = '900 7.5px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.lineWidth = 2.2;
+                ctx.strokeStyle = '#000000';
+                ctx.strokeText(`${Math.ceil(bat.shield)}`, bx, shY + 2.5);
+                ctx.fillStyle = '#e0f2fe';
+                ctx.fillText(`${Math.ceil(bat.shield)}`, bx, shY + 2.5);
+            }
+            ctx.restore();
+        }
     }
 
     function isFriendlyFireActive() {
@@ -10409,6 +11871,9 @@ function isPowerPlayModifierActive(entity = player) {
         entity.ridaSuperUntil = 0;
         entity.crystilaGlassUntil = 0;
         entity.crystilaGlassHp = 0;
+        entity.crystilaGlassInvulnUntil = 0;
+        entity.crystilaMutationShotCounter = 0;
+        entity.crystilaMutationCharges = 0;
         entity.screenerProjectorUntil = 0;
         entity.axeyWaxySuperUntil = 0;
         entity.beastyEmpoweredUntil = 0;
@@ -10425,15 +11890,19 @@ function isPowerPlayModifierActive(entity = player) {
         entity.arenaForgeDeathCounted = false;
         entity.markedMayhemDeathCounted = false;
         clearPoisonState(entity);
+        const respawnSkin = getActiveSkinForBrawler(entity.brawler || (entity.id === player.id ? selectedBrawler : null));
+        if (respawnSkin) triggerSkinPulse(entity, respawnSkin, 'spawn');
         if (playerControlled || entity === player || entity.id === player.id) {
             ammo = maxAmmo;
             ammoReloadTimer = 0;
             triggerPlayerRespawnTrinkets();
+            if (isArenaForgeMode && entity.arenaForgeSupercharger) superCharge = 100;
             updateSuperButton();
             updateHyperButton();
             updateGadgetButton();
         } else {
             entity.ammo = entity.maxAmmo || 3;
+            if (isArenaForgeMode && entity.arenaForgeSupercharger) entity.superCharge = 100;
         }
     }
 
@@ -10995,7 +12464,7 @@ let heistFeverActive = false;
       evilDoctorUnlockEndAt: 0,
       unlockedBrawlers: { outlit: true, fuser: true, axeywaxy: true, trampaheal: true,
         carmela_fudge: true,
-        mageny: true, draflygon: true, drainbow: true, kage: true, cinderion: true, cursed: true, bolznstien: true, rager: true },
+        mageny: true, draflygon: true, drainbow: true, kage: true, cinderion: true, cursed: true, bolznstien: true, rager: true, badbat: true },
       soulSummoner: { pullCount: 0, deferredQueue: [], road: [], soulBank: 0, soulWater: 0, targetBrawler: null, pendingWaterReward: null, pendingTargetPick: null },
       ranked: { points: 0, rewardsClaimed: [] },
       attachies: { hyper: {}, gadget: {}, star: {}, pulls: 0 },
@@ -11044,6 +12513,20 @@ let heistFeverActive = false;
       {name:'Stormglass Panic',desc:'Heavy storm and empowered enemies.',modifier:'heavy_storm',botCubeBonus:4},
       {name:'Crown Survival',desc:'The final max-pressure tower battle.',modifier:'power_surge',botCubeBonus:6,boxMult:1.25}
   ];
+  const CHAOS_CROWN_FLOORS = 10;
+  const CHAOS_CROWN_RULES = Object.freeze([
+      {name:'Mystery Door',icon:'🎲',desc:'A random maxed guest enters with four fused Tower powers.',modifier:null,reward:125},
+      {name:'Lootquake',icon:'📦',desc:'Extra Power Boxes flood the arena.',modifier:'power_surge',boxMult:1.55,reward:150},
+      {name:'Closing Time',icon:'🌪️',desc:'The poison storm closes aggressively.',modifier:'heavy_storm',reward:175},
+      {name:'Super Alarm',icon:'💥',desc:'Everyone enters with a fully charged Super.',modifier:null,startSuper:true,reward:200},
+      {name:'Loaded Dice',icon:'🎰',desc:'Tower fusion runs hotter while enemies gain Power.',modifier:'power_surge',fusionBonus:.28,botCubeBonus:2,reward:250},
+      {name:'Hyper Hour',icon:'💜',desc:'Your guest enters with Hypercharge ready.',modifier:null,startHyper:true,botCubeBonus:3,reward:300},
+      {name:'Glass Tempest',icon:'⚡',desc:'Fast Super charging inside a brutal storm.',modifier:'heavy_storm',startSuper:true,reward:350},
+      {name:'Royal Rumble',icon:'👑',desc:'Empowered enemies arrive carrying five bonus Power Cubes.',modifier:null,botCubeBonus:5,reward:425},
+      {name:'Reality Break',icon:'🌀',desc:'Hypercharge ready, stronger fusion, and a heavy storm.',modifier:'heavy_storm',startHyper:true,fusionBonus:.40,botCubeBonus:4,reward:500},
+      {name:'Chaos Crown',icon:'🏆',desc:'Super and Hyper ready against the strongest possible lobby.',modifier:'power_surge',startSuper:true,startHyper:true,fusionBonus:.55,botCubeBonus:7,boxMult:1.35,reward:750}
+  ]);
+  function getChaosCrownRule(floor){return CHAOS_CROWN_RULES[Math.max(0,Math.min(CHAOS_CROWN_FLOORS-1,Math.floor(floor||1)-1))];}
   const TOWER_GAUNTLET_MODES = Object.freeze([
       'solo','objective','tug_zone','knock_donate','brick_vault',
       'damage_filler','construction','arena_forge','marked_mayhem','solo',
@@ -11431,6 +12914,8 @@ let heistFeverActive = false;
       sushi.run.floor = Math.max(1, Math.min(TOWER_TROUBLE_FLOORS, Math.floor(sushi.run.floor || sushi.run.stage || 1)));
       sushi.run.fusionLevel = Math.max(0, Math.floor(sushi.run.fusionLevel || 0));
       sushi.run.coinsEarned = Math.max(0, Math.floor(sushi.run.coinsEarned || 0));
+      if (!sushi.chaosRun || typeof sushi.chaosRun !== 'object') sushi.chaosRun = {active:false,variant:'chaos',floor:1,roster:[],losses:0,cards:[],coinsEarned:0};
+      const chaos=sushi.chaosRun;chaos.variant='chaos';chaos.floor=Math.max(1,Math.min(CHAOS_CROWN_FLOORS,Math.floor(chaos.floor||1)));chaos.losses=Math.max(0,Math.min(3,Math.floor(chaos.losses||0)));if(!Array.isArray(chaos.roster))chaos.roster=[];if(!Array.isArray(chaos.cards))chaos.cards=[];chaos.coinsEarned=Math.max(0,Math.floor(chaos.coinsEarned||0));
       if (!sushi.gauntletRun || typeof sushi.gauntletRun !== 'object') sushi.gauntletRun = {active:false,variant:'gauntlet',floor:1,roster:[],crew:[],usesLeft:{},losses:0,cards:[],coinsEarned:0};
       const gauntlet=sushi.gauntletRun;
       gauntlet.variant='gauntlet';
@@ -11685,6 +13170,7 @@ let heistFeverActive = false;
   function assignSlopSushiBotPowers() {
       if (!isSlopSushiMode) return;
       const cardCount = Math.max(1, Math.min(5, slopSushiActiveCards.length || 1));
+      if(isTowerTroubleMode&&towerTroubleVariant==='chaos'){const rule=getChaosCrownRule(playerData.slopSushi?.chaosRun?.floor||1);if(rule.startSuper){superCharge=100;updateSuperButton();}if(rule.startHyper){hyperChargeCharge=100;updateHyperchargeButton();}}
       for (const bot of bots) {
           if (!bot || bot.isDummy || bot.isPet || bot.copyphaseClone) continue;
           const deck = [...getActiveSlopSushiDeck(bot.brawler)].sort(() => Math.random() - .5);
@@ -11692,14 +13178,16 @@ let heistFeverActive = false;
               ? getActiveSlopSushiDeck(bot.brawler)
               : deck.slice(0, cardCount);
           if(isTowerTroubleMode){
-              const gauntlet=towerTroubleVariant==='gauntlet',run=gauntlet?playerData.slopSushi?.gauntletRun:playerData.slopSushi?.run;
-              const floor=Math.max(1,Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:TOWER_TROUBLE_FLOORS,run?.floor||1));
+              const gauntlet=towerTroubleVariant==='gauntlet',chaos=towerTroubleVariant==='chaos',run=gauntlet?playerData.slopSushi?.gauntletRun:(chaos?playerData.slopSushi?.chaosRun:playerData.slopSushi?.run);
+              const floor=Math.max(1,Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:(chaos?CHAOS_CROWN_FLOORS:TOWER_TROUBLE_FLOORS),run?.floor||1));
               bot.level=11;
               bot.towerFusionStrength=towerFusionStrength;
               // Floors grow through normal Power scaling so every brawler kit
               // keeps its real damage formulas instead of receiving fake flat damage.
-              const challenge=gauntlet?{}:TOWER_FLOOR_CHALLENGES[floor-1];
-              bot.powerCubes=Math.max(bot.powerCubes||0,Math.floor((floor-1)*(gauntlet ? .72 : 1.15))+(challenge.botCubeBonus||0));
+              const challenge=gauntlet?{}:(chaos?getChaosCrownRule(floor):TOWER_FLOOR_CHALLENGES[floor-1]);
+              bot.powerCubes=Math.max(bot.powerCubes||0,Math.floor((floor-1)*(gauntlet ? .72 : (chaos?.45:1.15)))+(challenge.botCubeBonus||0));
+              if(challenge.startSuper)bot.superCharge=100;
+              if(challenge.startHyper)bot.hyperChargeCharge=100;
           }
           const hpPct = getEntitySlopEffectTotal(bot, 'hpPct');
           if (hpPct > 0) { bot.maxHp = Math.round(bot.maxHp * (1 + hpPct)); bot.hp = bot.maxHp; }
@@ -11932,8 +13420,9 @@ let heistFeverActive = false;
   function draftTowerTroubleBrawler(run,floor){
       const deck=getActiveSlopSushiDeck(run.brawler);
       if(deck.length<8){alert('That brawler is missing a complete Tower deck.');return;}
-      const isGauntlet=run.variant==='gauntlet';
-      slopSushiActiveCards=[];sushiMatchArmed=true;isTowerTroubleMode=true;towerTroubleVariant=isGauntlet?'gauntlet':'classic';towerFusionStrength=(isGauntlet?1.45:1.55)+floor*(isGauntlet?.06:.10);
+      const isGauntlet=run.variant==='gauntlet',isChaos=run.variant==='chaos';
+      const chaosRule=isChaos?getChaosCrownRule(floor):null;
+      slopSushiActiveCards=[];sushiMatchArmed=true;isTowerTroubleMode=true;towerTroubleVariant=isGauntlet?'gauntlet':(isChaos?'chaos':'classic');towerFusionStrength=(isGauntlet?1.45:1.55)+floor*(isGauntlet?.06:.10)+(chaosRule?.fusionBonus||0);
       const chosen=[];
       const pick=(pickNumber)=>{
           if(pickNumber>TOWER_FUSION_CARD_COUNT){run.cards=[...chosen];run.stage=floor;run.fusionLevel=floor;slopSushiActiveCards=[...chosen];if(isGauntlet){run.inMatch=true;showdownMode=getTowerGauntletFloorMode(floor);}saveProgress();launchShowdownMatch();return;}
@@ -11941,11 +13430,11 @@ let heistFeverActive = false;
           const overlay=document.createElement('div');overlay.className='sushi-mobile-overlay tower-trouble-draft';
           overlay.style.cssText='position:fixed;inset:0;z-index:2800;background:radial-gradient(circle at 50% 20%,#44306d,#10152c 55%,#050813);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif';
           const brawlerName=brawlerData[run.brawler]?.name||run.brawler;
-          const challenge=isGauntlet?{name:TOWER_GAUNTLET_MODE_NAMES[getTowerGauntletFloorMode(floor)]||'Tower Battle'}:TOWER_FLOOR_CHALLENGES[floor-1];
-          const floorReward=isGauntlet?getTowerGauntletFloorReward(floor):getTowerTroubleFloorReward(floor,run.losses||0);
-          const floorTotal=isGauntlet?TOWER_GAUNTLET_FLOORS:TOWER_TROUBLE_FLOORS;
+          const challenge=isGauntlet?{name:TOWER_GAUNTLET_MODE_NAMES[getTowerGauntletFloorMode(floor)]||'Tower Battle'}:(isChaos?chaosRule:TOWER_FLOOR_CHALLENGES[floor-1]);
+          const floorReward=isGauntlet?getTowerGauntletFloorReward(floor):(isChaos?chaosRule.reward:getTowerTroubleFloorReward(floor,run.losses||0));
+          const floorTotal=isGauntlet?TOWER_GAUNTLET_FLOORS:(isChaos?CHAOS_CROWN_FLOORS:TOWER_TROUBLE_FLOORS);
           const lifeText=isGauntlet?`${run.usesLeft?.[run.brawler]||0}/3 knockout lives`:`${3-(run.losses||0)} lives remain`;
-          overlay.innerHTML=`<div style="font-size:12px;font-weight:1000;letter-spacing:.18em;color:#8ee9ff">${challenge.name.toUpperCase()} • ${isGauntlet?'GRAND TOUR':TOWER_FLOOR_BIOMES[floor-1]}</div><h1 style="margin:8px 0;color:#ffd66b">${isGauntlet?'TOWER TROUBLE: GRAND TOUR':'TOWER TROUBLE'} — FLOOR ${floor}/${floorTotal}</h1><p style="margin:0 0 6px"><b>${brawlerName}</b> • POWER 11 GUEST • ${lifeText}</p><p style="margin:5px 0;color:#75f0b8;font-weight:900">FLOOR REWARD: ${floorReward.toLocaleString()} COINS</p><p style="color:#d4b5ff">Choose Transformation ${pickNumber}/4. Fusion strength: <b>${Math.round(towerFusionStrength*100)}%</b>.</p><div class="sushi-match-picks" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"></div>`;
+          overlay.innerHTML=`<div style="font-size:12px;font-weight:1000;letter-spacing:.18em;color:#8ee9ff">${challenge.name.toUpperCase()} • ${isGauntlet?'GRAND TOUR':(isChaos?'CHAOS CROWN':TOWER_FLOOR_BIOMES[floor-1])}</div><h1 style="margin:8px 0;color:#ffd66b">${isGauntlet?'TOWER TROUBLE: GRAND TOUR':(isChaos?'CHAOS CROWN':'TOWER TROUBLE')} — FLOOR ${floor}/${floorTotal}</h1><p style="margin:0 0 6px"><b>${brawlerName}</b> • POWER 11 GUEST • ${lifeText}</p><p style="margin:5px 0;color:#75f0b8;font-weight:900">FLOOR REWARD: ${floorReward.toLocaleString()} COINS</p><p style="color:#d4b5ff">Choose Transformation ${pickNumber}/4. Fusion strength: <b>${Math.round(towerFusionStrength*100)}%</b>.</p><div class="sushi-match-picks" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"></div>`;
           const wrap=overlay.querySelector('.sushi-match-picks');
           for(const card of choices){const color=card.rarity==='Exotic'?'#55f7ff':(card.rarity==='Legendary'?'#ffb347':(card.rarity==='Mythic'?'#ff5ba7':'#9b8cff')),button=document.createElement('button');button.className='sushi-mobile-card tower-transformation-card';button.style.cssText=`width:230px;min-height:260px;padding:20px;border:2px solid ${color};border-radius:22px;background:linear-gradient(155deg,#251b47,#102b3b);color:white;cursor:pointer;box-shadow:0 0 28px ${color}55`;button.innerHTML=`<div style="font-size:11px;font-weight:1000;color:${color};letter-spacing:.12em">${card.rarity.toUpperCase()} • TOWER TRANSFORMATION</div><div style="font-size:52px">${card.icon}</div><h2>${card.name}</h2><p>${card.desc}</p>`;button.onclick=()=>{chosen.push(card.id);overlay.remove();pick(pickNumber+1);};wrap.appendChild(button);}
           document.body.appendChild(overlay);
@@ -11972,6 +13461,24 @@ let heistFeverActive = false;
       const fighters=board.querySelector('.tower-run-board__fighters');
       for(const id of run.roster){const used=eliminated.has(id),button=document.createElement('button');button.className=`tower-run-fighter${used?' is-eliminated':''}`;button.disabled=used;const data=brawlerData[id]||{};button.innerHTML=`<span>${getBrawlerPortraitMarkup(id)}</span><b>${data.name||id}</b><small>${used?'USED THIS RUN':'POWER 11 • READY'}</small>`;if(!used)button.onclick=()=>{run.brawler=id;run.cards=[];selectedBrawler=id;saveProgress();board.remove();draftTowerTroubleBrawler(run,floor);};fighters.appendChild(button);}
       board.querySelector('.tower-run-board__close').onclick=()=>board.remove();document.body.appendChild(board);
+  }
+
+  function openChaosCrownBoard(run){
+      const floor=Math.max(1,Math.min(CHAOS_CROWN_FLOORS,run.floor||1)),rule=getChaosCrownRule(floor),id=run.roster[floor-1],data=brawlerData[id]||{};
+      if(!id){run.active=false;saveProgress();alert('Chaos Crown could not deal the next guest. Start a fresh run.');return;}
+      const board=document.createElement('div');board.className='tower-run-board chaos-crown-board';
+      board.innerHTML=`<section class="tower-run-board__panel"><header><div><small>PERMANENT 10-FLOOR RANDOM CHALLENGE</small><h1>🎲 CHAOS CROWN</h1><p>Ten mystery Power-11 guests. Ten different rules. Four fused Tower powers every floor. You have three strikes for the entire run.</p></div><button class="tower-run-board__close" aria-label="Close">×</button></header><div class="tower-run-board__status"><b>FLOOR ${floor}/10</b><span>${rule.icon} ${rule.name} • ${rule.reward} COINS</span><strong>${run.losses||0}/3 STRIKES</strong></div><div class="tower-run-board__body"><div class="tower-run-board__tower"></div><div class="tower-run-board__roster"><h2>${rule.icon} ${rule.name}</h2><p>${rule.desc}</p><div class="tower-run-board__fighters"><button class="tower-run-fighter is-selected chaos-crown-enter"><span>${getBrawlerPortraitMarkup(id)}</span><b>${data.name||id}</b><small>RANDOM POWER 11 GUEST • ENTER FLOOR</small></button></div><p style="color:#93a9c7;margin-top:16px">Future guests stay hidden until their floor. Cleared guests cannot repeat in this run.</p></div></div></section>`;
+      const tower=board.querySelector('.tower-run-board__tower');
+      for(let i=CHAOS_CROWN_FLOORS;i>=1;i--){const r=getChaosCrownRule(i),state=i<floor?'is-cleared':i===floor?'is-current':'is-locked',node=document.createElement('div');node.className=`tower-run-floor ${state}`;node.innerHTML=`<i>${i<floor?'✓':i}</i><span><b>${i<=floor?r.name:'??? MYSTERY FLOOR'}</b><small>${i<=floor?r.desc:'Rule and guest concealed'}</small></span>`;tower.appendChild(node);}
+      board.querySelector('.chaos-crown-enter').onclick=()=>{run.brawler=id;run.cards=[];selectedBrawler=id;towerTroubleVariant='chaos';saveProgress();board.remove();draftTowerTroubleBrawler(run,floor);};
+      board.querySelector('.tower-run-board__close').onclick=()=>board.remove();document.body.appendChild(board);
+  }
+  function prepareChaosCrownRun(){
+      ensureSlopSushiState();const run=playerData.slopSushi.chaosRun,pool=getTowerTroubleBrawlerPool();
+      if(pool.length<CHAOS_CROWN_FLOORS){alert('Chaos Crown needs at least 10 active fighters with complete Tower decks.');return;}
+      const valid=run.active&&run.roster?.length===CHAOS_CROWN_FLOORS&&run.roster.every(id=>pool.includes(id));
+      if(!valid){Object.assign(run,{active:true,variant:'chaos',originalBrawler:allBrawlers.includes(selectedBrawler)?selectedBrawler:'outlit',roster:createTowerTroubleRoster(pool,CHAOS_CROWN_FLOORS),losses:0,brawler:null,floor:1,stage:1,cards:[],coinsEarned:0,runId:'chaos_'+Date.now()+'_'+Math.floor(Math.random()*100000)});saveProgress();}
+      towerTroubleVariant='chaos';openChaosCrownBoard(run);
   }
 
   function openTowerGauntletCrewDraft(run){
@@ -12167,6 +13674,7 @@ let heistFeverActive = false;
                       playerData.unlockedBrawlers.carmela_fudge = true;
                       playerData.unlockedBrawlers.bolznstien = true;
                       playerData.unlockedBrawlers.magnatar = true;
+                      playerData.unlockedBrawlers.badbat = true;
                   }
                   if (data.persistent.soulSummoner) playerData.soulSummoner = data.persistent.soulSummoner;
                   if (data.persistent.evilDoctorUnlockEndAt != null) playerData.evilDoctorUnlockEndAt = data.persistent.evilDoctorUnlockEndAt;
@@ -12226,9 +13734,9 @@ let heistFeverActive = false;
                   level: Math.max(1, Math.min(11, Math.floor(existing.level || 1))),
                   bricks: Math.max(0, Math.floor(existing.bricks || 0)),
                   prestige: Math.max(0, Math.floor(existing.prestige || 0)),
-                  gadgetUnlocked: (bid === 'bolznstien' || bid === 'magnatar' || bid === 'carmela_fudge') ? true : !!existing.gadgetUnlocked,
-                  starPowerUnlocked: (bid === 'bolznstien' || bid === 'magnatar') ? true : !!existing.starPowerUnlocked,
-                  hyperchargeUnlocked: (bid === 'bolznstien' || bid === 'magnatar') ? true : !!existing.hyperchargeUnlocked,
+                  gadgetUnlocked: (bid === 'bolznstien' || bid === 'magnatar' || bid === 'carmela_fudge' || bid === 'badbat') ? true : !!existing.gadgetUnlocked,
+                  starPowerUnlocked: (bid === 'bolznstien' || bid === 'magnatar' || bid === 'badbat') ? true : !!existing.starPowerUnlocked,
+                  hyperchargeUnlocked: (bid === 'bolznstien' || bid === 'magnatar' || bid === 'badbat') ? true : !!existing.hyperchargeUnlocked,
                   hyperchargeDiscountPct: normalizeHyperchargeDiscountPct(existing.hyperchargeDiscountPct),
                   selectedStar: existing.selectedStar || 'slow',
                   selectedGadget: existing.selectedGadget || 'g1',
@@ -12238,7 +13746,7 @@ let heistFeverActive = false;
               if (bid === 'carmela_fudge') {
                   playerData.brawlers[bid].gadgetUnlocked = true;
               }
-              if (bid === 'bolznstien' || bid === 'magnatar') {
+              if (bid === 'bolznstien' || bid === 'magnatar' || bid === 'badbat') {
                   playerData.brawlers[bid].level = Math.max(playerData.brawlers[bid].level || 1, 11);
                   playerData.brawlers[bid].gadgetUnlocked = true;
                   playerData.brawlers[bid].starPowerUnlocked = true;
@@ -13943,7 +15451,7 @@ let heistFeverActive = false;
           icon: 'OP',
           color: '#ff4b55',
           pieceName: 'Outlit Mutation Piece',
-          shortDesc: 'Every 9 main attacks, the next 4 Scatter Pumps get +100% range and 50% faster unload.'
+          shortDesc: 'Every 8 main attacks, the next 4 Scatter Pumps get +100% range and 50% faster unload.'
       },
       bouncin_balls: {
           type: 'signature',
@@ -13969,6 +15477,14 @@ let heistFeverActive = false;
           pieceName: 'Echo Instinct Piece',
           shortDesc: 'Every 8s, the next Sound Wave is larger, travels farther, and repeats once after 800ms.'
       },
+      heater_miser: {
+          type: 'mutation',
+          name: 'Thermal Runaway',
+          icon: 'TR',
+          color: '#ff4b55',
+          pieceName: 'Heater Miser Mutation Piece',
+          shortDesc: 'After 10 connected tether ticks, the next 5 become Runaway ticks: +25% power and a 45% thermal pulse around the target.'
+      },
       minigunnin: {
           type: 'mutation',
           name: 'Incendiary Belt',
@@ -13984,6 +15500,14 @@ let heistFeverActive = false;
           color: '#ffd34f',
           pieceName: 'Classy Signature Piece',
           shortDesc: 'Spend up to 1000 HP while Bass Drop is active to command its speaker to walk for 6 seconds and mirror every Classy attack in the same direction.'
+      },
+      dashaholic: {
+          type: 'signature',
+          name: 'Afterimage Protocol',
+          icon: 'AP',
+          color: '#ffd34f',
+          pieceName: 'Dashaholic Signature Piece',
+          shortDesc: 'Spend up to 1200 HP to empower the selected Gadget. Phase Dash repeats and grants 2s CC immunity; Adrenaline adds a 4s ally-healing aura and +50% reload for 2s.'
       },
       beast: {
           type: 'signature',
@@ -14016,6 +15540,22 @@ let heistFeverActive = false;
           color: '#ffd34f',
           pieceName: 'Mageny Signature Piece',
           shortDesc: 'Spend 2000 HP to sustain the active Magnetic Vortex for up to 14s. Detonate it manually, or overload 2s after its shared projectile cap is reached.'
+      },
+      beam: {
+          type: 'signature',
+          name: 'Prismatic Overdrive',
+          icon: 'PO',
+          color: '#ffd700',
+          pieceName: 'Beam Signature Piece',
+          shortDesc: 'Requires Super ammo ready or active: spend 2300 HP (12s cooldown). Triggers Golden Super with +20% speed, and the beam slows enemies by 50%.'
+      },
+      crystila: {
+          type: 'mutation',
+          name: 'Prismatic Deflection',
+          icon: 'PD',
+          color: '#ff4b55',
+          pieceName: 'Crystila Mutation Piece',
+          shortDesc: 'Every 6 main attacks, the next 3 Crystal Darts gain projectile-deflecting refraction: striking an enemy projectile reverses its direction and ownership back toward the enemy.'
       }
   });
   const SPECIAL_ABILITY_TYPES = Object.freeze(['mutation', 'signature', 'instinct']);
@@ -14048,6 +15588,16 @@ let heistFeverActive = false;
           {id:'flash_freeze_drill',title:'Flash Freeze Drill',desc:"Land 25 Super hits or freeze 8 enemies with Fight'n'Fire.",kind:'super_or_freeze',target:25},
           {id:'thermal_regulation',title:'Thermal Regulation',desc:"Deal 20,000 damage with Fight'n'Fire.",kind:'deal_damage',target:20000}
       ],
+      heater_miser: [
+          {id:'warm_the_lines',title:'Warm the Lines',desc:'Land 40 Thermal Tether ticks.',kind:'main_hit',target:40},
+          {id:'thermal_output',title:'Thermal Output',desc:'Deal 20,000 damage with Heater Miser.',kind:'deal_damage',target:20000},
+          {id:'furnace_tests',title:'Furnace Tests',desc:'Deploy Intergalactic Heat 5 times.',kind:'use_super',target:5}
+      ],
+      dashaholic: [
+          {id:'slash_rush',title:'Slash Rush',desc:'Land 35 Claw Slash hits.',kind:'main_hit',target:35},
+          {id:'double_dash',title:'Double Dash',desc:'Use Unleash the Dashaholic 8 times.',kind:'use_super',target:8},
+          {id:'combat_stimulant',title:'Combat Stimulant',desc:'Use Dashaholic Gadgets 8 times.',kind:'use_gadget',target:8}
+      ],
       minigunnin: [
           {id:'feed_the_belt',title:'Feed the Belt',desc:'Fire 300 Minigunnin bullets.',kind:'main_bullet',target:300},
           {id:'suppressing_fire',title:'Suppressing Fire',desc:'Deal 20,000 damage with Minigunnin.',kind:'deal_damage',target:20000},
@@ -14062,6 +15612,16 @@ let heistFeverActive = false;
           {id:'fracture_practice',title:'Fracture Practice',desc:'Land 40 Splitter grenade or fragment hits.',kind:'main_hit',target:40},
           {id:'five_way_fire',title:'Five-Way Fire',desc:'Fire 35 Split Grenades.',kind:'main_attack',target:35},
           {id:'infinite_division',title:'Infinite Division',desc:'Use Splitin Off 5 times.',kind:'use_super',target:5}
+      ],
+      beam: [
+          {id:'prism_calibration',title:'Prism Calibration',desc:'Maintain 60 continuous laser hits on opponents.',kind:'main_hit',target:60},
+          {id:'overdrive_sweep',title:'Overdrive Sweep',desc:'Activate Prismatic Overdrive or Super 5 times.',kind:'use_super',target:5},
+          {id:'refractive_blast',title:'Refractive Blast',desc:'Deal 22,000 damage with Beam.',kind:'deal_damage',target:22000}
+      ],
+      crystila: [
+          {id:'crystal_hits',title:'Prismatic Precision',desc:'Land 40 Crystal Dart hits.',kind:'main_hit',target:40},
+          {id:'crystal_attacks',title:'Refraction Volley',desc:'Fire 35 main attacks with Crystila.',kind:'main_attack',target:35},
+          {id:'crystal_super',title:'Mirror Aegis',desc:'Deploy Glass Shield 5 times.',kind:'use_super',target:5}
       ]
   });
   let specialQuestLastSaveAt = 0;
@@ -14219,8 +15779,8 @@ let heistFeverActive = false;
   function hashShopKey(value) { let hash=2166136261; for(let i=0;i<String(value).length;i++){hash^=String(value).charCodeAt(i);hash=Math.imul(hash,16777619);} return hash>>>0; }
   function getOrCreateProgress(brawlerId) {
       if (!playerData.brawlers[brawlerId]) {
-          if (brawlerId === 'bolznstien' || brawlerId === 'magnatar' || brawlerId === 'rager' || brawlerId === 'carmela_fudge') {
-              playerData.brawlers[brawlerId] = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+          if (brawlerId === 'bolznstien' || brawlerId === 'magnatar' || brawlerId === 'rager' || brawlerId === 'carmela_fudge' || brawlerId === 'badbat') {
+              playerData.brawlers[brawlerId] = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'sp1', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
           } else {
               playerData.brawlers[brawlerId] = { level: 1, bricks: 0, prestige: 0, gadgetUnlocked: false, starPowerUnlocked: false, hyperchargeUnlocked: false, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
           }
@@ -14500,6 +16060,32 @@ let heistFeverActive = false;
       const renderFeaturedTab = () => {
           const grid = cardGrid();
 
+          addSection(grid, "The Splitter's Special Gift");
+          const splitterInstinctFreeKey = 'splitterInstinctFreeShardsV1';
+          const splitterInstinctClaimed = !!(playerData.shopClaims && playerData.shopClaims[splitterInstinctFreeKey]);
+          grid.appendChild(makeShopCard({
+              titleText: '⚡ 3 Free Splitter Instinct Shards',
+              accent: '#62ef88',
+              descText: "Claim 3 Shards of The Splitter's Instinct for FREE! Instantly unlocks Fractal Reflex.",
+              priceText: 'FREE',
+              buttonText: splitterInstinctClaimed ? 'CLAIMED' : 'CLAIM 3 SHARDS',
+              buttonColor: '#62ef88',
+              isOwned: splitterInstinctClaimed,
+              footerText: 'Free gift in the shop for all players.',
+              onBuy: () => {
+                  if (playerData.shopClaims && playerData.shopClaims[splitterInstinctFreeKey]) return;
+                  playerData.shopClaims = playerData.shopClaims || {};
+                  addSpecialAbilityPiece('splitter');
+                  addSpecialAbilityPiece('splitter');
+                  addSpecialAbilityPiece('splitter');
+                  playerData.shopClaims[splitterInstinctFreeKey] = true;
+                  saveProgress();
+                  ensureShopButtonRefresh();
+                  renderTabContent();
+                  spawnFloatingText(innerWidth / 2, innerHeight / 2, '+3 SPLITTER SHARDS · INSTINCT UNLOCKED!', '#62ef88');
+              }
+          }));
+
           addSection(grid, 'Relay Early Access');
           const relayProgress = getOrCreateProgress('relay');
           const relayOwned = !!playerData.unlockedBrawlers.relay;
@@ -14587,6 +16173,31 @@ let heistFeverActive = false;
                   playerData.shopClaims[dailyFreebieClaimKey] = true;
                   ensureShopButtonRefresh();
                   renderTabContent();
+              }
+          }));
+
+          const splitterInstinctDailyKey = 'splitterInstinctFreeShardsV1';
+          const splitterInstinctDailyClaimed = !!(playerData.shopClaims && playerData.shopClaims[splitterInstinctDailyKey]);
+          grid.appendChild(makeShopCard({
+              titleText: '⚡ 3 Free Splitter Instinct Shards',
+              accent: '#62ef88',
+              descText: "Claim 3 Shards of The Splitter's Instinct for FREE! Instantly unlocks Fractal Reflex.",
+              priceText: 'FREE',
+              buttonText: splitterInstinctDailyClaimed ? 'CLAIMED' : 'CLAIM 3 SHARDS',
+              buttonColor: '#62ef88',
+              isOwned: splitterInstinctDailyClaimed,
+              footerText: 'Free gift in the shop for all players.',
+              onBuy: () => {
+                  if (playerData.shopClaims && playerData.shopClaims[splitterInstinctDailyKey]) return;
+                  playerData.shopClaims = playerData.shopClaims || {};
+                  addSpecialAbilityPiece('splitter');
+                  addSpecialAbilityPiece('splitter');
+                  addSpecialAbilityPiece('splitter');
+                  playerData.shopClaims[splitterInstinctDailyKey] = true;
+                  saveProgress();
+                  ensureShopButtonRefresh();
+                  renderTabContent();
+                  spawnFloatingText(innerWidth / 2, innerHeight / 2, '+3 SPLITTER SHARDS · INSTINCT UNLOCKED!', '#62ef88');
               }
           }));
 
@@ -15050,6 +16661,30 @@ let heistFeverActive = false;
       const renderDailyDealsTab = () => {
           const grid = cardGrid();
           addSection(grid, 'Fresh every day');
+          const splitterInstinctFreeKey = 'splitterInstinctFreeShardsV1';
+          const splitterInstinctClaimed = !!(playerData.shopClaims && playerData.shopClaims[splitterInstinctFreeKey]);
+          grid.appendChild(makeShopCard({
+              titleText: '⚡ 3 Free Splitter Instinct Shards',
+              accent: '#62ef88',
+              descText: "Claim 3 Shards of The Splitter's Instinct for FREE! Instantly unlocks Fractal Reflex.",
+              priceText: 'FREE',
+              buttonText: splitterInstinctClaimed ? 'CLAIMED' : 'CLAIM 3 SHARDS',
+              buttonColor: '#62ef88',
+              isOwned: splitterInstinctClaimed,
+              footerText: 'Free gift in the shop for all players.',
+              onBuy: () => {
+                  if (playerData.shopClaims && playerData.shopClaims[splitterInstinctFreeKey]) return;
+                  playerData.shopClaims = playerData.shopClaims || {};
+                  addSpecialAbilityPiece('splitter');
+                  addSpecialAbilityPiece('splitter');
+                  addSpecialAbilityPiece('splitter');
+                  playerData.shopClaims[splitterInstinctFreeKey] = true;
+                  saveProgress();
+                  ensureShopButtonRefresh();
+                  renderTabContent();
+                  spawnFloatingText(innerWidth / 2, innerHeight / 2, '+3 SPLITTER SHARDS · INSTINCT UNLOCKED!', '#62ef88');
+              }
+          }));
           const supplyKey = getShopClaimKey('forge-supply', dailyCycle.cycleKey);
           grid.appendChild(makeShopCard({
               titleText: '📦 Daily Forge Supply', accent: '#69f2cd',
@@ -16211,6 +17846,10 @@ let heistFeverActive = false;
         jackTradeThrownEffects.length = 0;
         jackTradeZones.length = 0;
         jackTradeEndpointShots.length = 0;
+        badbatSwarm.length = 0;
+        loomaThreads.length = 0;
+        loomaWeaves.length = 0;
+        badbatShieldOrbs.length = 0;
         snapperWaves.length = 0;
         chickpigEggZones.length = 0;
         rocketeerFireZones.length = 0;
@@ -16513,6 +18152,15 @@ let heistFeverActive = false;
         { id: 'executioner_lens', name: 'Executioner Visor', icon: '👁️', desc: 'Deal +35% bonus damage against enemies below 40% health.' },
         { id: 'nanite_injector', name: 'Nanite Rebirth', icon: '🧪', desc: 'Continuously regenerate 3% maximum HP every second.' },
         { id: 'brawler_bounty', name: 'Headhunter Protocol', icon: '🎖️', desc: 'Defeating enemy brawlers awards +50 bonus XP to your whole team and drops 2 Energy gems.' },
+        { id: 'supercharger_core', name: 'Supercharger Core', icon: '🔋', desc: 'Spawn with 100% Super charged, and gain +25% attack speed when Super is ready.' },
+        { id: 'frostfire_catalyst', name: 'Frostfire Catalyst', icon: '❄️🔥', desc: 'Attacks ignite enemies for 450 burn damage over 2s and chill their reload speed by 20%.' },
+        { id: 'titan_breaker', name: 'Titan Breaker', icon: '🔨', desc: 'Deal +45% bonus damage against Bosses, Colossus, Camps, and enemy Towers & Cores.' },
+        { id: 'chrono_disruption', name: 'Chrono Disruption', icon: '⏳', desc: 'Lethal damage is prevented once per match, granting 2.5s invulnerability and restoring 35% HP.' },
+        { id: 'voltaic_overcharge', name: 'Voltaic Overcharge', icon: '⚡', desc: 'Attacks discharge chain lightning arcs to up to 2 nearby enemies for 550 shock damage.' },
+        { id: 'quantum_rounds', name: 'Quantum Rounds', icon: '◈', desc: 'Main projectiles become 35% larger and pierce enemies.' },
+        { id: 'emergency_repair', name: 'Emergency Repair', icon: '🔧', desc: 'Immediately restore 25% max HP and gain a 2500 shield.' },
+        { id: 'soul_capacitor', name: 'Soul Capacitor', icon: '🔮', desc: 'Every Energy pickup grants 12% Super charge and 5% Hypercharge.' },
+        { id: 'fortress_link', name: 'Fortress Link', icon: '🏰', desc: 'Near an allied Tower or Core: +15% damage and 15% faster reload.' },
     ];
 
     function getArenaForgeCombatants(team = null, livingOnly = false) {
@@ -16526,6 +18174,12 @@ let heistFeverActive = false;
             list.push(entity);
         }
         return list;
+    }
+
+    function isNearAlliedArenaForgeStructure(entity, range = 360) {
+        if (!isArenaForgeMode || !entity) return false;
+        const team = entity.id === player.id ? 'player' : (entity.team === 'player' ? 'player' : 'enemy');
+        return bots.some((structure) => structure?.isArenaForgeStructure && structure.hp > 0 && structure.team === team && Math.hypot(structure.x - entity.x, structure.y - entity.y) <= range);
     }
 
     function getArenaForgeXpRequirement(entity) {
@@ -16579,6 +18233,17 @@ let heistFeverActive = false;
         entity.arenaForgeExecutioner = false;
         entity.arenaForgeNaniteInjector = false;
         entity.arenaForgeHeadhunter = false;
+        entity.arenaForgeSupercharger = false;
+        entity.arenaForgeFrostfire = false;
+        entity.arenaForgeFrostfireUntil = 0;
+        entity.arenaForgeTitanBreaker = false;
+        entity.arenaForgeChronoDisruption = false;
+        entity.arenaForgeChronoUsed = false;
+        entity.arenaForgeVoltaicOvercharge = false;
+        entity.arenaForgeQuantumRounds = false;
+        entity.arenaForgeSoulCapacitor = false;
+        entity.arenaForgeFortressLink = false;
+        entity.arenaForgeLastVoltaicAt = 0;
         entity.arenaForgeLastBlastAt = 0;
         entity.arenaForgeLastStaticShockAt = 0;
         entity.arenaForgeLastOrbitalAt = 0;
@@ -16627,6 +18292,29 @@ let heistFeverActive = false;
         else if (blueprintId === 'executioner_lens') entity.arenaForgeExecutioner = true;
         else if (blueprintId === 'nanite_injector') entity.arenaForgeNaniteInjector = true;
         else if (blueprintId === 'brawler_bounty') entity.arenaForgeHeadhunter = true;
+        else if (blueprintId === 'supercharger_core') {
+            entity.arenaForgeSupercharger = true;
+            if (entity.id === player.id) { superCharge = 100; updateSuperButton?.(); }
+            else entity.superCharge = 100;
+        } else if (blueprintId === 'frostfire_catalyst') {
+            entity.arenaForgeFrostfire = true;
+        } else if (blueprintId === 'titan_breaker') {
+            entity.arenaForgeTitanBreaker = true;
+        } else if (blueprintId === 'chrono_disruption') {
+            entity.arenaForgeChronoDisruption = true;
+            entity.arenaForgeChronoUsed = false;
+        } else if (blueprintId === 'voltaic_overcharge') {
+            entity.arenaForgeVoltaicOvercharge = true;
+        } else if (blueprintId === 'quantum_rounds') {
+            entity.arenaForgeQuantumRounds = true;
+        } else if (blueprintId === 'emergency_repair') {
+            entity.hp = Math.min(entity.maxHp, entity.hp + Math.round(entity.maxHp * .25));
+            grantShield(entity, 2500, 5000);
+        } else if (blueprintId === 'soul_capacitor') {
+            entity.arenaForgeSoulCapacitor = true;
+        } else if (blueprintId === 'fortress_link') {
+            entity.arenaForgeFortressLink = true;
+        }
         spawnFloatingText(entity.x, entity.y - 46, blueprint.name.toUpperCase(), entity.team === 'player' ? '#7fffd4' : '#ff9b9b');
         return true;
     }
@@ -16639,6 +18327,11 @@ let heistFeverActive = false;
             b.vx = (b.vx || 0) * 1.25;
             b.vy = (b.vy || 0) * 1.25;
             b.maxLife = (b.maxLife || 1) * 1.20;
+        }
+        if (owner?.arenaForgeQuantumRounds) {
+            b.hitboxMod = (b.hitboxMod || 1) * 1.35;
+            b.pierce = true;
+            b.arenaForgeQuantumVisual = true;
         }
     }
 
@@ -16654,6 +18347,28 @@ let heistFeverActive = false;
         if (owner?.arenaForgeFreezeRounds && rawDmg > 0 && target) {
             target.arenaForgeSlowUntil = Math.max(target.arenaForgeSlowUntil || 0, now + 1800);
             target.arenaForgeSlowMult = 0.75;
+        }
+        if (owner?.arenaForgeFrostfire && rawDmg > 0 && target && target.hp > 0) {
+            target.arenaForgeFrostfireUntil = Math.max(target.arenaForgeFrostfireUntil || 0, now + 2000);
+            target.arenaForgeFrostfireOwnerId = owner.id;
+            target.arenaForgeFrostfireTeam = owner.team;
+        }
+        if (owner?.arenaForgeVoltaicOvercharge && rawDmg > 0 && target) {
+            if (now - (owner.arenaForgeLastVoltaicAt || 0) >= 600) {
+                owner.arenaForgeLastVoltaicAt = now;
+                const enemies = (owner.team === 'player'
+                    ? bots.filter(e => e && e.team !== 'player' && e !== target && e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 240)
+                    : [player, ...bots.filter(e => e && e.team === 'player' && e !== target && e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 240)]
+                ).filter(e => e.hp > 0);
+                for (const st of enemies.slice(0, 2)) {
+                    st.hp -= 550;
+                    st.lastDamagerId = owner.id;
+                    st.lastDamagerTeam = owner.team;
+                    showDamageNumber(st.x, st.y - 15, 550, '#ffe600');
+                    explosions.push({ x: st.x, y: st.y, radius: 36, life: 0, maxLife: 0.22, color: '#ffe600' });
+                    if (st.hp <= 0) handleArenaForgeDeath(st);
+                }
+            }
         }
         if (target && target.hp > 0) {
             target.arenaForgeLastDamagedAt = now;
@@ -16702,6 +18417,17 @@ let heistFeverActive = false;
     function updateArenaForgeBlueprintCombatantEffects(dt, now) {
         if (!isArenaForgeMode || gameOver) return;
         const combatants = getArenaForgeCombatants(null, true);
+
+        // Frostfire Catalyst burn DoT
+        for (const entity of [player, ...bots]) {
+            if (entity && entity.hp > 0 && (entity.arenaForgeFrostfireUntil || 0) > now) {
+                const burnDmg = 225 * dt;
+                entity.hp -= burnDmg;
+                entity.lastDamagerId = entity.arenaForgeFrostfireOwnerId || entity.lastDamagerId;
+                entity.lastDamagerTeam = entity.arenaForgeFrostfireTeam || entity.lastDamagerTeam;
+                if (entity.hp <= 0) handleArenaForgeDeath(entity);
+            }
+        }
 
         // 1. Flux Magnet gem pull
         for (const entity of combatants) {
@@ -17069,7 +18795,7 @@ let heistFeverActive = false;
             (arenaForgeBeacon ? `<strong style="color:#ffe18a">${arenaForgeBeacon.label}: ${Math.round(Math.abs(arenaForgeBeacon.progress)*100)}% ${arenaForgeBeacon.contested?'CONTESTED':arenaForgeBeacon.progress<0?'ENEMY':'YOUR TEAM'}</strong><br>` : `<span>Next capture: ${Math.max(0,Math.ceil(arenaForgeNextCaptureAt-arenaForgeTimer))}s</span><br>`) +
             `<span style="color:#b8a5ff">Captured engines: ${[...arenaForgeCapturedAttackPowers.player].join(' • ') || 'None — hold capture rings'}</span><br>` +
             `<div style="display:flex;gap:6px"><progress aria-label="Your base integrity" value="${ownIntegrity.pct}" max="1" style="width:50%;accent-color:#68edc1"></progress><progress aria-label="Enemy base integrity" value="${enemyIntegrity.pct}" max="1" style="width:50%;accent-color:#ff778d"></progress></div>` +
-            `<span style="color:#ffdd79">OBJECTIVE: Break both towers, then destroy the Core.</span><br>` +
+            `<span style="color:#ffdd79">OBJECTIVE: Break all three weapon towers, then destroy the Core.</span><br>` +
             (prepSeconds > 0 ? `<strong style="color:#7cecff">PREPARE: ${prepSeconds}s</strong><br>` : '') +
             `Power: <strong>${playerLevel}/${maxPlayerLevel}</strong> | XP ${Math.floor(player.arenaForgeXp || 0)}/${xpNeeded}<br>` +
             `Energy HP: <strong>+${Math.max(0, player.arenaForgeEnergyHpBonus || 0)}</strong><br>` +
@@ -17095,7 +18821,7 @@ let heistFeverActive = false;
         panel.appendChild(stats);
         const rules = document.createElement('div');
         rules.style.cssText = 'padding:7px 8px;border-radius:9px;background:#102b36;color:#bfe9e4;font-size:10px';
-        rules.innerHTML = '1. Follow your minion wave.<br>2. Defend incoming Breach waves.<br>3. Break both guard towers.<br>4. Destroy the exposed enemy Core.';
+        rules.innerHTML = '1. Follow your minion wave.<br>2. Learn the Rail, Prism and Mortar tower attacks.<br>3. Break all three weapon towers.<br>4. Destroy the exposed enemy Core.';
         panel.appendChild(rules);
         document.body.appendChild(panel);
         arenaForgePanel = panel;
@@ -17113,6 +18839,7 @@ let heistFeverActive = false;
             brawler: isCore ? 'tower_core' : 'turret', team, isDead: false,
             isStructure: true, isCore, isArenaForgeStructure: true,
             isArenaForgeCore: isCore, isArenaForgeTower: !isCore, arenaForgeLane: lane,
+            arenaForgeTowerType: isCore ? 'core' : (lane === 'left' ? 'rail' : (lane === 'center' ? 'prism' : 'mortar')),
             forgeArmorPhase: isCore ? 0 : 3,
             noPowerupDrop: true, noRespawn: true, isImmuneToPulls: true, lastShot: 0, shield: 0, shieldMax: 0,
             forgeProtectedHp: hp,
@@ -17121,13 +18848,14 @@ let heistFeverActive = false;
     }
 
     function spawnArenaForgeStructures() {
-        const laneXs = [WORLD_W * 0.22, WORLD_W * 0.78];
+        const laneXs = [WORLD_W * 0.18, WORLD_W * 0.5, WORLD_W * 0.82];
         for (const team of ['player', 'enemy']) {
             const homeY = team === 'player' ? WORLD_H - 170 : 170;
             const towerY = team === 'player' ? WORLD_H - 560 : 560;
             bots.push(createArenaForgeStructure(team, 'core', 'core', WORLD_W * 0.5, homeY));
             bots.push(createArenaForgeStructure(team, 'tower', 'left', laneXs[0], towerY));
-            bots.push(createArenaForgeStructure(team, 'tower', 'right', laneXs[1], towerY));
+            bots.push(createArenaForgeStructure(team, 'tower', 'center', laneXs[1], towerY + (team === 'player' ? 80 : -80)));
+            bots.push(createArenaForgeStructure(team, 'tower', 'right', laneXs[2], towerY));
         }
         initializeArenaForgeCombatants();
     }
@@ -17842,6 +19570,16 @@ let heistFeverActive = false;
                 collector.hp = Math.min(collector.maxHp, collector.hp + 500 * pickup.value);
             }
             if ((collector.arenaForgeBlueprints || []).includes('battery_pack')) grantShield(collector, 1200, 5000);
+            if (collector.arenaForgeSoulCapacitor) {
+                if (collector.id === player.id) {
+                    superCharge = clamp(superCharge + 12 * pickup.value, 0, 100);
+                    hyperChargeCharge = clamp(hyperChargeCharge + 5 * pickup.value, 0, 100);
+                    updateSuperButton(); updateHyperButton();
+                } else {
+                    collector.superCharge = clamp((collector.superCharge || 0) + 12 * pickup.value, 0, 100);
+                    collector.hyperChargeCharge = clamp((collector.hyperChargeCharge || 0) + 5 * pickup.value, 0, 100);
+                }
+            }
             spawnFloatingText(collector.x, collector.y - 26, `+${pickup.value} ENERGY  +${50 * pickup.value} MAX HP`, '#ffe66d');
             arenaForgeSouls.splice(i, 1);
         }
@@ -18608,7 +20346,12 @@ let heistFeverActive = false;
         if (distance > maxRange) return false;
         let cadence = context.impossible ? 360 : (context.marksman ? 640 : context.artillery ? 700 : context.tank ? 500 : 570);
         if(bot.brawler==='jacktrade')cadence=getFireDelay('jacktrade',bot);
-        if (isArenaForgeMode) cadence *= bot.arenaForgeReloadMult || 1;
+        if (isArenaForgeMode) {
+            cadence *= bot.arenaForgeReloadMult || 1;
+            if (bot.arenaForgeSupercharger && (bot.superCharge || 0) >= 100) cadence *= 0.8;
+            if (bot.arenaForgeFortressLink && isNearAlliedArenaForgeStructure(bot)) cadence *= 0.85;
+            if ((bot.arenaForgeFrostfireUntil || 0) > performance.now()) cadence *= 1.25;
+        }
         return context.now - (bot.lastShot || 0) >= cadence;
     }
 
@@ -18771,9 +20514,10 @@ let heistFeverActive = false;
             outlitWallChains.push({
                 x1: fromX, y1: fromY, x2: cx, y2: cy,
                 bornAt: performance.now(), until: performance.now() + 380,
-                hyper: !!projectile.hyperVisual, step
+                hyper: !!projectile.hyperVisual, step,
+                skinId: projectile.skinId
             });
-            explosions.push({ x: cx, y: cy, radius: 25 + step * 2, life: 0, maxLife: 0.2, color: projectile.hyperVisual ? 'rgba(220,90,255,.66)' : 'rgba(70,235,255,.62)', fxKind: 'outlitWallArc' });
+            explosions.push({ x: cx, y: cy, radius: 25 + step * 2, life: 0, maxLife: 0.2, color: projectile.hyperVisual ? 'rgba(220,90,255,.66)' : (projectile.skinId === 'nightmare-outlit' ? 'rgba(255,0,127,.66)' : 'rgba(70,235,255,.62)'), fxKind: 'outlitWallArc', skinId: projectile.skinId });
             if (current.hp <= 0) {
                 const index = destructibleWalls.indexOf(current);
                 if (index >= 0) destructibleWalls.splice(index, 1);
@@ -18803,6 +20547,11 @@ let heistFeverActive = false;
     function fireOutlitBoomBreak(owner, angle, hyper = false, rangeMultiplier = 1) {
         const speed = 660;
         const range = 440 * Math.max(0.1, rangeMultiplier || 1);
+        const skin = getActiveSkinForBrawler(owner.brawler || (owner.id === player.id ? selectedBrawler : 'outlit'));
+        const isNightmare = skin?.id === 'nightmare-outlit';
+        if (isNightmare) {
+            spawnFloatingText(owner.x, owner.y - 45, '😈 ABYSSAL RIFT SURGE! 😈', '#ff007f');
+        }
         for (const offset of [-0.115, 0, 0.115]) {
             const shotAngle = angle + offset;
             bullets.push({
@@ -18816,7 +20565,8 @@ let heistFeverActive = false;
                 hitIds: {}, hitboxMod: 2.05, super: true,
                 hyperVisual: !!hyper, outlitHyperGlow: !!hyper,
                 outlitSuperRework: true, outlitWallChain: true,
-                outlitStopOnWall: true
+                outlitStopOnWall: true,
+                skinId: skin?.id
             });
         }
     }
@@ -19256,8 +21006,12 @@ let heistFeverActive = false;
       bushZones.push({ x: WORLD_W - 720, y: y - 75, w: 220, h: 175 });
     }
 
-    // Central Soul Forge Crucible barricades & bushes
-    bushZones.push({ x: WORLD_W * 0.5 - 120, y: WORLD_H * 0.5 - 180, w: 240, h: 360 });
+    // Arena Forge 2.0: three readable lane pockets around a dangerous open crucible.
+    bushZones.push({ x: WORLD_W * 0.5 - 95, y: WORLD_H * 0.5 - 145, w: 190, h: 290 });
+    bushZones.push({ x: 160, y: WORLD_H * 0.5 - 90, w: 180, h: 180 });
+    bushZones.push({ x: WORLD_W - 340, y: WORLD_H * 0.5 - 90, w: 180, h: 180 });
+    waterZones.push({ x: WORLD_W * .5 - 260, y: WORLD_H * .5 - 42, w: 130, h: 84 });
+    waterZones.push({ x: WORLD_W * .5 + 130, y: WORLD_H * .5 - 42, w: 130, h: 84 });
 
     const addPadPair = (x, fromY, toY) => {
       const a = { id: `forge_pad_${arenaForgeJumpPads.length}`, x, y: fromY, targetX: x, targetY: toY, radius: 34 };
@@ -19417,7 +21171,7 @@ let heistFeverActive = false;
                                 : (isBrickVaultMode
                             ? getBrickVaultSpawnPoint('player', i + 1, BRICK_VAULT_TEAM_SIZE)
                             : (isArenaForgeMode
-                                ? getArenaForgeSpawnPoint('player', i + 1, ARENA_FORGE_TEAM_SIZE)
+                                ? getArenaForgeSpawnPoint('player', i === 0 ? 0 : 2, ARENA_FORGE_TEAM_SIZE)
                                 : (isTugZoneMode
                                     ? getTugZoneSpawnPoint('player', i + 1)
                                 : (isMarkedMayhemMode
@@ -19655,6 +21409,40 @@ let heistFeverActive = false;
     }
   }
 
+  const POWER_BOX_TYPES = Object.freeze({
+      standard:   { hp: 4500, size: 42, weight: 55, color: '#d4ac0d', edge: '#ffe978', icon: '◆', reward: 'cube' },
+      fortified:  { hp: 8000, size: 50, weight: 20, color: '#d86b27', edge: '#ffd39a', icon: 'Ⅱ', reward: 'fortified' },
+      charged:    { hp: 6000, size: 46, weight: 14, color: '#7d45e8', edge: '#d9b6ff', icon: '⚡', reward: 'charged' },
+      vitality:   { hp: 6500, size: 46, weight: 8, color: '#21a86b', edge: '#9affcf', icon: '+', reward: 'vitality' },
+      nova:       { hp: 9500, size: 54, weight: 3, color: '#18b8e2', edge: '#a8f7ff', icon: 'N', reward: 'nova' }
+  });
+
+  function rollPowerBoxType() {
+      let roll = Math.random() * 100;
+      for (const [type, spec] of Object.entries(POWER_BOX_TYPES)) {
+          roll -= spec.weight;
+          if (roll < 0) return { type, spec };
+      }
+      return { type: 'standard', spec: POWER_BOX_TYPES.standard };
+  }
+
+  function createPowerBox(x, y, type = 'standard', overrides = {}) {
+      const spec = POWER_BOX_TYPES[type] || POWER_BOX_TYPES.standard;
+      const size = overrides.size || spec.size;
+      const hp = overrides.hp || spec.hp;
+      return {
+          x, y, w: size, h: size, hp, maxHp: hp,
+          isPowerBox: true,
+          isPurpleBox: type === 'charged',
+          isNovaBox: type === 'nova',
+          powerBoxType: type,
+          powerBoxReward: spec.reward,
+          ownerId: null,
+          hyperBox: true,
+          ...overrides
+      };
+  }
+
   function generatePowerBoxes(){
     for(let i=destructibleWalls.length-1; i>=0; i--){
         if(destructibleWalls[i].isPowerBox) destructibleWalls.splice(i, 1);
@@ -19686,7 +21474,7 @@ let heistFeverActive = false;
         return;
     }
     if(isBlinkEyeDodgeMode || isDuels || isTraining || isBraweBallMode || isKnockoutMode || isImpossibleMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isOrboBossMode || isRamageBossMode || isDemonVillainsBossMode || isWeeFeeBossMode) return;
-      const towerBoxMult=isTowerTroubleMode&&towerTroubleVariant!=='gauntlet'?(TOWER_FLOOR_CHALLENGES[Math.max(0,(playerData.slopSushi?.run?.floor||1)-1)]?.boxMult||1):1;
+      const towerBoxMult=isTowerTroubleMode&&towerTroubleVariant!=='gauntlet'?(towerTroubleVariant==='chaos'?(getChaosCrownRule(playerData.slopSushi?.chaosRun?.floor||1).boxMult||1):(TOWER_FLOOR_CHALLENGES[Math.max(0,(playerData.slopSushi?.run?.floor||1)-1)]?.boxMult||1)):1;
       const showdownBoxCount = Math.round(((isDuoShowdown || isTrioShowdownMode) ? 90 : 75)*towerBoxMult);
       for(let i=0; i<showdownBoxCount; i++){
         let bx, by, tries=0;
@@ -19695,30 +21483,38 @@ let heistFeverActive = false;
             by = 100 + Math.random()*(WORLD_H-200);
             tries++;
                 } while((Math.hypot(bx-player.x, by-player.y) < 520 || isCircleInWaterAt(bx, by, 22) || isCircleBlockedByTerrain(null, bx, by, 24)) && tries < 80);
-                    const boxRoll = Math.random();
-                    const isNova = boxRoll < 0.08;
-                    const isPurple = !isNova && boxRoll < 0.20;
-                    // isPowerBox walls will spawn powerups; mark hyperValue for event
-                    const boxSize = isNova ? 52 : (isPurple ? 48 : 40);
-                    const boxHp = isNova ? 9000 : (isPurple ? 12000 : 4500);
-                    destructibleWalls.push({x: bx, y: by, w: boxSize, h: boxSize, hp: boxHp, maxHp: boxHp, isPowerBox: true, isPurpleBox: isPurple, isNovaBox: isNova, ownerId: null, hyperBox: true});
+                    const rolledBox = rollPowerBoxType();
+                    destructibleWalls.push(createPowerBox(bx, by, rolledBox.type));
     }
   }
 
   function spawnShowdownPowerBoxReward(box) {
-      if (isBlinkEyeDodgeMode) return;
+      if (isBlinkEyeDodgeMode || !box || box._powerBoxRewarded) return;
+      box._powerBoxRewarded = true;
       const cx = box.x + box.w / 2;
       const cy = box.y + box.h / 2;
-      if (box.isNovaBox) {
+      const type = box.powerBoxType || (box.isNovaBox ? 'nova' : (box.isPurpleBox ? 'charged' : 'standard'));
+      if (type === 'nova') {
           powerups.push({ x: cx, y: cy, kind: 'nova_core' });
           explosions.push({ x: cx, y: cy, radius: 78, life: 0, maxLife: 0.42, color: 'rgba(61, 224, 255, 0.82)' });
           return;
       }
-      const count = box.isPurpleBox ? 4 : 1;
-      const hv = box.isPurpleBox ? 12 : 4;
-      for (let k = 0; k < count; k++) {
-          powerups.push({ x: cx + (Math.random() * 30 - 15), y: cy + (Math.random() * 30 - 15), hyperChargeValue: hv });
+      if (type === 'charged') {
+          powerups.push({ x: cx, y: cy, kind: 'charged_core' });
+          explosions.push({ x: cx, y: cy, radius: 62, life: 0, maxLife: 0.28, color: 'rgba(151, 84, 255, 0.72)' });
+          return;
       }
+      if (type === 'vitality') {
+          powerups.push({ x: cx, y: cy, kind: 'vitality_core' });
+          explosions.push({ x: cx, y: cy, radius: 58, life: 0, maxLife: 0.28, color: 'rgba(52, 230, 145, 0.68)' });
+          return;
+      }
+      const count = type === 'fortified' ? 2 : 1;
+      for (let k = 0; k < count; k++) {
+          const angle = count === 1 ? 0 : k * Math.PI;
+          powerups.push({ x: cx + Math.cos(angle) * 13, y: cy + Math.sin(angle) * 13 });
+      }
+      if (type === 'fortified') explosions.push({ x: cx, y: cy, radius: 58, life: 0, maxLife: 0.25, color: 'rgba(255, 143, 55, 0.62)' });
   }
 
   generateCubes();
@@ -20083,7 +21879,8 @@ let heistFeverActive = false;
         let base = Number.isFinite(BALANCE_PROFILE.reloadMsByBrawler[brawler])
             ? BALANCE_PROFILE.reloadMsByBrawler[brawler]
             : 1740 * 1.15;
-        if (brawler === 'fastpass') base = 1550;
+        if (brawler === 'looma') base = 1550;
+        else if (brawler === 'fastpass') base = 1550;
         else if (brawler === 'anti_royal') base = 1800;
         else if (brawler === 'cursed') base = 1750;
         else if (brawler === 'king') base = 1750;
@@ -20131,7 +21928,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -20144,6 +21941,7 @@ let heistFeverActive = false;
       entity.currentMainAttackBrawler = brawler || entity.brawler || 'outlit';
       entity.currentMainAttackStartedAt = now;
       if (entity.id === player.id && brawler === 'outlit') addSpecialQuestProgress('outlit','main_attack',1);
+      if (entity.id === player.id && brawler === 'crystila') addSpecialQuestProgress('crystila','main_attack',1);
       return id;
   }
   function hasOutlitMutation(entity) { return isSpecialAbilityAvailableForEntity(entity, 'outlit'); }
@@ -20208,10 +22006,10 @@ let heistFeverActive = false;
   }
   function recordOutlitMutationShot(entity, now = performance.now()) {
       if (!hasOutlitMutation(entity) || (entity.outlitMutationCharges || 0) > 0) return;
-      // Allow the counter to actually reach nine before converting it into
-      // four powered attacks. Capping at eight made 8/9 permanent.
+      // Allow the counter to reach eight before converting it into
+      // four powered attacks.
       entity.outlitMutationShotCounter = Math.max(0, Math.floor(entity.outlitMutationShotCounter || 0) + 1);
-      if (entity.outlitMutationShotCounter >= 9) {
+      if (entity.outlitMutationShotCounter >= 8) {
           entity.outlitMutationShotCounter = 0;
           entity.outlitMutationCharges = 4;
           entity.outlitMutationReadyAt = now;
@@ -20222,6 +22020,26 @@ let heistFeverActive = false;
   function consumeOutlitMutationCharge(entity) {
       if (!hasOutlitMutation(entity) || (entity.outlitMutationCharges || 0) <= 0) return false;
       entity.outlitMutationCharges = Math.max(0, Math.floor(entity.outlitMutationCharges || 0) - 1);
+      return true;
+  }
+  function hasCrystilaMutation(entity) { return isSpecialAbilityAvailableForEntity(entity, 'crystila'); }
+  function recordCrystilaMutationShot(entity, now = performance.now()) {
+      if (!hasCrystilaMutation(entity) || (entity.crystilaMutationCharges || 0) > 0) return;
+      entity.crystilaMutationShotCounter = Math.max(0, Math.floor(entity.crystilaMutationShotCounter || 0) + 1);
+      if (entity.crystilaMutationShotCounter >= 6) {
+          entity.crystilaMutationShotCounter = 0;
+          entity.crystilaMutationCharges = 3;
+          entity.crystilaMutationReadyAt = now;
+          explosions.push({ x: entity.x, y: entity.y, radius: 52, life: 0, maxLife: .3, color: 'rgba(255,55,75,.82)', fxKind: 'crystilaMutationReady' });
+          if (entity.id === player.id) spawnFloatingText(entity.x, entity.y - 36, 'DEFLECTOR DARTS READY! (3 SHOTS)', '#ff5364');
+      }
+  }
+  function consumeCrystilaMutationCharge(entity) {
+      if (!hasCrystilaMutation(entity) || (entity.crystilaMutationCharges || 0) <= 0) return false;
+      entity.crystilaMutationCharges = Math.max(0, Math.floor(entity.crystilaMutationCharges || 0) - 1);
+      if (entity.crystilaMutationCharges === 0 && entity.id === player.id) {
+          spawnFloatingText(entity.x, entity.y - 36, 'DEFLECTORS SPENT', '#ff8790');
+      }
       return true;
   }
   function updateCurrencies() {
@@ -20402,6 +22220,8 @@ let heistFeverActive = false;
               addSteamerSuperCharge(owner, gain);
           } else if (activeBrawler === 'oil_maker') {
               addOilMakerSuperCharge(owner, gain);
+          } else if (activeBrawler === 'dashaholic') {
+              addDashaholicSuperCharge(owner, gain);
           }
           if (owner.id === player.id) {
               if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + hyperGain, 0, 100);
@@ -20458,7 +22278,7 @@ let heistFeverActive = false;
   function startDuelsRound() {
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     minigunninMutationFireZones.length = 0;
@@ -20655,12 +22475,20 @@ let heistFeverActive = false;
 
   function getRelayDamageLink(entity) {
       if (!entity) return null;
-      let ownerId = entity.id, ratio = null;
-      if (entity.relaySharedOwnerId && performance.now() < (entity.relaySharedUntil || 0)) { ownerId = entity.relaySharedOwnerId; ratio = 0.5; }
-      const device = healingPods.find(p => p.isRelayDevice && p.ownerId === ownerId && p.hp > 0);
-      if (!device) return null;
-      if (Math.hypot(entity.x-device.x, entity.y-device.y) > (device.relayLinkRadius || 520)) return null;
-      return {device, ratio:ratio ?? device.relayRedirectPct ?? 0.75};
+      let bestDevice = null, bestDist = Infinity;
+      for (const p of healingPods) {
+          if (!p.isRelayDevice || p.hp <= 0) continue;
+          const owner = p.ownerId === player.id ? player : bots.find(b => b && b.id === p.ownerId);
+          const isLinkedAlly = p.ownerId === entity.id || (owner && areAlliedEntities(owner, entity)) || (entity.relaySharedOwnerId === p.ownerId && performance.now() < (entity.relaySharedUntil || 0));
+          if (!isLinkedAlly) continue;
+          const dist = Math.hypot(entity.x - p.x, entity.y - p.y);
+          if (dist <= (p.relayLinkRadius || 520) && dist < bestDist) {
+              bestDist = dist;
+              bestDevice = p;
+          }
+      }
+      if (!bestDevice) return null;
+      return {device: bestDevice, ratio: bestDevice.relayRedirectPct ?? 0.50};
   }
 
   function triggerWarriorSpearExplosion(spear) {
@@ -20712,6 +22540,13 @@ let heistFeverActive = false;
           floatingTexts.push(ft);
           target.activeDmgText = ft;
       }
+  }
+
+  // Compatibility entry point for older Arena Forge attacks that report an
+  // impact position instead of an entity object.
+  function showDamageNumber(x, y, amount, color = '#ff4d4d') {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      spawnDamageText({ x, y, activeDmgText: null }, amount, color);
   }
 
   function triggerHitConfirmFeedback(target, dealtDamage, ownerId) {
@@ -20981,7 +22816,7 @@ let heistFeverActive = false;
   // MULTI-SUPER SYSTEM & OIL MAKER HELPERS
   // ==========================================
   function hasMultiSuper(brawlerId) {
-      return brawlerId === 'steamer' || brawlerId === 'oil_maker';
+      return brawlerId === 'steamer' || brawlerId === 'oil_maker' || brawlerId === 'dashaholic';
   }
 
   function updateSuperUseIndicator(entity = player) {
@@ -21001,6 +22836,7 @@ let heistFeverActive = false;
   function getBrawlerSuperMaxCharges(brawlerId, isHyper = false) {
       if (brawlerId === 'steamer') return 5;
       if (brawlerId === 'oil_maker') return isHyper ? 5 : 3;
+      if (brawlerId === 'dashaholic') return 2;
       return 1;
   }
 
@@ -21015,7 +22851,45 @@ let heistFeverActive = false;
           ensureOilMakerState(entity);
           return typeof entity.oilMakerSuperCharges === 'number' ? entity.oilMakerSuperCharges : 3;
       }
+      if (brawler === 'dashaholic') {
+          ensureDashaholicSuperState(entity);
+          const meter = entity.id === player.id ? superCharge : (entity.superCharge || 0);
+          if (entity.dashaholicSuperCharges < 1 && meter >= 100) {
+              entity.dashaholicSuperCharges = 2;
+              entity.dashaholicSuperSubCharge = 0;
+          }
+          return entity.dashaholicSuperCharges || 0;
+      }
       return (entity.id === player.id ? superCharge : (entity.superCharge || 0)) >= 100 ? 1 : 0;
+  }
+
+  function ensureDashaholicSuperState(entity) {
+      if (!entity) return;
+      if (typeof entity.dashaholicSuperCharges !== 'number') entity.dashaholicSuperCharges = 0;
+      if (typeof entity.dashaholicSuperSubCharge !== 'number') entity.dashaholicSuperSubCharge = 0;
+  }
+
+  function addDashaholicSuperCharge(entity, amount) {
+      if (!entity) return;
+      ensureDashaholicSuperState(entity);
+      if (entity.dashaholicSuperCharges > 0) return;
+      entity.dashaholicSuperSubCharge = Math.min(100, (entity.dashaholicSuperSubCharge || 0) + amount);
+      if (entity.dashaholicSuperSubCharge >= 100) {
+          entity.dashaholicSuperCharges = 2;
+          entity.dashaholicSuperSubCharge = 0;
+      }
+      const visible = entity.dashaholicSuperCharges > 0 ? 100 : entity.dashaholicSuperSubCharge;
+      if (entity.id === player.id) { superCharge = visible; updateSuperButton(); }
+      else entity.superCharge = visible;
+  }
+
+  function consumeDashaholicSuperCharge(entity) {
+      if (!entity) return;
+      ensureDashaholicSuperState(entity);
+      if (entity.dashaholicSuperCharges > 0) entity.dashaholicSuperCharges--;
+      const visible = entity.dashaholicSuperCharges > 0 ? 100 : entity.dashaholicSuperSubCharge;
+      if (entity.id === player.id) { superCharge = visible; updateSuperButton(); }
+      else entity.superCharge = visible;
   }
 
   function ensureOilMakerState(entity) {
@@ -21482,22 +23356,17 @@ let heistFeverActive = false;
           }
           const baseDmg = (stageDmgPerSec / 10) * levelScale * getBalanceDamageScalar('beam');
           
-          const hasG1 = isBot ? entity.gadgetArmed && entity.selectedGadget === 'g1' : gadgetArmed && selectedGadget === 'g1';
+          const hasG1 = isBot ? (now < (entity.beamPrismSplitUntil || 0)) : (now < (player.beamPrismSplitUntil || 0));
+          const isSignature = isBot ? (now < (entity.beamSignatureSlowUntil || 0)) : (now < (player.beamSignatureSlowUntil || 0));
           const angles = [entity.beamAngle];
           if (hasG1) {
-              angles.push(entity.beamAngle - 0.25);
-              angles.push(entity.beamAngle + 0.25);
-              if (!isBot) {
-                  gadgetArmed = false;
-                  gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
-                  updateGadgetButton();
-              } else {
-                  entity.gadgetArmed = false;
-              }
+              angles.push(entity.beamAngle - 0.28);
+              angles.push(entity.beamAngle + 0.28);
           }
 
           const star = isBot ? entity.selectedStar : selectedStar;
           const hasSP1 = (star === 'slow');
+          const hasSP2 = (star === 'long');
           if (hasSP1 && stage === 5) {
               entity.beamSP1ShieldActive = true;
           } else {
@@ -21515,6 +23384,7 @@ let heistFeverActive = false;
               let closestT = 1.0;
               const dx = endX - startX;
               const dy = endY - startY;
+              let hitObstacle = false;
 
               for (const w of [...destructibleWalls, ...cubes]) {
                   if (!w || w.isPlatform || w.ownerId === entity.id) continue;
@@ -21522,36 +23392,172 @@ let heistFeverActive = false;
                   const t = intersectRayAABB(startX, startY, dx, dy, w.x, w.y, w.w, w.h);
                   if (t !== null && t < closestT) {
                       closestT = t;
+                      hitObstacle = true;
                   }
               }
               
               endX = startX + dx * closestT;
               endY = startY + dy * closestT;
 
-              entity.beamLines.push({ startX, startY, endX, endY, isGolden, isHyper });
+              const targets = [];
+              if (!isBot) {
+                  for (const b of bots) {
+                      if (b.hp > 0 && !areAlliedEntities(entity, b)) targets.push(b);
+                  }
+              } else {
+                  if (player.hp > 0 && !areAlliedEntities(entity, player)) targets.push(player);
+                  for (const b of bots) {
+                      if (b.id !== entity.id && b.hp > 0 && !areAlliedEntities(entity, b)) targets.push(b);
+                  }
+              }
 
-              if (shouldTickDamage) {
-                  const targets = [];
-                  if (!isBot) {
-                      for (const b of bots) {
-                          if (b.hp > 0 && !areAlliedEntities(entity, b)) targets.push(b);
-                      }
-                  } else {
-                      if (player.hp > 0 && !areAlliedEntities(entity, player)) targets.push(player);
-                      for (const b of bots) {
-                          if (b.id !== entity.id && b.hp > 0 && !areAlliedEntities(entity, b)) targets.push(b);
+              for (const w of destructibleWalls) {
+                  if (w && w.hp > 0 && !w.isPlatform && w.ownerId !== entity.id) targets.push(w);
+              }
+
+              // Crystila Glass Reflection check
+              let isReflectedByCrystila = false;
+              for (const cand of targets) {
+                  if (!cand || cand.hp <= 0 || cand.w !== undefined) continue;
+                  const candBrawler = cand.id === player.id ? selectedBrawler : cand.brawler;
+                  if (candBrawler === 'crystila' && now < (cand.crystilaGlassUntil || 0) && (cand.crystilaGlassHp || 0) > 0) {
+                      const glassR = (cand.radius || 18) + 16;
+                      if (lineCircleIntersection(startX, startY, endX, endY, cand.x, cand.y, glassR)) {
+                          const facing = cand.crystilaGlassFacing ?? cand.dir ?? Math.atan2(cand.vy || 0, cand.vx || 0);
+                          const incomingAng = Math.atan2(startY - cand.y, startX - cand.x);
+                          const inFront = Math.abs(normalizeRadians(incomingAng - facing)) <= (cand.crystilaGlassHalfArc || 0.95);
+                          if (cand.crystilaGlassHyper || inFront) {
+                              const distToC = Math.hypot(cand.x - startX, cand.y - startY);
+                              const hitDist = Math.max(0, distToC - (cand.radius || 18));
+                              endX = startX + Math.cos(ang) * hitDist;
+                              endY = startY + Math.sin(ang) * hitDist;
+
+                              if (shouldTickDamage && now >= (cand.crystilaGlassInvulnUntil || 0)) {
+                                  cand.crystilaGlassHp = Math.max(0, cand.crystilaGlassHp - 110);
+                                  if (cand.crystilaGlassHp <= 0) cand.crystilaGlassUntil = now;
+                                  if (!cand.lastBeamReflectAt || now - cand.lastBeamReflectAt > 500) {
+                                      cand.lastBeamReflectAt = now;
+                                      spawnFloatingText(cand.x, cand.y - 26, 'REFLECT!', '#86d7ff');
+                                  }
+                              }
+
+                              const normalX = Math.cos(facing);
+                              const normalY = Math.sin(facing);
+                              const dirX = Math.cos(ang);
+                              const dirY = Math.sin(ang);
+                              const dot = dirX * normalX + dirY * normalY;
+                              const refDirX = dirX - 2 * dot * normalX;
+                              const refDirY = dirY - 2 * dot * normalY;
+                              const refAng = Math.atan2(refDirY, refDirX);
+                              const refLen = 300;
+                              let refEndX = endX + Math.cos(refAng) * refLen;
+                              let refEndY = endY + Math.sin(refAng) * refLen;
+
+                              for (const w of [...destructibleWalls, ...cubes]) {
+                                  if (!w || w.isPlatform) continue;
+                                  if (w.hp !== undefined && w.hp <= 0) continue;
+                                  const rt = intersectRayAABB(endX, endY, refEndX - endX, refEndY - endY, w.x, w.y, w.w, w.h);
+                                  if (rt !== null && rt < 1.0) {
+                                      refEndX = endX + (refEndX - endX) * rt;
+                                      refEndY = endY + (refEndY - endY) * rt;
+                                  }
+                              }
+
+                              entity.beamLines.push({
+                                  startX: endX,
+                                  startY: endY,
+                                  endX: refEndX,
+                                  endY: refEndY,
+                                  isReflected: true,
+                                  reflectColor: '#86d7ff',
+                                  isGolden: false,
+                                  isHyper: false,
+                                  isSignature: false
+                              });
+
+                              if (shouldTickDamage) {
+                                  const reflTargets = [];
+                                  if (cand.id === player.id) {
+                                      for (const b of bots) if (b.hp > 0 && !areAlliedEntities(cand, b)) reflTargets.push(b);
+                                  } else {
+                                      if (player.hp > 0 && !areAlliedEntities(cand, player)) reflTargets.push(player);
+                                      for (const b of bots) if (b.id !== cand.id && b.hp > 0 && !areAlliedEntities(cand, b)) reflTargets.push(b);
+                                  }
+                                  for (const rt of reflTargets) {
+                                      if (lineCircleIntersection(endX, endY, refEndX, refEndY, rt.x, rt.y, rt.radius || 16)) {
+                                          checkHit(rt, {
+                                              damage: Math.round(baseDmg * 0.85),
+                                              ownerBrawler: 'crystila',
+                                              ownerId: cand.id,
+                                              pierce: true
+                                          }, -1);
+                                      }
+                                  }
+                              }
+
+                              isReflectedByCrystila = true;
+                              break;
+                          }
                       }
                   }
+              }
 
-                  for (const w of destructibleWalls) {
-                      if (w && w.hp > 0 && !w.isPlatform && w.ownerId !== entity.id) targets.push(w);
+              entity.beamLines.push({ startX, startY, endX, endY, isGolden, isHyper, isSignature, stage });
+
+              // Star Power 2: Crystal Refraction secondary split lasers on wall/crystal hit
+              let triggeredRefraction = false;
+              if (hasSP2 && hitObstacle && closestT < 1.0) {
+                  triggeredRefraction = true;
+                  const refAngles = [ang + Math.PI - 0.52, ang + Math.PI + 0.52];
+                  for (const refA of refAngles) {
+                      const refDist = 180;
+                      let refEndX = endX + Math.cos(refA) * refDist;
+                      let refEndY = endY + Math.sin(refA) * refDist;
+                      for (const w of [...destructibleWalls, ...cubes]) {
+                          if (!w || w.isPlatform) continue;
+                          if (w.hp !== undefined && w.hp <= 0) continue;
+                          const rt = intersectRayAABB(endX, endY, refEndX - endX, refEndY - endY, w.x, w.y, w.w, w.h);
+                          if (rt !== null && rt < 1.0) {
+                              refEndX = endX + (refEndX - endX) * rt;
+                              refEndY = endY + (refEndY - endY) * rt;
+                          }
+                      }
+                      entity.beamLines.push({
+                          startX: endX,
+                          startY: endY,
+                          endX: refEndX,
+                          endY: refEndY,
+                          isRefraction: true,
+                          isGolden,
+                          isHyper,
+                          isSignature
+                      });
+
+                      if (shouldTickDamage) {
+                          for (const rt of targets) {
+                              if (rt.w === undefined && lineCircleIntersection(endX, endY, refEndX, refEndY, rt.x, rt.y, rt.radius || 16)) {
+                                  let refDmg = Math.round(baseDmg * 0.45);
+                                  const isSlowed = ((rt.slowUntil || 0) > now || (rt.beamSlowUntil || 0) > now);
+                                  if (isSlowed) refDmg = Math.round(refDmg * 1.30);
+                                  checkHit(rt, {
+                                      damage: refDmg,
+                                      ownerBrawler: 'beam',
+                                      ownerId: entity.id,
+                                      pierce: true,
+                                      isBeamGolden: isGolden
+                                  }, -1);
+                              }
+                          }
+                      }
                   }
+              }
 
+              if (shouldTickDamage && !isReflectedByCrystila) {
                   for (const target of targets) {
                       let intersects = false;
                       if (target.w !== undefined && target.h !== undefined) {
                           const t = intersectRayAABB(startX, startY, dx, dy, target.x, target.y, target.w, target.h);
-                          intersects = (t !== null && t <= 1.0);
+                          intersects = (t !== null && t <= closestT);
                       } else {
                           intersects = lineCircleIntersection(startX, startY, endX, endY, target.x, target.y, target.radius || 16);
                       }
@@ -21560,6 +23566,10 @@ let heistFeverActive = false;
                           let finalDmg = baseDmg;
                           if (hasG1) finalDmg *= 0.5;
                           if (isHyper && !isBot && ammo <= maxAmmo * 0.25) finalDmg *= 1.5;
+
+                          // Star Power 2: Enemies already slowed take +30% damage
+                          const isSlowed = ((target.slowUntil || 0) > now || (target.beamSlowUntil || 0) > now);
+                          if (hasSP2 && isSlowed) finalDmg *= 1.30;
                           finalDmg = Math.round(finalDmg);
 
                           if (target.hp !== undefined) {
@@ -21610,25 +23620,57 @@ let heistFeverActive = false;
                                       isBeamGolden: isGolden 
                                   }, -1);
 
+                                  // Breakthrough Quests & Super charge during Super / Normal
+                                  if (entity.id === player.id) {
+                                      addSpecialQuestProgress('beam', 'main_hit', 1);
+                                      addSpecialQuestProgress('beam', 'deal_damage', finalDmg);
+                                      superCharge = clamp(superCharge + (isGolden ? 3.0 : 2.0), 0, 100);
+                                      updateSuperButton();
+                                  } else {
+                                      entity.superCharge = clamp((entity.superCharge || 0) + (isGolden ? 3.0 : 2.0), 0, 100);
+                                  }
+
+                                  // Golden Super stuns hit targets for 0.75s (max once every 3.0s)
                                   if (isGolden && target.hp > 0) {
                                       const lastStun = target.lastBeamStunnedAt || 0;
-                                      if (now - lastStun > 3000) {
+                                      if (now - lastStun >= 3000) {
                                           target.lastBeamStunnedAt = now;
                                           applyStatusEffect(target, 'stun', 750);
                                           spawnFloatingText(target.x, target.y - 20, 'STUN!', '#ffd700');
                                       }
                                   }
+
+                                  // Signature Prismatic Overdrive: slows enemies by 50%
+                                  if (isSignature && target.hp > 0) {
+                                      target.beamSlowUntil = Math.max(target.beamSlowUntil || 0, now + 1200);
+                                      if (!target.lastBeamSlowText || now - target.lastBeamSlowText > 800) {
+                                          target.lastBeamSlowText = now;
+                                          spawnFloatingText(target.x, target.y - 36, '50% SLOW', '#00f5d4');
+                                      }
+                                  }
+
+                                  // Star Power 2: Also refract secondary split lasers on hitting slowed target
+                                  if (hasSP2 && isSlowed && !triggeredRefraction) {
+                                      triggeredRefraction = true;
+                                      const refAngles = [ang - 0.48, ang + 0.48];
+                                      for (const refA of refAngles) {
+                                          const refDist = 160;
+                                          let refEndX = target.x + Math.cos(refA) * refDist;
+                                          let refEndY = target.y + Math.sin(refA) * refDist;
+                                          entity.beamLines.push({
+                                              startX: target.x,
+                                              startY: target.y,
+                                              endX: refEndX,
+                                              endY: refEndY,
+                                              isRefraction: true,
+                                              isGolden,
+                                              isHyper,
+                                              isSignature
+                                          });
+                                      }
+                                  }
                               }
                           }
-                      }
-                  }
-
-                  if (isGolden && star === 'long') {
-                      const numTrails = 5;
-                      for (let i = 0; i <= numTrails; i++) {
-                          const tx = startX + (endX - startX) * (i / numTrails);
-                          const ty = startY + (endY - startY) * (i / numTrails);
-                          spawnCheeseField(tx, ty, 30, 2000, 1.0, entity.id, false, 400);
                       }
                   }
               }
@@ -22275,7 +24317,11 @@ let heistFeverActive = false;
 
   function getEntityById(entityId) {
       if (entityId === player.id) return player;
-      return bots.find(bt => bt.id === entityId) || null;
+      const bot = bots.find(bt => bt.id === entityId);
+      if (bot) return bot;
+      const bat = badbatSwarm.find(b => b.id === entityId);
+      if (bat) return bat;
+      return null;
   }
 
   function applyAmplifierDamageBuff(entity, now) {
@@ -22333,6 +24379,7 @@ let heistFeverActive = false;
             mult *= entity.arenaForgeMinionDamageMult || 1;
             if ((entity.arenaForgeBeaconUntil || 0) > now) mult *= 1.18;
             if ((arenaForgeTeamBuffs[entity.team]?.arsenalUntil || 0) > now) mult *= 1.15;
+            if (entity.arenaForgeFortressLink && isNearAlliedArenaForgeStructure(entity)) mult *= 1.15;
         }
       if (hasTrinket(entity, 'last_stand') && entity.hp < entity.maxHp * .50) mult *= 1.15;
       if (hasTrinket(entity, 'first_strike') && entity.trinketFirstStrikeReady) mult *= 1.10;
@@ -23300,7 +25347,7 @@ let heistFeverActive = false;
     }
     if (owner) {
         const wallDamage = Math.max(180, Math.round(damage * 0.82));
-        applyNonProjectileStructureDamage(owner, x, y, radius, wallDamage);
+        applyNonProjectileStructureDamage(owner, x, y, radius, wallDamage, { powerBoxDamage: Math.max(1, Math.round(damage)) });
     }
     return hitCount;
   }
@@ -23548,7 +25595,10 @@ let heistFeverActive = false;
       const now = performance.now();
       if ((b.wallHitIds[wallHitId] || 0) > now) return;
       b.wallHitIds[wallHitId] = now + 160;
-      const boxDamage = Math.max(220, Math.round(dealtDamage * (b.super ? 0.95 : 0.75)));
+      // Power boxes now take the complete resolved hit. Vaults still apply their own cap.
+      const boxDamage = bestWall.isPowerBox
+          ? Math.max(1, Math.round(dealtDamage))
+          : Math.max(220, Math.round(dealtDamage * (b.super ? 0.95 : 0.75)));
       applyHeaterBoxDamage(owner, bestWall, boxDamage);
   }
 
@@ -23603,18 +25653,54 @@ let heistFeverActive = false;
       if (repeatHit) owner.heaterTetherNextTickAt = Math.min(owner.heaterTetherNextTickAt || now + 300, now + 60);
   }
 
+  const HEATER_MISER_RANGE = 540;
+  const HEATER_MUTATION_CHARGE_TICKS = 10;
+  const HEATER_MUTATION_RUNAWAY_TICKS = 5;
+
   function getHeaterTetherValue(elapsedMs, hyperStart) {
       const e = elapsedMs + (hyperStart ? 2500 : 0);
-      if (e >= 10000) return 900;
-      if (e >= 8500) return 800;
-      if (e >= 7000) return 680;
-      if (e >= 5500) return 520;
-      if (e >= 4000) return 380;
-      if (e >= 2500) return 260;
-      return 150;
+      if (e >= 10000) return 1020;
+      if (e >= 8500) return 900;
+      if (e >= 7000) return 760;
+      if (e >= 5500) return 600;
+      if (e >= 4000) return 440;
+      if (e >= 2500) return 300;
+      return 180;
   }
 
-  function findThermalTetherTarget(owner, aimX, aimY, maxRange = 490) {
+  function consumeHeaterMutationTick(owner) {
+      if (!owner || !isSpecialAbilityAvailableForEntity(owner, 'heater_miser')) return false;
+      owner.heaterMutationCharge = Math.max(0, owner.heaterMutationCharge || 0);
+      owner.heaterMutationTicks = Math.max(0, owner.heaterMutationTicks || 0);
+      if (owner.heaterMutationTicks > 0) {
+          owner.heaterMutationTicks--;
+          return true;
+      }
+      owner.heaterMutationCharge++;
+      if (owner.heaterMutationCharge >= HEATER_MUTATION_CHARGE_TICKS) {
+          owner.heaterMutationCharge = 0;
+          owner.heaterMutationTicks = HEATER_MUTATION_RUNAWAY_TICKS;
+          spawnFloatingText(owner.x, owner.y - 38, '🔥 THERMAL RUNAWAY!', '#ff4b55');
+      }
+      return false;
+  }
+
+  function pulseHeaterMutation(owner, primary, amount, sameTeam) {
+      if (!owner || !primary || amount <= 0) return;
+      const pulseAmount = Math.max(1, Math.round(amount * 0.45));
+      const radius = 135;
+      explosions.push({ x: primary.x, y: primary.y, radius, life: 0, maxLife: 0.22, color: 'rgba(255, 55, 70, 0.56)', fxKind: 'heaterMutation' });
+      const liveTargets = [player, ...(Array.isArray(bots) ? bots.filter(entity => entity && entity.hp > 0) : [])];
+      for (const entity of liveTargets) {
+          if (!entity || entity.hp <= 0 || entity.id === primary.id || entity.id === owner.id) continue;
+          if (Math.hypot(entity.x - primary.x, entity.y - primary.y) > radius + (entity.radius || 14)) continue;
+          if (areAlliedEntities(owner, entity) !== sameTeam) continue;
+          if (sameTeam) doHeal(entity, pulseAmount, owner.id);
+          else checkHit(entity, { damage: pulseAmount, ownerBrawler: 'heater_miser', ownerId: owner.id, pierce: true, isHeaterMutationPulse: true }, -1);
+      }
+  }
+
+  function findThermalTetherTarget(owner, aimX, aimY, maxRange = HEATER_MISER_RANGE) {
       if (!owner) return null;
       const dx = aimX - owner.x;
       const dy = aimY - owner.y;
@@ -23641,7 +25727,7 @@ let heistFeverActive = false;
       return best;
   }
 
-  function findThermalTetherBoxTarget(owner, aimX, aimY, maxRange = 490) {
+  function findThermalTetherBoxTarget(owner, aimX, aimY, maxRange = HEATER_MISER_RANGE) {
       if (!owner) return null;
       const dx = aimX - owner.x;
       const dy = aimY - owner.y;
@@ -23672,8 +25758,8 @@ let heistFeverActive = false;
 
   function tryStartHeaterTetherFromAim(owner, aimX, aimY, now) {
       if (!owner || owner.hp <= 0) return false;
-      const entityTarget = findThermalTetherTarget(owner, aimX, aimY, 490);
-      const boxTarget = findThermalTetherBoxTarget(owner, aimX, aimY, 490);
+      const entityTarget = findThermalTetherTarget(owner, aimX, aimY, HEATER_MISER_RANGE);
+      const boxTarget = findThermalTetherBoxTarget(owner, aimX, aimY, HEATER_MISER_RANGE);
       if (!entityTarget && !boxTarget) return false;
 
       const entityScore = entityTarget
@@ -23722,7 +25808,7 @@ let heistFeverActive = false;
           expireAt: now + 4000,
           damageEndAt: now + 3000,
           nextTickAt: now + 500,
-          tickDamage: sp2 ? 260 : 220,
+          tickDamage: sp2 ? 300 : 260,
           hyperPull: !!hyperPull,
           skinId: activeSkin?.id
       });
@@ -23905,6 +25991,7 @@ let heistFeverActive = false;
           crystilaReturnLayer: !!opts.returnLayer,
           crystilaOriginX: fromEntity.x,
           crystilaOriginY: fromEntity.y,
+          crystilaDeflector: !!opts.crystilaDeflector,
           hitIds: {}
       });
   }
@@ -23927,6 +26014,7 @@ let heistFeverActive = false;
           ownerId: sourceBullet.ownerId,
           hitboxMod: 1.15,
           crystilaReflectSlow: !!sourceBullet.crystilaFollowSlow,
+          crystilaDeflector: !!sourceBullet.crystilaDeflector,
           hitIds: {}
       });
   }
@@ -23947,8 +26035,11 @@ let heistFeverActive = false;
       if (!hyperGlass && !inFront) return false;
 
       const absorb = Math.max(80, Math.round((b.damage || 200) * (b.super ? 1.15 : 1)));
-      target.crystilaGlassHp = Math.max(0, (target.crystilaGlassHp || 0) - absorb);
-      if (target.crystilaGlassHp <= 0) target.crystilaGlassUntil = Math.min(target.crystilaGlassUntil || now, now + 50);
+      const invuln = now < (target.crystilaGlassInvulnUntil || 0);
+      if (!invuln) {
+          target.crystilaGlassHp = Math.max(0, (target.crystilaGlassHp || 0) - absorb);
+          if (target.crystilaGlassHp <= 0) target.crystilaGlassUntil = Math.min(target.crystilaGlassUntil || now, now + 50);
+      }
 
       const reflectedSpeed = Math.max(420, Math.hypot(b.vx, b.vy));
       const reflectAng = Math.atan2(b.y - target.y, b.x - target.x);
@@ -25270,8 +27361,8 @@ let heistFeverActive = false;
         const perpX = -Math.sin(baseAngle);
         const perpY = Math.cos(baseAngle);
 
-        // Orbit radius: 1 orb shoots straight; 2, 3, 4, or up to 8 orbs revolve in an expanding orbit swing
-        const startOrbitRadius = orbCount === 1 ? 0 : Math.round((orbCount === 2 ? 40 : (orbCount === 3 ? 48 : (orbCount === 4 ? 56 : 64))) * sizeBonus);
+        // Orbit radius: 1 orb shoots straight; 2, 3, 4, or up to 8 orbs revolve in an expanding orbit swing (start spread reduced 50% for easy hits)
+        const startOrbitRadius = orbCount === 1 ? 0 : Math.round((orbCount === 2 ? 20 : (orbCount === 3 ? 24 : (orbCount === 4 ? 28 : 32))) * sizeBonus);
         const maxOrbitRadius = orbCount === 1 ? 0 : Math.round((orbCount === 2 ? 128 : (orbCount === 3 ? 160 : (orbCount === 4 ? 190 : 224))) * sizeBonus);
         const orbitRadius = startOrbitRadius;
         const orbitSpeed = 3.99; // rad/s (+20% more satisfying speed: 3.325 * 1.20 = 3.99)
@@ -25316,6 +27407,13 @@ let heistFeverActive = false;
                 spinOffset: k * (Math.PI / 3)
             });
         }
+    } else if (brawler === 'looma') {
+        fireLoomaNeedle(fromEntity, targetX, targetY, isBot?!!fromEntity.isHypercharged:isHypercharged);
+        return;
+    } else if (brawler === 'badbat') {
+        const isHyper = isEntityHyperchargedNow(fromEntity, now);
+        fireBadBatAttack(fromEntity, ang, isHyper);
+        return;
     } else if ((fromEntity.id === player.id ? selectedBrawler : fromEntity.brawler) === 'the_deleter') {
         const activeMaster = getActiveDeleterMaster(fromEntity);
         const mayRedirect = isBot ? (activeMaster && !activeMaster.deleterRedirected) : (fromEntity.deleterRedirectReady && activeMaster && !activeMaster.deleterRedirected);
@@ -25451,6 +27549,7 @@ let heistFeverActive = false;
         const sizeMod = hyper ? 1.3 : 1.0; // 30% larger projectile during Hypercharge
         const boltDmg = Math.round(stats.dmg);
         const strikeDmg = Math.round(stats.strikeDmg || 1650);
+        const bolzSkinId = getActiveSkinForBrawler(fromEntity.brawler || (fromEntity.id === player.id ? selectedBrawler : 'bolznstien'))?.id;
 
         bullets.push({
             ownerBrawler: 'bolznstien',
@@ -25468,7 +27567,8 @@ let heistFeverActive = false;
             hitIds: {},
             hitboxMod: sizeMod,
             hyperVisual: hyper,
-            isHyper: hyper
+            isHyper: hyper,
+            skinId: bolzSkinId
         });
     } else if (brawler === 'sir_cheeseburger') {
         ensureSirCheeseburgerState(fromEntity);
@@ -25751,13 +27851,14 @@ let heistFeverActive = false;
         const speed = 790;
         const maxLife = hyperMain ? 2.295 : 1.35;
         const amplitude = (dense ? 72 : 54) * (isPowerPlayShowdownMode ? 2.0 : 1.0);
+        const spreadAmp = amplitude * 0.65;
         const perpX = -Math.sin(ang), perpY = Math.cos(ang);
         const volleyId = `${fromEntity.id}:${Math.round(now * 10)}`;
         for (let shot = 0; shot < count; shot++) {
             const phase = shot * Math.PI * 2 / count;
-            const offset = Math.sin(phase) * amplitude;
+            const offset = Math.sin(phase) * spreadAmp;
             bullets.push({
-                ownerBrawler:'orbo', isOrboMain:true, orboPhase:phase, orboAmplitude:amplitude,
+                ownerBrawler:'orbo', isOrboMain:true, orboPhase:phase, orboAmplitude:spreadAmp,
                 orboPerpX:perpX, orboPerpY:perpY, orboLastOffset:offset, orboVolleyId:volleyId,
                 x:fromEntity.x + Math.cos(ang)*(fromEntity.radius+9) + perpX*offset,
                 y:fromEntity.y + Math.sin(ang)*(fromEntity.radius+9) + perpY*offset,
@@ -25778,9 +27879,10 @@ let heistFeverActive = false;
         const tuned=clamp(learned+calibration,.15,1);
         const homing=hardLock?1:(hyperMain ? Math.max(.95,tuned) : tuned);
         const star=getOwnerStarChoice(fromEntity),damage=Math.round((isBot?1260:1800)*(star==='slow'&&learned>=.70?1.12:1));
+        const homerSkinId = getActiveSkinForBrawler(fromEntity.brawler || (fromEntity.id === player.id ? selectedBrawler : 'homer'))?.id;
         bullets.push({ownerBrawler:'homer',isHomerProjectile:true,homerHomingPct:homing,
             x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+8),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+8),
-            vx:Math.cos(ang)*900,vy:Math.sin(ang)*900,life:0,maxLife:1.05,damage,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.15,hyperVisual:hyperMain});
+            vx:Math.cos(ang)*900,vy:Math.sin(ang)*900,life:0,maxLife:1.05,damage,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.15,hyperVisual:hyperMain,skinId:homerSkinId});
         if(hardLock){fromEntity.homerPerfectShotArmed=false;if(!isBot){gadgetArmed=false;gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();}}
     } else if (brawler === 'snapper') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
@@ -25857,8 +27959,9 @@ let heistFeverActive = false;
         const landX = clamp(fromEntity.x + (aimDx / aimDist) * clampedDist, 24, WORLD_W - 24);
         const landY = clamp(fromEntity.y + (aimDy / aimDist) * clampedDist, 24, WORLD_H - 24);
         const ownerId = isBot ? fromEntity.id : player.id;
+        const overlordSkinId = getActiveSkinForBrawler(fromEntity.brawler || (fromEntity.id === player.id ? selectedBrawler : 'overlord'))?.id;
 
-        explosions.push({ x: landX, y: landY, radius: finalRadius, life: 0, maxLife: Math.max(0.18, finalDelay / 1000), color: '#c88bff', legendary: true, fxKind: 'overlord' });
+        explosions.push({ x: landX, y: landY, radius: finalRadius, life: 0, maxLife: Math.max(0.18, finalDelay / 1000), color: '#c88bff', legendary: true, fxKind: 'overlord', skinId: overlordSkinId });
 
         setTimeout(() => {
             let baseDmg = Math.round((getScaledStats('overlord', 11).dmg || 1200) * (isHyper ? 1.18 : 1.0));
@@ -25875,10 +27978,10 @@ let heistFeverActive = false;
                 finalDmg = Math.round(baseDmg * bossMult);
             }
             AOEDamage(landX, landY, finalRadius, finalDmg, ownerId, false);
-            if(arcBurst){const sideA=ang+Math.PI/2;for(const side of [-1,1]){const sx=landX+Math.cos(sideA)*side*finalRadius*.72,sy=landY+Math.sin(sideA)*side*finalRadius*.72;AOEDamage(sx,sy,finalRadius*.72,finalDmg*.62,ownerId,false);explosions.push({x:sx,y:sy,radius:finalRadius*.72,life:0,maxLife:.22,color:'#ddb3ff',fxKind:'overlord'});}}
+            if(arcBurst){const sideA=ang+Math.PI/2;for(const side of [-1,1]){const sx=landX+Math.cos(sideA)*side*finalRadius*.72,sy=landY+Math.sin(sideA)*side*finalRadius*.72;AOEDamage(sx,sy,finalRadius*.72,finalDmg*.62,ownerId,false);explosions.push({x:sx,y:sy,radius:finalRadius*.72,life:0,maxLife:.22,color:'#ddb3ff',fxKind:'overlord',skinId:overlordSkinId});}}
             const ownerEntity = ownerId === player.id ? player : bots.find(bt => bt.id === ownerId);
             if (ownerEntity) applyOverlordImpactToWalls(ownerEntity, landX, landY, finalRadius, Math.round(finalDmg * 0.78));
-            explosions.push({ x: landX, y: landY, radius: finalRadius, life: 0, maxLife: 0.24, color: isHyper ? '#ffd1ff' : '#efe0ff', legendary: true, fxKind: 'overlord' });
+            explosions.push({ x: landX, y: landY, radius: finalRadius, life: 0, maxLife: 0.24, color: isHyper ? '#ffd1ff' : '#efe0ff', legendary: true, fxKind: 'overlord', skinId: overlordSkinId });
             if (isHyper) applyOverlordBurnAt(landX, landY, finalRadius, ownerId);
             if (stage >= 3) {
                 setTimeout(() => {
@@ -25886,7 +27989,7 @@ let heistFeverActive = false;
                     const secondDmg = Math.round(finalDmg * 0.70);
                     AOEDamage(landX, landY, secondRadius, secondDmg, ownerId, false);
                     if (ownerEntity) applyOverlordImpactToWalls(ownerEntity, landX, landY, secondRadius, Math.round(secondDmg * 0.75));
-                    explosions.push({ x: landX, y: landY, radius: Math.round(finalRadius * 1.1), life: 0, maxLife: 0.24, color: '#fff0ff', legendary: false, fxKind: 'overlord' });
+                    explosions.push({ x: landX, y: landY, radius: Math.round(finalRadius * 1.1), life: 0, maxLife: 0.24, color: '#fff0ff', legendary: false, fxKind: 'overlord', skinId: overlordSkinId });
                     if (isHyper) applyOverlordBurnAt(landX, landY, Math.round(finalRadius * 1.1), ownerId);
                 }, 120);
             }
@@ -25964,7 +28067,7 @@ let heistFeverActive = false;
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const level = isBot ? (fromEntity.level || 11) : getSelectedBrawlerLevel();
         const shieldPct=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'relayShieldPct'):0,shieldCap=isSlopSushiMode?(getEntitySlopEffectTotal(fromEntity,'relayShieldCap')||7000):7000;
-        bullets.push({ownerBrawler:'relay',isRelayOrb:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+6),vx:Math.cos(ang)*680,vy:Math.sin(ang)*680,life:0,maxLife:.594,damage:1250,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.35,relayShieldAmount:Math.round((hyper?2200:1600)*getLevelDamageScale(level)*(1+shieldPct)),relayShieldCap:shieldCap,relayHyperAttachie:hyper,hyperVisual:hyper});
+        bullets.push({ownerBrawler:'relay',isRelayOrb:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+6),vx:Math.cos(ang)*680,vy:Math.sin(ang)*680,life:0,maxLife:.594,damage:1250,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.82,relayShieldAmount:Math.round((hyper?1540:1120)*getLevelDamageScale(level)*(1+shieldPct)),relayShieldCap:shieldCap,relayHyperAttachie:hyper,hyperVisual:hyper});
     } else if (brawler === 'angel') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const count = (hyper ? 3 : 1)+(isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'angelExtraBurst')):0);
@@ -26308,10 +28411,10 @@ let heistFeverActive = false;
         const baseDartSpeed = 850 * (hasSp2 ? 1.25 : 1.0);
         const baseDartRange = 440 * (hasSp2 ? 1.20 : 1.0);
         const dartMaxLife = baseDartRange / baseDartSpeed;
-        const baseDamage = 320;
+        const baseDamage = stage === 1 ? 960 : 320;
         const levelScale = fromEntity.id === player.id ? getPlayerDamageScale() : 1.0;
         const dartDamage = Math.round(baseDamage * levelScale);
-        const diagAngleOffset = 0.28;
+        const diagAngleOffset = 0.14;
 
         let centerCount = 1;
         let leftCount = 0;
@@ -26361,18 +28464,19 @@ let heistFeverActive = false;
                     life: 0,
                     maxLife: dartMaxLife,
                     damage: dartDamage,
-                    pierce: false,
+                    pierce: hyper,
                     ownerId: fromEntity.id,
                     team: fromEntity.team,
                     hitIds: {},
-                    hitboxMod: 1.15,
+                    hitboxMod: 1.8,
                     hyperVisual: hyper,
                     upgradartReturns: willReturn,
                     upgradartPoison: isPoison,
                     upgradartStrongPoison: isStrongSuper,
                     hasSp1: hasSp1,
                     hasSp2: hasSp2,
-                    isCenter: isCenter
+                    isCenter: isCenter,
+                    upgradartStage: stage
                 });
             }, delayMs);
         };
@@ -26580,7 +28684,7 @@ let heistFeverActive = false;
         const isHyper = isHypercharged;
         const mutationOvercharged = consumeOutlitMutationCharge(fromEntity);
         const outlitExtraPellets = isSlopSushiMode ? Math.round(getEntitySlopEffectTotal(fromEntity,'outlitExtraPellets')) : 0;
-        const pellets = (isBot ? 3 : 5) + outlitExtraPellets;
+        const pellets = (isBot ? 6 : 8) + outlitExtraPellets;
         const shotCount = isHyper ? 2 : 1; // Hypercharge 2.0: Double shot
         
         // Hypercharge gives 40% less spread and +15% speed (we'll implement speed via player movement)
@@ -26588,11 +28692,11 @@ let heistFeverActive = false;
       const sushiSpreadMult = isSlopSushiMode ? Math.max(1,getEntitySlopEffectTotal(fromEntity,'outlitSpreadMult')) : 1;
       const sushiSpeed = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'outlitProjectileSpeedPct') : 0;
       const spread = baseSpread * (isBot ? 0.8 : 0.6) * hcSpread * sushiSpreadMult;
-        const outlitDamage = isBot ? 208 : 265;
+        const outlitDamage = isBot ? 183 : 233;
         const outlitVelocity = (!isBot && isHypercharged) ? 1.8 : 1.0;
         const hcRangeMult = ((!isBot && isHypercharged) ? 1.1 : 1.0) * (mutationOvercharged ? 2.0 : 1.0);
         const outlitProjectileSpeed = 560 * 0.6 * outlitVelocity * (1+sushiSpeed);
-        const outlitBaseRange = 285;
+        const outlitBaseRange = 256.5;
         
         if (!isBot || mutationOvercharged) explosions.push({x: fromEntity.x + Math.cos(ang)*20, y: fromEntity.y + Math.sin(ang)*20, radius: mutationOvercharged ? 42 : 25, life: 0, maxLife: mutationOvercharged ? .22 : 0.15, color: mutationOvercharged ? 'rgba(255,55,75,.84)' : (isHypercharged ? 'rgba(238, 0, 255, 0.8)' : 'rgba(255, 200, 50, 0.6)'), fxKind: mutationOvercharged ? 'outlitMutation' : undefined});
 
@@ -26822,24 +28926,16 @@ let heistFeverActive = false;
           }
     } else if (brawler === 'dashaholic') {
         const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
-        const sharedHitIds = {}; // Share hit tracking across the hypercharge spread
+        const slashDamage = isBot ? 365 : 730;
         bullets.push({
-            ownerBrawler: 'dashaholic', isDashSlash: true, hitIds: sharedHitIds,
+            ownerBrawler: 'dashaholic', isDashSlash: true, hitIds: {},
             x: fromEntity.x + Math.cos(ang)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(ang)*(fromEntity.radius+4),
             vx: Math.cos(ang)*1100 * 0.6, vy: Math.sin(ang)*1100 * 0.6,
-            life: 0, maxLife: 0.3, damage: isBot ? 365 : 730, pierce: true, hyperVisual: isHyper, hitboxMod: 1.0, ownerId: fromEntity.id
+            life: 0, maxLife: isHyper ? 0.44 : 0.3, damage: slashDamage, pierce: true,
+            hyperVisual: isHyper, hitboxMod: isHyper ? 10.0 : 8.0, ownerId: fromEntity.id,
+            dashAfterimageReturn: isHyper, dashAfterimageReturning: false,
+            dashAfterimageBaseDamage: slashDamage
         });
-        if (isHyper) {
-            for(let side of [-1, 1]) {
-                const sideAng = ang + (Math.PI/6 * side); // 30 degrees angled forward
-                bullets.push({
-                    ownerBrawler: 'dashaholic', isDashSlash: true, hitIds: sharedHitIds,
-                    x: fromEntity.x + Math.cos(sideAng)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(sideAng)*(fromEntity.radius+4),
-                    vx: Math.cos(sideAng)*1100 * 0.6, vy: Math.sin(sideAng)*1100 * 0.6,
-                    life: 0, maxLife: 0.3, damage: isBot ? 365 : 730, pierce: true, hyperVisual: true, hitboxMod: 5.5, ownerId: fromEntity.id
-                });
-            }
-        }
     } else if (brawler === 'trapper') {
         const projSpeed = 800 * 0.6;
         const trapperHyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
@@ -26902,7 +28998,7 @@ let heistFeverActive = false;
             vx: Math.cos(ang) * 860 * 0.6,
             vy: Math.sin(ang) * 860 * 0.6,
             life: 0,
-            maxLife: 490 / (860 * 0.6),
+            maxLife: HEATER_MISER_RANGE / (860 * 0.6),
             damage: 0,
             pierce: true,
             ownerId: fromEntity.id,
@@ -26913,9 +29009,12 @@ let heistFeverActive = false;
         const isHyper = !isBot ? !!isHypercharged : !!fromEntity.isHypercharged;
         const prismEdge = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
         fromEntity.crystilaGlassFacing = ang;
+        const isDeflector = consumeCrystilaMutationCharge(fromEntity);
+        if (!isDeflector) recordCrystilaMutationShot(fromEntity, now);
         fireCrystilaArm(fromEntity, ang, isBot, isHyper, {
             pierce: prismEdge,
-            followMult: prismEdge ? 1.25 : 1.0
+            followMult: prismEdge ? 1.25 : 1.0,
+            crystilaDeflector: isDeflector
         });
         if (isHyper) {
             fireCrystilaArm(fromEntity, ang, isBot, true, {
@@ -28297,7 +30396,7 @@ let heistFeverActive = false;
         const linkPct=isSlopSushiMode?getEntitySlopEffectTotal(owner,'relayLinkRadiusPct'):0;
         const maxHp=Math.round(12000*scale*(hyper?(4/3):1)*(1+hpPct));
         const star=owner.id===player.id?selectedStar:owner.selectedStar;
-        healingPods.push({isRelayDevice:true,x:clamp(owner.x+dx/d*range,38,WORLD_W-38),y:clamp(owner.y+dy/d*range,38,WORLD_H-38),hp:maxHp,maxHp,radius:35,healRadius:0,healAmount:0,decayPerSec:0,ownerId:owner.id,team:owner.team,relayRedirectPct:hyper?.82:.75,relayLinkRadius:520*(star==='slow'?1.25:1)*(1+linkPct),relayHyper:hyper});
+        healingPods.push({isRelayDevice:true,x:clamp(owner.x+dx/d*range,38,WORLD_W-38),y:clamp(owner.y+dy/d*range,38,WORLD_H-38),hp:maxHp,maxHp,radius:35,healRadius:0,healAmount:0,decayPerSec:0,ownerId:owner.id,team:owner.team,relayRedirectPct:hyper?0.80:0.50,relayLinkRadius:520*(star==='slow'?1.25:1)*(1+linkPct),relayHyper:hyper});
         spawnFloatingText(owner.x,owner.y-38,hyper?'TOTAL TRANSFER!':'DAMAGE MOVED!','#67e8ff');
     }
     function stealAmmoForRobber(owner, target, requested, cap, requireThree=false) {
@@ -29554,11 +31653,11 @@ let heistFeverActive = false;
     }
 
     const UPGRADART_STAGE_THRESHOLDS = Object.freeze([
-        { stage: 1, damage: 0, next: 18000 },
-        { stage: 2, damage: 18000, next: 22500 },
-        { stage: 3, damage: 22500, next: 29000 },
-        { stage: 4, damage: 29000, next: 38000 },
-        { stage: 5, damage: 38000, next: Infinity }
+        { stage: 1, damage: 0, next: 12000 },
+        { stage: 2, damage: 12000, next: 17000 },
+        { stage: 3, damage: 17000, next: 23000 },
+        { stage: 4, damage: 23000, next: 30000 },
+        { stage: 5, damage: 30000, next: Infinity }
     ]);
 
     let upgradartCaltrops = [];
@@ -29575,10 +31674,10 @@ let heistFeverActive = false;
 
     function getUpgradartStage(totalDmg) {
         const dmg = Math.max(0, totalDmg || 0);
-        if (dmg >= 38000) return 5;
-        if (dmg >= 29000) return 4;
-        if (dmg >= 22500) return 3;
-        if (dmg >= 18000) return 2;
+        if (dmg >= 30000) return 5;
+        if (dmg >= 23000) return 4;
+        if (dmg >= 17000) return 3;
+        if (dmg >= 12000) return 2;
         return 1;
     }
 
@@ -29586,7 +31685,7 @@ let heistFeverActive = false;
         const dmg = Math.max(0, totalDmg || 0);
         const stage = getUpgradartStage(dmg);
         if (stage >= 5) {
-            return { stage: 5, current: dmg - 38000, max: 0, total: dmg, nextThreshold: 38000, pct: 1.0, label: 'STAGE 5 (MAX)' };
+            return { stage: 5, current: dmg - 30000, max: 0, total: dmg, nextThreshold: 30000, pct: 1.0, label: 'STAGE 5 (MAX)' };
         }
         const curThresh = UPGRADART_STAGE_THRESHOLDS[stage - 1];
         const prevDmg = curThresh.damage;
@@ -29614,14 +31713,14 @@ let heistFeverActive = false;
         entity.upgradartStage = newStage;
         if (newStage > oldStage) {
             spawnFloatingText(entity.x, entity.y - 48, `⚡ UPGRADART STAGE ${newStage}!`, '#00ff88');
-            explosions.push({
-                x: entity.x,
-                y: entity.y,
-                radius: 75,
-                life: 0,
-                maxLife: 0.35,
-                color: 'rgba(0, 255, 136, 0.85)'
-            });
+            const stageColors = ['#00ff88', '#28d8ff', '#8b72ff', '#d85cff', '#ffd45c'];
+            const stageColor = stageColors[Math.max(0, Math.min(4, newStage - 1))];
+            explosions.push({ x: entity.x, y: entity.y, radius: 75 + newStage * 9, life: 0, maxLife: 0.42, color: stageColor });
+            explosions.push({ x: entity.x, y: entity.y, radius: 38 + newStage * 6, life: 0, maxLife: 0.28, color: '#ffffff' });
+            for (let spark = 0; spark < 6 + newStage * 2; spark++) {
+                const a = spark * Math.PI * 2 / (6 + newStage * 2);
+                explosions.push({ x: entity.x + Math.cos(a) * (22 + newStage * 5), y: entity.y + Math.sin(a) * (22 + newStage * 5), radius: 7, life: 0, maxLife: .24, color: stageColor, isParticle: true });
+            }
         }
     }
 
@@ -30033,12 +32132,13 @@ let heistFeverActive = false;
         if(!owner)return;
         const now=performance.now(),star=getOwnerStarChoice(owner),gain=star==='slow' ? .12 : .08;
         owner.homerHomingPct=clamp((owner.homerHomingPct||.15)+gain,.15,.70);
+        const homerSkinId = getActiveSkinForBrawler(owner.brawler || (owner.id === player.id ? selectedBrawler : 'homer'))?.id;
         const base=Math.atan2(targetY-owner.y,targetX-owner.x),count=hyper?4:2;
         for(let i=0;i<count;i++){
             const spread=(i-(count-1)/2)*(hyper?.12:.16),a=base+spread;
             bullets.push({ownerBrawler:'homer',isHomerProjectile:true,homerHomingPct:1,homerSuperShot:true,
                 x:owner.x+Math.cos(a)*(owner.radius+9),y:owner.y+Math.sin(a)*(owner.radius+9),vx:Math.cos(a)*820,vy:Math.sin(a)*820,
-                life:0,maxLife:1.35,damage:owner.id===player.id?1250:875,pierce:false,ownerId:owner.id,hitIds:{},hitboxMod:1.45,super:true,hyperVisual:hyper});
+                life:0,maxLife:1.35,damage:owner.id===player.id?1250:875,pierce:false,ownerId:owner.id,hitIds:{},hitboxMod:1.45,super:true,hyperVisual:hyper,skinId:homerSkinId});
         }
         spawnFloatingText(owner.x,owner.y-40,`HOMING ${Math.round(owner.homerHomingPct*100)}%`,'#7ee9ff');
         owner.homerMeterFlashUntil=now+700;
@@ -30057,7 +32157,7 @@ let heistFeverActive = false;
     function castOrboSuper(owner, hyper, targetX, targetY) {
         if (!owner || owner.hp <= 0) return;
         const now = performance.now();
-        const windupMs = 420;
+        const windupMs = 520;
         owner.orboSuperWindup = {
             startAt: now,
             until: now + windupMs,
@@ -30067,7 +32167,7 @@ let heistFeverActive = false;
             angle: Math.atan2(targetY - owner.y, targetX - owner.x)
         };
         owner.stunUntil = Math.max(owner.stunUntil || 0, now + windupMs);
-        spawnFloatingText(owner.x, owner.y - 42, hyper ? 'TOTAL ORBIT GATHERING...' : 'ORBITAL CHARGE...', hyper ? '#dc72ff' : '#8b7dff');
+        spawnFloatingText(owner.x, owner.y - 42, hyper ? 'TRIPLE CANDY ALIGNMENT...' : 'COSMIC CANDY CHARGING...', hyper ? '#ff72dc' : '#72dfff');
         for (let p = 0; p < 8; p++) {
             explosions.push({
                 x: owner.x + (Math.random() - 0.5) * 24,
@@ -30085,7 +32185,7 @@ let heistFeverActive = false;
         if (!owner || owner.hp <= 0) return;
         const baseAngle = Math.atan2(targetY - owner.y, targetX - owner.x);
         const angles = hyper ? [-0.38, 0, 0.38] : [0];
-        const speed = 980;
+        const speed = 1480;
         for (const offset of angles) {
             const angle = baseAngle + offset;
             const edgeDistance = getRayDistanceToMapEdge(owner.x, owner.y, angle, 28);
@@ -30101,7 +32201,7 @@ let heistFeverActive = false;
                 vy: Math.sin(angle) * speed,
                 life: 0,
                 maxLife: isPowerPlay ? 12.0 : (edgeDistance / speed),
-                damage: owner.id === player.id ? 2100 : 1500,
+                damage: owner.id === player.id ? (hyper ? 2600 : 3700) : (hyper ? 1900 : 2700),
                 pierce: true,
                 pierceWalls: !isPowerPlay,
                 canBounce: !!isPowerPlay,
@@ -30109,12 +32209,13 @@ let heistFeverActive = false;
                 bounceLifeLoss: 0,
                 ownerId: owner.id,
                 hitIds: {},
-                hitboxMod: 14.87,
+                hitboxMod: hyper ? 11.8 : 12.6,
+                orboCandyRay: true,
                 super: true,
                 hyperVisual: !!hyper
             });
         }
-        spawnFloatingText(owner.x, owner.y - 42, hyper ? 'TOTAL ORBIT!' : 'ORBITAL HORIZON!', hyper ? '#dc72ff' : '#8b7dff');
+        spawnFloatingText(owner.x, owner.y - 42, hyper ? 'TOTAL ORBIT: CANDY STORM!' : 'COSMIC CANDY CANNON!', hyper ? '#ff72dc' : '#72dfff');
         for (let p = 0; p < 12; p++) {
             explosions.push({
                 x: owner.x + Math.cos(baseAngle) * (owner.radius + 35) + (Math.random() - 0.5) * 28,
@@ -30173,6 +32274,9 @@ let heistFeverActive = false;
                 w.hitIds[target.id]=true;
                 if ((target.invulnerableUntil||0)>now || target.isFlying || (target.angelLiftUntil||0)>now) { spawnFloatingText(target.x,target.y-28,'DODGED!','#ffffff'); continue; }
                 if ((target.crystilaGlassUntil||0)>now && (target.crystilaGlassHp||0)>0) {
+                    if (now < (target.crystilaGlassInvulnUntil || 0)) {
+                        spawnFloatingText(target.x, target.y-28, 'INVULN REFLECT!', '#9be7ff'); continue;
+                    }
                     target.crystilaGlassHp=Math.max(0,target.crystilaGlassHp-(w.mini?1000:3000));
                     spawnFloatingText(target.x,target.y-28,'REFLECTED!','#9be7ff'); continue;
                 }
@@ -30337,6 +32441,7 @@ let heistFeverActive = false;
     const combatBrawler = getCombatBrawler(player, false);
 
     if (combatBrawler === 'trampaheal') { castTrampahealSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'looma') { castLoomaSuper(player, wm.x, wm.y, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -30345,6 +32450,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'anti_royal') { if(!castAntiRoyalSuper(player,!!isHypercharged,wm.x,wm.y))superCharge=100; updateSuperButton(); return; }
     if (combatBrawler === 'weefee') { castWeeFeeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'rager') { castRagerSuper(player, wm.x, wm.y, !!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'oil_maker') { castOilMakerSuper(player, wm.x, wm.y, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'magnatar') { castMagnatarSuper(player, wm.x, wm.y, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'carmela_fudge') {
         const isFudge = player.carmelaFudgeForm === 'fudge';
@@ -30358,6 +32464,7 @@ let heistFeverActive = false;
     }
     if (combatBrawler === 'the_deleter') { castDeleterSuper(player, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'bolznstien') { castBolznstienSuper(player, !!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'badbat') { castBadBatSuper(player, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'sir_cheeseburger') { castSirCheeseburgerSuper(player, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'blinkeye') {
         if (player.blinkeyeSteering && player.blinkeyeActiveEye) {
@@ -30551,12 +32658,13 @@ let heistFeverActive = false;
             player.shield = Math.max(player.shield || 0, 1200 + nextStage * 200);
             player.shieldMax = Math.max(player.shieldMax || 0, player.shield);
 
-            explosions.push({ x: player.x, y: player.y, radius: 70, life: 0, maxLife: Math.max(0.45, dur / 1000), color: '#caa0ff', legendary: true, fxKind: 'overlord' });
+            const ovSuperSkin = getActiveSkinForBrawler('overlord');
+            explosions.push({ x: player.x, y: player.y, radius: 70, life: 0, maxLife: Math.max(0.45, dur / 1000), color: '#caa0ff', legendary: true, fxKind: 'overlord', skinId: ovSuperSkin?.id });
 
             triangleAngles.forEach((offsetAng, index) => {
                 const px = player.x + Math.cos(offsetAng) * 56;
                 const py = player.y + Math.sin(offsetAng) * 56;
-                explosions.push({ x: px, y: py, radius: 30, life: 0, maxLife: 0.6, color: index === 1 ? '#ffd36b' : '#f7d7ff', legendary: false, fxKind: 'overlord' });
+                explosions.push({ x: px, y: py, radius: 30, life: 0, maxLife: 0.6, color: index === 1 ? '#ffd36b' : '#f7d7ff', legendary: false, fxKind: 'overlord', skinId: ovSuperSkin?.id });
                 setTimeout(() => {
                     let sbase = Math.round((getScaledStats('overlord', 11).dmg || 1200) * 0.35);
                     if (player.isOverlord) sbase = Math.round(sbase * 1.8);
@@ -30813,15 +32921,19 @@ let heistFeverActive = false;
     if (selectedBrawler === 'crystila') {
       const hc = !!isHypercharged;
       const tempered = selectedStar === 'long';
-      const baseCap = hc ? 13000 : 6800;
+      const baseCap = hc ? 5000 : 4000;
       const glassCap = Math.round(baseCap * (tempered ? 1.2 : 1.0));
-      const glassDur = 4000 + (tempered ? 1000 : 0);
-      player.crystilaGlassUntil = now + glassDur;
+      player.crystilaGlassUntil = Infinity;
       player.crystilaGlassHpMax = glassCap;
       player.crystilaGlassHp = glassCap;
       player.crystilaGlassHyper = hc;
       player.crystilaGlassHalfArc = hc ? Math.PI : 0.92;
       player.crystilaGlassFacing = ang;
+      if (hc) player.crystilaGlassInvulnUntil = now + 3000;
+      // Spawn ice-blue burst FX on super activation (extra ring on HC)
+      explosions.push({ x: player.x, y: player.y, radius: hc ? 72 : 52, life: 0, maxLife: hc ? 0.4 : 0.3, color: hc ? 'rgba(110,230,255,0.88)' : 'rgba(160,228,255,0.72)', hyperVisual: hc });
+      if (hc) explosions.push({ x: player.x, y: player.y, radius: 44, life: 0, maxLife: 0.22, color: 'rgba(220,250,255,0.72)', hyperVisual: true });
+      addSpecialQuestProgress('crystila', 'use_super', 1);
       updateSuperButton();
       return;
     }
@@ -30867,13 +32979,15 @@ let heistFeverActive = false;
     }
     
     if(selectedBrawler === 'dashaholic') {
-      const dist = Math.min(Math.hypot(dx, dy), 800);
+      const dist = Math.min(Math.hypot(dx, dy), 600);
       player.isDashing = true;
       player.dashStartX = player.x; player.dashStartY = player.y;
       player.dashTargetX = clamp(player.x + Math.cos(ang) * dist, player.radius, WORLD_W - player.radius);
       player.dashTargetY = clamp(player.y + Math.sin(ang) * dist, player.radius, WORLD_H - player.radius);
       player.dashDuration = 250; player.dashElapsed = 0; player.dashHitCooldowns = {}; player.dashStructureHitIds = {};
       player.isHyperDash = isHypercharged;
+      consumeDashaholicSuperCharge(player);
+      addSpecialQuestProgress('dashaholic', 'use_super', 1);
       updateSuperButton();
       return;
     }
@@ -31489,7 +33603,10 @@ let heistFeverActive = false;
                   }
               }
           } else {
-              applyHeaterBoxDamage(owner, wall, damage);
+              const objectiveDamage = wall.isPowerBox && Number.isFinite(options.powerBoxDamage)
+                  ? options.powerBoxDamage
+                  : damage;
+              applyHeaterBoxDamage(owner, wall, objectiveDamage);
           }
           if (hitIds) hitIds[hitId] = true;
           hits++;
@@ -31986,6 +34103,14 @@ let heistFeverActive = false;
             });
         }
         bot.gadgetArmed = false;
+    } else if (bot.brawler === 'beam' && g === 'g1') {
+        bot.beamPrismSplitUntil = performance.now() + 4000;
+        bot.gadgetArmed = true;
+    } else if (bot.brawler === 'beam' && g === 'g2') {
+        const consumption = (bot.beamAmmo || 0) * 0.3;
+        bot.beamAmmo = Math.max(0, (bot.beamAmmo || 0) - consumption);
+        doHeal(bot, 1750);
+        bot.gadgetArmed = false;
     }
     else bot.gadgetArmed = true; 
 
@@ -32023,11 +34148,23 @@ let heistFeverActive = false;
             goonPuddles.push({ x: bot.x + Math.cos(a)*60, y: bot.y + Math.sin(a)*60, until: performance.now() + 5800, ownerId: bot.id });
         }
         bot.gadgetArmed = true;
+    } else if (bot.brawler === 'badbat' && g === 'g1') {
+        executeBadBatG1(bot);
+        bot.gadgetArmed = false;
+    } else if (bot.brawler === 'badbat' && g === 'g2') {
+        executeBadBatG2(bot);
+        bot.gadgetArmed = false;
+    } else if (bot.brawler === 'looma' && g === 'g1') {
+        executeLoomaG1(bot);
+        bot.gadgetArmed = false;
+    } else if (bot.brawler === 'looma' && g === 'g2') {
+        bot.loomaShieldThreadArmed = true;
+        bot.gadgetArmed = true;
     }
 
     // If gadget was armed for a "next shot" type, but the brawler doesn't have one, disarm it.
     // This prevents issues if a brawler is switched mid-game or if logic is missing.
-    if (bot.gadgetArmed && !['orbo', 'homer', 'warrior', 'outlit', 'decayer', 'cheseypuff', 'unopcoloco', 'echo', 'dashaholic', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'tempo_maker', 'copyphase', 'trapper', 'classy', 'heater_miser', 'steamer', 'amplifier', 'skeleflying', 'crystila', 'evil_doctor', 'splitter', 'hoop','swimmer','boomer','daggershard','adlof','cluster','witch','ice_cream','blade_vane','duck','awakenator','king'].includes(bot.brawler)) {
+    if (bot.gadgetArmed && !['orbo', 'homer', 'warrior', 'outlit', 'decayer', 'cheseypuff', 'unopcoloco', 'echo', 'dashaholic', 'hunter', 'chaird', 'forest', 'bouncin_balls', 'tempo_maker', 'copyphase', 'trapper', 'classy', 'heater_miser', 'steamer', 'amplifier', 'skeleflying', 'crystila', 'evil_doctor', 'splitter', 'hoop','swimmer','boomer','daggershard','adlof','cluster','witch','ice_cream','blade_vane','duck','awakenator','king','looma'].includes(bot.brawler)) {
         bot.gadgetArmed = false;
     }
   }
@@ -32050,7 +34187,7 @@ let heistFeverActive = false;
             ensureCinderionState(bot);
             if (bot.cinderionOrbitFlames.filter(flame => flame.expiresAt > performance.now() && !flame.spent).length < 3) return;
         }
-    if (bot.brawler !== 'steamer') {
+    if (bot.brawler !== 'steamer' && bot.brawler !== 'oil_maker' && bot.brawler !== 'dashaholic') {
         bot.superCharge = 0;
     }
     bot.lastAttackAt = performance.now();
@@ -32079,6 +34216,7 @@ let heistFeverActive = false;
     const now = performance.now();
     bot.visualSuperAt = bot.lastAttackAt;
     if (botCombatBrawler === 'cinderion') { castCinderionSuper(bot, isHyper); return; }
+    if (botCombatBrawler === 'looma') { castLoomaSuper(bot, targetX, targetY, isHyper); return; }
     if (botCombatBrawler === 'mageny') { castMagenySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'trampaheal') { castTrampahealSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
@@ -32101,6 +34239,8 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'blinkeye') { startBlinkEyeSuper(bot, targetX, targetY, isHyper); return; }
     if (botCombatBrawler === 'the_deleter') { castDeleterSuper(bot, isHyper); return; }
     if (botCombatBrawler === 'bolznstien') { castBolznstienSuper(bot, isHyper); return; }
+    if (botCombatBrawler === 'badbat') { castBadBatSuper(bot, isHyper); return; }
+    if (botCombatBrawler === 'oil_maker') { castOilMakerSuper(bot, targetX, targetY, isHyper); return; }
     if (botCombatBrawler === 'magnatar') { castMagnatarSuper(bot, targetX, targetY, isHyper); return; }
     if (botCombatBrawler === 'rager') { castRagerSuper(bot, targetX, targetY, isHyper); return; }
     const dx = targetX - bot.x; const dy = targetY - bot.y; const ang = Math.atan2(dy, dx);
@@ -32338,15 +34478,15 @@ let heistFeverActive = false;
     }
     if (bot.brawler === 'crystila') {
       const tempered = bot.selectedStar === 'long';
-      const baseCap = bot.isHypercharged ? 13000 : 6800;
+      const baseCap = bot.isHypercharged ? 5000 : 4000;
       const glassCap = Math.round(baseCap * (tempered ? 1.2 : 1.0));
-      const glassDur = 4000 + (tempered ? 1000 : 0);
-      bot.crystilaGlassUntil = now + glassDur;
+      bot.crystilaGlassUntil = Infinity;
       bot.crystilaGlassHpMax = glassCap;
       bot.crystilaGlassHp = glassCap;
       bot.crystilaGlassHyper = !!bot.isHypercharged;
       bot.crystilaGlassHalfArc = bot.isHypercharged ? Math.PI : 0.92;
       bot.crystilaGlassFacing = ang;
+      if (bot.isHypercharged) bot.crystilaGlassInvulnUntil = now + 3000;
       return;
     }
     if (bot.brawler === 'hope') {
@@ -32417,13 +34557,16 @@ let heistFeverActive = false;
       return;
     }
     if (bot.brawler === 'dashaholic') {
-      const dist = Math.min(Math.hypot(dx, dy), 800);
+      const dist = Math.min(Math.hypot(dx, dy), 600);
+      ensureDashaholicSuperState(bot);
+      if (bot.dashaholicSuperCharges < 1 && (bot.superCharge || 0) >= 100) bot.dashaholicSuperCharges = 2;
       bot.isDashing = true;
       bot.dashStartX = bot.x; bot.dashStartY = bot.y;
       bot.dashTargetX = clamp(bot.x + Math.cos(ang) * dist, bot.radius, WORLD_W - bot.radius);
       bot.dashTargetY = clamp(bot.y + Math.sin(ang) * dist, bot.radius, WORLD_H - bot.radius);
       bot.dashDuration = 250; bot.dashElapsed = 0; bot.dashHitCooldowns = {}; bot.dashStructureHitIds = {};
       bot.isHyperDash = bot.isHypercharged;
+      consumeDashaholicSuperCharge(bot);
       if (bot.isBoss) {
           for(let i = 0; i < 8; i++) {
               const a = (i / 8) * Math.PI * 2;
@@ -32771,6 +34914,11 @@ let heistFeverActive = false;
       updateGadgetButton();
       return;
     }
+    if (curBrawler === 'looma') {
+      if(curGadget==='g1')executeLoomaG1(player);
+      else {player.loomaShieldThreadArmed=true;gadgetArmed=true;spawnFloatingText(player.x,player.y-36,'SAFETY STITCH READY','#6ff7ff');}
+      gadgetCooldownUntil=now+getGadgetCooldownMsForBrawler(curBrawler,curGadget);setPlayerGadgetCooldownUntil(gadgetCooldownUntil,curGadget);updateGadgetButton();return;
+    }
     if (curBrawler === 'king' && curGadget === 'g1') {
       if(!enrageKingPrincesses(player)){spawnFloatingText(player.x,player.y-34,'DEPLOY A PRINCESS FIRST','#ffd27a');updateGadgetButton();return;}
       gadgetCooldownUntil=now+getGadgetCooldownMsForBrawler(curBrawler,curGadget);
@@ -33017,7 +35165,9 @@ let heistFeverActive = false;
       gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
       updateGadgetButton();
     } else if (curBrawler === 'beam' && curGadget === 'g1') {
-      gadgetArmed = true;
+      player.beamPrismSplitUntil = now + 4000;
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+      spawnFloatingText(player.x, player.y - 32, 'PRISM SPLIT (4s)', '#00ffff');
       updateGadgetButton();
     } else if (curBrawler === 'beam' && curGadget === 'g2') {
       const consumption = ammo * 0.3;
@@ -33215,12 +35365,31 @@ let heistFeverActive = false;
               else player.y = dy > 0 ? c.y + c.h + player.radius + 1 : c.y - player.radius - 1;
           }
       }
-      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton();
+      if (player.dashaholicSignatureArmed === 'g1') {
+          player.x = clamp(player.x + Math.cos(ang) * 350, player.radius, WORLD_W - player.radius);
+          player.y = clamp(player.y + Math.sin(ang) * 350, player.radius, WORLD_H - player.radius);
+          player.trinketCcImmuneUntil = Math.max(player.trinketCcImmuneUntil || 0, now + 2000);
+          player.dashaholicCcShieldUntil = now + 2000;
+          player.isImmuneToPulls = true;
+          setTimeout(() => { if (performance.now() >= (player.dashaholicCcShieldUntil || 0)) player.isImmuneToPulls = false; }, 2050);
+          player.dashaholicSignatureArmed = '';
+          spawnFloatingText(player.x, player.y - 42, 'PHASE ECHO · CC IMMUNE!', '#ffd34f');
+      }
+      addSpecialQuestProgress('dashaholic', 'use_gadget', 1);
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); updateSignatureButton();
     } else if (curBrawler === 'dashaholic' && curGadget === 'g2') {
       // Dashaholic G2: Adrenaline
       doHeal(player, 1200);
       ammo = Math.min(maxAmmo, ammo + 1);
-      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton();
+      if (player.dashaholicSignatureArmed === 'g2') {
+          player.dashaholicHealingAuraUntil = now + 4000;
+          player.dashaholicHealingAuraNextTick = now;
+          player.dashaholicSignatureReloadUntil = now + 2000;
+          player.dashaholicSignatureArmed = '';
+          spawnFloatingText(player.x, player.y - 42, 'ADRENALINE FIELD!', '#ffd34f');
+      }
+      addSpecialQuestProgress('dashaholic', 'use_gadget', 1);
+      gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); updateSignatureButton();
     } else if (curBrawler === 'minigunnin' && curGadget === 'g1') {
       ammo = maxAmmo;
       for (let i = 0; i < 5; i++) {
@@ -33598,6 +35767,16 @@ let heistFeverActive = false;
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
         updateGadgetButton();
         return;
+    } else if (curBrawler === 'badbat' && curGadget === 'g1') {
+        executeBadBatG1(player);
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'badbat' && curGadget === 'g2') {
+        executeBadBatG2(player);
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
     } else {
       // fallback (shouldn't reach)
       gadgetArmed = true;
@@ -33659,6 +35838,7 @@ let heistFeverActive = false;
       ['slop_sushi_plus', '🗼', 'Tower Fusion Lab', 'Legacy seven-power sandbox'],
       ['slop_sushi', '🏰', 'Tower Trouble', '10 floors • random maxed brawler • fuse 4'],
       ['slop_sushi_gauntlet', '🗼', 'Tower Trouble: Grand Tour', '20 floors • multi-mode • choose four'],
+      ['chaos_crown', '🎲', 'Chaos Crown', '10 mystery guests • 10 unique rules • 3 strikes'],
       ['solo', '⚔️', 'Solo Showdown', '50-player FFA'],
       ['duo', '👥', 'Duo Showdown', '25 teams of 2'],
       ['trio', '🔱', 'Trio Showdown', '15 teams of 3'],
@@ -33677,7 +35857,7 @@ let heistFeverActive = false;
       ['duels', '⚔️', 'Duels (First to 9)', 'Draft 1 to 4 brawlers'],
       ['brick_vault', '🔒', 'Vault Siege 3v3', 'Break the enemy core vault'],
       ['marked_mayhem', 'TR', 'Target Rush', 'Hunt marked targets for bonus points'],
-      ['arena_forge', 'AF', 'Arena Forge', '3v3 lanes, minion waves, shared boons and match XP'],
+      ['arena_forge', 'AF2', 'Arena Forge 2.0', '3v3 • three weapon towers • new map • expanded Blueprint deck'],
       ['arena_forge_overclocked', 'AFO', 'Arena Forge: Overclocked', '3v3 • all four engines from spawn • four-direction bonus volleys'],
       ['arena_forge_minion_surge', '👾', 'Arena Forge: Minion Surge', '3v3 • fighter KOs rally armored reinforcements • protect your lanes'],
       ['damage_filler', '💥', 'Damage Filler', 'Pure DPS race'],
@@ -33688,7 +35868,7 @@ let heistFeverActive = false;
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
   const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax', 'ramage']);
-  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'bouncin_boss_s3', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
+  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'bouncin_boss_s3', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
@@ -33773,6 +35953,7 @@ let heistFeverActive = false;
       slop_sushi_plus: ['Legacy sandbox', 'Choose seven Tower Transformations', 'Powers stack for one match'],
       slop_sushi: ['10-floor challenge', 'Random brawler maxed for player and bots', 'Fuse four unlocked Transformations each floor'],
       slop_sushi_gauntlet: ['20-floor multi-mode climb', 'All 20 guests can fight; choose four to receive three lives instead of one', 'Showdown floors clear at 15th place or higher'],
+      chaos_crown: ['10 mystery Power-11 guests with no repeats', 'A different combat rule on every floor', 'Fuse four Tower powers', 'Three strikes for the entire run', 'Clear Floor 10 for the CHAOS CLIMBER title'],
       construction: ['3v3 race', 'Deliver bricks with your team', 'First cart to finish wins'],
       knock_donate: ['3v3 ring-out', 'Knock enemies from the arena', 'Win the round series'],
       damage_filler: ['Team damage race', 'Attack the training objective', 'First team to fill the meter wins']
@@ -35397,6 +37578,7 @@ let heistFeverActive = false;
           slop_sushi_plus: '#55f7ff',
           slop_sushi: '#ff5ba7',
           slop_sushi_gauntlet: '#9d7cff',
+          chaos_crown: '#ff6bd6',
           solo: '#ff5c5c',
           duo: '#ff8552',
           trio: '#ffb638',
@@ -35444,6 +37626,7 @@ let heistFeverActive = false;
           let tag = '3V3';
           if (id === 'solo' || id === 'slop_sushi' || id === 'slop_sushi_plus') tag = 'FFA';
           else if(id==='slop_sushi_gauntlet') tag='20F';
+          else if(id==='chaos_crown') tag='10F';
           else if(id==='tower_duels_weekend') tag='5F';
           else if (id === 'duo') tag = 'DUO';
           else if (id === 'trio') tag = 'TRIO';
@@ -35874,22 +38057,43 @@ let heistFeverActive = false;
         let draftMode = modePool[Math.floor(Math.random() * modePool.length)] || 'construction';
 
         const aboveBrickFume = isRankedAboveBrickFume(rankedPoints);
-        const mutatorKeys = Object.keys(RANKED_MODIFIERS).filter(k => k !== 'classic');
+        const rankedLeavingModifiers = new Set(['timed_detonation', 'giant_projectiles', 'projectiles_150']);
+        const mutatorKeys = Object.keys(RANKED_MODIFIERS).filter(k => k !== 'classic' && !rankedLeavingModifiers.has(k));
         let draftModifierKey = 'classic';
         let draftModifierKeySecondary = null;
+        let draftModifierKeyTertiary = null;
 
         if (aboveBrickFume) {
             const shuffled = mutatorKeys.slice().sort(() => Math.random() - 0.5);
             draftModifierKey = shuffled[0] || 'friendly_fire';
             draftModifierKeySecondary = shuffled[1] || 'hyper_overdrive';
+            // Matches can have 3 modifiers sometimes (~35% chance above Brick Fume)
+            if (Math.random() < 0.35 && shuffled[2]) {
+                draftModifierKeyTertiary = shuffled[2];
+            }
         } else {
-            const allKeys = Object.keys(RANKED_MODIFIERS);
-            draftModifierKey = allKeys[Math.floor(Math.random() * allKeys.length)] || 'classic';
-            draftModifierKeySecondary = null;
+            const rollChance = Math.random();
+            if (rollChance < 0.20 && mutatorKeys.length >= 3) {
+                // Matches can have 3 modifiers sometimes (~20% chance below Brick Fume)
+                const shuffled = mutatorKeys.slice().sort(() => Math.random() - 0.5);
+                draftModifierKey = shuffled[0];
+                draftModifierKeySecondary = shuffled[1];
+                draftModifierKeyTertiary = shuffled[2];
+            } else if (rollChance < 0.50 && mutatorKeys.length >= 2) {
+                const shuffled = mutatorKeys.slice().sort(() => Math.random() - 0.5);
+                draftModifierKey = shuffled[0];
+                draftModifierKeySecondary = shuffled[1];
+            } else {
+                const allKeys = Object.keys(RANKED_MODIFIERS).filter(k => !rankedLeavingModifiers.has(k));
+                draftModifierKey = allKeys[Math.floor(Math.random() * allKeys.length)] || 'classic';
+                draftModifierKeySecondary = null;
+                draftModifierKeyTertiary = null;
+            }
         }
 
         activeRankedModifier = draftModifierKey;
         activeRankedModifierSecondary = draftModifierKeySecondary;
+        activeRankedModifierTertiary = draftModifierKeyTertiary;
 
         // Player Slot Assignment:
         // 0 = Team Leader (Captain) -> 2 Bans
@@ -36054,8 +38258,15 @@ let heistFeverActive = false;
 
         const modDef1 = RANKED_MODIFIERS[draftModifierKey] || RANKED_MODIFIERS.classic;
         const modDef2 = draftModifierKeySecondary ? RANKED_MODIFIERS[draftModifierKeySecondary] : null;
+        const modDef3 = draftModifierKeyTertiary ? RANKED_MODIFIERS[draftModifierKeyTertiary] : null;
         let modDisplayHtml = '';
-        if (modDef2) {
+        if (modDef3 && modDef2) {
+            modDisplayHtml = `<div style="font-size:13px;color:#00f5d4;font-weight:800;">⚡ TRIPLE MODIFIER: ` +
+                `<span style="color:${modDef1.color};">${modDef1.icon} ${modDef1.name}</span> + ` +
+                `<span style="color:${modDef2.color};">${modDef2.icon} ${modDef2.name}</span> + ` +
+                `<span style="color:${modDef3.color};">${modDef3.icon} ${modDef3.name}</span><br>` +
+                `<span style="font-weight:400;color:#d5e5f8;font-size:12px;">1) ${modDef1.desc} • 2) ${modDef2.desc} • 3) ${modDef3.desc}</span></div>`;
+        } else if (modDef2) {
             modDisplayHtml = `<div style="font-size:13px;color:#ff9ff3;font-weight:800;">⚡ DUAL MODIFIER: ` +
                 `<span style="color:${modDef1.color};">${modDef1.icon} ${modDef1.name}</span> + ` +
                 `<span style="color:${modDef2.color};">${modDef2.icon} ${modDef2.name}</span><br>` +
@@ -36063,7 +38274,7 @@ let heistFeverActive = false;
         } else {
             modDisplayHtml = `<div style="font-size:13px;color:${modDef1.color};font-weight:800;">Modifier: ${modDef1.icon} ${modDef1.name} — <span style="font-weight:400;color:#d5e5f8;">${modDef1.desc}</span></div>`;
         }
-        banner.innerHTML = `<div style="font-weight:900;color:#9ee6ff;font-size:14px;">Mode: ${getShowdownModeLabel(draftMode)} 3v3</div>` + modDisplayHtml;
+        banner.innerHTML = `<div style="font-weight:900;color:#9ee6ff;font-size:14px;">Mode: ${getShowdownModeLabel(draftMode).replace(/ 3v3$/, '')} 3v3</div>` + modDisplayHtml;
         panel.appendChild(banner);
 
         // Player Lineup & Role Callout
@@ -36697,7 +38908,7 @@ let heistFeverActive = false;
                 red: redBans.filter(Boolean)
             };
 
-            const modSummaryLabel = activeRankedModifierSecondary ? `${RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier} + ${RANKED_MODIFIERS[activeRankedModifierSecondary]?.name || activeRankedModifierSecondary}` : (RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier);
+            const modSummaryLabel = activeRankedModifierSecondary ? (activeRankedModifierTertiary ? `${RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier} + ${RANKED_MODIFIERS[activeRankedModifierSecondary]?.name || activeRankedModifierSecondary} + ${RANKED_MODIFIERS[activeRankedModifierTertiary]?.name || activeRankedModifierTertiary}` : `${RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier} + ${RANKED_MODIFIERS[activeRankedModifierSecondary]?.name || activeRankedModifierSecondary}`) : (RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier);
             rankedDraftSummary = `${getShowdownModeLabel(draftMode)} | Mod: ${modSummaryLabel} | You: ${(brawlerData[selectedBrawler]?.name || selectedBrawler)} (${isPlayerLeader ? 'Leader' : 'Member'}, Pick #${playerLineNumber}/6)`;
             isRankedMatch = true;
             showdownMode = draftMode;
@@ -37257,6 +39468,8 @@ let heistFeverActive = false;
       renderHomeBrawlerCard();
       if (showdownMode === 'slop_sushi' && startBtn) {
           startBtn.textContent = '🏰 Start Tower Trouble • Fuse 4';
+      } else if (showdownMode === 'chaos_crown' && startBtn) {
+          startBtn.textContent = '🎲 Enter Chaos Crown • 10 Floors';
       } else if (showdownMode === 'slop_sushi_gauntlet' && startBtn) {
           startBtn.textContent = '🗼 Start Grand Tour • Choose 4';
       } else if (showdownMode === 'tower_duels_weekend' && startBtn) {
@@ -37329,7 +39542,7 @@ let heistFeverActive = false;
           slopSushiActiveCards = getActiveSlopSushiDeck(selectedBrawler).map(card => card.id);
       }
       isSlopSushiMode = sushiMatchArmed || isTowerPowerVaultWeekendMatch;
-      isTowerTroubleMode = sushiMatchArmed && (showdownMode === 'slop_sushi' || towerTroubleVariant === 'gauntlet');
+      isTowerTroubleMode = sushiMatchArmed && (showdownMode === 'slop_sushi' || towerTroubleVariant === 'gauntlet' || towerTroubleVariant === 'chaos');
       closeKnockDonateDonationUI();
       closeArenaForgeUI();
       isSplitterPoweredMode = showdownMode === 'splitter_powered';
@@ -37419,15 +39632,18 @@ let heistFeverActive = false;
       isDuoShowdown = showdownMode === 'duo';
       setShowdownModifier(showdownMode);
       if(isTowerTroubleMode){
-          const gauntlet=towerTroubleVariant==='gauntlet';
-          const run=gauntlet?playerData.slopSushi?.gauntletRun:playerData.slopSushi?.run;
-          const floor=Math.max(1,Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:TOWER_TROUBLE_FLOORS,run?.floor||1));
-          if(gauntlet){activeShowdownModifier=null;activeShowdownModifierLabel=`Grand Tour Floor ${floor} • ${TOWER_GAUNTLET_MODE_NAMES[showdownMode]||showdownMode}`;}
+          const gauntlet=towerTroubleVariant==='gauntlet',chaos=towerTroubleVariant==='chaos';
+          const run=gauntlet?playerData.slopSushi?.gauntletRun:(chaos?playerData.slopSushi?.chaosRun:playerData.slopSushi?.run);
+          const floor=Math.max(1,Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:(chaos?CHAOS_CROWN_FLOORS:TOWER_TROUBLE_FLOORS),run?.floor||1));
+                    if(gauntlet){activeShowdownModifier=null;activeShowdownModifierLabel=`Grand Tour Floor ${floor} • ${TOWER_GAUNTLET_MODE_NAMES[showdownMode]||showdownMode}`;}
+          else if(chaos){const rule=getChaosCrownRule(floor);activeShowdownModifier=rule.modifier;activeShowdownModifierLabel=`${rule.icon} ${rule.name} • Chaos Floor ${floor}`;}
           else{const challenge=TOWER_FLOOR_CHALLENGES[floor-1];activeShowdownModifier=challenge.modifier;activeShowdownModifierLabel=`${challenge.name} • ${TOWER_FLOOR_BIOMES[floor-1]}`;}
       }
       if (document.getElementById('topbar')) {
           let baseTitle = towerTroubleVariant === 'gauntlet'
               ? 'Arena Forge - Tower Trouble: Grand Tour'
+              : towerTroubleVariant === 'chaos'
+              ? 'Arena Forge - Chaos Crown'
               : showdownMode === 'slop_sushi'
               ? 'Arena Forge - Tower Trouble'
               : (showdownMode === 'slop_sushi_plus' ? 'Arena Forge - Tower Fusion Lab' : 'Arena Forge - Solo Showdown');
@@ -37437,7 +39653,7 @@ let heistFeverActive = false;
           else if (isPowerGodsMode) baseTitle = 'Arena Forge - Power of the Gods';
           else if (isKnockDonateMode) baseTitle = 'Arena Forge - Knock n Donate 3v3';
           else if (isBrickVaultMode) baseTitle = isTowerPowerVaultWeekendMatch ? 'Arena Forge - Tower Power Vault Siege' : 'Arena Forge - Vault Siege 3v3';
-          else if (isArenaForgeMode) baseTitle = 'Arena Forge - Arena Forge';
+          else if (isArenaForgeMode) baseTitle = 'Arena Forge 2.0 - Triple Tower War';
           else if (isMarkedMayhemMode) baseTitle = 'Arena Forge - Target Rush 3v3';
           else if (isTugZoneMode) baseTitle = 'Arena Forge - Tug Zone 3v3';
           else if (isTrioShowdownMode) baseTitle = 'Arena Forge - Trio Showdown';
@@ -37459,8 +39675,8 @@ let heistFeverActive = false;
       currentMapOverride = null;
             showdownMapIndex = getRotatingShowdownMapIndex();
       if(isTowerTroubleMode){
-          const gauntlet=towerTroubleVariant==='gauntlet',run=gauntlet?playerData.slopSushi?.gauntletRun:playerData.slopSushi?.run;
-          const floor=Math.max(1,Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:TOWER_TROUBLE_FLOORS,run?.floor||1));
+          const gauntlet=towerTroubleVariant==='gauntlet',chaos=towerTroubleVariant==='chaos',run=gauntlet?playerData.slopSushi?.gauntletRun:(chaos?playerData.slopSushi?.chaosRun:playerData.slopSushi?.run);
+          const floor=Math.max(1,Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:(chaos?CHAOS_CROWN_FLOORS:TOWER_TROUBLE_FLOORS),run?.floor||1));
           showdownMapIndex=(floor-1)%TOWER_TROUBLE_FLOORS;
       }
     constructionMapIndex = getRotatingConstructionMapIndex();
@@ -37551,7 +39767,7 @@ let heistFeverActive = false;
         } else if (isBrickVaultMode) {
             spawnPos = getBrickVaultSpawnPoint('player', 0, BRICK_VAULT_TEAM_SIZE);
         } else if (isArenaForgeMode) {
-            spawnPos = getArenaForgeSpawnPoint('player', 0, ARENA_FORGE_TEAM_SIZE);
+            spawnPos = getArenaForgeSpawnPoint('player', 1, ARENA_FORGE_TEAM_SIZE);
         } else if (isTugZoneMode) {
             spawnPos = getTugZoneSpawnPoint('player', 0);
         } else if (isMarkedMayhemMode) {
@@ -37574,6 +39790,7 @@ let heistFeverActive = false;
       hasHandledGameOver = false;
       resetFullOnDamageMatchLedger();
       resetGoldEventMatchLedger();
+      resetHypeChain();
       objectiveControl = 0;
       objectiveTimer = 0;
       objectiveWon = false;
@@ -37798,7 +40015,8 @@ let heistFeverActive = false;
               openCustomMutatorPickerUI();
               return;
           }
-          if (showdownMode === 'tower_duels_weekend') launchTowerDuelsWeekendFloor();
+          if (showdownMode === 'chaos_crown') prepareChaosCrownRun();
+          else if (showdownMode === 'tower_duels_weekend') launchTowerDuelsWeekendFloor();
           else if (showdownMode === 'slop_sushi' || showdownMode === 'slop_sushi_gauntlet' || showdownMode === 'slop_sushi_plus' || hasHourlySushiModifier(showdownMode)) prepareSlopSushiMatch();
           else { sushiMatchArmed = false; slopSushiActiveCards = []; launchShowdownMatch(); }
       });
@@ -37981,6 +40199,139 @@ isBrawlerLabMode = false;
   let trainingGridBotsActiveAI = false;
   let trainingCaveCustomEnemyId = 'king';
   let trainingCaveDeckCollapsed = false;
+
+  let trainingGadgetNoCooldown = true;
+  let trainingGadgetPanelKey = '';
+  const trainingSpeedTest = { active:false, startAt:0, lastAt:0, lastX:0, lastY:0, distance:0, currentSpeed:0, peakSpeed:0, lastResult:0, baseline:0 };
+  function formatTrainingSpeed(value) { return `${Math.max(0, Number(value)||0).toFixed(1)} u/s`; }
+  function refreshTrainingSpeedReadout(message='') {
+      const readout=document.getElementById('tgSpeedReadout');
+      if(!readout)return;
+      const compare=trainingSpeedTest.baseline>0&&trainingSpeedTest.lastResult>0 ? ((trainingSpeedTest.lastResult/trainingSpeedTest.baseline-1)*100) : null;
+      const elapsed=trainingSpeedTest.active ? Math.max(0,(performance.now()-trainingSpeedTest.startAt)/1000) : 0;
+      readout.innerHTML=`<strong>${trainingSpeedTest.active?'RUNNING':'READY'}</strong> · Live ${formatTrainingSpeed(trainingSpeedTest.currentSpeed)} · Peak ${formatTrainingSpeed(trainingSpeedTest.peakSpeed)}<br>`+
+          `Distance ${trainingSpeedTest.distance.toFixed(1)} · Time ${elapsed.toFixed(2)}s · Last ${formatTrainingSpeed(trainingSpeedTest.lastResult)}<br>`+
+          `Baseline ${trainingSpeedTest.baseline?formatTrainingSpeed(trainingSpeedTest.baseline):'not saved'}${compare===null?'':` · <b style="color:${compare>=0?'#79ffb0':'#ff8d9a'}">${compare>=0?'+':''}${compare.toFixed(1)}%</b>`}${message?`<br><span style="color:#ffe29b">${message}</span>`:''}`;
+  }
+  function startTrainingSpeedTest() {
+      if(!isTraining||isTutorialMode||!player)return;
+      const now=performance.now();
+      Object.assign(trainingSpeedTest,{active:true,startAt:now,lastAt:now,lastX:player.x,lastY:player.y,distance:0,currentSpeed:0,peakSpeed:0,lastResult:0});
+      refreshTrainingSpeedReadout('Move normally, activate the gadget/buff, then press STOP.');
+  }
+  function stopTrainingSpeedTest(saveBaseline=false) {
+      if(trainingSpeedTest.active) {
+          const seconds=Math.max(.001,(performance.now()-trainingSpeedTest.startAt)/1000);
+          trainingSpeedTest.lastResult=trainingSpeedTest.distance/seconds;
+      }
+      trainingSpeedTest.active=false;trainingSpeedTest.currentSpeed=0;
+      if(saveBaseline&&trainingSpeedTest.lastResult>0)trainingSpeedTest.baseline=trainingSpeedTest.lastResult;
+      refreshTrainingSpeedReadout(saveBaseline?'Baseline saved. Run again with the speed effect active.':'Run complete.');
+  }
+  function resetTrainingSpeedTest() {
+      Object.assign(trainingSpeedTest,{active:false,startAt:0,lastAt:0,lastX:0,lastY:0,distance:0,currentSpeed:0,peakSpeed:0,lastResult:0,baseline:0});
+      refreshTrainingSpeedReadout('Speed tester reset.');
+  }
+  function updateTrainingSpeedTest(now) {
+      if(!trainingSpeedTest.active||!player||player.hp<=0)return;
+      const dt=Math.max(.001,(now-trainingSpeedTest.lastAt)/1000);
+      const step=Math.hypot(player.x-trainingSpeedTest.lastX,player.y-trainingSpeedTest.lastY);
+      if(step<=Math.max(80,(player.speed||300)*dt*3)) {
+          trainingSpeedTest.distance+=step;
+          trainingSpeedTest.currentSpeed=step/dt;
+          trainingSpeedTest.peakSpeed=Math.max(trainingSpeedTest.peakSpeed,trainingSpeedTest.currentSpeed);
+      }
+      trainingSpeedTest.lastX=player.x;trainingSpeedTest.lastY=player.y;trainingSpeedTest.lastAt=now;
+      if(now-trainingSpeedTest.startAt>30000)stopTrainingSpeedTest(false);
+      else if((now|0)%150<20)refreshTrainingSpeedReadout();
+  }
+  const TRAINING_GADGET_RESULTS_KEY = 'brawe_gadget_test_results_v1';
+  function readTrainingGadgetResults() {
+      try { const value=JSON.parse(localStorage.getItem(TRAINING_GADGET_RESULTS_KEY)||'{}'); return value && typeof value==='object' && !Array.isArray(value) ? value : {}; } catch { return {}; }
+  }
+  function saveTrainingGadgetResult(status) {
+      const notes=document.getElementById('tgNotes');
+      const results=readTrainingGadgetResults(), key=`${selectedBrawler}:${selectedGadget}`;
+      results[key]={fighter:selectedBrawler,gadget:selectedGadget,status,notes:notes?.value||'',expected:brawlerData[selectedBrawler]?.[selectedGadget]||'Description missing',testedAt:new Date().toISOString()};
+      try { localStorage.setItem(TRAINING_GADGET_RESULTS_KEY,JSON.stringify(results)); }
+      catch { document.getElementById('tgStatus').textContent='Storage unavailable — export notes before leaving.'; return; }
+      refreshTrainingGadgetPanel(true);
+  }
+  function getTrainingGadgetReport() {
+      const results=readTrainingGadgetResults();
+      const lines=['# BRAWE — Gadget Testing Checklist','',`Exported: ${new Date().toISOString()}`,'','PASS means you observed the described behavior. FAIL should include expected versus actual behavior. Untested is not a pass.','Training cooldown bypass does not test normal cooldown length. Turn it off for that check.',''];
+      for(const id of allBrawlers.filter(id=>!disabledBrawlers.has(id))) {
+          lines.push(`## ${brawlerData[id]?.name||id}`,'');
+          for(const slot of ['g1','g2']) {
+              const result=results[`${id}:${slot}`];
+              lines.push(`### ${slot.toUpperCase()} — ${result?.status||'UNTESTED'}`,`Expected: ${brawlerData[id]?.[slot]||'Description missing — report this as a failure.'}`,`Normal cooldown: ${getGadgetCooldownMsForBrawler(id,slot)/1000}s`,`Notes: ${result?.notes||'—'}`,`Last tested: ${result?.testedAt||'—'}`,'');
+          }
+      }
+      return lines.join('\n');
+  }
+  function exportTrainingGadgetReport() {
+      const blob=new Blob([getTrainingGadgetReport()],{type:'text/plain;charset=utf-8'});
+      const url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download='BRAWE-gadget-test-results.txt';link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  function selectTrainingTestGadget(slot) {
+      if(!isTraining || isTutorialMode)return;
+      if(gadgetArmed && selectedGadget!==slot) {
+          document.getElementById('tgStatus').textContent='Use the armed attack first, or switch fighter to reset the test.';
+          return;
+      }
+      selectedGadget=slot;player.selectedGadget=slot;
+      syncSelectedGadgetCooldown();updateGadgetButton();updateGadgetInfo();refreshTrainingGadgetPanel(true);
+  }
+  function refreshTrainingGadgetPanel(force=false) {
+      const panel=document.getElementById('training-gadget-lab');
+      if(!panel){const deck=document.getElementById('training-cave-deck');if(deck && isTraining && !isTutorialMode)createTrainingGadgetPanel(deck);return;}
+      const key=`${selectedBrawler}:${selectedGadget}`;
+      if(!force && key===trainingGadgetPanelKey)return;
+      trainingGadgetPanelKey=key;
+      const result=readTrainingGadgetResults()[key];
+      panel.querySelector('#tgFighter').value=selectedBrawler;
+      panel.querySelector('#tgExpected').textContent=brawlerData[selectedBrawler]?.[selectedGadget]||'No gadget description found — mark FAIL and include this in your notes.';
+      panel.querySelector('#tgStatus').textContent=`${selectedGadget.toUpperCase()} · ${result?.status||'UNTESTED'} · Normal CD: ${getGadgetCooldownMsForBrawler(selectedBrawler,selectedGadget)/1000}s`;
+      panel.querySelector('#tgNotes').value=result?.notes||'';
+      for(const slot of ['g1','g2'])panel.querySelector(`[data-test-gadget="${slot}"]`).setAttribute('aria-pressed',String(slot===selectedGadget));
+  }
+  function createTrainingGadgetPanel(deck) {
+      const panel=document.createElement('details');panel.id='training-gadget-lab';panel.open=true;
+      panel.style.cssText='background:#10233b;border:1px solid #60d9cc;border-radius:10px;padding:10px;line-height:1.45;font-size:12px';
+      panel.innerHTML=`<summary style="font-weight:900;cursor:pointer;color:#7ffff0">GADGET TEST LAB — PASS / FAIL</summary>
+        <label>Fighter <select id="tgFighter" aria-label="Gadget test fighter" style="width:100%;margin:6px 0;padding:8px;background:#061426;color:white"></select></label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><button data-test-gadget="g1">G1</button><button data-test-gadget="g2">G2</button><button id="tgUse">USE GADGET</button><button id="tgWound">SELF HP 25%</button></div>
+        <label style="display:block;margin:8px 0"><input id="tgNoCd" type="checkbox"> No cooldown (Training only)</label>
+        <details open style="margin:8px 0;padding:8px;border:1px solid #365a78;border-radius:8px;background:#091a2d"><summary style="cursor:pointer;font-weight:900;color:#69bfff">SPEED TEST</summary>
+          <p style="margin:5px 0;color:#b9cadc">Press START, move with the same route/input, then STOP. Save one run as baseline and compare the buffed run.</p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><button id="tgSpeedStart">▶ START</button><button id="tgSpeedStop">■ STOP</button><button id="tgSpeedBaseline">📌 STOP + SAVE BASELINE</button><button id="tgSpeedReset">RESET</button></div>
+          <p id="tgSpeedReadout" role="status" style="margin:7px 0 0;color:#dff7ff">Ready.</p>
+        </details>
+        <strong>WHAT SHOULD HAPPEN</strong><p id="tgExpected" style="margin:6px 0;white-space:pre-wrap;color:#fff"></p>
+        <p style="color:#b9cadc">Next-attack gadget? Activate, then attack. Summon gadget? Use Super to place its summon first. Use the ally/enemy controls below for healing and team tests.</p>
+        <textarea id="tgNotes" aria-label="Gadget test notes" placeholder="What happened? Target, attack/Super setup, expected vs actual…" style="box-sizing:border-box;width:100%;min-height:65px;background:#061426;color:white;padding:8px"></textarea>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><button data-verdict="PASS">✅ PASS</button><button data-verdict="FAIL">❌ FAIL</button><button data-verdict="UNTESTED">Reset verdict</button><button id="tgExport">Export checklist + results</button></div>
+        <p id="tgStatus" role="status" style="color:#ffe29b;margin:6px 0 0"></p>`;
+      for(const id of allBrawlers.filter(id=>!disabledBrawlers.has(id))){const opt=document.createElement('option');opt.value=id;opt.textContent=brawlerData[id]?.name||id;panel.querySelector('#tgFighter').appendChild(opt);}
+      for(const button of panel.querySelectorAll('button'))button.style.cssText='padding:8px;border:1px solid #637f9e;border-radius:7px;background:#183753;color:#fff;cursor:pointer';
+      panel.querySelector('#tgFighter').onchange=e=>switchTrainingBrawler(e.target.value);
+      panel.querySelector('#tgNoCd').checked=trainingGadgetNoCooldown;
+      panel.querySelector('#tgNoCd').onchange=e=>{trainingGadgetNoCooldown=e.target.checked;updateGadgetButton();};
+      panel.querySelector('#tgUse').onclick=()=>{updateGadgetButton();gadgetBtn.click();};
+      panel.querySelector('#tgWound').onclick=()=>{player.hp=Math.max(1,Math.round(player.maxHp*.25));};
+      panel.querySelector('#tgSpeedStart').onclick=startTrainingSpeedTest;
+      panel.querySelector('#tgSpeedStop').onclick=()=>stopTrainingSpeedTest(false);
+      panel.querySelector('#tgSpeedBaseline').onclick=()=>stopTrainingSpeedTest(true);
+      panel.querySelector('#tgSpeedReset').onclick=resetTrainingSpeedTest;
+      panel.querySelector('#tgExport').onclick=exportTrainingGadgetReport;
+      for(const button of panel.querySelectorAll('[data-test-gadget]'))button.onclick=()=>selectTrainingTestGadget(button.dataset.testGadget);
+      for(const button of panel.querySelectorAll('[data-verdict]'))button.onclick=()=>saveTrainingGadgetResult(button.dataset.verdict);
+      panel.querySelector('#tgNotes').onchange=()=>saveTrainingGadgetResult(readTrainingGadgetResults()[`${selectedBrawler}:${selectedGadget}`]?.status||'UNTESTED');
+      for(const event of ['pointerdown','pointerup','mousedown','mouseup','touchstart','touchend','keydown','keyup'])panel.addEventListener(event,e=>e.stopPropagation());
+      deck.querySelector('#tcDeckBody').prepend(panel);refreshTrainingGadgetPanel(true);refreshTrainingSpeedReadout();
+  }
 
   function closeTrainingCaveUI() {
       if (trainingCaveDeckPanel && trainingCaveDeckPanel.isConnected) {
@@ -38450,6 +40801,7 @@ isBrawlerLabMode = false;
   }
 
   function updateTrainingCaveUI() {
+      refreshTrainingGadgetPanel();
       if (!trainingCaveDeckPanel || !trainingCaveDeckPanel.isConnected) return;
       const def = brawlerData[selectedBrawler] || { name: selectedBrawler, role: 'Fighter' };
       const iconEl = trainingCaveDeckPanel.querySelector('#tcBrawlerIcon');
@@ -38462,7 +40814,7 @@ isBrawlerLabMode = false;
       if (countEl) countEl.textContent = `${allyCount} Active ${allyCount === 1 ? 'Ally' : 'Allies'}`;
   }
 
-  function updateTrainingCaveMode(dt, now) {
+  function updateTrainingCaveMode(dt, now) {
       if (!isTraining || isTutorialMode) return;
       if (isBrawlerLabMode) {
           if (player.hp <= 1 || player.isDead) {
@@ -39395,26 +41747,30 @@ isBrawlerLabMode = false;
               if (closest) {
                   t.lastShot = now;
                   const angle = Math.atan2(closest.y - t.y, closest.x - t.x);
-                  const projectileSpeed = forgeCoreActive ? 1120 : (t.isArenaForgeTower ? 620 : 700);
-                  bullets.push({
-                      ownerBrawler: 'turret_gun',
-                      x: t.x + Math.cos(angle) * (t.radius + 5),
-                      y: t.y + Math.sin(angle) * (t.radius + 5),
-                      vx: Math.cos(angle) * projectileSpeed,
-                      vy: Math.sin(angle) * projectileSpeed,
-                      life: 0,
-                       maxLife: fireRange / projectileSpeed + 0.08,
-                       damage: forgeCoreActive ? ARENA_FORGE_CORE_DAMAGE : (t.isArenaForgeTower ? ARENA_FORGE_TOWER_DAMAGE : 450),
-                      pierce: false,
-                      ownerId: t.id,
-                      super: false,
-                       hitboxMod: forgeCoreActive ? 0.82 : (t.isArenaForgeTower ? 2.1 : 1),
-                       isArenaForgeTowerShell: !!t.isArenaForgeTower,
-                       isArenaForgeCoreMinigun: !!forgeCoreActive,
-                       arenaForgeHomingPct: t.isArenaForgeTower ? ARENA_FORGE_TOWER_HOMING_PCT : 0,
-                       arenaForgeTargetId: closest.id,
-                       skinColor: forgeCoreActive ? '#ffcf66' : (t.team === 'player' ? '#5df2c2' : '#ff7b8f'),
-                  });
+                  const towerType = t.arenaForgeTowerType || 'mortar';
+                  const shotAngles = t.isArenaForgeTower && towerType === 'prism' ? [-0.13, 0, 0.13] : [0];
+                  for (const spread of shotAngles) {
+                      const shotAngle = angle + spread;
+                      const projectileSpeed = forgeCoreActive ? 1120 : (towerType === 'rail' ? 1120 : (towerType === 'prism' ? 760 : 540));
+                      bullets.push({
+                          ownerBrawler: 'turret_gun',
+                          x: t.x + Math.cos(shotAngle) * (t.radius + 5),
+                          y: t.y + Math.sin(shotAngle) * (t.radius + 5),
+                          vx: Math.cos(shotAngle) * projectileSpeed,
+                          vy: Math.sin(shotAngle) * projectileSpeed,
+                          life: 0, maxLife: fireRange / projectileSpeed + 0.08,
+                          damage: forgeCoreActive ? ARENA_FORGE_CORE_DAMAGE : (towerType === 'rail' ? 1450 : (towerType === 'prism' ? 1100 : 2300)),
+                          pierce: towerType === 'rail',
+                          ownerId: t.id, super: false,
+                          hitboxMod: forgeCoreActive ? .82 : (towerType === 'rail' ? .9 : (towerType === 'prism' ? 1.15 : 2.5)),
+                          isArenaForgeTowerShell: !!t.isArenaForgeTower,
+                          isArenaForgeCoreMinigun: !!forgeCoreActive,
+                          arenaForgeTowerType: towerType,
+                          arenaForgeHomingPct: t.isArenaForgeTower ? (towerType === 'mortar' ? .18 : 0) : 0,
+                          arenaForgeTargetId: closest.id,
+                          skinColor: forgeCoreActive ? '#ffcf66' : (towerType === 'rail' ? '#65e7ff' : (towerType === 'prism' ? '#d06cff' : '#ff9b55')),
+                      });
+                  }
               }
           }
       } else if (t.brawler === 'decoy_healer') {
@@ -41176,7 +43532,7 @@ isBrawlerLabMode = false;
 function checkHit(target, b, i){
         // A revived target can earn a fresh premium takedown effect. This also
         // makes Training dummy eliminations useful for previewing owned skins.
-        if (target && target.hp > 0) target._legendaryTakedownFxPlayed = false;
+        if (target && target.hp > 0) { target._legendaryTakedownFxPlayed = false; target._hypeChainCounted = false; }
         if (b && b.isOilMakerCrude) {
             // Impact damage dealt; delayed puddle handled upon bullet completion
         }
@@ -41483,7 +43839,7 @@ function checkHit(target, b, i){
             target.ghoulPushVY = dy / length * 360 * pushMultiplier;
             target.ghoulPushUntil = Math.max(target.ghoulPushUntil || 0, hitNow + 420);
         }
-        explosions.push({ x: target.x, y: target.y, radius: 38, life: 0, maxLife: .22, color: b.hyperVisual ? 'rgba(220,90,255,.68)' : 'rgba(70,235,255,.64)', fxKind: 'outlitSuperImpact' });
+        explosions.push({ x: target.x, y: target.y, radius: 38, life: 0, maxLife: .22, color: b.hyperVisual ? 'rgba(220,90,255,.68)' : (b.skinId === 'nightmare-outlit' ? 'rgba(255,0,127,.75)' : 'rgba(70,235,255,.64)'), fxKind: 'outlitSuperImpact', skinId: b.skinId });
     }
     if (b.isUpiedownCorePie && b.upiedownFresh && owner) {
         doHeal(owner, 1200);
@@ -41694,13 +44050,17 @@ function checkHit(target, b, i){
     if (b.isDarkenerCloud && b.darkenerSlowSuffocation) dealtDamage *= Math.max(0, Number(b.darkenerTickDamageMult) || 1);
     if (b.isArenaForgeTowerShell && owner) {
         const repeatHit = owner.forgeLastShellTargetId === target.id;
-        const shellDamage = repeatHit ? ARENA_FORGE_TOWER_REPEAT_DAMAGE : ARENA_FORGE_TOWER_DAMAGE;
+        const towerType = b.arenaForgeTowerType || 'mortar';
+        const baseShellDamage = towerType === 'rail' ? 1450 : (towerType === 'prism' ? 1100 : 2300);
+        const repeatShellDamage = towerType === 'rail' ? 1900 : (towerType === 'prism' ? 1450 : 3100);
+        const shellDamage = repeatHit ? repeatShellDamage : baseShellDamage;
+        const shellSplashRadius = towerType === 'rail' ? 42 : (towerType === 'prism' ? 58 : 150);
         owner.forgeLastShellTargetId = target.id;
         dealtDamage = shellDamage;
         if (!b.arenaForgeExplosionResolved) {
             b.arenaForgeExplosionResolved = true;
             explosions.push({
-                x: target.x, y: target.y, radius: ARENA_FORGE_TOWER_SPLASH_RADIUS,
+                x: target.x, y: target.y, radius: shellSplashRadius,
                 life: 0, maxLife: 0.28,
                 color: owner.team === 'player' ? 'rgba(93,242,194,.72)' : 'rgba(255,104,132,.72)',
                 legendary: true,
@@ -41708,7 +44068,7 @@ function checkHit(target, b, i){
             for (const nearby of [player, ...bots]) {
                 if (!nearby || nearby.hp <= 0 || nearby.id === target.id || nearby.id === owner.id) continue;
                 if (areAlliedEntities(owner, nearby)) continue;
-                if (Math.hypot(nearby.x - target.x, nearby.y - target.y) > ARENA_FORGE_TOWER_SPLASH_RADIUS + (nearby.radius || 14)) continue;
+                if (Math.hypot(nearby.x - target.x, nearby.y - target.y) > shellSplashRadius + (nearby.radius || 14)) continue;
                 checkHit(nearby, {
                     ownerBrawler: 'turret_gun', ownerId: owner.id,
                     damage: shellDamage, pierce: true, super: false,
@@ -41762,6 +44122,9 @@ function checkHit(target, b, i){
     dealtDamage *= getOutgoingDamageMultiplier(owner);
     if (isArenaForgeMode && owner && (target?.isArenaForgeStructure || target?.isArenaForgeCamp || target?.isArenaForgeColossus)) {
         dealtDamage *= owner.arenaForgeSiegeMult || 1;
+    }
+    if (isArenaForgeMode && owner?.arenaForgeTitanBreaker && (target?.isArenaForgeStructure || target?.isArenaForgeCamp || target?.isArenaForgeColossus || target?.isBoss)) {
+        dealtDamage *= 1.45;
     }
     if (isArenaForgeMode && owner?.arenaForgeExecutioner && target && target.hp <= target.maxHp * 0.40) {
         dealtDamage *= 1.35;
@@ -42312,6 +44675,17 @@ function checkHit(target, b, i){
             spawnFreestyleMicrophone(owner,target.x,target.y,'main');
         }
     }
+    if (b.isBadBatWave && owner && dealtDamage > 0) {
+        const nowHit = performance.now();
+        target.badbatMarkedUntil = nowHit + 4500;
+        target.badbatMarkedBy = owner.id;
+        owner.badbatMarkedTargetId = target.id;
+        spawnFloatingText(target.x, target.y - 32, '🦇 MARKED!', '#c77dff');
+        if (!b.badbatBatSpawned) {
+            b.badbatBatSpawned = true;
+            spawnBadBatOrbitingBats(owner, 1, target.id, false, !!b.isHyper);
+        }
+    }
     if (b.isFreestyleSpeaker) resolveFreestyleSpeaker(b);
     if (b.isDuckCrumb && owner && rawDmg > 0) {
         if (dealtDamage > 0) {
@@ -42338,7 +44712,7 @@ function checkHit(target, b, i){
     if (isArenaForgeMode && target?.isArenaForgeTower) updateArenaForgeTowerArmor(target);
     grantPressureCharge(target, dealtDamage);
     recordTrainingBotDamage(target,dealtDamage,b.ownerId);
-    if (b.isRelayOrb && owner && rawDmg > 0) grantRelayShield(owner, b.relayShieldAmount || 2000, b.relayShieldCap || 8500);
+    if (b.isRelayOrb && owner && rawDmg > 0) grantRelayShield(owner, b.relayShieldAmount || 1400, b.relayShieldCap || 8500);
     if (b.isWarriorSpear && b.warriorExplosive) triggerWarriorSpearExplosion(b);
     if (target.hp <= 0 && performance.now() < (target.angelSecondLifeUntil || 0) && !target.angelSecondLifeUsed) {
         target.angelSecondLifeUsed = true; target.angelSecondLifeUntil = 0; target.isDead = false;
@@ -42676,6 +45050,7 @@ function checkHit(target, b, i){
         applySlopSushiOnKill(ownerEntity, target);
         addEventQuestProgress('get_kills');
         progressSeasonPassQuest('get_kills');
+        registerHypeChainTakedown(target);
     }
     if (target.hp <= 0 && !target.isDummy && !target._mirrorDeathCounted) {
         target._mirrorDeathCounted = true;
@@ -43853,6 +46228,7 @@ function checkHit(target, b, i){
     if(!playing || gameOver) return;
     stabilizeActiveMatchState();
     const now = performance.now();
+    updateTrainingSpeedTest(now);
     if (isWeeFeeBossMode) updateWeeFeeBoss(dt, now);
     if (isDemonVillainsBossMode) updateDemonVillainsBoss(dt, now);
     if (isRamageBossMode) updateRamageBoss(dt, now);
@@ -44652,7 +47028,7 @@ function checkHit(target, b, i){
         if (player.hp <= 0 && !gameOver) {
             player.respawnTimer = (player.respawnTimer || 0) + dt;
             if (player.respawnTimer >= getRespawnDelay('player')) {
-                const spawn = getSpawn('player', 0);
+                const spawn = getSpawn('player', 1);
                 restoreRespawningEntity(player, spawn, true, 1200);
             }
         } else {
@@ -44805,6 +47181,13 @@ function checkHit(target, b, i){
     // in applyShieldDamage; this catches intentional direct-damage/DoT paths.
     for (const entity of [player, ...bots]) {
         if (entity && isBeastyBeastActive(entity) && entity.hp < 1) entity.hp = 1;
+        if (isArenaForgeMode && entity && entity.arenaForgeChronoDisruption && !entity.arenaForgeChronoUsed && entity.hp <= 0) {
+            entity.arenaForgeChronoUsed = true;
+            entity.hp = Math.round(entity.maxHp * 0.35);
+            entity.invulnerableUntil = Math.max(entity.invulnerableUntil || 0, performance.now() + 2500);
+            explosions.push({ x: entity.x, y: entity.y, radius: 90, life: 0, maxLife: 0.5, color: '#00f0ff', legendary: true });
+            spawnFloatingText(entity.x, entity.y - 48, 'CHRONO DISRUPTION!', '#00f0ff');
+        }
     }
 
     // Death drops
@@ -45045,6 +47428,32 @@ function checkHit(target, b, i){
                 }
                 spawnFloatingText(collectedBy.x, collectedBy.y - 32, '💎 HEIST FRENZY! (+30% SPD / +SUPER)', '#ffd700');
                 explosions.push({ x: collectedBy.x, y: collectedBy.y, radius: 45, life: 0, maxLife: 0.25, color: '#ffd700' });
+            } else if (p.kind === 'charged_core') {
+                collectedBy.powerCubes = (collectedBy.powerCubes || 0) + 1;
+                collectedBy.maxHp += 400;
+                collectedBy.hp = Math.min(collectedBy.maxHp, collectedBy.hp + 400);
+                if (collectedBy === player) {
+                    superCharge = clamp(superCharge + 30, 0, 100);
+                    hyperChargeCharge = clamp(hyperChargeCharge + 12, 0, 100);
+                    addEventQuestProgress('collect_cubes', 1);
+                    progressSeasonPassQuest('collect_cubes', 1);
+                    updateSuperButton(); updateHyperButton();
+                } else {
+                    collectedBy.superCharge = clamp((collectedBy.superCharge || 0) + 30, 0, 100);
+                    collectedBy.hyperChargeCharge = clamp((collectedBy.hyperChargeCharge || 0) + 12, 0, 100);
+                }
+                spawnFloatingText(collectedBy.x, collectedBy.y - 32, 'CHARGED CORE: +POWER +SUPER', '#c597ff');
+            } else if (p.kind === 'vitality_core') {
+                collectedBy.powerCubes = (collectedBy.powerCubes || 0) + 1;
+                collectedBy.maxHp += 400;
+                collectedBy.hp = Math.min(collectedBy.maxHp, collectedBy.hp + 400 + Math.round(collectedBy.maxHp * 0.20));
+                collectedBy.healFlashUntil = performance.now() + 350;
+                grantShield(collectedBy, 700);
+                if (collectedBy === player) {
+                    addEventQuestProgress('collect_cubes', 1);
+                    progressSeasonPassQuest('collect_cubes', 1);
+                }
+                spawnFloatingText(collectedBy.x, collectedBy.y - 32, 'VITALITY CORE: +POWER +HEAL', '#75ffc0');
             } else if (p.kind === 'nova_core') {
                 collectedBy.powerCubes = (collectedBy.powerCubes || 0) + 2;
                 collectedBy.maxHp += 800;
@@ -45173,7 +47582,7 @@ function checkHit(target, b, i){
         }
 
         const dist = Math.hypot(targetPosX - owner.x, targetPosY - owner.y);
-        const outOfRange = dist > 490 + targetRadius;
+        const outOfRange = dist > HEATER_MISER_RANGE + targetRadius;
         // Box locks should ignore LOS wall checks because the target itself is a wall tile.
         const blocked = targetWall ? false : isLineBlockedByWalls(owner.x, owner.y, targetPosX, targetPosY, 14);
         if (outOfRange || blocked) {
@@ -45190,19 +47599,22 @@ function checkHit(target, b, i){
         const ownerHyper = owner.id === player.id ? isHypercharged : !!owner.isHypercharged;
         const value = getHeaterTetherValue(now - startedAt, ownerHyper);
         const ownerStar = getOwnerStarChoice(owner);
+        const mutationTick = consumeHeaterMutationTick(owner);
+        const tickValue = mutationTick ? Math.round(value * 1.25) : value;
         if (targetWall) {
-            applyHeaterBoxDamage(owner, targetWall, value);
+            applyHeaterBoxDamage(owner, targetWall, tickValue);
+            if (mutationTick) explosions.push({ x: targetPosX, y: targetPosY, radius: 110, life: 0, maxLife: 0.2, color: 'rgba(255, 55, 70, 0.56)', fxKind: 'heaterMutation' });
         } else {
             const sameTeam = areAlliedEntities(owner, targetEntity);
             if (sameTeam) {
-                const healValue = Math.round(value * (ownerStar === 'slow' ? 1.25 : 1.0));
+                const healValue = Math.round(tickValue * (ownerStar === 'slow' ? 1.25 : 1.0));
                 doHeal(targetEntity, healValue, owner.id);
                 if (ownerStar === 'slow') doHeal(owner, Math.round(healValue * 0.3), owner.id);
             } else {
                 // A live tether tick is Heater Miser's real repeated attack hit.
                 // Healing and Flux's bonus chain intentionally grant no charge.
                 checkHit(targetEntity, {
-                    damage: value,
+                    damage: tickValue,
                     ownerBrawler: 'heater_miser',
                     ownerId: owner.id,
                     pierce: true,
@@ -45210,6 +47622,7 @@ function checkHit(target, b, i){
                     isIndependentChargeTick: true
                 }, -1);
             }
+            if (mutationTick) pulseHeaterMutation(owner, targetEntity, sameTeam ? Math.round(tickValue * (ownerStar === 'slow' ? 1.25 : 1.0)) : tickValue, sameTeam);
 
             if ((owner.heaterFluxUntil || 0) > now) {
                 let alt = null;
@@ -45810,6 +48223,14 @@ function checkHit(target, b, i){
     }
 
     updatePlayerTrinkets(dt, now);
+    if (player.hp > 0 && now < (player.dashaholicHealingAuraUntil || 0) && now >= (player.dashaholicHealingAuraNextTick || 0)) {
+        player.dashaholicHealingAuraNextTick = now + 1000;
+        for (const ally of bots) {
+            if (!ally || ally.hp <= 0 || !areAlliedEntities(player, ally)) continue;
+            if (Math.hypot(ally.x - player.x, ally.y - player.y) <= 180 + (ally.radius || 14)) doHeal(ally, 800, player.id);
+        }
+        explosions.push({x:player.x,y:player.y,radius:180,life:0,maxLife:.32,color:'rgba(91,255,171,.34)',fxKind:'dashaholicHealAura'});
+    }
     tickShieldDecay(player, dt);
     for(const bot of aliveBots){ tickShieldDecay(bot, dt); }
 
@@ -45899,6 +48320,7 @@ function checkHit(target, b, i){
         if (player.amplifierScrewSpeedUntil && now < player.amplifierScrewSpeedUntil) hcSpd *= (player.amplifierScrewSpeedMult || 1.0);
         if (player.amplifierGadgetSpeedUntil && now < player.amplifierGadgetSpeedUntil) hcSpd *= AMPLIFIER_G2_SPEED_MULT;
               if (selectedBrawler === 'steamer' && now < (player.steamerExpressUntil || 0)) hcSpd *= 1.25;
+              if (selectedBrawler === 'beam' && now < (player.beamSuperGoldenUntil || 0)) hcSpd *= 1.20;
       if (selectedBrawler === 'copyphase') {
           ensureCopyphaseState(player);
               if (isHypercharged && player.copyphaseTransformUntil > now && player.copyphaseTransformBrawler) hcSpd *= 1.15;
@@ -46294,6 +48716,8 @@ function checkHit(target, b, i){
     updateSteamerRail(player, now);
     for (const sb of aliveBots) updateSteamerRail(sb, now);
     updateOilMakerEntities(now, dt);
+    updateBadBatSwarm(dt, now);
+    updateLoomaEffects(now, dt);
 
     updateSpecialAbilityRuntime(now);
     updateSignatureButton();
@@ -47520,6 +49944,28 @@ function checkHit(target, b, i){
               continue;
           }
       }
+      if (b.isDashSlash && b.dashAfterimageReturn) {
+          const slashOwner = getEntityById(b.ownerId);
+          if (!b.dashAfterimageReturning && b.life >= b.maxLife) {
+              b.dashAfterimageReturning = true;
+              b.damage = Math.round((b.dashAfterimageBaseDamage || b.damage || 0) * 0.55);
+              b.life = 0;
+              b.maxLife = 0.8;
+              b.hitIds = {};
+          }
+          if (b.dashAfterimageReturning) {
+              if (!slashOwner || slashOwner.hp <= 0) {
+                  bullets.splice(i, 1); i--; continue;
+              }
+              const returnAng = Math.atan2(slashOwner.y - b.y, slashOwner.x - b.x);
+              const returnSpeed = 820 * 0.6;
+              b.vx = Math.cos(returnAng) * returnSpeed;
+              b.vy = Math.sin(returnAng) * returnSpeed;
+              if (Math.hypot(slashOwner.x - b.x, slashOwner.y - b.y) <= (slashOwner.radius || 16) + 20) {
+                  bullets.splice(i, 1); i--; continue;
+              }
+          }
+      }
       if (b.isUpgradartDart && b.upgradartReturns) {
           const dartOwner = getEntityById(b.ownerId);
           if (!b.upgradartReturning && b.life >= b.maxLife) {
@@ -47858,6 +50304,33 @@ function checkHit(target, b, i){
                 continue;
             }
             if (b.isCrystilaArm) {
+                if (b.crystilaDeflector) {
+                    // Deflect burst: reverse nearby hostile bullets back toward their owner
+                    const DEFLECT_RADIUS = 240;
+                    const armOwner = getEntityById(b.ownerId);
+                    for (let di = bullets.length - 1; di >= 0; di--) {
+                        if (di === i) continue;
+                        const db = bullets[di];
+                        if (!db || db.ownerId === b.ownerId) continue;
+                        if (Math.hypot(db.x - b.x, db.y - b.y) > DEFLECT_RADIUS) continue;
+                        const dbOwner = getEntityById(db.ownerId);
+                        if (!dbOwner) continue;
+                        if (armOwner && areAlliedEntities(armOwner, dbOwner)) continue;
+                        // Flip toward the bullet's original owner
+                        const backAng = Math.atan2(dbOwner.y - db.y, dbOwner.x - db.x);
+                        const spd = Math.max(480, Math.hypot(db.vx, db.vy));
+                        db.vx = Math.cos(backAng) * spd;
+                        db.vy = Math.sin(backAng) * spd;
+                        db.ownerId = b.ownerId;
+                        db.ownerBrawler = b.ownerBrawler;
+                        db.hitIds = {};
+                        db.crystilaReflected = true;
+                    }
+                    spawnFloatingText(b.x, b.y - 30, 'DEFLECT!', '#86d7ff');
+                    explosions.push({ x: b.x, y: b.y, radius: DEFLECT_RADIUS * 0.55, life: 0, maxLife: 0.22, color: 'rgba(134,215,255,0.35)' });
+                    bullets.splice(i, 1); i--;
+                    continue;
+                }
                 if (!b.crystilaReturning && !b.crystilaFollowSpawned && !b.crystilaReturnLayer) {
                     b.crystilaFollowSpawned = true;
                     const impactX = b.x;
@@ -48857,9 +51330,10 @@ function checkHit(target, b, i){
                 radius: s.radius,
                 life: 0,
                 maxLife: 0.38,
-                color: s.isHyper ? 'rgba(224, 86, 253, 0.85)' : 'rgba(0, 245, 212, 0.85)',
+                color: s.isHyper ? 'rgba(224, 86, 253, 0.85)' : (s.skinId === 'headless-bolznstien' ? 'rgba(46, 204, 113, 0.85)' : 'rgba(0, 245, 212, 0.85)'),
                 isBolznstienStrike: true,
-                isHyper: s.isHyper
+                isHyper: s.isHyper,
+                skinId: s.skinId
             });
             if (typeof shakeScreen === 'function') shakeScreen(s.isHyper ? 7 : 5, 160);
 
@@ -48941,9 +51415,10 @@ function checkHit(target, b, i){
     // G2 Shock Trails: spawn puddles while bolznstienSpeedUntil is active
     const allLivingBrawlers = [player, ...bots].filter(e => e && e.hp > 0);
     for (const ent of allLivingBrawlers) {
+        const entSkinId = getActiveSkinForBrawler(ent.brawler || (ent.id === player.id ? selectedBrawler : 'bolznstien'))?.id;
         if ((ent.bolznstienSpeedUntil || 0) > now && (!ent._lastBolzTrailAt || now - ent._lastBolzTrailAt > 180)) {
             ent._lastBolzTrailAt = now;
-            bolznstienShockTrails.push({ x: ent.x, y: ent.y, ownerId: ent.id, expiresAt: now + 2400 });
+            bolznstienShockTrails.push({ x: ent.x, y: ent.y, ownerId: ent.id, expiresAt: now + 2400, skinId: entSkinId });
         }
         // Super Electric Eyes: Channeling 4 electric chains in cone + CHAIN LIGHTNING BUFF (-40% damage)
         if ((ent.bolznstienSuperUntil || 0) > now) {
@@ -49021,7 +51496,8 @@ function checkHit(target, b, i){
                         x1: ent.x, y1: ent.y,
                         x2: wx, y2: wy,
                         expiresAt: now + 160,
-                        isHyper
+                        isHyper,
+                        skinId: entSkinId
                     });
                 }
 
@@ -49057,7 +51533,8 @@ function checkHit(target, b, i){
                                     x1: sourceNode.x, y1: sourceNode.y,
                                     x2: candidate.x, y2: candidate.y,
                                     expiresAt: now + 160,
-                                    isHyper: isHyper
+                                    isHyper: isHyper,
+                                    skinId: entSkinId
                                 });
                                 spawnFloatingText(candidate.x, candidate.y - 15, `-${chainDmg}`, isHyper ? '#e056fd' : '#00f5d4');
                                 if (!candidate._lastChainFloatAt || now - candidate._lastChainFloatAt > 600) {
@@ -49482,13 +51959,19 @@ function checkHit(target, b, i){
     // Player Reload logic
     if(player.hp > 0 && ammo < maxAmmo && !isBeastyBeastActive(player, now)){
        let currentReloadTime = getReloadTime(selectedBrawler) * ((selectedBrawler === 'decayer' && now < player.reloadBuffUntil) ? 0.5 : 1);
-       if (isArenaForgeMode) currentReloadTime *= player.arenaForgeReloadMult || 1;
+       if (isArenaForgeMode) {
+           currentReloadTime *= player.arenaForgeReloadMult || 1;
+           if (player.arenaForgeSupercharger && superCharge >= 100) currentReloadTime *= 0.8;
+           if (player.arenaForgeFortressLink && isNearAlliedArenaForgeStructure(player)) currentReloadTime *= 0.85;
+           if ((player.arenaForgeFrostfireUntil || 0) > performance.now()) currentReloadTime *= 1.25;
+       }
        if(selectedBrawler==='chickpig'&&selectedStar==='long'&&now<(player.chickpigChickenUntil||0))currentReloadTime*=.85;
        if(player.reloadDebuffUntil && now < player.reloadDebuffUntil) currentReloadTime *= 1.4;
+       if(player.dashaholicSignatureReloadUntil && now < player.dashaholicSignatureReloadUntil) currentReloadTime /= 1.5;
        if(player.trinketHyperReloadUntil && now < player.trinketHyperReloadUntil) currentReloadTime /= 1.10;
        if(player.trinketComebackUntil && now < player.trinketComebackUntil) currentReloadTime /= 1.10;
        if (selectedBrawler === 'minigunnin' || selectedBrawler === 'oil_maker') {
-           let fastDelay = selectedBrawler === 'oil_maker' ? 380 : 1000;
+           let fastDelay = selectedBrawler === 'oil_maker' ? 285 : 1000;
            let reloadTime = selectedBrawler === 'oil_maker' ? 24 : 30;
            if (selectedBrawler === 'oil_maker' && (selectedStar === 'long' || selectedStar === 'sp2')) {
                const nearFire = oilMakerPuddles.some(p => p.ignited && Math.hypot(p.x - player.x, p.y - player.y) <= 120);
@@ -50325,7 +52808,11 @@ function checkHit(target, b, i){
                   if (!wall.isPowerBox) continue;
                   const wx = wall.x + wall.w / 2, wy = wall.y + wall.h / 2;
                   const d = Math.hypot(wx - t.x, wy - t.y);
-                  const score = d + (wall.hp || 0) / 24 - (wall.isNovaBox ? 440 : (wall.isPurpleBox ? 340 : 0));
+                  const boxPriority = wall.powerBoxType === 'nova' ? 440
+                      : wall.powerBoxType === 'charged' ? 340
+                      : wall.powerBoxType === 'vitality' && botAi.hpPct < .72 ? 310
+                      : wall.powerBoxType === 'fortified' ? 190 : 0;
+                  const score = d + (wall.hp || 0) / 24 - boxPriority;
                   if (score < farmScore && d < 650) {
                       farmScore = score;
                       farmTarget = { x: wx, y: wy, id: 'box', isBox: true, hp: wall.hp, maxHp: wall.maxHp || wall.hp, vx: 0, vy: 0 };
@@ -50391,7 +52878,11 @@ function checkHit(target, b, i){
           for(const dw of destructibleWalls){
               if(dw.isPowerBox){
                   const d = Math.hypot((dw.x + dw.w/2) - t.x, (dw.y + dw.h/2) - t.y);
-                  const score = d + (dw.hp / 20) - (dw.isNovaBox ? 360 : (dw.isPurpleBox ? 250 : 0));
+                  const boxPriority = dw.powerBoxType === 'nova' ? 360
+                      : dw.powerBoxType === 'charged' ? 250
+                      : dw.powerBoxType === 'vitality' && (t.hp || 0) < (t.maxHp || 1) * .72 ? 230
+                      : dw.powerBoxType === 'fortified' ? 140 : 0;
+                  const score = d + (dw.hp / 20) - boxPriority;
                   if(score < bestScore){ bestScore = score; target = { x: dw.x + dw.w/2, y: dw.y + dw.h/2, id: 'box', isBox: true, hp: dw.hp, vx: 0, vy: 0 }; }
               }
           }
@@ -50470,6 +52961,7 @@ function checkHit(target, b, i){
           if (t.hoopDriveUntil && nowTarget < t.hoopDriveUntil) activeBotSpeed *= 1.22;
           if (t.scubaDiverOxygenSpeedUntil && nowTarget < t.scubaDiverOxygenSpeedUntil) activeBotSpeed *= 1.16;
           if (t.brawler === 'steamer' && nowTarget < (t.steamerExpressUntil || 0)) activeBotSpeed *= 1.25;
+          if (t.brawler === 'beam' && nowTarget < (t.beamSuperGoldenUntil || 0)) activeBotSpeed *= 1.20;
           if (t.trapperSpeedUntil && nowTarget < t.trapperSpeedUntil) activeBotSpeed *= 1.12;
           if (t.catchAndGoUntil && nowTarget < t.catchAndGoUntil) activeBotSpeed *= 1.30;
           if (t.trapperFenceSpeedUntil && nowTarget < t.trapperFenceSpeedUntil) activeBotSpeed *= (t.trapperFenceSpeedMult || 1.0);
@@ -50630,6 +53122,24 @@ function checkHit(target, b, i){
               } else if (nowTarget >= getEntityGadgetCooldownUntil(t, 'g2', nowTarget)) {
                   executeRagerG2(t);
                   setEntityGadgetCooldownUntil(t, nowTarget + GADGET_COOLDOWN_MS, 'g2');
+              }
+          }
+          if (!t.isArenaForgeMinion && t.brawler === 'badbat' && t.gadgetUnlocked && target) {
+              const swarmCount = badbatSwarm.filter(b => b.ownerId === t.id && b.hp > 0).length;
+              if (distToTarget <= 500 && swarmCount >= 2 && nowTarget >= getEntityGadgetCooldownUntil(t, 'g2', nowTarget)) {
+                  executeBadBatG2(t);
+                  setEntityGadgetCooldownUntil(t, nowTarget + GADGET_COOLDOWN_MS, 'g2');
+              } else if (nowTarget >= getEntityGadgetCooldownUntil(t, 'g1', nowTarget)) {
+                  executeBadBatG1(t);
+                  setEntityGadgetCooldownUntil(t, nowTarget + GADGET_COOLDOWN_MS, 'g1');
+              }
+          }
+          if (!t.isArenaForgeMinion && t.brawler === 'looma' && t.gadgetUnlocked && target) {
+              const ownedThreads=loomaThreads.filter(thread=>thread.ownerId===t.id).length;
+              if(ownedThreads>=2&&nowTarget>=getEntityGadgetCooldownUntil(t,'g1',nowTarget)){
+                  t.selectedGadget='g1';executeLoomaG1(t);setEntityGadgetCooldownUntil(t,nowTarget+getGadgetCooldownMsForBrawler('looma','g1'),'g1');
+              } else if(ownedThreads===0&&nowTarget>=getEntityGadgetCooldownUntil(t,'g2',nowTarget)){
+                  t.selectedGadget='g2';t.loomaShieldThreadArmed=true;setEntityGadgetCooldownUntil(t,nowTarget+getGadgetCooldownMsForBrawler('looma','g2'),'g2');
               }
           }
 
@@ -51016,8 +53526,8 @@ function checkHit(target, b, i){
       if (specialDef && isSpecialAbilityAvailableForEntity(player, selectedBrawler)) {
           if (selectedBrawler === 'outlit') {
               const charges = Math.max(0, Math.floor(player.outlitMutationCharges || 0));
-              const count = Math.max(0, Math.min(9, Math.floor(player.outlitMutationShotCounter || 0)));
-              return { label: charges > 0 ? `MUTATION - ${charges} OVERCHARGED` : `MUTATION - ${count}/9`, value: charges > 0 ? 9 : count, max: 9, color: '#ff4b55' };
+              const count = Math.max(0, Math.min(8, Math.floor(player.outlitMutationShotCounter || 0)));
+              return { label: charges > 0 ? `MUTATION - ${charges} OVERCHARGED` : `MUTATION - ${count}/8`, value: charges > 0 ? 8 : count, max: 8, color: '#ff4b55' };
           }
           if (selectedBrawler === 'echo') {
               ensureEchoInstinctState(player, now);
@@ -51043,6 +53553,11 @@ function checkHit(target, b, i){
               const count=Math.max(0,Math.min(MONEY_TAX_MUTATION_TRIGGER_ATTACKS,Math.floor(player.moneyTaxMutationAttackCount||0)));
               const poweredLabel=tax?'RETURN AUDITS':'TAKEOVER VOLLEYS';
               return {label:volleys>0?`MUTATION - ${volleys} ${poweredLabel}`:`MUTATION - ${count}/${MONEY_TAX_MUTATION_TRIGGER_ATTACKS}`,value:volleys>0?volleys:count,max:volleys>0?MONEY_TAX_MUTATION_POWERED_ATTACKS:MONEY_TAX_MUTATION_TRIGGER_ATTACKS,color:'#ff4b55'};
+          }
+          if (selectedBrawler === 'crystila') {
+              const charges = Math.max(0, Math.floor(player.crystilaMutationCharges || 0));
+              const count = Math.max(0, Math.min(6, Math.floor(player.crystilaMutationShotCounter || 0)));
+              return { label: charges > 0 ? `MUTATION - ${charges} DEFLECTOR DART${charges > 1 ? 'S' : ''}` : `MUTATION - ${count}/6`, value: charges > 0 ? 6 : count, max: 6, color: '#ff4b55' };
           }
           if (selectedBrawler === 'classy') {
               const state=getClassySignatureState(player,now);
@@ -51079,7 +53594,10 @@ function checkHit(target, b, i){
           const thresholds = [0, 2500, 4000, 5500, 7000, 8500, 10000];
           let stage = tethered ? 1 : 0;
           for (let i = 1; i < thresholds.length; i++) if (elapsed >= thresholds[i]) stage = i + 1;
-          return { label: tethered ? `THERMAL TETHER  •  STAGE ${stage}/7` : 'THERMAL TETHER  •  NOT CONNECTED', value: stage, max: 7, segments: 7, color: '#ff8a5b' };
+          const runaway = Math.max(0, player.heaterMutationTicks || 0);
+          const charge = Math.max(0, player.heaterMutationCharge || 0);
+          const mutationLabel = runaway > 0 ? `  •  RUNAWAY ${runaway}/5` : `  •  HEAT ${charge}/10`;
+          return { label: tethered ? `THERMAL TETHER  •  STAGE ${stage}/7${mutationLabel}` : `THERMAL TETHER  •  NOT CONNECTED${mutationLabel}`, value: stage, max: 7, segments: 7, color: runaway > 0 ? '#ff4b55' : '#ff8a5b' };
       }
       if (selectedBrawler === 'fuel') {
           const superActive = now < (player.fuelSuperUntil || 0);
@@ -51116,7 +53634,7 @@ function checkHit(target, b, i){
       }
       if (selectedBrawler === 'relay') {
           const device=healingPods.find(p=>p.isRelayDevice&&p.ownerId===player.id&&p.hp>0), linked=device&&Math.hypot(player.x-device.x,player.y-device.y)<=(device.relayLinkRadius||520);
-          return {label:device?(linked?`DAMAGE LINK - ${Math.round(device.relayRedirectPct*100)}% - ${Math.ceil(device.hp)} HP`:'DAMAGE LINK - OUT OF RANGE'):'DAMAGE LINK - NO DEVICE',value:device?device.hp:0,max:device?device.maxHp:1,color:device?.relayHyper?'#dc71ff':'#67e8ff'};
+          return {label:device?(linked?`TEAM DAMAGE LINK - ${Math.round(device.relayRedirectPct*100)}% - ${Math.ceil(device.hp)} HP`:'TEAM DAMAGE LINK - OUT OF RANGE'):'TEAM DAMAGE LINK - NO DEVICE',value:device?device.hp:0,max:device?device.maxHp:1,color:device?.relayHyper?'#dc71ff':'#67e8ff'};
       }
       if (selectedBrawler === 'money_and_tax') {
           const tax = (player.moneyAndTaxMode || 'money') === 'tax';
@@ -51201,7 +53719,7 @@ function checkHit(target, b, i){
         if (!hasCustomBrawlerPortrait(brawlerId)) return false;
         if (!Number.isFinite(entity.x) || !Number.isFinite(drawY)) return false;
         const visualSkin = getActiveSkinForBrawler(brawlerId)?.id;
-        const bespokeSkin = ['back-to-school-classy', 'hyperfusion-fuser', 'possessed-claws-hunter', 'possessed-claws-malakor', 'possessed-claws-predator'].includes(visualSkin);
+        const bespokeSkin = ['back-to-school-classy', 'hyperfusion-fuser', 'possessed-claws-hunter', 'possessed-claws-malakor', 'possessed-claws-predator', 'headless-bolznstien', 'boneless-boomarang', 'master-overlord', 'pumkinomer', 'nightmare-outlit'].includes(visualSkin);
         if (!CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId) && !bespokeSkin) {
             return window.BraweRosterVisuals?.draw(ctx, entity, drawY, brawlerId, visualSkin, performance.now(), isBoss) || false;
         }
@@ -51402,6 +53920,464 @@ function checkHit(target, b, i){
                 // Pencil baton reacts to each shot.
                 ctx.save();ctx.rotate(aim);ctx.translate(radius*(.72+attackKick*.28),0);ctx.fillStyle='#ffe36e';ctx.fillRect(-radius*.18,-radius*.08,radius*.62,radius*.16);ctx.fillStyle='#ff7a9e';ctx.fillRect(-radius*.28,-radius*.08,radius*.12,radius*.16);ctx.fillStyle='#f5d2a6';ctx.beginPath();ctx.moveTo(radius*.44,-radius*.08);ctx.lineTo(radius*.62,0);ctx.lineTo(radius*.44,radius*.08);ctx.closePath();ctx.fill();ctx.restore();
                 if(superKick>0){ctx.globalAlpha=superKick*.7;ctx.strokeStyle='#ffe36e';ctx.lineWidth=3;for(let ring=0;ring<2;ring++){ctx.beginPath();ctx.arc(0,0,radius*(1.15+ring*.3+superKick*.35),0,Math.PI*2);ctx.stroke();}}
+            } else if (brawlerId === 'bolznstien' && getActiveSkinForBrawler('bolznstien')?.id === 'headless-bolznstien') {
+                const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * 0.005) * 0.02 + Math.sin(aim) * attackKick * 0.08);
+                ctx.shadowColor = transformed ? '#2ecc71' : '#00f5d4';
+                ctx.shadowBlur = transformed ? 24 : 12;
+
+                // Heavy Forged Graveyard Titan Body
+                const titanGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                titanGrad.addColorStop(0, '#1c2826');
+                titanGrad.addColorStop(0.5, '#0e1715');
+                titanGrad.addColorStop(1, '#050a09');
+                ctx.fillStyle = titanGrad;
+                ctx.strokeStyle = transformed ? '#2ecc71' : '#27ae60';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.85, -radius * 0.55, radius * 1.7, radius * 1.5, radius * 0.35);
+                ctx.fill();
+                ctx.stroke();
+
+                // Severed Collar & Ectoplasmic Socket
+                ctx.fillStyle = '#111';
+                ctx.strokeStyle = '#ff7700';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(0, -radius * 0.55, radius * 0.45, radius * 0.2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Erupting Spectral Green Ectoplasm & Sparks
+                ctx.save();
+                ctx.fillStyle = transformed ? '#55ff99' : '#2ecc71';
+                ctx.shadowColor = '#2ecc71';
+                ctx.shadowBlur = 18;
+                for (let spark = -2; spark <= 2; spark++) {
+                    const sparkH = radius * (0.5 + Math.sin(now * 0.02 + spark) * 0.25) * (transformed ? 1.4 : 1);
+                    ctx.beginPath();
+                    ctx.arc(spark * radius * 0.12, -radius * 0.65 - sparkH, radius * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+
+                // Carrying Carved Jack-o'-Lantern on Shoulder
+                ctx.save();
+                ctx.translate(-radius * 0.75, -radius * 0.4);
+                ctx.shadowColor = '#ff7700';
+                ctx.shadowBlur = 14;
+                ctx.fillStyle = '#ff7700';
+                ctx.strokeStyle = '#d35400';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, radius * 0.38, radius * 0.32, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // Jack-o'-Lantern Carved Face
+                ctx.fillStyle = '#ffeaa7';
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.18, -radius * 0.05); ctx.lineTo(-radius * 0.06, -radius * 0.05); ctx.lineTo(-radius * 0.12, -radius * 0.18); ctx.closePath();
+                ctx.moveTo(radius * 0.06, -radius * 0.05); ctx.lineTo(radius * 0.18, -radius * 0.05); ctx.lineTo(radius * 0.12, -radius * 0.18); ctx.closePath();
+                ctx.moveTo(-radius * 0.18, radius * 0.1); ctx.lineTo(0, radius * 0.18); ctx.lineTo(radius * 0.18, radius * 0.1); ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+
+                // Massive Graveyard War Hammer in Main Hand
+                ctx.save();
+                ctx.rotate(aim);
+                ctx.translate(radius * (0.8 + attackKick * 0.3), 0);
+                ctx.fillStyle = '#2c3e50';
+                ctx.fillRect(-radius * 0.15, -radius * 0.08, radius * 0.7, radius * 0.16);
+                ctx.fillStyle = '#ff7700';
+                ctx.strokeStyle = '#2ecc71';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(radius * 0.35, -radius * 0.35, radius * 0.45, radius * 0.7, 4);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            } else if (brawlerId === 'boom_arang' && getActiveSkinForBrawler('boom_arang')?.id === 'boneless-boomarang') {
+                const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * 0.006) * 0.03 + Math.sin(aim) * attackKick * 0.1);
+                ctx.shadowColor = transformed ? '#00f5d4' : '#e0e6ed';
+                ctx.shadowBlur = transformed ? 20 : 10;
+
+                // Skeletal Spine & Ribcage Armor
+                ctx.fillStyle = '#1a1f26';
+                ctx.strokeStyle = transformed ? '#00f5d4' : '#d2dae2';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.65, -radius * 0.35, radius * 1.3, radius * 1.25, radius * 0.25);
+                ctx.fill();
+                ctx.stroke();
+
+                // Exposed White Ribs
+                ctx.strokeStyle = '#f5f6fa';
+                ctx.lineWidth = 2.5;
+                for (let r = -2; r <= 2; r++) {
+                    const ry = r * radius * 0.15 + radius * 0.2;
+                    ctx.beginPath();
+                    ctx.moveTo(-radius * 0.55, ry);
+                    ctx.quadraticCurveTo(0, ry - 3, radius * 0.55, ry);
+                    ctx.stroke();
+                }
+
+                // Polished Skull Head
+                ctx.fillStyle = '#f5f6fa';
+                ctx.strokeStyle = '#718093';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.35, radius * 0.42, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Glowing Hollow Eye Sockets
+                ctx.fillStyle = transformed ? '#00f5d4' : '#1e90ff';
+                ctx.shadowColor = '#00f5d4';
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.arc(-radius * 0.16, -radius * 0.35, radius * 0.09, 0, Math.PI * 2);
+                ctx.arc(radius * 0.16, -radius * 0.35, radius * 0.09, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Bone Boomerang in Hand
+                ctx.save();
+                ctx.rotate(aim);
+                ctx.translate(radius * (0.8 + attackKick * 0.35), 0);
+                ctx.strokeStyle = '#f5f6fa';
+                ctx.lineWidth = 3.5;
+                ctx.shadowColor = '#00f5d4';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.3, -radius * 0.3);
+                ctx.quadraticCurveTo(radius * 0.2, 0, -radius * 0.3, radius * 0.3);
+                ctx.stroke();
+                ctx.restore();
+            } else if (brawlerId === 'overlord' && ['master-overlord', 'emperor-overlord'].includes(getActiveSkinForBrawler('overlord')?.id)) {
+                const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * 0.004) * 0.02 + Math.sin(aim) * attackKick * 0.08);
+                ctx.shadowColor = transformed ? '#e74c3c' : '#9b59b6';
+                ctx.shadowBlur = transformed ? 26 : 14;
+
+                // Imperial Velvet & Obsidian Mantle
+                const mantle = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                mantle.addColorStop(0, '#2c0c30');
+                mantle.addColorStop(0.5, '#150618');
+                mantle.addColorStop(1, '#08010a');
+                ctx.fillStyle = mantle;
+                ctx.strokeStyle = transformed ? '#f1c40f' : '#8e44ad';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.8, -radius * 0.5, radius * 1.6, radius * 1.5, radius * 0.3);
+                ctx.fill();
+                ctx.stroke();
+
+                // High Golden Imperial Pauldrons
+                for (const side of [-1, 1]) {
+                    ctx.fillStyle = '#f1c40f';
+                    ctx.strokeStyle = '#b7950b';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(side * radius * 0.65, -radius * 0.6);
+                    ctx.lineTo(side * radius * 1.1, -radius * 0.4);
+                    ctx.lineTo(side * radius * 0.7, -radius * 0.1);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // Dark Sovereign Helm & Visor
+                ctx.fillStyle = '#1e1124';
+                ctx.strokeStyle = '#f1c40f';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.28, radius * 0.42, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Glowing Crimson Void Visor
+                ctx.fillStyle = '#e74c3c';
+                ctx.shadowColor = '#e74c3c';
+                ctx.shadowBlur = 10;
+                ctx.fillRect(-radius * 0.24, -radius * 0.34, radius * 0.48, radius * 0.12);
+
+                // Levitating Crown of Nether Spires
+                ctx.save();
+                ctx.fillStyle = '#9b59b6';
+                ctx.strokeStyle = '#f1c40f';
+                ctx.lineWidth = 1.5;
+                for (let s = -2; s <= 2; s++) {
+                    const spireH = radius * (0.35 + Math.abs(s) * 0.08 + Math.sin(now * 0.01 + s) * 0.05);
+                    ctx.beginPath();
+                    ctx.moveTo(s * radius * 0.18 - 3, -radius * 0.75);
+                    ctx.lineTo(s * radius * 0.18, -radius * 0.75 - spireH);
+                    ctx.lineTo(s * radius * 0.18 + 3, -radius * 0.75);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                // Void Singularity Orb in Offhand
+                ctx.save();
+                ctx.translate(-radius * 0.75, radius * 0.2);
+                ctx.shadowColor = '#9b59b6';
+                ctx.shadowBlur = 16;
+                ctx.fillStyle = '#0a0210';
+                ctx.strokeStyle = '#f1c40f';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.25, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            } else if (brawlerId === 'homer' && (getActiveSkinForBrawler('homer')?.id === 'pumkinomer' || getActiveSkinForBrawler('homer')?.id === 'gentleman-homer')) {
+                const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
+                const isGentleman = getActiveSkinForBrawler('homer')?.id === 'gentleman-homer';
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * 0.007) * 0.03 + Math.sin(aim) * attackKick * 0.1);
+                ctx.shadowColor = transformed ? '#ff3838' : (isGentleman ? '#ffd700' : '#ff7700');
+                ctx.shadowBlur = transformed ? 24 : 14;
+
+                if (isGentleman) {
+                    // Victorian Dapper Tailcoat
+                    ctx.fillStyle = '#2d3436';
+                    ctx.strokeStyle = '#636e72';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.roundRect(-radius * 0.72, -radius * 0.35, radius * 1.44, radius * 1.35, radius * 0.3);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Crisp White Collar & Scarlet Bowtie
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.moveTo(-radius * 0.22, -radius * 0.35);
+                    ctx.lineTo(0, -radius * 0.12);
+                    ctx.lineTo(radius * 0.22, -radius * 0.35);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.fillStyle = '#d63031';
+                    ctx.beginPath();
+                    ctx.arc(0, -radius * 0.2, radius * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Head & Silk Top Hat
+                    ctx.fillStyle = '#f5cd79';
+                    ctx.beginPath();
+                    ctx.arc(0, -radius * 0.45, radius * 0.42, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Silk Top Hat
+                    ctx.fillStyle = '#1e272e';
+                    ctx.strokeStyle = '#d63031';
+                    ctx.lineWidth = 2;
+                    ctx.fillRect(-radius * 0.48, -radius * 0.72, radius * 0.96, radius * 0.14); // brim
+                    ctx.fillRect(-radius * 0.35, -radius * 1.25, radius * 0.7, radius * 0.54); // hat cylinder
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.fillRect(-radius * 0.35, -radius * 0.82, radius * 0.7, radius * 0.1); // scarlet band
+
+                    // Shiny Monocle over Right Eye
+                    ctx.strokeStyle = '#f1c40f';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(radius * 0.18, -radius * 0.44, radius * 0.14, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fillStyle = 'rgba(116, 185, 255, 0.45)';
+                    ctx.fill();
+                    // Monocle chain
+                    ctx.beginPath();
+                    ctx.moveTo(radius * 0.32, -radius * 0.44);
+                    ctx.quadraticCurveTo(radius * 0.48, -radius * 0.2, radius * 0.2, -radius * 0.1);
+                    ctx.stroke();
+
+                    // Fine Walking Cane in Hand
+                    ctx.save();
+                    ctx.rotate(aim);
+                    ctx.translate(radius * (0.8 + attackKick * 0.3), 0);
+                    ctx.strokeStyle = '#634832';
+                    ctx.lineWidth = 3.5;
+                    ctx.beginPath();
+                    ctx.moveTo(-radius * 0.2, 0);
+                    ctx.lineTo(radius * 0.45, 0);
+                    ctx.stroke();
+                    // Gold Cane Handle Knob
+                    ctx.fillStyle = '#f1c40f';
+                    ctx.beginPath();
+                    ctx.arc(radius * 0.45, 0, radius * 0.12, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                } else {
+                    // Patchwork Scarecrow Coat
+                    const coat = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                    coat.addColorStop(0, '#59381e');
+                    coat.addColorStop(0.5, '#3b2310');
+                    coat.addColorStop(1, '#241407');
+                    ctx.fillStyle = coat;
+                    ctx.strokeStyle = transformed ? '#ff7700' : '#e67e22';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.roundRect(-radius * 0.75, -radius * 0.35, radius * 1.5, radius * 1.35, radius * 0.3);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Straw Tuffs at Collar and Sleeves
+                    ctx.strokeStyle = '#ffeaa7';
+                    ctx.lineWidth = 2;
+                    for (const side of [-1, 1]) {
+                        for (let t = 0; t < 3; t++) {
+                            ctx.beginPath();
+                            ctx.moveTo(side * radius * 0.7, radius * 0.2 + t * 4);
+                            ctx.lineTo(side * (radius * 0.95 + t * 3), radius * 0.3 + t * 4);
+                            ctx.stroke();
+                        }
+                    }
+
+                    // Giant Carved Pumpkin Head
+                    ctx.fillStyle = transformed ? '#ff5252' : '#ff7700';
+                    ctx.strokeStyle = '#d35400';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.ellipse(0, -radius * 0.45, radius * 0.58, radius * 0.48, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Green Gnarled Vine Stem
+                    ctx.fillStyle = '#27ae60';
+                    ctx.beginPath();
+                    ctx.moveTo(-radius * 0.08, -radius * 0.9);
+                    ctx.quadraticCurveTo(radius * 0.15, -radius * 1.15, radius * 0.25, -radius * 1.05);
+                    ctx.lineTo(radius * 0.1, -radius * 0.9);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Glowing Sinister Pumpkin Eyes & Toothy Smile
+                    ctx.fillStyle = transformed ? '#ffffff' : '#ffeaa7';
+                    ctx.shadowColor = '#ffeaa7';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.moveTo(-radius * 0.3, -radius * 0.5); ctx.lineTo(-radius * 0.12, -radius * 0.5); ctx.lineTo(-radius * 0.21, -radius * 0.65); ctx.closePath();
+                    ctx.moveTo(radius * 0.12, -radius * 0.5); ctx.lineTo(radius * 0.3, -radius * 0.5); ctx.lineTo(radius * 0.21, -radius * 0.65); ctx.closePath();
+                    ctx.moveTo(-radius * 0.32, -radius * 0.32);
+                    ctx.lineTo(-radius * 0.18, -radius * 0.22);
+                    ctx.lineTo(0, -radius * 0.32);
+                    ctx.lineTo(radius * 0.18, -radius * 0.22);
+                    ctx.lineTo(radius * 0.32, -radius * 0.32);
+                    ctx.lineTo(radius * 0.2, -radius * 0.18);
+                    ctx.lineTo(0, -radius * 0.24);
+                    ctx.lineTo(-radius * 0.2, -radius * 0.18);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Bomb in Hand (aim direction)
+                    ctx.save();
+                    ctx.rotate(aim);
+                    ctx.translate(radius * (0.8 + attackKick * 0.3), 0);
+                    ctx.fillStyle = '#ff7700';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius * 0.24, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#f1c40f';
+                    ctx.fillRect(radius * 0.15, -2, 5, 4);
+                    ctx.restore();
+                }
+            } else if (brawlerId === 'outlit' && getActiveSkinForBrawler('outlit')?.id === 'nightmare-outlit') {
+                const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
+                const pulse = 0.5 + Math.sin(now * (transformed ? 0.02 : 0.009)) * 0.5;
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * 0.006) * 0.025 + Math.sin(aim) * attackKick * 0.1);
+                ctx.shadowColor = transformed ? '#ff007f' : '#e000ff';
+                ctx.shadowBlur = transformed ? 32 : 16;
+
+                // --- HYPERCHARGE TRANSFIGURATION: COLOSSAL DEMONIC WINGS ---
+                if (transformed) {
+                    ctx.save();
+                    const wingFlap = Math.sin(now * 0.015) * 0.2;
+                    for (const side of [-1, 1]) {
+                        ctx.save();
+                        ctx.scale(side, 1);
+                        ctx.rotate(wingFlap);
+                        ctx.fillStyle = '#1a0026';
+                        ctx.strokeStyle = '#ff007f';
+                        ctx.lineWidth = 3;
+                        ctx.shadowColor = '#e000ff';
+                        ctx.shadowBlur = 20;
+                        ctx.beginPath();
+                        ctx.moveTo(radius * 0.3, -radius * 0.2);
+                        ctx.quadraticCurveTo(radius * 1.8, -radius * 1.6, radius * 2.4, -radius * 1.1);
+                        ctx.quadraticCurveTo(radius * 1.8, -radius * 0.6, radius * 2.2, -radius * 0.1);
+                        ctx.quadraticCurveTo(radius * 1.4, 0, radius * 1.8, radius * 0.5);
+                        ctx.quadraticCurveTo(radius * 0.8, radius * 0.3, radius * 0.3, radius * 0.3);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.strokeStyle = '#ff00ff';
+                        ctx.lineWidth = 1.8;
+                        ctx.beginPath();
+                        ctx.moveTo(radius * 0.4, -radius * 0.2);
+                        ctx.lineTo(radius * 1.5, -radius * 0.9);
+                        ctx.lineTo(radius * 2.1, -radius * 0.7);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    ctx.strokeStyle = '#ff007f';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius * (1.5 + pulse * 0.3), 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // Dark-Matter Specter Body
+                const bodyGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                bodyGrad.addColorStop(0, transformed ? '#3b0059' : '#1e052d');
+                bodyGrad.addColorStop(0.5, transformed ? '#1a002b' : '#100319');
+                bodyGrad.addColorStop(1, '#050008');
+                ctx.fillStyle = bodyGrad;
+                ctx.strokeStyle = transformed ? '#ff007f' : '#e000ff';
+                ctx.lineWidth = transformed ? 3.5 : 2.5;
+                ctx.beginPath();
+                ctx.roundRect(-radius * 0.75, -radius * 0.45, radius * 1.5, radius * 1.4, radius * 0.35);
+                ctx.fill();
+                ctx.stroke();
+
+                // Jagged Obsidian Horns
+                for (const side of [-1, 1]) {
+                    ctx.fillStyle = '#0d0014';
+                    ctx.strokeStyle = transformed ? '#ff007f' : '#8a2be2';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(side * radius * 0.35, -radius * 0.45);
+                    ctx.quadraticCurveTo(side * radius * 0.7, -radius * 1.2, side * radius * 0.95, -radius * 1.05);
+                    ctx.lineTo(side * radius * 0.55, -radius * 0.45);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // Glowing Magenta Nightmare Visor
+                ctx.fillStyle = transformed ? '#ffffff' : '#ff00ff';
+                ctx.shadowColor = '#ff00ff';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.ellipse(0, -radius * 0.15, radius * 0.32, radius * 0.12, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Nightmare Energy Cannon / Hands
+                ctx.save();
+                ctx.rotate(aim);
+                ctx.translate(radius * (0.8 + attackKick * 0.4), 0);
+                ctx.fillStyle = transformed ? '#ff007f' : '#e000ff';
+                ctx.shadowColor = '#ff007f';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * (transformed ? 0.32 : 0.22), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
             } else if (brawlerId === 'trampaheal') {
                 // Trampaheal: Emerald Spring Jumper with Trampoline Hat & Coils
                 ctx.translate(entity.x, drawY - attackKick * 4);
@@ -52546,6 +55522,233 @@ function checkHit(target, b, i){
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
+
+                ctx.restore();
+            } else if (brawlerId === 'badbat') {
+                // --- BADBAT 2.5D GOTHIC PUNK VAMPIRE BAT MODEL ---
+                ctx.translate(entity.x, drawY - attackKick * 3);
+                ctx.rotate(Math.sin(now * .006) * .03 + Math.sin(aim) * attackKick * .15);
+
+                const isHyper = entity === player ? !!isHypercharged : !!entity?.isHypercharged;
+                const breath = Math.sin(now * 0.007) * 1.5;
+
+                // 1. Purple / Hypercharge Nocturnal Swarm Aura
+                if (isHyper || superKick > 0) {
+                    ctx.save();
+                    const auraPulse = 0.75 + Math.sin(now * 0.012) * 0.25;
+                    ctx.shadowColor = isHyper ? '#f368e0' : '#c77dff';
+                    ctx.shadowBlur = 18 + auraPulse * 12;
+                    ctx.strokeStyle = isHyper ? '#e056fd' : '#9d4edd';
+                    ctx.lineWidth = 3.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius * (1.25 + superKick * 0.35), 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 2. Ground Shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.beginPath();
+                ctx.ellipse(0, radius * 0.85, radius * 0.95, radius * 0.42, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 3. Folded Leather Bat Wings on Back (bobbing subtly)
+                const wingSway = Math.sin(now * 0.008) * 0.08;
+                ctx.fillStyle = '#1e102d';
+                ctx.strokeStyle = '#5a189a';
+                ctx.lineWidth = 2;
+                // Left wing
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.5, 0);
+                ctx.quadraticCurveTo(-radius * 1.4, -radius * 0.8 + wingSway * 10, -radius * 0.3, -radius * 0.6);
+                ctx.quadraticCurveTo(-radius * 0.9, -radius * 0.1, -radius * 0.5, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                // Right wing
+                ctx.beginPath();
+                ctx.moveTo(radius * 0.5, 0);
+                ctx.quadraticCurveTo(radius * 1.4, -radius * 0.8 - wingSway * 10, radius * 0.3, -radius * 0.6);
+                ctx.quadraticCurveTo(radius * 0.9, -radius * 0.1, radius * 0.5, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // 4. Gothic Studded Leather Jacket & Torso
+                const torsoGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                torsoGrad.addColorStop(0, '#241434');
+                torsoGrad.addColorStop(0.5, '#181124');
+                torsoGrad.addColorStop(1, '#0e0716');
+                ctx.fillStyle = torsoGrad;
+                ctx.strokeStyle = isHyper ? '#e056fd' : '#7b2cbf';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(-radius * 0.72, -radius * 0.35, radius * 1.44, radius * 1.25, 7);
+                else ctx.rect(-radius * 0.72, -radius * 0.35, radius * 1.44, radius * 1.25);
+                ctx.fill();
+                ctx.stroke();
+
+                // Silver Punk Studs / Zippers on jacket
+                ctx.fillStyle = '#c77dff';
+                for (const sx of [-radius * 0.45, 0, radius * 0.45]) {
+                    ctx.beginPath();
+                    ctx.arc(sx, radius * 0.15, 2.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 5. Pointy Vampire Bat Ears
+                ctx.fillStyle = '#2e1a42';
+                ctx.strokeStyle = '#5a189a';
+                ctx.lineWidth = 2;
+                // Left ear
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.25, -radius * 0.65);
+                ctx.lineTo(-radius * 0.75, -radius * 1.35 + breath * 0.5);
+                ctx.lineTo(-radius * 0.05, -radius * 0.85);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                // Left inner ear pink
+                ctx.fillStyle = '#ff70a6';
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.22, -radius * 0.72);
+                ctx.lineTo(-radius * 0.62, -radius * 1.2 + breath * 0.5);
+                ctx.lineTo(-radius * 0.08, -radius * 0.88);
+                ctx.closePath();
+                ctx.fill();
+                // Silver hoop earring in left ear tip
+                ctx.strokeStyle = '#e0e0e0';
+                ctx.lineWidth = 1.8;
+                ctx.beginPath();
+                ctx.arc(-radius * 0.68, -radius * 1.15 + breath * 0.5, 3.2, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Right ear
+                ctx.fillStyle = '#2e1a42';
+                ctx.strokeStyle = '#5a189a';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(radius * 0.25, -radius * 0.65);
+                ctx.lineTo(radius * 0.75, -radius * 1.35 + breath * 0.5);
+                ctx.lineTo(radius * 0.05, -radius * 0.85);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                // Right inner ear pink
+                ctx.fillStyle = '#ff70a6';
+                ctx.beginPath();
+                ctx.moveTo(radius * 0.22, -radius * 0.72);
+                ctx.lineTo(radius * 0.62, -radius * 1.2 + breath * 0.5);
+                ctx.lineTo(radius * 0.08, -radius * 0.88);
+                ctx.closePath();
+                ctx.fill();
+
+                // 6. Bat Head
+                const headGrad = ctx.createRadialGradient(-radius * 0.2, -radius * 0.6, 2, 0, -radius * 0.5, radius * 0.65);
+                headGrad.addColorStop(0, '#3c185a');
+                headGrad.addColorStop(1, '#180a26');
+                ctx.fillStyle = headGrad;
+                ctx.strokeStyle = isHyper ? '#e056fd' : '#5a189a';
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.5, radius * 0.52, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // 7. Piercing Glowing Yellow Vampire Eyes
+                ctx.save();
+                ctx.shadowColor = '#ffe600';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#ffea00';
+                ctx.beginPath();
+                ctx.ellipse(-radius * 0.22, -radius * 0.52, radius * 0.13, radius * 0.09, 0, 0, Math.PI * 2);
+                ctx.ellipse(radius * 0.22, -radius * 0.52, radius * 0.13, radius * 0.09, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                // Slit pupils
+                ctx.fillStyle = '#120520';
+                ctx.beginPath();
+                ctx.ellipse(-radius * 0.22, -radius * 0.52, radius * 0.04, radius * 0.08, 0, 0, Math.PI * 2);
+                ctx.ellipse(radius * 0.22, -radius * 0.52, radius * 0.04, radius * 0.08, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 8. Snout, Vampire Fangs & Grin
+                ctx.fillStyle = '#ff70a6';
+                ctx.beginPath();
+                ctx.moveTo(-2, -radius * 0.38);
+                ctx.lineTo(2, -radius * 0.38);
+                ctx.lineTo(0, -radius * 0.33);
+                ctx.closePath();
+                ctx.fill();
+
+                // Grin
+                ctx.strokeStyle = '#ff70a6';
+                ctx.lineWidth = 1.6;
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.3, radius * 0.18, 0.2, Math.PI - 0.2);
+                ctx.stroke();
+
+                // Vampire Fangs
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.14, -radius * 0.28);
+                ctx.lineTo(-radius * 0.08, -radius * 0.16);
+                ctx.lineTo(-radius * 0.02, -radius * 0.28);
+                ctx.closePath();
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(radius * 0.02, -radius * 0.28);
+                ctx.lineTo(radius * 0.08, -radius * 0.16);
+                ctx.lineTo(radius * 0.14, -radius * 0.28);
+                ctx.closePath();
+                ctx.fill();
+
+                // 9. Wooden Baseball Bat Weapon (Rotates with aim and swings with attackKick)
+                ctx.save();
+                ctx.rotate(aim + (attackKick > 0 ? (1 - attackKick) * Math.PI * 0.5 - 0.3 : 0));
+                
+                const batLen = radius * (1.35 + attackKick * 0.35);
+                const batHandX = radius * 0.45;
+                const batHandY = radius * 0.15;
+
+                // Wooden Bat Body
+                const woodGrad = ctx.createLinearGradient(batHandX, batHandY, batHandX + batLen, batHandY);
+                woodGrad.addColorStop(0, '#b08968');
+                woodGrad.addColorStop(0.6, '#d4a373');
+                woodGrad.addColorStop(1, isHyper ? '#e056fd' : '#7f4f24');
+
+                ctx.fillStyle = woodGrad;
+                ctx.strokeStyle = '#582f0e';
+                ctx.lineWidth = 1.8;
+                ctx.beginPath();
+                // Tapered bat shape
+                ctx.moveTo(batHandX, batHandY - 2.5);
+                ctx.lineTo(batHandX + batLen * 0.4, batHandY - 3.5);
+                ctx.lineTo(batHandX + batLen, batHandY - 6.5);
+                ctx.quadraticCurveTo(batHandX + batLen + 6, batHandY, batHandX + batLen, batHandY + 6.5);
+                ctx.lineTo(batHandX + batLen * 0.4, batHandY + 3.5);
+                ctx.lineTo(batHandX, batHandY + 2.5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // White tape grip wrap near handle
+                ctx.fillStyle = '#f8f9fa';
+                ctx.strokeStyle = '#dee2e6';
+                ctx.lineWidth = 1;
+                ctx.fillRect(batHandX + 2, batHandY - 3, batLen * 0.28, 6);
+                ctx.strokeRect(batHandX + 2, batHandY - 3, batLen * 0.28, 6);
+
+                // Sonic wave ring runes on bat during attack
+                if (attackKick > 0 || isHyper) {
+                    ctx.strokeStyle = isHyper ? '#f368e0' : '#c77dff';
+                    ctx.lineWidth = 2;
+                    ctx.shadowColor = ctx.strokeStyle;
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(batHandX + batLen * 0.85, batHandY, 8 + attackKick * 6, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
 
                 ctx.restore();
             } else {
@@ -54299,7 +57502,7 @@ function checkHit(target, b, i){
           ctx.fillStyle = '#fff'; ctx.font = '1000 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('SIEGE GOLEM', 0, 59);
           ctx.restore(); ctx.textAlign = 'left';
       } else if (t.isArenaForgeMinion) {
-          if (!isWorldVisualVisible(t.x, drawY, (t.radius || 18) + 24)) return;
+          if (!isWorldVisualVisible(t.x, drawY, (t.radius || 18) + 24)) continue;
           const friendly = t.team === 'player';
           const melee = t.arenaForgeMinionKind !== 'ranged';
           const isSurge = !!t.isMinionSurgeUnit;
@@ -54361,7 +57564,8 @@ function checkHit(target, b, i){
                }
            } else {
                ctx.fillRect(-18, -22, 36, 44); ctx.fillRect(-27, -31, 54, 14);
-               ctx.fillStyle = '#ffffff'; ctx.font = '900 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('TOWER', 0, 8);
+               const towerName = t.arenaForgeTowerType === 'rail' ? 'RAIL' : (t.arenaForgeTowerType === 'prism' ? 'PRISM' : 'MORTAR');
+               ctx.fillStyle = '#ffffff'; ctx.font = '900 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(towerName, 0, 8);
                 if (t.forgeEnraged) {
                    const ragePulse = 1 + Math.sin(performance.now() / 80) * 0.1;
                    ctx.strokeStyle = '#ffcf66'; ctx.lineWidth = 4; ctx.shadowColor = '#ff8c42'; ctx.shadowBlur = 22;
@@ -55906,7 +59110,7 @@ function checkHit(target, b, i){
           ctx.restore();
       }
       if (selectedBrawler === 'orbo') {
-          const hyperMain=getPlayerHyperMainActive('orbo'),count=hyperMain?6:4,range=790*(hyperMain?2.7:1.35),amplitude=(gadgetArmed&&selectedGadget==='g1')?72:54;
+          const hyperMain=getPlayerHyperMainActive('orbo'),count=hyperMain?6:4,range=790*(hyperMain?2.7:1.35),amplitude=((gadgetArmed&&selectedGadget==='g1')?72:54)*0.65;
           ctx.save();ctx.lineWidth=2.5;ctx.lineCap='round';
           if (aimingSuper) {
               const superAngles=isHypercharged?[-0.38,0,0.38]:[0];
@@ -56391,7 +59595,7 @@ function checkHit(target, b, i){
           ctx.setLineDash([]);
 
           const count = player.magnatarOrbCount || 1;
-          const startOrbitR = count === 1 ? 0 : (count === 2 ? 40 : (count === 3 ? 48 : (count === 4 ? 56 : 64)));
+          const startOrbitR = count === 1 ? 0 : (count === 2 ? 20 : (count === 3 ? 24 : (count === 4 ? 28 : 32)));
           const maxOrbitR = count === 1 ? 0 : (count === 2 ? 128 : (count === 3 ? 160 : (count === 4 ? 190 : 224)));
           const orbitR = startOrbitR;
 
@@ -56621,6 +59825,159 @@ function checkHit(target, b, i){
           ctx.beginPath();
           ctx.arc(0, 0, aimingSuper ? 240 : DELETER_REWRITE_RANGE, -0.2, 0.2);
           ctx.stroke();
+          ctx.restore();
+      }
+      if (selectedBrawler === 'badbat' && !aimingSuper) {
+          ctx.save();
+          const isG1 = !!(player.badbatG1Active || (player.badbatG1Until || 0) > performance.now() || (gadgetArmed && selectedGadget === 'g1'));
+          const range = 440;
+          const halfAngle = isG1 ? 0.65 : 0.45;
+          const aimAng = (typeof ang !== 'undefined') ? ang : Math.atan2((wm ? wm.y : mouse.worldY) - player.y, (wm ? wm.x : mouse.worldX) - player.x);
+          const now = performance.now();
+          
+          ctx.translate(player.x, player.y);
+          ctx.rotate(aimAng);
+
+          // 1. Conical Sonic Wave Field Glow & Fill
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, range, -halfAngle, halfAngle);
+          ctx.closePath();
+          ctx.fillStyle = isHypercharged
+              ? 'rgba(224, 86, 253, 0.22)'
+              : (isG1 ? 'rgba(199, 125, 255, 0.24)' : 'rgba(157, 78, 221, 0.18)');
+          ctx.fill();
+
+          ctx.strokeStyle = isHypercharged
+              ? '#e056fd'
+              : (isG1 ? '#d946ef' : '#9d4edd');
+          ctx.lineWidth = isG1 ? 3.5 : 2.5;
+          ctx.stroke();
+
+          // 2. Concentric pulsing acoustic sonic shockwave arcs
+          const pulse = (now % 600) / 600;
+          for (let ri = 1; ri <= 4; ri++) {
+              const rDist = range * ((ri / 4 + pulse * 0.25) % 1);
+              if (rDist > 25) {
+                  ctx.strokeStyle = isHypercharged ? 'rgba(253, 244, 255, 0.70)' : 'rgba(224, 170, 255, 0.60)';
+                  ctx.lineWidth = 2.2;
+                  ctx.beginPath();
+                  ctx.arc(0, 0, rDist, -halfAngle * 0.95, halfAngle * 0.95);
+                  ctx.stroke();
+              }
+          }
+
+          // 3. Dynamic Forward Energy Chevrons along center line
+          const numChevrons = 5;
+          for (let ci = 1; ci <= numChevrons; ci++) {
+              const frac = ((ci / (numChevrons + 1) + (now * 0.0018)) % 1);
+              const cx = player.radius + 14 + (range - player.radius - 20) * frac;
+              ctx.strokeStyle = isHypercharged ? '#ffffff' : '#f3e8ff';
+              ctx.lineWidth = 2.2;
+              ctx.beginPath();
+              ctx.moveTo(cx - 8, -6);
+              ctx.lineTo(cx, 0);
+              ctx.lineTo(cx - 8, 6);
+              ctx.stroke();
+          }
+
+          // 4. Center trajectory guide line
+          ctx.strokeStyle = isHypercharged ? 'rgba(255, 255, 255, 0.85)' : 'rgba(224, 170, 255, 0.75)';
+          ctx.lineWidth = 1.8;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(player.radius + 8, 0);
+          ctx.lineTo(range, 0);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // 5. Leading Edge Sonic Barrier Arc
+          ctx.strokeStyle = isHypercharged ? '#ffffff' : '#f5d0fe';
+          ctx.lineWidth = 3.5;
+          ctx.shadowColor = isHypercharged ? '#e056fd' : '#c084fc';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(0, 0, range, -halfAngle, halfAngle);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          // 6. Aim Banner Pill & Text
+          const bannerX = range * 0.55;
+          const bannerText = isHypercharged
+              ? '⚡ NOCTURNAL SHOCKWAVE (EXPANDING CONE) ⚡'
+              : (isG1 ? '🦇 WIDE RESONATOR SHOCKWAVE (+100% WIDTH)' : '🦇 BAT SLAM SHOCKWAVE (1,400 DMG)');
+          
+          ctx.font = 'bold 10.5px sans-serif';
+          const textW = ctx.measureText(bannerText).width;
+          ctx.fillStyle = 'rgba(12, 4, 24, 0.88)';
+          ctx.beginPath();
+          ctx.roundRect(bannerX - textW / 2 - 8, -10, textW + 16, 20, 4);
+          ctx.fill();
+          ctx.strokeStyle = isHypercharged ? '#e056fd' : (isG1 ? '#d946ef' : '#9d4edd');
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(bannerText, bannerX, 0);
+
+          ctx.restore();
+      }
+      if (selectedBrawler === 'badbat' && aimingSuper) {
+          ctx.save();
+          const roamRange = 176; // 40% range tether
+          const batCount = isHypercharged ? 6 : 4;
+          const now = performance.now();
+
+          // 360-degree summon perimeter ring
+          ctx.strokeStyle = isHypercharged ? 'rgba(224, 86, 253, 0.85)' : 'rgba(157, 78, 221, 0.85)';
+          ctx.fillStyle = isHypercharged ? 'rgba(224, 86, 253, 0.16)' : 'rgba(157, 78, 221, 0.12)';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([10, 8]);
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, roamRange, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Orbiting bat spawn preview nodes
+          for (let i = 0; i < batCount; i++) {
+              const bAng = (Math.PI * 2 / batCount) * i + (now * 0.002);
+              const bx = player.x + Math.cos(bAng) * (roamRange * 0.75);
+              const by = player.y + Math.sin(bAng) * (roamRange * 0.75);
+
+              // Bat node dot & glow
+              ctx.fillStyle = isHypercharged ? '#e056fd' : '#c77dff';
+              ctx.shadowColor = ctx.fillStyle;
+              ctx.shadowBlur = 10;
+              ctx.beginPath();
+              ctx.arc(bx, by, 7, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.shadowBlur = 0;
+
+              // Node tether line to player
+              ctx.strokeStyle = isHypercharged ? 'rgba(224, 86, 253, 0.35)' : 'rgba(157, 78, 221, 0.3)';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.moveTo(player.x, player.y);
+              ctx.lineTo(bx, by);
+              ctx.stroke();
+          }
+
+          // Center banner
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(
+              isHypercharged
+                  ? '🦇 NOCTURNAL SWARM (6 ROAMING BATS + SHIELD ORBS) 🦇'
+                  : '🦇 BAT COLONY ERUPTION (ROAMING GROUND BATS · MAX 6) 🦇',
+              player.x,
+              player.y - roamRange - 16
+          );
+
           ctx.restore();
       }
       if (selectedBrawler === 'rager' && !aimingSuper) {
@@ -57740,11 +61097,19 @@ function checkHit(target, b, i){
                 center: 'rgba(255, 220, 220, 0.75)'
             });
         } else if (selectedBrawler === 'dashaholic') {
-            drawStandardAimCone(player.x, player.y, ang, 800, 0.05, {
-                fill: 'rgba(0, 255, 204, 0.16)',
-                stroke: 'rgba(130, 255, 230, 0.85)',
-                center: 'rgba(220, 255, 248, 0.75)'
-            });
+            const dashRange = 600;
+            const dashDist = Math.min(dashRange, Math.hypot(wm.x - player.x, wm.y - player.y));
+            const dashEndX = player.x + Math.cos(ang) * dashDist;
+            const dashEndY = player.y + Math.sin(ang) * dashDist;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(130,255,230,.95)';
+            ctx.fillStyle = 'rgba(0,255,204,.14)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([12,7]);
+            ctx.beginPath(); ctx.moveTo(player.x,player.y); ctx.lineTo(dashEndX,dashEndY); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.beginPath(); ctx.arc(dashEndX,dashEndY,34,0,Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.restore();
         } else if (selectedBrawler === 'amplifier') {
             const dropDist = 110;
             const zoneR = AMPLIFIER_SCREW_ZONE_RADIUS + (selectedStar === 'long' ? AMPLIFIER_SP2_RADIUS_BONUS : 0);
@@ -57921,29 +61286,41 @@ function checkHit(target, b, i){
         } else if (selectedBrawler === 'overlord') {
             const runtimeSpec = (brawlerData && brawlerData['overlord']) || {};
             const stage = player.overlordStage || 0;
+            const ovSkin = getActiveSkinForBrawler('overlord')?.id;
+            const isEmperor = ovSkin === 'emperor-overlord';
+            const isMaster = ovSkin === 'master-overlord';
             const range = getOverlordPulseRange(stage, runtimeSpec);
             const radius = stage >= 2 ? Math.round((runtimeSpec.attackRadius || 60) * 1.2) : (runtimeSpec.attackRadius || 60);
             const rawDist = Math.hypot(wm.x - player.x, wm.y - player.y);
             const dist = Math.min(range, rawDist);
             const tx = player.x + Math.cos(ang) * dist;
             const ty = player.y + Math.sin(ang) * dist;
-            ctx.strokeStyle = stage >= 2 ? 'rgba(255, 210, 120, 0.92)' : 'rgba(205, 160, 255, 0.92)';
+            const strokeCol = isEmperor
+                ? 'rgba(255, 215, 0, 0.95)'
+                : (isMaster ? 'rgba(224, 86, 253, 0.95)' : (stage >= 2 ? 'rgba(255, 210, 120, 0.92)' : 'rgba(205, 160, 255, 0.92)'));
+            const fillCol = isEmperor
+                ? 'rgba(255, 215, 0, 0.16)'
+                : (isMaster ? 'rgba(180, 50, 230, 0.16)' : (stage >= 2 ? 'rgba(255, 210, 120, 0.14)' : 'rgba(195, 150, 255, 0.16)'));
+            const ringCol = isEmperor
+                ? 'rgba(255, 235, 140, 0.98)'
+                : (isMaster ? 'rgba(240, 150, 255, 0.98)' : (stage >= 2 ? 'rgba(255, 225, 170, 0.98)' : 'rgba(235, 210, 255, 0.98)'));
+            ctx.strokeStyle = strokeCol;
             ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.moveTo(player.x, player.y);
             ctx.lineTo(tx, ty);
             ctx.stroke();
-            ctx.fillStyle = stage >= 2 ? 'rgba(255, 210, 120, 0.14)' : 'rgba(195, 150, 255, 0.16)';
+            ctx.fillStyle = fillCol;
             ctx.beginPath();
             ctx.arc(tx, ty, radius, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = stage >= 2 ? 'rgba(255, 225, 170, 0.98)' : 'rgba(235, 210, 255, 0.98)';
+            ctx.strokeStyle = ringCol;
             ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.arc(tx, ty, radius, 0, Math.PI * 2);
             ctx.stroke();
             ctx.setLineDash([8, 6]);
-            ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+            ctx.strokeStyle = isEmperor ? 'rgba(255, 215, 0, 0.45)' : (isMaster ? 'rgba(224, 86, 253, 0.45)' : 'rgba(255,255,255,0.32)');
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.arc(player.x, player.y, range, 0, Math.PI * 2);
@@ -58051,29 +61428,36 @@ function checkHit(target, b, i){
         } else if (selectedBrawler === 'overlord') {
             const runtimeSpec = (brawlerData && brawlerData['overlord']) || {};
             const stage = player.overlordStage || 0;
+            const ovSkin = getActiveSkinForBrawler('overlord')?.id;
+            const isEmperor = ovSkin === 'emperor-overlord';
+            const isMaster = ovSkin === 'master-overlord';
             const beamRange = (runtimeSpec.attackRadius || 54) * 7;
             const beamWidth = 0.12 + stage * 0.01;
+            const fillCol = isEmperor ? 'rgba(255, 215, 0, 0.22)' : (isMaster ? 'rgba(180, 50, 230, 0.22)' : (stage >= 2 ? 'rgba(255, 210, 120, 0.18)' : 'rgba(195, 150, 255, 0.18)'));
+            const strokeCol = isEmperor ? 'rgba(255, 215, 0, 0.98)' : (isMaster ? 'rgba(224, 86, 253, 0.98)' : (stage >= 2 ? 'rgba(255, 210, 120, 0.95)' : 'rgba(205, 160, 255, 0.95)'));
             ctx.save();
             ctx.lineCap = 'round';
-            ctx.fillStyle = stage >= 2 ? 'rgba(255, 210, 120, 0.18)' : 'rgba(195, 150, 255, 0.18)';
+            ctx.fillStyle = fillCol;
             ctx.beginPath();
             ctx.arc(player.x, player.y, 34 + stage * 6, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = stage >= 2 ? 'rgba(255, 210, 120, 0.95)' : 'rgba(205, 160, 255, 0.95)';
+            ctx.strokeStyle = strokeCol;
             ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.moveTo(player.x, player.y);
             ctx.arc(player.x, player.y, beamRange, ang - beamWidth, ang + beamWidth);
             ctx.closePath();
             ctx.stroke();
-            ctx.fillStyle = 'rgba(255,255,255,0.95)';
+            ctx.fillStyle = isEmperor ? '#ffd700' : (isMaster ? '#e056fd' : 'rgba(255,255,255,0.95)');
             ctx.beginPath();
             ctx.arc(player.x + Math.cos(ang) * Math.min(beamRange * 0.45, 160), player.y + Math.sin(ang) * Math.min(beamRange * 0.45, 160), 6, 0, Math.PI * 2);
             ctx.fill();
             for (let i = 0; i < 3; i++) {
                 const a = ang + (Math.PI * 2 * i) / 3;
                 ctx.beginPath();
-                ctx.fillStyle = i === 0 ? 'rgba(255, 219, 120, 0.9)' : 'rgba(245, 223, 255, 0.8)';
+                ctx.fillStyle = isEmperor
+                    ? (i === 0 ? '#ffd700' : '#8e44ad')
+                    : (isMaster ? (i === 0 ? '#e056fd' : '#9c27b0') : (i === 0 ? 'rgba(255, 219, 120, 0.9)' : 'rgba(245, 223, 255, 0.8)'));
                 ctx.arc(player.x + Math.cos(a) * 42, player.y + Math.sin(a) * 42, 7, 0, Math.PI * 2);
                 ctx.fill();
             }
@@ -58640,17 +62024,23 @@ function checkHit(target, b, i){
             }
             ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(wm.x, wm.y); ctx.stroke();
           } else if (selectedBrawler === 'dashaholic') {
-            const slashRange = 1100 * 0.6 * 0.3;
-                        drawStandardAimCone(player.x, player.y, ang, slashRange, 0.2, {
-                                fill: 'rgba(0, 255, 204, 0.1)',
-                                stroke: 'rgba(130, 255, 230, 0.7)',
-                                center: 'rgba(225, 255, 248, 0.7)'
-                        });
+            const slashRange = 1100 * 0.6 * (isHypercharged ? 0.44 : 0.3);
+            const laneHalfWidth = isHypercharged ? 44 : 34;
+            ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(ang);
+            ctx.fillStyle = isHypercharged ? 'rgba(180,70,255,.15)' : 'rgba(0,255,204,.12)';
+            ctx.strokeStyle = isHypercharged ? 'rgba(235,145,255,.95)' : 'rgba(130,255,230,.88)';
+            ctx.lineWidth = 2.5; ctx.beginPath();
+            ctx.roundRect(0, -laneHalfWidth, slashRange, laneHalfWidth * 2, 28); ctx.fill(); ctx.stroke();
             if (isHypercharged) {
-                ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.arc(player.x, player.y, slashRange, ang + Math.PI/6 - 0.15, ang + Math.PI/6 + 0.15); ctx.closePath(); ctx.fill();
-                ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.arc(player.x, player.y, slashRange, ang - Math.PI/6 - 0.15, ang - Math.PI/6 + 0.15); ctx.closePath(); ctx.fill();
+                ctx.setLineDash([11, 7]);
+                ctx.strokeStyle = 'rgba(255,211,79,.95)';
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(slashRange - 8, 0); ctx.lineTo(18, 0); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#ffd34f'; ctx.beginPath();
+                ctx.moveTo(18, 0); ctx.lineTo(34, -9); ctx.lineTo(34, 9); ctx.closePath(); ctx.fill();
             }
-            ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(wm.x, wm.y); ctx.stroke();
+            ctx.restore();
           } else if (selectedBrawler === 'hunter') {
                         drawStandardAimCone(player.x, player.y, ang, 100, 1.0, {
                                 fill: 'rgba(255, 255, 255, 0.08)',
@@ -58918,12 +62308,23 @@ function checkHit(target, b, i){
           continue;
       }
       if (pod.isRelayDevice) {
-          const owner=pod.ownerId===player.id?player:bots.find(b=>b.id===pod.ownerId), linked=owner&&Math.hypot(owner.x-pod.x,owner.y-pod.y)<=(pod.relayLinkRadius||520);
-          ctx.save();ctx.strokeStyle=linked?(pod.relayHyper?'#df77ff':'#67e8ff'):'rgba(170,180,190,.45)';ctx.lineWidth=linked?5:2;ctx.setLineDash(linked?[12,7]:[5,8]);
-          if(owner){ctx.beginPath();ctx.moveTo(owner.x,owner.y);ctx.lineTo(pod.x,pod.y);ctx.stroke();}
+          const owner=pod.ownerId===player.id?player:bots.find(b=>b.id===pod.ownerId);
+          const linkedAllies = [player, ...aliveBots].filter(e => e && e.hp > 0 && (e.id === pod.ownerId || (owner && areAlliedEntities(owner, e))) && Math.hypot(e.x-pod.x,e.y-pod.y)<=(pod.relayLinkRadius||520));
+          ctx.save();
+          for (const ally of linkedAllies) {
+              ctx.strokeStyle=pod.relayHyper?'#df77ff':'#67e8ff';
+              ctx.lineWidth=ally.id===pod.ownerId?5:3.5;
+              ctx.setLineDash([12,7]);
+              ctx.beginPath();ctx.moveTo(ally.x,ally.y);ctx.lineTo(pod.x,pod.y);ctx.stroke();
+          }
+          if (linkedAllies.length === 0 && owner) {
+              ctx.strokeStyle='rgba(170,180,190,.45)';ctx.lineWidth=2;ctx.setLineDash([5,8]);
+              ctx.beginPath();ctx.moveTo(owner.x,owner.y);ctx.lineTo(pod.x,pod.y);ctx.stroke();
+          }
+          ctx.strokeStyle=linkedAllies.length>0?(pod.relayHyper?'#df77ff':'#67e8ff'):'rgba(170,180,190,.45)';
           ctx.lineWidth=2;ctx.beginPath();ctx.arc(pod.x,pod.y,pod.relayLinkRadius||520,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
           ctx.shadowColor=pod.relayHyper?'#d96cff':'#42e7f5';ctx.shadowBlur=18;ctx.fillStyle='#102d3b';ctx.strokeStyle=pod.relayHyper?'#dc71ff':'#68f1ff';ctx.lineWidth=5;ctx.beginPath();ctx.roundRect(pod.x-30,pod.y-35,60,70,16);ctx.fill();ctx.stroke();
-          ctx.fillStyle=pod.relayHyper?'#df77ff':'#67e8ff';ctx.beginPath();ctx.arc(pod.x,pod.y,13,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(`${Math.round((pod.relayRedirectPct||.75)*100)}%`,pod.x,pod.y+3);
+          ctx.fillStyle=pod.relayHyper?'#df77ff':'#67e8ff';ctx.beginPath();ctx.arc(pod.x,pod.y,13,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(`${Math.round((pod.relayRedirectPct||.90)*100)}%`,pod.x,pod.y+3);
           const pct=Math.max(0,pod.hp/pod.maxHp),w=76,x=pod.x-w/2,y=pod.y-51;ctx.fillStyle='#08141d';ctx.beginPath();ctx.roundRect(x,y,w,9,5);ctx.fill();ctx.fillStyle=pod.relayHyper?'#d96cff':'#42ddeb';ctx.beginPath();ctx.roundRect(x,y,w*pct,9,5);ctx.fill();ctx.fillStyle='#fff';ctx.fillText(`${getSmoothDisplayedHp(pod)}/${pod.maxHp}`,pod.x,y-4);ctx.restore();continue;
       }
 
@@ -59270,13 +62671,46 @@ function checkHit(target, b, i){
     // draw continuous beams
     for (const e of [player, ...(typeof bots !== "undefined" ? bots : [])]) {
         if (e.beamActive && e.beamLines) {
+            ctx.save();
             for (const line of e.beamLines) {
-                let baseColor = line.isGolden ? '#ffd700' : (line.isHyper ? '#a800ff' : '#00ffff');
-                let innerColor = line.isGolden ? '#fffacd' : (line.isHyper ? '#e0b0ff' : '#ffffff');
+                let baseColor = '#00e5ff';
+                let innerColor = '#ffffff';
+                let outerWidth = 14 + (line.stage || 0) * 1.8;
+                let innerWidth = 5 + (line.stage || 0) * 0.8;
+
+                if (line.isReflected) {
+                    baseColor = line.reflectColor || '#86d7ff';
+                    innerColor = '#e8f7ff';
+                    outerWidth = 14;
+                    innerWidth = 5;
+                } else if (line.isRefraction) {
+                    baseColor = line.isGolden ? '#ffea75' : (line.isHyper ? '#d946ef' : '#5eead4');
+                    innerColor = '#ffffff';
+                    outerWidth = 9;
+                    innerWidth = 3.5;
+                } else if (line.isGolden) {
+                    baseColor = '#ffd700';
+                    innerColor = '#fffbe0';
+                    outerWidth = 18 + (line.stage || 0) * 1.6;
+                    innerWidth = 7 + (line.stage || 0) * 0.8;
+                } else if (line.isHyper) {
+                    baseColor = '#e03bfb';
+                    innerColor = '#fae8ff';
+                    outerWidth = 22;
+                    innerWidth = 9;
+                } else if (line.isSignature) {
+                    baseColor = '#00f5d4';
+                    innerColor = '#ccfbf1';
+                    outerWidth = 18;
+                    innerWidth = 7;
+                }
+
+                ctx.shadowColor = baseColor;
+                ctx.shadowBlur = line.isHyper ? 20 : (line.isGolden ? 16 : 10);
                 
                 ctx.beginPath();
                 ctx.strokeStyle = baseColor;
-                ctx.lineWidth = line.isHyper ? 22 : 16;
+                ctx.lineWidth = outerWidth;
                 ctx.lineCap = 'round';
                 ctx.moveTo(line.startX, line.startY);
                 ctx.lineTo(line.endX, line.endY);
@@ -59284,12 +62718,13 @@ function checkHit(target, b, i){
 
                 ctx.beginPath();
                 ctx.strokeStyle = innerColor;
-                ctx.lineWidth = line.isHyper ? 10 : 6;
+                ctx.lineWidth = innerWidth;
                 ctx.lineCap = 'round';
                 ctx.moveTo(line.startX, line.startY);
                 ctx.lineTo(line.endX, line.endY);
                 ctx.stroke();
             }
+            ctx.restore();
         }
     }
 
@@ -59544,6 +62979,67 @@ function checkHit(target, b, i){
       ctx.beginPath();ctx.moveTo(-18,0);ctx.lineTo(-7,0);ctx.moveTo(18,0);ctx.lineTo(7,0);ctx.moveTo(0,-18);ctx.lineTo(0,-7);ctx.moveTo(0,18);ctx.lineTo(0,7);ctx.stroke();ctx.restore();
     }
 
+    // BadBat Hunter marks on marked enemies
+    const nowMark = performance.now();
+    for (const marked of [player, ...bots]) {
+      if (!marked || (marked.badbatMarkedUntil || 0) <= nowMark) continue;
+      const pulse = 1 + Math.sin(nowMark / 160) * 0.12;
+      const rot = (nowMark * 0.002) % (Math.PI * 2);
+      const markY = marked.y - (marked.radius || 18) - 28;
+      ctx.save();
+      ctx.translate(marked.x, markY);
+      ctx.scale(pulse, pulse);
+
+      // Neon Bat Crosshair Aura
+      ctx.shadowColor = '#d946ef';
+      ctx.shadowBlur = 14;
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 16, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Bat wings crest inside mark
+      ctx.fillStyle = '#a855f7';
+      ctx.beginPath();
+      ctx.moveTo(-14, 0);
+      ctx.quadraticCurveTo(-10, -10, 0, -4);
+      ctx.quadraticCurveTo(10, -10, 14, 0);
+      ctx.quadraticCurveTo(6, 4, 0, 8);
+      ctx.quadraticCurveTo(-6, 4, -14, 0);
+      ctx.fill();
+
+      // Neon Bat Eyes in mark
+      ctx.fillStyle = '#fde047';
+      ctx.shadowColor = '#fde047';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(-3.5, 0, 1.8, 0, Math.PI * 2);
+      ctx.arc(3.5, 0, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Rotating reticle brackets
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#e879f9';
+      ctx.lineWidth = 1.8;
+      for (let k = 0; k < 4; k++) {
+          const ang = rot + k * (Math.PI / 2);
+          ctx.beginPath();
+          ctx.arc(0, 0, 20, ang - 0.25, ang + 0.25);
+          ctx.stroke();
+      }
+
+      // Floating skull / exclamation indicator
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f43f5e';
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 4;
+      ctx.fillText('🦇 HUNTED', 0, -14);
+
+      ctx.restore();
+    }
+
     // draw bullets 
     for (const orb of duckHealOrbs) {
       if (!isWorldVisualVisible(orb.x, orb.y, 80)) continue;
@@ -59562,6 +63058,27 @@ function checkHit(target, b, i){
           ctx.save();ctx.globalAlpha=.55;ctx.strokeStyle=`hsl(${hue} 92% 70%)`;ctx.lineWidth=1.5;
           ctx.shadowColor=`hsl(${hue} 92% 62%)`;ctx.shadowBlur=8;
           ctx.beginPath();ctx.arc(b.x,b.y,7+(Math.floor(b.towerVisualSignature)%4),0,Math.PI*2);ctx.stroke();ctx.restore();
+      }
+      if (b.isUpgradartDart) {
+          const angle = Math.atan2(b.vy, b.vx);
+          const stage = Math.max(1, Math.min(5, b.upgradartStage || 1));
+          const colors = ['#00ff88', '#28d8ff', '#8b72ff', '#d85cff', '#ffd45c'];
+          const color = b.upgradartPoison ? '#b75cff' : colors[stage - 1];
+          const size = 8 + stage * 1.2;
+          ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(angle);
+          ctx.shadowColor = color; ctx.shadowBlur = 8 + stage * 3;
+          ctx.strokeStyle = color; ctx.lineWidth = 3 + stage * .45; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(-size - 15 - stage * 3, 0); ctx.lineTo(-size * .35, 0); ctx.stroke();
+          ctx.fillStyle = b.hyperVisual ? '#eec7ff' : '#ffffff';
+          ctx.strokeStyle = color; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(size, 0); ctx.lineTo(-size * .45, -size * .55); ctx.lineTo(-size * .15, 0); ctx.lineTo(-size * .45, size * .55); ctx.closePath(); ctx.fill(); ctx.stroke();
+          for (let ring = 0; ring < Math.min(3, stage - 1); ring++) {
+              ctx.globalAlpha = .75 - ring * .16; ctx.strokeStyle = colors[Math.max(0, stage - 2 - ring)];
+              ctx.beginPath(); ctx.arc(-size - ring * 7, 0, 4 + ring * 2, 0, Math.PI * 2); ctx.stroke();
+          }
+          if (b.upgradartReturning) { ctx.globalAlpha = .85; ctx.fillStyle = '#a8ffdf'; ctx.fillRect(-3, -2, 9, 4); }
+          ctx.restore();
+          continue;
       }
       if (b.isArenaForgeBasicShot) {
           const angle = Math.atan2(b.vy, b.vx);
@@ -59718,8 +63235,8 @@ function checkHit(target, b, i){
           const angle=Math.atan2(b.vy,b.vx),hyper=!!b.hyperVisual;
           ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);
           if(b.isOrboSuper){
-              const lengthRadius = hyper ? 110 : 96;
-              const widthRadius = hyper ? 44 : 38;
+              const lengthRadius = hyper ? 126 : 142;
+              const widthRadius = hyper ? 34 : 38;
               ctx.shadowColor = hyper ? '#dc72ff' : '#8b7dff';
               ctx.shadowBlur = hyper ? 48 : 38;
 
@@ -59730,8 +63247,9 @@ function checkHit(target, b, i){
 
               const gradient = ctx.createRadialGradient(-18, 0, 6, 0, 0, lengthRadius);
               gradient.addColorStop(0, '#ffffff');
-              gradient.addColorStop(0.22, hyper ? '#e9b1ff' : '#c8c2ff');
-              gradient.addColorStop(0.65, hyper ? '#9b45dc' : '#6657d9');
+              gradient.addColorStop(0.20, hyper ? '#ffb7f2' : '#c7f7ff');
+              gradient.addColorStop(0.48, hyper ? '#cf55ff' : '#7e78ff');
+              gradient.addColorStop(0.72, hyper ? '#ff5fa2' : '#4bcfff');
               gradient.addColorStop(1, '#17113f');
               ctx.fillStyle = gradient;
               ctx.beginPath();
@@ -59743,10 +63261,22 @@ function checkHit(target, b, i){
               ctx.stroke();
 
               ctx.fillStyle = '#ffffff';
-              ctx.globalAlpha = 0.85;
+              ctx.globalAlpha = 0.88;
               ctx.beginPath();
-              ctx.ellipse(lengthRadius * 0.18, 0, lengthRadius * 0.42, widthRadius * 0.45, 0, 0, Math.PI * 2);
+              ctx.ellipse(lengthRadius * 0.24, 0, lengthRadius * 0.34, widthRadius * 0.38, 0, 0, Math.PI * 2);
               ctx.fill();
+
+              // Rotating candy bands make its speed and piercing width readable.
+              ctx.globalAlpha = 0.9;
+              ctx.strokeStyle = hyper ? '#ffd2f5' : '#bdf7ff';
+              ctx.lineWidth = 4;
+              for (let band = -2; band <= 2; band++) {
+                  const bx = band * lengthRadius * .28 + ((performance.now() / 9) % (lengthRadius * .28));
+                  ctx.beginPath();
+                  ctx.moveTo(bx - 12, -widthRadius * .72);
+                  ctx.lineTo(bx + 12, widthRadius * .72);
+                  ctx.stroke();
+              }
 
               const spin = performance.now() * 0.005;
               ctx.strokeStyle = hyper ? '#ffffff' : '#e8e5ff';
@@ -59785,12 +63315,175 @@ function checkHit(target, b, i){
           }
           ctx.restore();continue;
       }
-      if (b.isHomerProjectile) {
-          const a=Math.atan2(b.vy,b.vx),pct=clamp(b.homerHomingPct||.10,.10,1);ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);
-          ctx.shadowColor=b.hyperVisual?'#d66cff':'#66d9ff';ctx.shadowBlur=8+14*pct;ctx.fillStyle=b.homerSuperShot?(b.hyperVisual?'#cf62ff':'#54e2ff'):'#d9f8ff';
-          ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-10,-7);ctx.lineTo(-5,0);ctx.lineTo(-10,7);ctx.closePath();ctx.fill();ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.stroke();
-          ctx.strokeStyle=b.hyperVisual?'#f0b4ff':'#75e9ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-9,0);ctx.lineTo(-22-pct*12,0);ctx.stroke();ctx.restore();continue;
-      }
+       if (b.isHomerProjectile) {
+           const a = Math.atan2(b.vy, b.vx), pct = clamp(b.homerHomingPct || 0.10, 0.10, 1);
+           ctx.save();
+           ctx.translate(b.x, b.y);
+           ctx.rotate(a);
+
+           const isPumkin = b.skinId === 'pumkinomer';
+           const isGentleman = b.skinId === 'gentleman-homer';
+
+           if (isPumkin) {
+               ctx.shadowColor = b.hyperVisual ? '#ff3838' : '#ff7700';
+               ctx.shadowBlur = 10 + 16 * pct;
+
+               if (b.homerSuperShot) {
+                   // Flying Trick-or-Treat Candy Bucket / Volatile Pumpkin Bomb
+                   ctx.fillStyle = b.hyperVisual ? '#ff5252' : '#ff7700';
+                   ctx.strokeStyle = '#d35400';
+                   ctx.lineWidth = 2;
+                   ctx.beginPath();
+                   ctx.ellipse(2, 0, 13, 10, 0, 0, Math.PI * 2);
+                   ctx.fill();
+                   ctx.stroke();
+
+                   // Carved Jack-o'-Lantern Eyes & Grin
+                   ctx.fillStyle = '#ffeaa7';
+                   ctx.beginPath();
+                   ctx.moveTo(3, -4); ctx.lineTo(7, -4); ctx.lineTo(5, -1); ctx.closePath();
+                   ctx.moveTo(3, 4); ctx.lineTo(7, 4); ctx.lineTo(5, 1); ctx.closePath();
+                   ctx.moveTo(9, -3); ctx.lineTo(13, 0); ctx.lineTo(9, 3); ctx.closePath();
+                   ctx.fill();
+
+                   // Bucket Handle Arch
+                   ctx.strokeStyle = '#2c3e50';
+                   ctx.lineWidth = 1.8;
+                   ctx.beginPath();
+                   ctx.arc(0, 0, 11, Math.PI * 0.5, Math.PI * 1.5);
+                   ctx.stroke();
+
+                   // Trailing Candy Sparks
+                   const sparkColors = ['#f1c40f', '#e74c3c', '#2ecc71', '#9b59b6'];
+                   for (let i = 0; i < 4; i++) {
+                       const sx = -10 - i * 7 * pct;
+                       const sy = Math.sin(performance.now() * 0.02 + i * 1.8) * 6;
+                       ctx.fillStyle = sparkColors[i];
+                       ctx.beginPath();
+                       ctx.arc(sx, sy, 2.2, 0, Math.PI * 2);
+                       ctx.fill();
+                   }
+               } else {
+                   // Flaming Jack-o'-Lantern Missile
+                   ctx.fillStyle = b.hyperVisual ? '#ff5252' : '#ff7700';
+                   ctx.strokeStyle = '#ffeaa7';
+                   ctx.lineWidth = 1.8;
+                   ctx.beginPath();
+                   ctx.ellipse(4, 0, 11, 7.5, 0, 0, Math.PI * 2);
+                   ctx.fill();
+                   ctx.stroke();
+
+                   // Carved glowing eyes
+                   ctx.fillStyle = '#ffeaa7';
+                   ctx.beginPath();
+                   ctx.arc(7, -2.5, 1.8, 0, Math.PI * 2);
+                   ctx.arc(7, 2.5, 1.8, 0, Math.PI * 2);
+                   ctx.fill();
+
+                   // Green stem on back
+                   ctx.fillStyle = '#27ae60';
+                   ctx.fillRect(-7, -1.8, 3.5, 3.6);
+
+                   // Trailing flame plume
+                   ctx.strokeStyle = b.hyperVisual ? 'rgba(255, 50, 50, 0.85)' : 'rgba(255, 119, 0, 0.85)';
+                   ctx.lineWidth = 3.5;
+                   ctx.beginPath();
+                   ctx.moveTo(-6, 0);
+                   ctx.lineTo(-20 - pct * 14, 0);
+                   ctx.stroke();
+
+                   // Yellow hot flame core
+                   ctx.strokeStyle = '#ffeaa7';
+                   ctx.lineWidth = 1.6;
+                   ctx.beginPath();
+                   ctx.moveTo(-6, 0);
+                   ctx.lineTo(-14 - pct * 8, 0);
+                   ctx.stroke();
+               }
+           } else if (isGentleman) {
+               ctx.shadowColor = b.hyperVisual ? '#e056fd' : '#ffd700';
+               ctx.shadowBlur = 10 + 14 * pct;
+
+               if (b.homerSuperShot) {
+                   // Flying Dapper Bowler Hat & Cane Projectile
+                   ctx.fillStyle = '#1e272e';
+                   ctx.strokeStyle = '#d63031';
+                   ctx.lineWidth = 1.5;
+                   // Bowler brim & dome
+                   ctx.beginPath();
+                   ctx.ellipse(3, 0, 11, 8, 0, 0, Math.PI * 2);
+                   ctx.fill();
+                   ctx.stroke();
+                   ctx.fillStyle = '#d63031'; // Scarlet silk hatband
+                   ctx.fillRect(0, -7.5, 4, 15);
+
+                   // Silver cane ferrule
+                   ctx.fillStyle = '#ffffff';
+                   ctx.beginPath();
+                   ctx.arc(13, 0, 2.5, 0, Math.PI * 2);
+                   ctx.fill();
+
+                   // Golden Sparkle Trail
+                   ctx.strokeStyle = 'rgba(255, 215, 0, 0.75)';
+                   ctx.lineWidth = 2;
+                   ctx.beginPath();
+                   ctx.moveTo(-9, 0);
+                   ctx.lineTo(-24 - pct * 12, 0);
+                   ctx.stroke();
+               } else {
+                   // Polished Brass Pocket Watch Homing Dart
+                   ctx.fillStyle = '#f1c40f';
+                   ctx.strokeStyle = '#ffffff';
+                   ctx.lineWidth = 1.5;
+                   ctx.beginPath();
+                   ctx.arc(4, 0, 7.5, 0, Math.PI * 2);
+                   ctx.fill();
+                   ctx.stroke();
+
+                   // White clock face + needle
+                   ctx.fillStyle = '#ffffff';
+                   ctx.beginPath();
+                   ctx.arc(4, 0, 5, 0, Math.PI * 2);
+                   ctx.fill();
+                   ctx.strokeStyle = '#2d3436';
+                   ctx.lineWidth = 1.2;
+                   ctx.beginPath();
+                   ctx.moveTo(4, 0);
+                   ctx.lineTo(8, 0);
+                   ctx.stroke();
+
+                   // Tea-steam / Monocle glimmer wake
+                   ctx.strokeStyle = 'rgba(116, 185, 255, 0.8)';
+                   ctx.lineWidth = 2;
+                   ctx.beginPath();
+                   ctx.moveTo(-4, 0);
+                   ctx.lineTo(-18 - pct * 10, 0);
+                   ctx.stroke();
+               }
+           } else {
+               ctx.shadowColor = b.hyperVisual ? '#d66cff' : '#66d9ff';
+               ctx.shadowBlur = 8 + 14 * pct;
+               ctx.fillStyle = b.homerSuperShot ? (b.hyperVisual ? '#cf62ff' : '#54e2ff') : '#d9f8ff';
+               ctx.beginPath();
+               ctx.moveTo(16, 0);
+               ctx.lineTo(-10, -7);
+               ctx.lineTo(-5, 0);
+               ctx.lineTo(-10, 7);
+               ctx.closePath();
+               ctx.fill();
+               ctx.strokeStyle = '#ffffff';
+               ctx.lineWidth = 2;
+               ctx.stroke();
+               ctx.strokeStyle = b.hyperVisual ? '#f0b4ff' : '#75e9ff';
+               ctx.lineWidth = 2;
+               ctx.beginPath();
+               ctx.moveTo(-9, 0);
+               ctx.lineTo(-22 - pct * 12, 0);
+               ctx.stroke();
+           }
+           ctx.restore();
+           continue;
+       }
       if (b.isSnapperOrb) {
           ctx.save();ctx.translate(b.x,b.y);const pulse=1+Math.sin(performance.now()/500)*.025;ctx.scale(pulse,pulse);
           ctx.shadowColor=b.hyperVisual?'#d78ad0':'#76cbd5';ctx.shadowBlur=8;ctx.fillStyle=b.hyperVisual?'#a04ab0':'#267b8a';
@@ -59835,7 +63528,7 @@ function checkHit(target, b, i){
           const outer=b.hyperVisual?'#df75ff':'#67e8ff', inner=b.hyperVisual?'#fff0ff':'#e8feff';
           ctx.lineCap='round';ctx.globalAlpha=.28;ctx.strokeStyle=outer;ctx.lineWidth=8;
           ctx.beginPath();ctx.moveTo(b.x-Math.cos(angle)*34,b.y-Math.sin(angle)*34);ctx.lineTo(b.x-Math.cos(angle)*8,b.y-Math.sin(angle)*8);ctx.stroke();ctx.globalAlpha=1;
-          ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.shadowColor=outer;ctx.shadowBlur=b.hyperVisual?24:18;
+          ctx.translate(b.x,b.y);ctx.rotate(angle);ctx.scale(1.2, 1.2);ctx.shadowColor=outer;ctx.shadowBlur=b.hyperVisual?24:18;
           ctx.fillStyle=b.hyperVisual?'rgba(184,71,231,.32)':'rgba(55,210,232,.28)';ctx.beginPath();ctx.arc(0,0,15*pulse,0,Math.PI*2);ctx.fill();
           ctx.strokeStyle=outer;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(0,0,11*pulse,-.85,.85);ctx.stroke();ctx.beginPath();ctx.arc(0,0,11*pulse,Math.PI-.85,Math.PI+.85);ctx.stroke();
           ctx.fillStyle=inner;ctx.beginPath();ctx.arc(0,0,6.5*pulse,0,Math.PI*2);ctx.fill();
@@ -59913,17 +63606,17 @@ function checkHit(target, b, i){
           ctx.save();
           if (b.isArenaForgeTowerShell) {
               const pulse = 1 + Math.sin(performance.now() / 55) * 0.12;
-              ctx.shadowColor = b.skinColor || '#63f2c2';
-              ctx.shadowBlur = 18;
-              ctx.fillStyle = b.skinColor || '#63f2c2';
-              ctx.beginPath();
-              ctx.arc(b.x, b.y, 11 * pulse, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.strokeStyle = '#fff2bd';
-              ctx.lineWidth = 2.5;
-              ctx.beginPath();
-              ctx.arc(b.x, b.y, 15 * pulse, 0, Math.PI * 2);
-              ctx.stroke();
+              const type = b.arenaForgeTowerType || 'mortar';
+              const speed = Math.max(1, Math.hypot(b.vx || 0, b.vy || 0));
+              const ux = (b.vx || 0) / speed, uy = (b.vy || 0) / speed;
+              ctx.shadowColor = b.skinColor || '#63f2c2'; ctx.shadowBlur = 18;
+              if (type === 'rail') {
+                  ctx.strokeStyle = b.skinColor; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(b.x - ux * 30, b.y - uy * 30); ctx.lineTo(b.x + ux * 10, b.y + uy * 10); ctx.stroke();
+              } else if (type === 'prism') {
+                  ctx.translate(b.x, b.y); ctx.rotate(performance.now() / 120); ctx.fillStyle = b.skinColor; ctx.beginPath(); ctx.moveTo(0,-11);ctx.lineTo(10,0);ctx.lineTo(0,11);ctx.lineTo(-10,0);ctx.closePath();ctx.fill();
+              } else {
+                  ctx.fillStyle = b.skinColor || '#ff9b55'; ctx.beginPath(); ctx.arc(b.x, b.y, 12 * pulse, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle='#fff2bd';ctx.lineWidth=3;ctx.stroke();
+              }
           } else if (b.isArenaForgeCoreMinigun) {
               const speed = Math.hypot(b.vx, b.vy) || 1;
               ctx.strokeStyle = 'rgba(255,207,102,.72)';
@@ -59956,7 +63649,8 @@ function checkHit(target, b, i){
             const activeSkinId = activeSkin?.id || '';
 
             // Global hypercharge readability: every hyper attack gets a purple aura layer.
-            if (b.hyperVisual) {
+            // Crystila bullets are excluded — they have their own HC ice-blue draw block below.
+            if (b.hyperVisual && !b.isCrystilaArm && !b.isCrystilaFollow) {
                     ctx.beginPath();
                     ctx.fillStyle = 'rgba(190, 95, 255, 0.22)';
                     ctx.arc(b.x, b.y, (b.super ? 11 : 8) * (b.hitboxMod || 1), 0, Math.PI * 2);
@@ -60203,35 +63897,70 @@ function checkHit(target, b, i){
           ctx.fill();
           continue;
       } else if (b.isBoomArang || b.isBoomArangSide) {
-          const spinAngle = (performance.now() * 0.012) % (Math.PI * 2);
-          ctx.save();
-          ctx.translate(b.x, b.y);
-          ctx.rotate(spinAngle);
-          
-          ctx.strokeStyle = b.hyperVisual ? '#bc70ff' : (b.boomArangRide ? '#62ef88' : (b.super ? '#ff5500' : '#ffb300'));
-          ctx.lineWidth = b.super ? 6 : 4;
-          ctx.lineCap = 'round';
-          
-          ctx.beginPath();
-          ctx.moveTo(-16, -8);
-          ctx.lineTo(0, 8);
-          ctx.lineTo(16, -8);
-          ctx.stroke();
-          
-          ctx.fillStyle = b.super ? 'rgba(255, 120, 0, 0.8)' : 'rgba(255, 220, 0, 0.8)';
-          ctx.beginPath();
-          ctx.arc(0, 0, 5, 0, Math.PI * 2);
-          ctx.fill();
-          
-          ctx.restore();
-          
-          ctx.strokeStyle = b.super ? 'rgba(255, 85, 0, 0.35)' : 'rgba(255, 179, 0, 0.35)';
-          ctx.lineWidth = b.super ? 8 : 5;
-          ctx.beginPath();
-          ctx.moveTo(b.prevX || b.x, b.prevY || b.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-          continue;
+           const isBoneless = activeSkinId === 'boneless-boomarang' || b.skinId === 'boneless-boomarang' || b.skinEffect === 'boneBoomerang';
+           const spinAngle = (performance.now() * (isBoneless ? 0.015 : 0.012)) % (Math.PI * 2);
+           ctx.save();
+           ctx.translate(b.x, b.y);
+           ctx.rotate(spinAngle);
+           
+           if (isBoneless) {
+               ctx.shadowColor = b.super ? '#00f5d4' : (b.hyperVisual ? '#bc70ff' : '#00f5d4');
+               ctx.shadowBlur = b.super ? 18 : 10;
+               // Bone boomerang shaft
+               ctx.strokeStyle = b.hyperVisual ? '#e0b0ff' : '#f5f6fa';
+               ctx.lineWidth = b.super ? 6 : 4.5;
+               ctx.lineCap = 'round';
+               ctx.lineJoin = 'round';
+               ctx.beginPath();
+               ctx.moveTo(-16, -8);
+               ctx.quadraticCurveTo(0, 4, 0, 9);
+               ctx.quadraticCurveTo(0, 4, 16, -8);
+               ctx.stroke();
+               
+               // Bone joint condyle knobs at tips
+               ctx.fillStyle = b.hyperVisual ? '#e0b0ff' : '#f5f6fa';
+               ctx.beginPath();
+               ctx.arc(-17, -9, b.super ? 3.5 : 2.8, 0, Math.PI * 2);
+               ctx.arc(-14, -10, b.super ? 3.2 : 2.5, 0, Math.PI * 2);
+               ctx.arc(17, -9, b.super ? 3.5 : 2.8, 0, Math.PI * 2);
+               ctx.arc(14, -10, b.super ? 3.2 : 2.5, 0, Math.PI * 2);
+               ctx.fill();
+
+               // Ghostly spectral soul core at elbow
+               ctx.fillStyle = b.super ? 'rgba(0, 245, 212, 0.95)' : 'rgba(0, 245, 212, 0.75)';
+               ctx.beginPath();
+               ctx.arc(0, 4, b.super ? 6 : 4, 0, Math.PI * 2);
+               ctx.fill();
+               ctx.fillStyle = '#ffffff';
+               ctx.beginPath();
+               ctx.arc(0, 4, b.super ? 3 : 2, 0, Math.PI * 2);
+               ctx.fill();
+           } else {
+               ctx.strokeStyle = b.hyperVisual ? '#bc70ff' : (b.boomArangRide ? '#62ef88' : (b.super ? '#ff5500' : '#ffb300'));
+               ctx.lineWidth = b.super ? 6 : 4;
+               ctx.lineCap = 'round';
+               
+               ctx.beginPath();
+               ctx.moveTo(-16, -8);
+               ctx.lineTo(0, 8);
+               ctx.lineTo(16, -8);
+               ctx.stroke();
+               
+               ctx.fillStyle = b.super ? 'rgba(255, 120, 0, 0.8)' : 'rgba(255, 220, 0, 0.8)';
+               ctx.beginPath();
+               ctx.arc(0, 0, 5, 0, Math.PI * 2);
+               ctx.fill();
+           }
+           
+           ctx.restore();
+           
+           ctx.strokeStyle = isBoneless ? (b.super ? 'rgba(0, 245, 212, 0.55)' : 'rgba(0, 245, 212, 0.35)') : (b.super ? 'rgba(255, 85, 0, 0.35)' : 'rgba(255, 179, 0, 0.35)');
+           ctx.lineWidth = b.super ? 8 : 5;
+           ctx.beginPath();
+           ctx.moveTo(b.prevX || b.x, b.prevY || b.y);
+           ctx.lineTo(b.x, b.y);
+           ctx.stroke();
+           continue;
       } else if (b.isChair) {
           if ((b.skinEffect === 'lavaChair' || b.skinEffect === 'moltenSpin' || b.skinEffect === 'lavaBurst' || activeSkinId === 'molten-rock-chaird') && b.ownerBrawler === 'chaird') {
               const angle = Math.atan2(b.vy, b.vx);
@@ -60385,15 +64114,17 @@ function checkHit(target, b, i){
       if (activeSkinId === 'battle-dash' && b.ownerBrawler === 'dashaholic') {
           // VILLAIN: Neon Assassin - bright magenta neon blades (BEFORE generic isDashSlash check)
           const a = Math.atan2(b.vy, b.vx);
-          ctx.strokeStyle = b.super || b.isSuperDash ? 'rgba(255, 0, 255, 0.95)' : 'rgba(255, 0, 200, 0.8)';
-          ctx.lineWidth = b.super || b.isSuperDash ? 10 : 6;
+          const returning = !!b.dashAfterimageReturning;
+          ctx.strokeStyle = returning ? '#ffd34f' : (b.super || b.isSuperDash ? 'rgba(255, 0, 255, 0.95)' : 'rgba(255, 0, 200, 0.8)');
+          ctx.lineWidth = b.hitboxMod >= 10 ? 13 : (b.super || b.isSuperDash ? 10 : 6);
           ctx.lineCap = 'round';
           ctx.beginPath();
           // Use same radius as generic dashslash: 30 for hyper, 20 for normal
-          const radius = b.hitboxMod >= 8 ? 30 : 20;
+          const radius = b.hitboxMod >= 10 ? 38 : (b.hitboxMod >= 8 ? 30 : 20);
           ctx.arc(b.x, b.y, radius, a - 0.8, a + 0.8);
           ctx.stroke();
           // Inner neon line
+          ctx.strokeStyle = returning ? '#8affef' : ctx.strokeStyle;
           ctx.lineWidth = (b.hitboxMod >= 8 ? 10 : 6) * 0.4;
           ctx.beginPath();
           ctx.arc(b.x, b.y, radius - 12, a - 0.6, a + 0.6);
@@ -60550,27 +64281,42 @@ function checkHit(target, b, i){
           const a = Math.atan2(b.vy, b.vx);
           const bodyLen = b.isCrystilaFollow ? 20 : (34 * (b.hitboxMod || 1));
           const bodyW = b.isCrystilaFollow ? 8 : (10 * Math.max(0.7, b.hitboxMod || 1));
+          const hv = !!b.hyperVisual;
+          const defl = !!b.crystilaDeflector;
           ctx.save();
           ctx.translate(b.x, b.y);
           ctx.rotate(a);
-          ctx.fillStyle = b.isCrystilaFollow ? 'rgba(205, 245, 255, 0.95)' : 'rgba(150, 226, 255, 0.92)';
+          if (defl) {
+              ctx.shadowColor = '#ff3346';
+              ctx.shadowBlur = 12;
+              // Mutation deflector dart: red like all mutations in the game
+              ctx.fillStyle = b.isCrystilaFollow ? 'rgba(255, 105, 120, 0.98)' : 'rgba(255, 45, 65, 0.96)';
+          } else if (hv) {
+              // HC is always purple, NO glow
+              ctx.shadowBlur = 0;
+              ctx.fillStyle = b.isCrystilaFollow ? 'rgba(225, 115, 255, 0.98)' : 'rgba(205, 65, 255, 0.96)';
+          } else {
+              ctx.fillStyle = b.isCrystilaFollow ? 'rgba(205, 245, 255, 0.95)' : 'rgba(150, 226, 255, 0.92)';
+          }
           ctx.beginPath();
           ctx.moveTo(bodyLen * 0.55, 0);
           ctx.lineTo(-bodyLen * 0.45, -bodyW * 0.75);
           ctx.lineTo(-bodyLen * 0.45, bodyW * 0.75);
           ctx.closePath();
           ctx.fill();
-          ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+          ctx.strokeStyle = defl ? '#ffe2e5' : (hv ? '#ffffff' : 'rgba(255,255,255,0.9)');
           ctx.lineWidth = 2;
           ctx.stroke();
           if (b.crystilaReturnLayer && !b.crystilaReturning) {
-              ctx.strokeStyle = 'rgba(218, 149, 255, 0.8)';
+              // Spine line: purple for HC, red for deflector, normal pale-blue otherwise
+              ctx.strokeStyle = hv ? '#f0b4ff' : (defl ? '#ff6b78' : 'rgba(160, 220, 255, 0.7)');
               ctx.lineWidth = 1.8;
               ctx.beginPath();
               ctx.moveTo(-bodyLen * 0.55, 0);
               ctx.lineTo(bodyLen * 0.55, 0);
               ctx.stroke();
           }
+          ctx.shadowBlur = 0;
           ctx.restore();
           continue;
       }
@@ -60813,19 +64559,30 @@ function checkHit(target, b, i){
           ctx.beginPath(); ctx.arc(b.x, b.y, 15, 0, Math.PI*2); ctx.fill();
           continue;
       } else if (b.isDashSlash) {
-          ctx.strokeStyle = b.hyperVisual ? '#e0f' : '#00ffcc';
+          const returning = !!b.dashAfterimageReturning;
+          ctx.save();
+          ctx.shadowBlur = b.hyperVisual ? 16 : 8;
+          ctx.shadowColor = returning ? '#ffd34f' : (b.hyperVisual ? '#d841ff' : '#00ffcc');
+          ctx.strokeStyle = returning ? '#ffd34f' : (b.hyperVisual ? '#d841ff' : '#00ffcc');
           const a = Math.atan2(b.vy, b.vx);
-          ctx.lineWidth = b.hitboxMod >= 8 ? 10 : 6;
+          const slashScale = Math.max(1, Number(b.hitboxMod) || 1);
+          ctx.lineWidth = b.hitboxMod >= 10 ? 13 : (b.hitboxMod >= 8 ? 10 : 5 + slashScale);
           ctx.lineCap = 'round';
           ctx.beginPath();
-          const radius = b.hitboxMod >= 8 ? 30 : 20;
+          const radius = b.hitboxMod >= 10 ? 38 : (b.hitboxMod >= 8 ? 30 : 18 + slashScale * 6);
           ctx.arc(b.x, b.y, radius, a - 0.8, a + 0.8);
           ctx.stroke();
-          // Add an inner line to make it look like a double-claw slash
+          ctx.strokeStyle = returning ? '#8affef' : (b.hyperVisual ? '#7dfff0' : '#b7fff1');
           ctx.lineWidth = (b.hitboxMod >= 8 ? 10 : 6) * 0.4;
           ctx.beginPath();
           ctx.arc(b.x, b.y, radius - 12, a - 0.6, a + 0.6);
           ctx.stroke();
+          if (returning) {
+              ctx.globalAlpha = 0.65;
+              ctx.beginPath(); ctx.moveTo(b.x, b.y);
+              ctx.lineTo(b.x - Math.cos(a) * 34, b.y - Math.sin(a) * 34); ctx.stroke();
+          }
+          ctx.restore();
           continue;
       } else if (b.isHunterSlash) {
           ctx.strokeStyle = b.hyperVisual ? '#e0f' : '#ffffff';
@@ -61518,20 +65275,32 @@ function checkHit(target, b, i){
           if (b.outlitSuperRework) {
               const angle = Math.atan2(b.vy || 0, b.vx || 1);
               const pulse = .5 + Math.sin(performance.now() / 70) * .5;
-              const color = b.hyperVisual ? '#df5cff' : '#46ebff';
+              const isNightmare = (b.skinId === 'nightmare-outlit') || (getActiveSkinForBrawler('outlit')?.id === 'nightmare-outlit');
+              const color = isNightmare ? (b.hyperVisual ? '#ff007f' : '#e000ff') : (b.hyperVisual ? '#df5cff' : '#46ebff');
               ctx.save();
               ctx.translate(b.x, b.y);
               ctx.rotate(angle);
               ctx.globalCompositeOperation = 'lighter';
-              ctx.shadowColor = color;
-              ctx.shadowBlur = 15;
-              ctx.strokeStyle = b.hyperVisual ? 'rgba(223,92,255,.72)' : 'rgba(70,235,255,.72)';
+              ctx.shadowColor = isNightmare ? '#ff0055' : color;
+              ctx.shadowBlur = isNightmare ? 22 : 15;
+              ctx.strokeStyle = isNightmare ? 'rgba(255, 0, 127, .85)' : (b.hyperVisual ? 'rgba(223,92,255,.72)' : 'rgba(70,235,255,.72)');
               ctx.lineWidth = 5;
               ctx.beginPath(); ctx.moveTo(-30, 0); ctx.lineTo(-8, 0); ctx.stroke();
-              ctx.fillStyle = color;
-              ctx.beginPath(); ctx.ellipse(0, 0, 12 + pulse * 2, 9 + pulse, 0, 0, Math.PI * 2); ctx.fill();
-              ctx.strokeStyle = '#efffff'; ctx.lineWidth = 2;
-              ctx.beginPath(); ctx.arc(0, 0, 6 + pulse, 0, Math.PI * 2); ctx.stroke();
+              if (isNightmare) {
+                  // Nightmare demonic flame core
+                  ctx.fillStyle = '#ff0055';
+                  ctx.beginPath(); ctx.ellipse(0, 0, 14 + pulse * 2, 8 + pulse, 0, 0, Math.PI * 2); ctx.fill();
+                  // Slit demon eye pupil
+                  ctx.fillStyle = '#120024';
+                  ctx.beginPath(); ctx.ellipse(1, 0, 3, 7 + pulse, 0, 0, Math.PI * 2); ctx.fill();
+                  ctx.strokeStyle = '#ffeaa7'; ctx.lineWidth = 1.5;
+                  ctx.beginPath(); ctx.arc(0, 0, 7 + pulse, 0, Math.PI * 2); ctx.stroke();
+              } else {
+                  ctx.fillStyle = color;
+                  ctx.beginPath(); ctx.ellipse(0, 0, 12 + pulse * 2, 9 + pulse, 0, 0, Math.PI * 2); ctx.fill();
+                  ctx.strokeStyle = '#efffff'; ctx.lineWidth = 2;
+                  ctx.beginPath(); ctx.arc(0, 0, 6 + pulse, 0, Math.PI * 2); ctx.stroke();
+              }
               ctx.restore();
               continue;
           }
@@ -61544,10 +65313,27 @@ function checkHit(target, b, i){
               ctx.fillStyle='#ff3346';ctx.beginPath();ctx.arc(0,0,7+pulse*2,0,Math.PI*2);ctx.fill();
               ctx.fillStyle='#ffd7da';ctx.beginPath();ctx.arc(1,0,3.2,0,Math.PI*2);ctx.fill();ctx.restore();continue;
           }
-          // Check for Electrified Outlit skin
+          // Check for Outlit skins
           const outlitSkin = getActiveSkinForBrawler('outlit');
-          const isElectrified = outlitSkin?.id === 'electrified-outlit';
+          const isNightmare = b.skinId === 'nightmare-outlit' || outlitSkin?.id === 'nightmare-outlit';
+          const isElectrified = !isNightmare && outlitSkin?.id === 'electrified-outlit';
           
+          if (isNightmare) {
+              ctx.save();
+              ctx.shadowColor = b.outlitHyperGlow ? '#ff007f' : '#e000ff';
+              ctx.shadowBlur = 14;
+              ctx.fillStyle = b.outlitHyperGlow ? 'rgba(255, 0, 127, 0.95)' : 'rgba(224, 0, 255, 0.95)';
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, b.outlitHyperGlow ? 7 : 5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = b.outlitHyperGlow ? '#ff5599' : '#ff0055';
+              ctx.lineWidth = 2.2;
+              ctx.beginPath();
+              ctx.arc(b.x, b.y, b.outlitHyperGlow ? 12 : 9, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+              continue;
+          }
           if (isElectrified && !b.outlitHyperGlow) {
               // Electric orb effect
               ctx.fillStyle = 'rgba(0, 255, 255, 0.85)';
@@ -61763,6 +65549,11 @@ function checkHit(target, b, i){
           continue;
       }
 
+      else if (b.isLoomaNeedle) {
+          ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));const hc=!!b.hyperVisual;ctx.shadowColor=hc?'#d45cff':'#ff69cd';ctx.shadowBlur=18;
+          const trail=ctx.createLinearGradient(-34,0,18,0);trail.addColorStop(0,'rgba(255,105,205,0)');trail.addColorStop(.55,hc?'rgba(190,84,255,.7)':'rgba(255,105,205,.72)');trail.addColorStop(1,'#ffffff');ctx.fillStyle=trail;ctx.beginPath();ctx.moveTo(-34,-5);ctx.lineTo(18,-3);ctx.lineTo(30,0);ctx.lineTo(18,3);ctx.lineTo(-34,5);ctx.closePath();ctx.fill();
+          ctx.strokeStyle=hc?'#e4a1ff':'#7ef6e6';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(27,0);ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(27,0,3,0,Math.PI*2);ctx.fill();ctx.restore();continue;
+      }
       else if (b.isMagnatarOrb) {
           ctx.save();
           ctx.translate(b.x, b.y);
@@ -61908,19 +65699,70 @@ function checkHit(target, b, i){
           ctx.translate(b.x, b.y);
           const ang = Math.atan2(b.vy, b.vx);
           ctx.rotate(ang);
-          ctx.shadowColor = b.isHyper ? '#d946ef' : '#292524';
-          ctx.shadowBlur = b.isHyper ? 14 : 8;
-          ctx.fillStyle = b.isHyper ? '#7e22ce' : '#1c1917';
-          ctx.strokeStyle = b.isHyper ? '#f0abfc' : '#f59e0b';
-          ctx.lineWidth = 1.5;
+
+          const seed = (b.id ? (typeof b.id === 'string' ? b.id.charCodeAt(b.id.length - 1) : b.id) : b.x);
+          const wave = Math.sin(now * 0.035 + seed) * 2.5;
+
+          // Ambient viscous oil glow / heat shimmer
+          ctx.shadowColor = b.isHyper ? 'rgba(217, 70, 239, 0.85)' : 'rgba(245, 158, 11, 0.7)';
+          ctx.shadowBlur = b.isHyper ? 16 : 10;
+
+          // Dynamic flowing stream jet path
+          const streamGrad = ctx.createLinearGradient(-26, 0, 16, 0);
+          if (b.isHyper) {
+              streamGrad.addColorStop(0, 'rgba(88, 28, 135, 0.35)');
+              streamGrad.addColorStop(0.4, '#581c87');
+              streamGrad.addColorStop(0.75, '#7e22ce');
+              streamGrad.addColorStop(1, '#d946ef');
+          } else {
+              streamGrad.addColorStop(0, 'rgba(28, 25, 23, 0.35)');
+              streamGrad.addColorStop(0.35, '#1c1917');
+              streamGrad.addColorStop(0.75, '#292524');
+              streamGrad.addColorStop(1, '#78350f');
+          }
+
           ctx.beginPath();
-          ctx.ellipse(0, 0, 14, 7, 0, 0, Math.PI * 2);
+          ctx.moveTo(16, 0);
+          ctx.bezierCurveTo(12, 6.5 + wave * 0.4, -10, 8.5 - wave * 0.4, -24, 2);
+          ctx.lineTo(-28, 0);
+          ctx.lineTo(-24, -2);
+          ctx.bezierCurveTo(-10, -8.5 - wave * 0.4, 12, -6.5 + wave * 0.4, 16, 0);
+          ctx.closePath();
+          ctx.fillStyle = streamGrad;
           ctx.fill();
+
+          // Glossy fluid outline with subtle rim lighting
+          ctx.strokeStyle = b.isHyper ? 'rgba(240, 171, 252, 0.9)' : 'rgba(245, 158, 11, 0.85)';
+          ctx.lineWidth = 1.4;
           ctx.stroke();
-          ctx.fillStyle = b.isHyper ? '#e879f9' : '#f59e0b';
+
+          // Specular iridescent surface highlight streak
           ctx.beginPath();
-          ctx.arc(2, 0, 3, 0, Math.PI * 2);
+          ctx.moveTo(10, -1.8);
+          ctx.bezierCurveTo(4, -4.2 + wave * 0.2, -10, -4.5 - wave * 0.2, -18, -1.5);
+          ctx.strokeStyle = b.isHyper ? '#ffffff' : '#fbbf24';
+          ctx.lineWidth = 1.6;
+          ctx.lineCap = 'round';
+          ctx.stroke();
+
+          // Trailing viscous fluid droplets / wake beads behind stream
+          ctx.shadowBlur = 4;
+          ctx.beginPath();
+          ctx.arc(-34, wave * 0.75, 3.2, 0, Math.PI * 2);
+          ctx.fillStyle = b.isHyper ? '#9333ea' : '#1c1917';
           ctx.fill();
+          ctx.strokeStyle = b.isHyper ? '#f0abfc' : '#d97706';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(-42, -wave * 0.55, 2.2, 0, Math.PI * 2);
+          ctx.fillStyle = b.isHyper ? '#c084fc' : '#451a03';
+          ctx.fill();
+          ctx.strokeStyle = b.isHyper ? '#e879f9' : '#f59e0b';
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+
           ctx.restore();
           continue;
       }
@@ -62178,6 +66020,127 @@ function checkHit(target, b, i){
           }
           ctx.restore();
       }
+      else if (b.isBadBatWave) {
+          ctx.save();
+          const lifePct = clamp((b.life || 0) / Math.max(b.maxLife || 0.6, 0.001), 0, 1);
+          const alpha = Math.max(0, 1 - lifePct * 0.7);
+          ctx.globalAlpha = alpha;
+          ctx.translate(b.x, b.y);
+          const bwAng = b.ang !== undefined ? b.ang : Math.atan2(b.vy || 0, b.vx || 1);
+          ctx.rotate(bwAng);
+
+          // Dynamic radius expansion during travel (especially in hypercharge)
+          const baseR = b.radius || b.baseRadius || 28;
+          const cr = b.isHyper ? baseR * (1 + lifePct * 1.4) : (b.g1Active ? baseR * 1.15 : baseR);
+
+          // Outer sonic glow
+          ctx.shadowColor = b.isHyper ? '#e056fd' : (b.g1Active ? '#d946ef' : '#9d4edd');
+          ctx.shadowBlur = b.isHyper ? 26 : 18;
+
+          // Ground fracture crack lines radiating forward
+          ctx.strokeStyle = b.isHyper ? 'rgba(244, 114, 182, 0.6)' : 'rgba(168, 85, 247, 0.5)';
+          ctx.lineWidth = 2.2;
+          for (let fi = -2; fi <= 2; fi++) {
+              const fAng = fi * 0.22;
+              const fLen = cr * 1.1;
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.lineTo(Math.cos(fAng) * fLen * 0.5 + Math.sin(fi * 3) * 4, Math.sin(fAng) * fLen * 0.5);
+              ctx.lineTo(Math.cos(fAng) * fLen, Math.sin(fAng) * fLen);
+              ctx.stroke();
+          }
+
+          // Conical sonic wave body
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, cr, -Math.PI * 0.54, Math.PI * 0.54);
+          ctx.closePath();
+          const waveGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, cr);
+          waveGrad.addColorStop(0, b.isHyper ? 'rgba(240, 90, 255, 0.95)' : 'rgba(168, 85, 247, 0.92)');
+          waveGrad.addColorStop(0.5, b.g1Active ? 'rgba(216, 115, 255, 0.65)' : 'rgba(126, 34, 206, 0.55)');
+          waveGrad.addColorStop(1, 'rgba(46, 16, 101, 0)');
+          ctx.fillStyle = waveGrad;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Sonic pressure ripples (4 concentric vibrating arcs)
+          for (let ri = 1; ri <= 4; ri++) {
+              const rr = cr * (0.22 + ri * 0.22);
+              const rAlpha = (1 - (ri / 4) * 0.4) * (1 - lifePct * 0.3);
+              ctx.strokeStyle = b.isHyper
+                  ? `rgba(244, 114, 182, ${rAlpha})`
+                  : `rgba(216, 180, 254, ${rAlpha * 0.9})`;
+              ctx.lineWidth = Math.max(1.5, 3.2 - ri * 0.5);
+              ctx.beginPath();
+              ctx.arc(0, 0, rr, -Math.PI * 0.52, Math.PI * 0.52);
+              ctx.stroke();
+          }
+
+          // Bright leading-edge sonic barrier arc
+          ctx.strokeStyle = b.isHyper ? '#fdf4ff' : '#f3e8ff';
+          ctx.lineWidth = 2.8;
+          ctx.shadowColor = b.isHyper ? '#f0abfc' : '#c084fc';
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          ctx.arc(0, 0, cr * 0.98, -Math.PI * 0.52, Math.PI * 0.52);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          // Trailing wooden bat dust particles
+          ctx.fillStyle = b.isHyper ? 'rgba(240, 171, 252, 0.7)' : 'rgba(216, 180, 254, 0.6)';
+          for (let pi = 1; pi <= 4; pi++) {
+              const px = -pi * (cr * 0.22) - Math.sin(lifePct * 10 + pi) * 6;
+              const py = Math.sin(pi * 2.3 + lifePct * 8) * (cr * 0.35);
+              ctx.beginPath();
+              ctx.arc(px, py, 2.5 + (pi % 2), 0, Math.PI * 2);
+              ctx.fill();
+          }
+
+          // Fluttering gothic bat silhouettes along the leading wavefront
+          const batWaveAngles = [-0.34, 0, 0.34];
+          for (let bi = 0; bi < batWaveAngles.length; bi++) {
+              const bAng = batWaveAngles[bi];
+              const bx = Math.cos(bAng) * cr * 0.84;
+              const by = Math.sin(bAng) * cr * 0.84;
+              const wingFlap = Math.sin(performance.now() * 0.025 + bi * 2.1);
+
+              ctx.save();
+              ctx.translate(bx, by);
+              ctx.rotate(bAng);
+
+              // Bat silhouette body
+              ctx.fillStyle = b.isHyper ? '#2e1065' : '#180e29';
+              ctx.beginPath();
+              ctx.ellipse(0, 0, 5.5, 3.2, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Fluttering wings
+              ctx.fillStyle = b.isHyper ? '#a855f7' : '#7e22ce';
+              ctx.beginPath();
+              ctx.moveTo(-2, 0);
+              ctx.quadraticCurveTo(-6, -9 * wingFlap, -11, -4 * wingFlap);
+              ctx.quadraticCurveTo(-7, -1 * wingFlap, 0, 0);
+              ctx.fill();
+
+              ctx.beginPath();
+              ctx.moveTo(2, 0);
+              ctx.quadraticCurveTo(6, 9 * wingFlap, 11, 4 * wingFlap);
+              ctx.quadraticCurveTo(7, 1 * wingFlap, 0, 0);
+              ctx.fill();
+
+              // Glowing gothic eyes
+              ctx.fillStyle = b.isHyper ? '#ff007f' : '#ff3860';
+              ctx.beginPath();
+              ctx.arc(2.8, -1, 0.9, 0, Math.PI * 2);
+              ctx.arc(2.8, 1, 0.9, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.restore();
+          }
+
+          ctx.restore();
+          continue;
+      }
       else if (b.ownerBrawler === 'bolznstien' && b.isBolznstienBolt) {
           ctx.save();
           ctx.translate(b.x, b.y);
@@ -62185,12 +66148,13 @@ function checkHit(target, b, i){
           ctx.rotate(ang);
           const isHc = !!b.hyperVisual;
           const sz = (b.hitboxMod || 1);
+          const isHeadless = b.skinId === 'headless-bolznstien';
 
-          ctx.shadowColor = isHc ? '#e056fd' : '#00f5d4';
+          ctx.shadowColor = isHc ? '#e056fd' : (isHeadless ? '#2ecc71' : '#00f5d4');
           ctx.shadowBlur = isHc ? 24 : 16;
 
           // Trailing electric wake behind the projectile
-          ctx.strokeStyle = isHc ? 'rgba(224, 86, 253, 0.75)' : 'rgba(0, 245, 212, 0.75)';
+          ctx.strokeStyle = isHc ? 'rgba(224, 86, 253, 0.75)' : (isHeadless ? 'rgba(255, 119, 0, 0.75)' : 'rgba(0, 245, 212, 0.75)');
           ctx.lineWidth = 2.5 * sz;
           ctx.beginPath();
           ctx.moveTo(0, 0);
@@ -62203,7 +66167,7 @@ function checkHit(target, b, i){
           ctx.stroke();
 
           // Electric jagged lightning bolt core
-          ctx.strokeStyle = isHc ? '#f368e0' : '#00cec9';
+          ctx.strokeStyle = isHc ? '#f368e0' : (isHeadless ? '#2ecc71' : '#00cec9');
           ctx.lineWidth = 5 * sz;
           ctx.beginPath();
           ctx.moveTo(-24 * sz, 0);
@@ -62230,7 +66194,7 @@ function checkHit(target, b, i){
           ctx.arc(24 * sz, 0, 5 * sz, 0, Math.PI * 2);
           ctx.fill();
 
-          ctx.strokeStyle = isHc ? '#f368e0' : '#00f5d4';
+          ctx.strokeStyle = isHc ? '#f368e0' : (isHeadless ? '#ff7700' : '#00f5d4');
           ctx.lineWidth = 2 * sz;
           ctx.beginPath();
           ctx.moveTo(24 * sz, -7 * sz); ctx.lineTo(24 * sz, 7 * sz);
@@ -63195,25 +67159,33 @@ function checkHit(target, b, i){
         if (!s || !isWorldVisualVisible(s.x, s.y, s.radius + 60)) continue;
         const remaining = Math.max(0, s.triggerAt - performance.now());
         const progress = 1 - (remaining / 800); // 0 -> 1 as 0.8s elapses
+        const isHeadless = s.skinId === 'headless-bolznstien';
         ctx.save();
-        ctx.shadowColor = s.isHyper ? '#e056fd' : '#00f5d4';
+        ctx.shadowColor = s.isHyper ? '#e056fd' : (isHeadless ? '#ff7700' : '#00f5d4');
         ctx.shadowBlur = 14;
-        ctx.strokeStyle = s.isHyper ? 'rgba(224, 86, 253, 0.85)' : 'rgba(0, 245, 212, 0.85)';
+        ctx.strokeStyle = s.isHyper ? 'rgba(224, 86, 253, 0.85)' : (isHeadless ? 'rgba(255, 119, 0, 0.92)' : 'rgba(0, 245, 212, 0.85)');
         ctx.lineWidth = 2.5;
         // Outer warning ring
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
         ctx.stroke();
-        // Inner converging electric ring
+        // Inner converging ring
         ctx.lineWidth = 1.5;
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = isHeadless ? '#2ecc71' : '#ffffff';
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.radius * Math.max(0.1, 1 - progress), 0, Math.PI * 2);
         ctx.stroke();
-        // Electric rune crosshair
+        // Crosshair / pumpkin marker
         ctx.beginPath();
-        ctx.moveTo(s.x - 12, s.y); ctx.lineTo(s.x + 12, s.y);
-        ctx.moveTo(s.x, s.y - 12); ctx.lineTo(s.x + 12, s.y);
+        if (isHeadless) {
+            ctx.strokeStyle = '#ff9f43';
+            ctx.arc(s.x, s.y, 9, 0, Math.PI * 2);
+            ctx.moveTo(s.x - 3, s.y - 2); ctx.lineTo(s.x - 1, s.y + 1); ctx.lineTo(s.x - 5, s.y + 1);
+            ctx.moveTo(s.x + 3, s.y - 2); ctx.lineTo(s.x + 5, s.y + 1); ctx.lineTo(s.x + 1, s.y + 1);
+        } else {
+            ctx.moveTo(s.x - 12, s.y); ctx.lineTo(s.x + 12, s.y);
+            ctx.moveTo(s.x, s.y - 12); ctx.lineTo(s.x + 12, s.y);
+        }
         ctx.stroke();
         ctx.restore();
     }
@@ -63272,14 +67244,32 @@ function checkHit(target, b, i){
     // Render Bolznstien G2 Shock Trails
     for (const tr of bolznstienShockTrails) {
         if (!tr || !isWorldVisualVisible(tr.x, tr.y, 60)) continue;
+        const isHeadless = tr.skinId === 'headless-bolznstien' || (!tr.skinId && getActiveSkinForBrawler('bolznstien')?.id === 'headless-bolznstien');
         ctx.save();
-        ctx.fillStyle = 'rgba(0, 245, 212, 0.22)';
-        ctx.strokeStyle = 'rgba(0, 245, 212, 0.65)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(tr.x, tr.y, 24, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        if (isHeadless) {
+            ctx.shadowColor = '#ff7700';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = 'rgba(255, 119, 0, 0.22)';
+            ctx.strokeStyle = 'rgba(46, 204, 113, 0.88)';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.arc(tr.x, tr.y, 24, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            // Spectral pumpkin ember sparks
+            ctx.fillStyle = '#2ecc71';
+            ctx.beginPath();
+            ctx.arc(tr.x + Math.sin(performance.now() * 0.005) * 8, tr.y + Math.cos(performance.now() * 0.005) * 8, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.fillStyle = 'rgba(0, 245, 212, 0.22)';
+            ctx.strokeStyle = 'rgba(0, 245, 212, 0.65)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(tr.x, tr.y, 24, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
         ctx.restore();
     }
 
@@ -63298,15 +67288,17 @@ function checkHit(target, b, i){
         // 6 electric chains (+40% hands and spread)
         const offsets = [-0.38, -0.23, -0.08, 0.08, 0.23, 0.38];
 
+        const entSkinId = ent.skinId || (ent.id === player.id ? getActiveSkinForBrawler('bolznstien')?.id : null);
+        const isHeadless = entSkinId === 'headless-bolznstien';
         ctx.save();
-        ctx.shadowColor = isHyper ? '#e056fd' : '#00f5d4';
-        ctx.shadowBlur = isHyper ? 26 : 18;
+        ctx.shadowColor = isHyper ? '#e056fd' : (isHeadless ? '#ff7700' : '#00f5d4');
+        ctx.shadowBlur = isHyper ? 26 : (isHeadless ? 22 : 18);
 
         for (let c = 0; c < 6; c++) {
             const chainAng = aimAng + offsets[c];
             const steps = 9;
             const stepLen = range / steps;
-            ctx.strokeStyle = isHyper ? '#f368e0' : '#00cec9';
+            ctx.strokeStyle = isHyper ? '#f368e0' : (isHeadless ? (c % 2 === 0 ? '#2ecc71' : '#ff9f43') : '#00cec9');
             ctx.lineWidth = isHyper ? 4.5 : 3.2;
             ctx.beginPath();
             ctx.moveTo(ent.x, ent.y);
@@ -63325,13 +67317,13 @@ function checkHit(target, b, i){
             }
             ctx.stroke();
 
-            // Inner white-hot core
-            ctx.strokeStyle = '#ffffff';
+            // Inner core
+            ctx.strokeStyle = isHeadless ? '#fff3cd' : '#ffffff';
             ctx.lineWidth = 1.8;
             ctx.stroke();
 
-            // Electric hand grasping fingers at tips (+40% size)
-            ctx.strokeStyle = isHyper ? '#f368e0' : '#81ecec';
+            // Hand grasping fingers at tips (+40% size)
+            ctx.strokeStyle = isHyper ? '#f368e0' : (isHeadless ? '#ff7700' : '#81ecec');
             ctx.lineWidth = 2.6;
             ctx.beginPath();
             const fingerOffsets = [-0.42, -0.14, 0.14, 0.42];
@@ -63370,10 +67362,11 @@ function checkHit(target, b, i){
     // Render Bolznstien Super Chain Lightning Arcs
     for (const ca of bolznstienChainArcs) {
         if (!ca) continue;
+        const isHeadless = ca.skinId === 'headless-bolznstien' || (!ca.skinId && getActiveSkinForBrawler('bolznstien')?.id === 'headless-bolznstien');
         ctx.save();
-        ctx.shadowColor = ca.isHyper ? '#e056fd' : '#00f5d4';
-        ctx.shadowBlur = 18;
-        ctx.strokeStyle = ca.isHyper ? '#f368e0' : '#00cec9';
+        ctx.shadowColor = ca.isHyper ? '#e056fd' : (isHeadless ? '#ff7700' : '#00f5d4');
+        ctx.shadowBlur = isHeadless ? 22 : 18;
+        ctx.strokeStyle = ca.isHyper ? '#f368e0' : (isHeadless ? '#2ecc71' : '#00cec9');
         ctx.lineWidth = 3.8;
         ctx.beginPath();
         ctx.moveTo(ca.x1, ca.y1);
@@ -63389,11 +67382,14 @@ function checkHit(target, b, i){
             ctx.lineTo(px, py);
         }
         ctx.stroke();
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = isHeadless ? '#ffeaa7' : '#ffffff';
         ctx.lineWidth = 1.6;
         ctx.stroke();
         ctx.restore();
     }
+
+    renderBadBatSwarm(ctx);
+    renderLoomaEffects(ctx);
 
     // Modern structural walls. These replace the old flat OG rectangles visually.
     for(const c of cubes){
@@ -63422,12 +67418,25 @@ function checkHit(target, b, i){
             ctx.beginPath();ctx.arc(dw.x+dw.w/2,dw.y+dw.h/2,Math.min(dw.w,dw.h)*.22,0,Math.PI*2);ctx.stroke();
             ctx.fillStyle=`rgba(255,255,255,${.32*pulse})`;ctx.beginPath();ctx.arc(dw.x+dw.w/2,dw.y+dw.h/2,Math.min(dw.w,dw.h)*.11,0,Math.PI*2);ctx.fill();
             ctx.restore();
+        } else if(dw.isPowerBox && dw.powerBoxType) {
+            const spec = POWER_BOX_TYPES[dw.powerBoxType] || POWER_BOX_TYPES.standard;
+            const pulse = dw.powerBoxType === 'nova' ? 0.45 + Math.sin(performance.now() / 190) * 0.12 : 0;
+            ctx.save();
+            ctx.shadowColor = spec.edge;
+            ctx.shadowBlur = dw.powerBoxType === 'nova' ? 12 : 4;
+            ctx.fillStyle = spec.color;
+            ctx.strokeStyle = spec.edge;
+            ctx.lineWidth = dw.powerBoxType === 'nova' ? 3 : 2;
+            ctx.beginPath(); ctx.roundRect(dw.x, dw.y, dw.w, dw.h, 7); ctx.fill(); ctx.stroke();
+            ctx.globalAlpha = 0.18 + pulse;
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(dw.x + 5, dw.y + 5, Math.max(4, dw.w - 10), 6);
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 17px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(spec.icon, dw.x + dw.w / 2, dw.y + dw.h / 2 + 6); ctx.textAlign = 'left';
+            ctx.restore();
         } else if(dw.isNovaBox) {
-            const pulse = 0.55 + Math.sin(performance.now() / 170) * 0.18;
-            ctx.fillStyle = `rgba(24, 184, 226, ${pulse + 0.25})`; ctx.fillRect(dw.x, dw.y, dw.w, dw.h);
+            ctx.fillStyle = '#18b8e2'; ctx.fillRect(dw.x, dw.y, dw.w, dw.h);
             ctx.strokeStyle = '#a8f7ff'; ctx.lineWidth = 3; ctx.strokeRect(dw.x, dw.y, dw.w, dw.h);
-            ctx.fillStyle = '#efffff'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText('N', dw.x + dw.w / 2, dw.y + dw.h / 2 + 6); ctx.textAlign = 'left';
         } else if(dw.isPurpleBox) {
             ctx.fillStyle = '#8a2be2'; ctx.fillRect(dw.x, dw.y, dw.w, dw.h);
             ctx.strokeStyle = '#5a1b92'; ctx.lineWidth = 2; ctx.strokeRect(dw.x, dw.y, dw.w, dw.h);
@@ -63478,11 +67487,12 @@ function checkHit(target, b, i){
         const length = Math.hypot(dx, dy) || 1;
         const nx = -dy / length;
         const ny = dx / length;
+        const isNightmare = chain.skinId === 'nightmare-outlit' || (!chain.skinId && getActiveSkinForBrawler('outlit')?.id === 'nightmare-outlit');
         ctx.save();
         ctx.globalAlpha = fade;
-        ctx.strokeStyle = chain.hyper ? '#df5cff' : '#46ebff';
-        ctx.shadowColor = ctx.strokeStyle;
-        ctx.shadowBlur = 13;
+        ctx.strokeStyle = isNightmare ? (chain.hyper ? '#ff007f' : '#e000ff') : (chain.hyper ? '#df5cff' : '#46ebff');
+        ctx.shadowColor = isNightmare ? '#ff0055' : ctx.strokeStyle;
+        ctx.shadowBlur = isNightmare ? 18 : 13;
         ctx.lineWidth = Math.max(2, 5 - chain.step * .55);
         ctx.beginPath();
         ctx.moveTo(chain.x1, chain.y1);
@@ -63493,6 +67503,11 @@ function checkHit(target, b, i){
         }
         ctx.lineTo(chain.x2, chain.y2);
         ctx.stroke();
+        if (isNightmare) {
+            ctx.strokeStyle = '#ffeaa7';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+        }
         ctx.restore();
     }
 
@@ -63549,6 +67564,25 @@ function checkHit(target, b, i){
             ctx.beginPath();
             ctx.arc(0, 0, 3, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
+        } else if (p.kind === 'charged_core' || p.kind === 'vitality_core') {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            const charged = p.kind === 'charged_core';
+            const pulse = 1 + Math.sin(performance.now() / 145 + p.x * .01) * .1;
+            ctx.scale(pulse, pulse);
+            ctx.rotate((performance.now() / (charged ? 520 : 900)) % (Math.PI * 2));
+            ctx.shadowColor = charged ? '#b86cff' : '#57ffac';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = charged ? '#7d45e8' : '#21a86b';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, -12); ctx.lineTo(11, 0); ctx.lineTo(0, 12); ctx.lineTo(-11, 0); ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            ctx.rotate(-((performance.now() / (charged ? 520 : 900)) % (Math.PI * 2)));
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(charged ? '⚡' : '+', 0, 4);
             ctx.restore();
         } else if (p.kind === 'nova_core') {
             ctx.save();
@@ -63993,6 +68027,34 @@ function checkHit(target, b, i){
         }
     }
 
+    for (const entity of [player, ...aliveBots]) {
+        if (!entity || entity.hp <= 0) continue;
+        const ccUntil = entity.id === player.id ? (entity.dashaholicCcShieldUntil || 0) : 0;
+        if (ccUntil <= performance.now()) continue;
+        const pulse = 0.5 + Math.sin(performance.now() / 85) * 0.5;
+        ctx.save();
+        ctx.translate(entity.x, entity.y - (entity.z || 0));
+        ctx.rotate(performance.now() / 480);
+        ctx.strokeStyle = `rgba(255, 221, 92, ${0.68 + pulse * 0.28})`;
+        ctx.lineWidth = 4;
+        ctx.setLineDash([10, 6]);
+        ctx.beginPath();
+        ctx.arc(0, 0, (entity.radius || 16) + 17 + pulse * 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(95,255,229,.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; const x = Math.cos(a) * 30; const y = Math.sin(a) * 30; if (!i) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+        ctx.closePath(); ctx.stroke(); ctx.restore();
+    }
+    if (player.hp > 0 && performance.now() < (player.dashaholicHealingAuraUntil || 0)) {
+        const auraPulse = 0.5 + Math.sin(performance.now() / 130) * 0.5;
+        ctx.fillStyle = `rgba(91,255,171,${0.08 + auraPulse * 0.07})`;
+        ctx.strokeStyle = `rgba(91,255,171,${0.55 + auraPulse * 0.35})`;
+        ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(player.x, player.y, 180, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+
     for (const owner of [player, ...aliveBots]) {
         const ownerBrawler = owner && owner.id === player.id ? selectedBrawler : owner?.brawler;
         if (!owner || ownerBrawler !== 'heater_miser') continue;
@@ -64343,8 +68405,9 @@ function checkHit(target, b, i){
             const lifeFrac = ex.life / Math.max(0.01, ex.maxLife || 0.38);
             const alpha = Math.max(0, 1 - lifeFrac);
             const isHc = !!ex.isHyper;
-            const coreColor = isHc ? '#f368e0' : '#00f5d4';
-            const auraColor = isHc ? 'rgba(224, 86, 253, ' : 'rgba(0, 245, 212, ';
+            const isHeadless = ex.skinId === 'headless-bolznstien';
+            const coreColor = isHc ? '#f368e0' : (isHeadless ? '#2ecc71' : '#00f5d4');
+            const auraColor = isHc ? 'rgba(224, 86, 253, ' : (isHeadless ? 'rgba(46, 204, 113, ' : 'rgba(0, 245, 212, ');
 
             ctx.save();
             ctx.shadowColor = coreColor;
@@ -64406,6 +68469,22 @@ function checkHit(target, b, i){
             ctx.beginPath();
             ctx.arc(ex.x, ex.y, currentR * 0.55, 0, Math.PI * 2);
             ctx.fill();
+
+            if (isHeadless) {
+                // Jack-o'-Lantern silhouette in center flare
+                ctx.fillStyle = `rgba(18, 12, 5, ${0.85 * alpha})`;
+                const eyeR = Math.max(3, currentR * 0.12);
+                ctx.beginPath();
+                ctx.arc(ex.x - eyeR * 1.5, ex.y - eyeR * 0.5, eyeR, 0, Math.PI * 2);
+                ctx.arc(ex.x + eyeR * 1.5, ex.y - eyeR * 0.5, eyeR, 0, Math.PI * 2);
+                ctx.fill();
+                // Jack mouth
+                ctx.strokeStyle = `rgba(18, 12, 5, ${0.85 * alpha})`;
+                ctx.lineWidth = Math.max(2, eyeR * 0.6);
+                ctx.beginPath();
+                ctx.arc(ex.x, ex.y + eyeR * 0.6, eyeR * 1.8, 0.2, Math.PI - 0.2);
+                ctx.stroke();
+            }
 
             ctx.restore();
             continue;
@@ -64572,6 +68651,66 @@ function checkHit(target, b, i){
             ctx.restore();
             continue;
         }
+        if (ex.fxKind === 'outlitWallArc' || ex.fxKind === 'outlitSuperImpact') {
+            const isNightmare = ex.skinId === 'nightmare-outlit' || (getActiveSkinForBrawler('outlit')?.id === 'nightmare-outlit');
+            const progress = clamp(ex.life / Math.max(0.01, ex.maxLife || 0.22), 0, 1);
+            const burstScale = 0.4 + (1 - Math.pow(1 - progress, 2)) * 0.85;
+            ctx.save();
+            ctx.translate(ex.x, ex.y);
+            ctx.globalAlpha = alpha;
+            if (isNightmare) {
+                // Nightmare demonic flame shockwave
+                ctx.shadowColor = '#ff0055';
+                ctx.shadowBlur = 18;
+                // Outer jagged demonic flame ring
+                ctx.strokeStyle = `rgba(255, 0, 127, ${alpha * 0.95})`;
+                ctx.lineWidth = 4.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, ex.radius * burstScale, 0, Math.PI * 2);
+                ctx.stroke();
+                // Inner demonic violet ring
+                ctx.strokeStyle = `rgba(224, 0, 255, ${alpha * 0.85})`;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, ex.radius * burstScale * 0.65, 0, Math.PI * 2);
+                ctx.stroke();
+                // Slit demonic eye core
+                ctx.fillStyle = `rgba(255, 0, 85, ${alpha * 0.85})`;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, ex.radius * 0.35 * (1 - progress * 0.3), ex.radius * 0.2 * (1 - progress * 0.3), 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = `rgba(18, 0, 36, ${alpha * 0.95})`;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, ex.radius * 0.08, ex.radius * 0.22 * (1 - progress * 0.3), 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Demonic spark rays
+                const sparkCount = 6;
+                ctx.strokeStyle = `rgba(255, 234, 167, ${alpha * 0.75})`;
+                ctx.lineWidth = 2;
+                for (let i = 0; i < sparkCount; i++) {
+                    const spAng = (i / sparkCount) * Math.PI * 2 + (performance.now() * 0.008);
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(spAng) * (ex.radius * burstScale * 0.4), Math.sin(spAng) * (ex.radius * burstScale * 0.4));
+                    ctx.lineTo(Math.cos(spAng) * (ex.radius * burstScale * 1.15), Math.sin(spAng) * (ex.radius * burstScale * 1.15));
+                    ctx.stroke();
+                }
+            } else {
+                // High-tech electric/cyan pulse
+                ctx.shadowColor = ex.color || '#46ebff';
+                ctx.shadowBlur = 14;
+                ctx.strokeStyle = ex.color || 'rgba(70, 235, 255, 0.9)';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, ex.radius * burstScale, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+                ctx.beginPath();
+                ctx.arc(0, 0, ex.radius * burstScale * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+            continue;
+        }
         if (ex.color) {
             const isLegendary = !!ex.legendary || ex.radius > 45;
             if (isLegendary) {
@@ -64704,6 +68843,356 @@ function checkHit(target, b, i){
                     ctx.fillStyle = `rgba(255, 236, 178, ${alpha * 0.45})`;
                     ctx.beginPath();
                     ctx.arc(0, 0, ex.radius * 0.22, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                    continue;
+                }
+
+                if (ex.skinId === 'emperor-overlord' || (kind === 'overlord' && ex.skinId === 'emperor-overlord')) {
+                    ctx.save();
+                    ctx.translate(ex.x, ex.y);
+                    const rot = (performance.now() / 480);
+                    ctx.rotate(rot);
+
+                    // 1. Radiant Imperial Sunburst Rings
+                    const ringScale = 0.85 + alpha * 0.55;
+                    ctx.shadowColor = '#ffd700';
+                    ctx.shadowBlur = 22;
+
+                    // Heavy Golden Crown Ring
+                    ctx.strokeStyle = `rgba(255, 215, 0, ${alpha * 0.95})`;
+                    ctx.lineWidth = 5.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * ringScale, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Inner Amethyst Regalia Ring
+                    ctx.strokeStyle = `rgba(155, 89, 182, ${alpha * 0.85})`;
+                    ctx.lineWidth = 3.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * (ringScale - 0.22), 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Innermost Pale Gold Ring
+                    ctx.strokeStyle = `rgba(255, 243, 176, ${alpha * 0.75})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * (ringScale - 0.42), 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 2. Imperial Sunbeam Spikes & Runes (12 radial rays)
+                    const rayCount = 12;
+                    for (let i = 0; i < rayCount; i++) {
+                        const rayAngle = (i / rayCount) * Math.PI * 2;
+                        const isMajor = i % 3 === 0;
+                        const innerR = ex.radius * 0.25;
+                        const outerR = ex.radius * (ringScale + (isMajor ? 0.35 : 0.15));
+                        ctx.strokeStyle = isMajor ? `rgba(255, 235, 120, ${alpha * 0.95})` : `rgba(218, 165, 32, ${alpha * 0.75})`;
+                        ctx.lineWidth = isMajor ? 4 : 2;
+                        ctx.beginPath();
+                        ctx.moveTo(Math.cos(rayAngle) * innerR, Math.sin(rayAngle) * innerR);
+                        ctx.lineTo(Math.cos(rayAngle) * outerR, Math.sin(rayAngle) * outerR);
+                        ctx.stroke();
+
+                        // Imperial Rune Diamond Motifs on major rays
+                        if (isMajor) {
+                            const dmR = ex.radius * (ringScale + 0.18);
+                            const dx = Math.cos(rayAngle) * dmR;
+                            const dy = Math.sin(rayAngle) * dmR;
+                            ctx.fillStyle = '#ffd700';
+                            ctx.beginPath();
+                            ctx.moveTo(dx, dy - 5);
+                            ctx.lineTo(dx + 5, dy);
+                            ctx.lineTo(dx, dy + 5);
+                            ctx.lineTo(dx - 5, dy);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    }
+
+                    // 3. Central Amethyst Core
+                    const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, ex.radius * 0.32);
+                    coreGrad.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.95})`);
+                    coreGrad.addColorStop(0.4, `rgba(186, 104, 200, ${alpha * 0.85})`);
+                    coreGrad.addColorStop(0.8, `rgba(106, 27, 154, ${alpha * 0.7})`);
+                    coreGrad.addColorStop(1, `rgba(74, 20, 140, 0)`);
+                    ctx.fillStyle = coreGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * 0.32, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Central Imperial Crown Crest (in takedown, death or large pulses)
+                    if (kind === 'takedown' || kind === 'death' || ex.radius >= 65) {
+                        ctx.fillStyle = `rgba(255, 223, 0, ${alpha * 0.9})`;
+                        ctx.beginPath();
+                        const cw = ex.radius * 0.26;
+                        const ch = ex.radius * 0.18;
+                        ctx.moveTo(-cw, ch);
+                        ctx.lineTo(-cw, -ch * 0.4);
+                        ctx.lineTo(-cw * 0.5, 0);
+                        ctx.lineTo(0, -ch);
+                        ctx.lineTo(cw * 0.5, 0);
+                        ctx.lineTo(cw, -ch * 0.4);
+                        ctx.lineTo(cw, ch);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#5a3d00';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                    continue;
+                }
+
+                if (ex.skinId === 'master-overlord' || (kind === 'overlord' && ex.skinId === 'master-overlord')) {
+                    ctx.save();
+                    ctx.translate(ex.x, ex.y);
+                    const rot = -(performance.now() / 420);
+                    ctx.rotate(rot);
+
+                    // 1. Psionic Void Singularity & Nebula Aura
+                    const ringScale = 0.88 + alpha * 0.58;
+                    ctx.shadowColor = '#e056fd';
+                    ctx.shadowBlur = 24;
+
+                    // Deep void black hole center
+                    ctx.fillStyle = `rgba(13, 2, 26, ${alpha * 0.85})`;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * 0.45, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Outer Psionic Violet Wave
+                    ctx.strokeStyle = `rgba(224, 86, 253, ${alpha * 0.95})`;
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * ringScale, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Inner Dark Nebula Ring
+                    ctx.strokeStyle = `rgba(168, 85, 247, ${alpha * 0.82})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * (ringScale - 0.2), 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Deep Magenta Distortion Ring
+                    ctx.strokeStyle = `rgba(217, 70, 239, ${alpha * 0.72})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * (ringScale - 0.38), 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 2. Rotating Psionic Void Needle Spikes (8 spikes)
+                    const spikeCount = 8;
+                    for (let s = 0; s < spikeCount; s++) {
+                        const sAng = (s / spikeCount) * Math.PI * 2;
+                        const sLen = ex.radius * (ringScale + 0.28);
+                        ctx.strokeStyle = s % 2 === 0 ? `rgba(240, 171, 252, ${alpha * 0.9})` : `rgba(192, 132, 252, ${alpha * 0.75})`;
+                        ctx.lineWidth = s % 2 === 0 ? 3.5 : 2;
+                        ctx.beginPath();
+                        ctx.moveTo(Math.cos(sAng) * (ex.radius * 0.2), Math.sin(sAng) * (ex.radius * 0.2));
+                        ctx.lineTo(Math.cos(sAng) * sLen, Math.sin(sAng) * sLen);
+                        ctx.stroke();
+
+                        // Psionic spark mote
+                        const moteR = ex.radius * (ringScale + 0.12);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(Math.cos(sAng + 0.15) * moteR, Math.sin(sAng + 0.15) * moteR, 2.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // 3. Central Glowing Psionic Eye
+                    ctx.fillStyle = `rgba(243, 104, 224, ${alpha * 0.9})`;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * 0.18, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                    continue;
+                }
+
+                if (kind === 'overlord') {
+                    ctx.save();
+                    ctx.translate(ex.x, ex.y);
+                    const rot = (performance.now() / 550);
+                    ctx.rotate(rot);
+
+                    const ringScale = 0.9 + alpha * 0.5;
+                    ctx.shadowColor = '#caa0ff';
+                    ctx.shadowBlur = 18;
+
+                    // Cosmic Lavender Wave
+                    ctx.strokeStyle = `rgba(202, 160, 255, ${alpha * 0.95})`;
+                    ctx.lineWidth = 4.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * ringScale, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Inner purple ring
+                    ctx.strokeStyle = `rgba(155, 89, 182, ${alpha * 0.8})`;
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * (ringScale - 0.25), 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 3 Orbiting Celestial Satellite Orbs
+                    for (let i = 0; i < 3; i++) {
+                        const oAng = (i / 3) * Math.PI * 2 + rot * 2;
+                        const oDist = ex.radius * (ringScale - 0.1);
+                        ctx.fillStyle = '#f7d7ff';
+                        ctx.beginPath();
+                        ctx.arc(Math.cos(oAng) * oDist, Math.sin(oAng) * oDist, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // Soft nebula center
+                    ctx.fillStyle = `rgba(239, 224, 255, ${alpha * 0.5})`;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * 0.28, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                    continue;
+                }
+
+                if (ex.skinId === 'nightmare-outlit') {
+                    ctx.save();
+                    ctx.translate(ex.x, ex.y);
+                    const rot = (performance.now() / 400);
+                    ctx.rotate(rot);
+
+                    const ringScale = 0.9 + alpha * 0.55;
+                    ctx.shadowColor = '#ff0055';
+                    ctx.shadowBlur = 24;
+
+                    // 1. Demonic Hellfire Crimson Ring
+                    ctx.strokeStyle = `rgba(255, 0, 127, ${alpha * 0.95})`;
+                    ctx.lineWidth = 5.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * ringScale, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Inner Corrupted Magenta Flame Ring
+                    ctx.strokeStyle = `rgba(224, 0, 255, ${alpha * 0.85})`;
+                    ctx.lineWidth = 3.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * (ringScale - 0.2), 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 2. Demonic Horn / Flame Spikes (8 radiating jagged teeth)
+                    const spikeCount = 8;
+                    for (let s = 0; s < spikeCount; s++) {
+                        const sAng = (s / spikeCount) * Math.PI * 2;
+                        const sLen = ex.radius * (ringScale + (s % 2 === 0 ? 0.32 : 0.16));
+                        ctx.strokeStyle = s % 2 === 0 ? `rgba(255, 85, 153, ${alpha * 0.9})` : `rgba(255, 0, 85, ${alpha * 0.75})`;
+                        ctx.lineWidth = s % 2 === 0 ? 4 : 2;
+                        ctx.beginPath();
+                        ctx.moveTo(Math.cos(sAng) * (ex.radius * 0.25), Math.sin(sAng) * (ex.radius * 0.25));
+                        ctx.lineTo(Math.cos(sAng) * sLen, Math.sin(sAng) * sLen);
+                        ctx.stroke();
+                    }
+
+                    // 3. Central Demonic Slit Eye Core
+                    ctx.fillStyle = `rgba(255, 0, 85, ${alpha * 0.9})`;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, ex.radius * 0.35, ex.radius * 0.22, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = `rgba(255, 234, 167, ${alpha * 0.85})`;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Vertical Slit Corrupted Pupil
+                    ctx.fillStyle = `rgba(18, 0, 36, ${alpha * 0.98})`;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, ex.radius * 0.08, ex.radius * 0.22, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                    continue;
+                }
+
+                if (ex.skinId === 'headless-bolznstien') {
+                    ctx.save();
+                    ctx.translate(ex.x, ex.y);
+                    const rot = (performance.now() / 460) * (kind === 'takedown' ? -1 : 1);
+                    ctx.rotate(rot);
+
+                    const ringScale = 0.92 + alpha * 0.58;
+                    ctx.shadowColor = '#2ecc71';
+                    ctx.shadowBlur = 24;
+
+                    // 1. Alternating Spectral Ecto-Green & Pumpkin Orange Rings
+                    ctx.strokeStyle = `rgba(46, 204, 113, ${alpha * 0.95})`;
+                    ctx.lineWidth = 5.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * ringScale, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = `rgba(255, 119, 0, ${alpha * 0.85})`;
+                    ctx.lineWidth = 3.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ex.radius * (ringScale - 0.22), 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 2. Radiating Electric Lightning Teeth & Ghostly Tendrils
+                    const spokeCount = 10;
+                    for (let s = 0; s < spokeCount; s++) {
+                        const sAng = (s / spokeCount) * Math.PI * 2;
+                        const sLen = ex.radius * (ringScale + (s % 2 === 0 ? 0.3 : 0.15));
+                        ctx.strokeStyle = s % 2 === 0 ? `rgba(255, 159, 67, ${alpha * 0.9})` : `rgba(46, 204, 113, ${alpha * 0.8})`;
+                        ctx.lineWidth = s % 2 === 0 ? 3.5 : 2;
+                        ctx.beginPath();
+                        ctx.moveTo(Math.cos(sAng) * (ex.radius * 0.25), Math.sin(sAng) * (ex.radius * 0.25));
+                        ctx.lineTo(Math.cos(sAng) * sLen, Math.sin(sAng) * sLen);
+                        ctx.stroke();
+                    }
+
+                    // 3. Central Carved Glowing Jack-o'-Lantern Face
+                    const faceR = ex.radius * 0.32;
+                    ctx.fillStyle = `rgba(255, 119, 0, ${alpha * 0.9})`;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, faceR, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = `rgba(46, 204, 113, ${alpha * 0.85})`;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Carved Dark Silhouette Eyes & Mouth
+                    ctx.fillStyle = `rgba(18, 12, 5, ${alpha * 0.95})`;
+                    // Left eye triangle
+                    ctx.beginPath();
+                    ctx.moveTo(-faceR * 0.45, -faceR * 0.25);
+                    ctx.lineTo(-faceR * 0.2, -faceR * 0.25);
+                    ctx.lineTo(-faceR * 0.325, -faceR * 0.55);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Right eye triangle
+                    ctx.beginPath();
+                    ctx.moveTo(faceR * 0.2, -faceR * 0.25);
+                    ctx.lineTo(faceR * 0.45, -faceR * 0.25);
+                    ctx.lineTo(faceR * 0.325, -faceR * 0.55);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Jagged toothy mouth
+                    ctx.beginPath();
+                    ctx.moveTo(-faceR * 0.55, faceR * 0.15);
+                    ctx.lineTo(-faceR * 0.35, faceR * 0.45);
+                    ctx.lineTo(-faceR * 0.18, faceR * 0.2);
+                    ctx.lineTo(0, faceR * 0.5);
+                    ctx.lineTo(faceR * 0.18, faceR * 0.2);
+                    ctx.lineTo(faceR * 0.35, faceR * 0.45);
+                    ctx.lineTo(faceR * 0.55, faceR * 0.15);
+                    ctx.lineTo(faceR * 0.35, faceR * 0.3);
+                    ctx.lineTo(0, faceR * 0.35);
+                    ctx.lineTo(-faceR * 0.35, faceR * 0.3);
+                    ctx.closePath();
                     ctx.fill();
 
                     ctx.restore();
@@ -64952,7 +69441,7 @@ function checkHit(target, b, i){
         ctx.save();
         ctx.textAlign = 'center';
         if (prepLeft > 0) {
-            ctx.fillText(`Arena Forge 3v3 | PREPARE ${prepLeft}s`, innerWidth / 2, 48);
+            ctx.fillText(`Arena Forge 2.0 | PREPARE ${prepLeft}s`, innerWidth / 2, 48);
             const panelW = Math.min(560, innerWidth - 32);
             const panelH = 168;
             const panelX = (innerWidth - panelW) / 2;
@@ -64973,7 +69462,7 @@ function checkHit(target, b, i){
             ctx.fillText('2. BREAK BOTH GUARD TOWERS', innerWidth / 2, panelY + 108);
             ctx.fillText('3. DESTROY THE EXPOSED CORE', innerWidth / 2, panelY + 138);
         } else {
-            const title = arenaForgeOvertime ? 'OVERTIME' : 'Arena Forge 3v3';
+            const title = arenaForgeOvertime ? 'OVERTIME' : 'Arena Forge 2.0 • TRIPLE TOWER WAR';
             const timer = `${Math.floor(phaseLeft / 60)}:${String(Math.ceil(phaseLeft % 60)).padStart(2, '0')}`;
             const extras = arenaForgeOvertime ? 'MEGA SURGE' : `Wave ${arenaForgeWaveNumber + 1} ${waveLeft}s | Breach ${breachLeft}s | Boon ${boonLeft}s`;
             ctx.fillText(`${title} | ${timer} | Energy ${arenaForgeSoulBank.player || 0}-${arenaForgeSoulBank.enemy || 0} | ${extras}`, innerWidth / 2, 48);
@@ -65531,7 +70020,9 @@ function checkHit(target, b, i){
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(bx-6, by-6, barW+12, barH+12);
     ctx.fillStyle = '#223a47'; ctx.fillRect(bx, by, barW, barH);
     ctx.fillStyle = '#f4a261'; ctx.fillRect(bx, by, barW * (superCharge/100), barH);
-    ctx.fillStyle = '#cfeef7'; ctx.font = '12px sans-serif'; ctx.fillText('POWER MOVE', bx, by-10);
+    const hudSuperUses = selectedBrawler === 'dashaholic' ? getBrawlerSuperCharges(player) : 0;
+    const hudSuperLabel = selectedBrawler === 'dashaholic' ? `POWER MOVE · ${hudSuperUses}/2 USES` : 'POWER MOVE';
+    ctx.fillStyle = '#cfeef7'; ctx.font = selectedBrawler === 'dashaholic' ? 'bold 12px sans-serif' : '12px sans-serif'; ctx.fillText(hudSuperLabel, bx, by-10);
 
     // hypercharge bar
     const hy = by - 36;
@@ -65545,6 +70036,19 @@ function checkHit(target, b, i){
     // Keeping it beside Super/Hyper avoids collisions with health, ammo,
     // Power Level, status chips and world-space aim indicators.
     drawPlayerMechanicHud(bx, hy - 36, barW, barH);
+    if (selectedBrawler === 'dashaholic' && isSpecialAbilityAvailableForEntity(player, 'dashaholic')) {
+        const sy = hy - 36;
+        const signatureState = getDashaholicSignatureState(player);
+        const cooldownLeft = Math.max(0, (player.dashaholicSignatureCooldownUntil || 0) - performance.now());
+        const cooldownPct = cooldownLeft > 0 ? 1 - cooldownLeft / DASHAHOLIC_SIGNATURE_COOLDOWN_MS : 1;
+        const armed = !!player.dashaholicSignatureArmed;
+        ctx.fillStyle = 'rgba(0,0,0,.52)'; ctx.fillRect(bx-6,sy-6,barW+12,barH+12);
+        ctx.fillStyle = '#3a3216'; ctx.fillRect(bx,sy,barW,barH);
+        ctx.fillStyle = armed ? '#fff09a' : '#ffd34f'; ctx.fillRect(bx,sy,barW * (armed ? 1 : cooldownPct),barH);
+        ctx.strokeStyle = armed ? '#ffffff' : 'rgba(255,225,105,.86)'; ctx.strokeRect(bx,sy,barW,barH);
+        ctx.fillStyle = '#fff4b8'; ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(`SIGNATURE (R) · ${signatureState.label}`,bx,sy-10);
+    }
     drawBlinkEyePiPScreen(ctx);
 
     if (selectedBrawler === 'goonbob') {
@@ -65789,6 +70293,8 @@ function checkHit(target, b, i){
         ctx.textAlign = 'left';
     }
 
+    renderHypeChainHud();
+
     if ((isRankedMatch || isCustomMutatorMatch) && !gameOver) renderRankedModifierHUD(ctx);
 
     if(gameOver){
@@ -66010,13 +70516,20 @@ function checkHit(target, b, i){
             if (isTowerTroubleMode) {
                 ensureSlopSushiState();
                 const sushi = playerData.slopSushi;
-                const gauntlet=towerTroubleVariant==='gauntlet';
-                const run = gauntlet?sushi.gauntletRun:sushi.run;
-                const floor = Math.max(1, Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:TOWER_TROUBLE_FLOORS, run.floor || 1));
+                const gauntlet=towerTroubleVariant==='gauntlet',chaos=towerTroubleVariant==='chaos';
+                const run = gauntlet?sushi.gauntletRun:(chaos?sushi.chaosRun:sushi.run);
+                const floor = Math.max(1, Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:(chaos?CHAOS_CROWN_FLOORS:TOWER_TROUBLE_FLOORS), run.floor || 1));
                 const originalBrawler=run.originalBrawler||'outlit';
                 sushi.eventStats.matches += 1;
                 sushi.eventStats.powersPicked += slopSushiActiveCards.length;
-                if(gauntlet){
+                if(chaos){
+                    won=rankNum<=15;const rule=getChaosCrownRule(floor);run.cards=[];run.brawler=null;
+                    if(won){sushi.eventStats.wins+=1;playerData.coins=(playerData.coins||0)+rule.reward;run.coinsEarned=(run.coinsEarned||0)+rule.reward;sushi.tappers=(sushi.tappers||0)+1;sushi.towerDrops=sushi.tappers;
+                        if(floor>=CHAOS_CROWN_FLOORS){const bon=ensureProfileProgressionState().bon;if(!bon.unlockedTitles.includes('chaos_climber'))bon.unlockedTitles.push('chaos_climber');awardSeasonPassXp(400);sushi.tappers+=3;sushi.towerDrops=sushi.tappers;matchText='CHAOS CROWN CONQUERED!';rankText=`+${rule.reward} Coins • +4 Tower Drops • CHAOS CLIMBER TITLE • ${run.coinsEarned} run coins • +400 Pass XP`;sushi.chaosRun={active:false,variant:'chaos',floor:1,roster:[],losses:0,cards:[],coinsEarned:0,originalBrawler};}
+                        else{run.floor=floor+1;run.stage=floor+1;run.active=true;awardSeasonPassXp(30+floor*8);matchText=`CHAOS FLOOR ${floor} CLEARED!`;rankText=`+${rule.reward} Coins • +1 Tower Drop • Next mystery guest unlocked • ${run.losses}/3 strikes`;}}
+                    else{run.losses=(run.losses||0)+1;if(run.losses>=3){matchText=`CHAOS CROWN ENDED ON FLOOR ${floor}`;rankText='Three strikes used • Start again for a new random roster';sushi.chaosRun={active:false,variant:'chaos',floor:1,roster:[],losses:0,cards:[],coinsEarned:0,originalBrawler};}else{run.active=true;matchText=`STRIKE ${run.losses}/3 ON CHAOS FLOOR ${floor}`;rankText=`Retry with the same mystery guest • ${3-run.losses} strikes remain`;}}
+                    showdownMode='chaos_crown';
+                }else if(gauntlet){
                     // Showdown floors intentionally accept top 15; objective
                     // floors keep the native mode's win condition.
                     won=isTowerShowdownMode(showdownMode)?rankNum<=15:won;
@@ -73786,6 +78299,11 @@ function renderBouncinBossEvent(phase) {
     get deployMagnatarBeacon() { return deployMagnatarBeacon; },
     get executeMagnatarG1() { return executeMagnatarG1; },
     get executeMagnatarG2() { return executeMagnatarG2; },
+    get oilMakerBarrels() { return oilMakerBarrels; },
+    get oilMakerPuddles() { return oilMakerPuddles; },
+    get castOilMakerSuper() { return castOilMakerSuper; },
+    get executeOilMakerG1() { return executeOilMakerG1; },
+    get executeOilMakerG2() { return executeOilMakerG2; },
     get bolznstienPendingStrikes() { return bolznstienPendingStrikes; },
     get bolznstienChainArcs() { return bolznstienChainArcs; },
     get destructibleWalls() { return destructibleWalls; },

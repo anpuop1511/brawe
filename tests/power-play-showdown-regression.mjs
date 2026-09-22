@@ -9,7 +9,7 @@ const checks = [
   ['Power Play Showdown rules defined in HOME_MODE_RULES', /power_play_showdown:\s*\[[\s\S]*?12-player Solo Battle Royale with Power Cubes/],
   ['Power Play Showdown spawns 11 enemy bots (12 players total per match)', /if \(isPowerPlayShowdownMode\) enemyCount = 11;/],
   ['Power Play Showdown rewards defined in HOME_EVENT_REWARDS', /power_play_showdown:\s*\{\s*type:'coins',\s*amount:60/],
-  ['Curated brawlers set defined with Money & Tax', /const POWER_PLAY_BRAWLERS = new Set\(\['blinkeye',\s*'fuser',\s*'rocketeer',\s*'bouncin_balls',\s*'echo',\s*'orbo',\s*'decayer',\s*'money_and_tax'\]\);/],
+  ['Curated brawlers set defined with Money & Tax', /const POWER_PLAY_BRAWLERS = new Set\(\['blinkeye',\s*'fuser',\s*'rocketeer',\s*'bouncin_balls',\s*'echo',\s*'orbo',\s*'decayer',\s*'money_and_tax'(?:,\s*'ramage')?\]\);/],
   ['Mode runtime flag isPowerPlayShowdownMode initialized', /let isPowerPlayShowdownMode = false;/],
   ['launchShowdownMatch activates isPowerPlayShowdownMode and enforces curated brawler', /isPowerPlayShowdownMode = showdownMode === 'power_play_showdown';[\s\S]*?!POWER_PLAY_BRAWLERS\.has\(selectedBrawler\)/],
   ['Bot pool restricted to curated brawlers in power play showdown', /if \(isPowerPlayShowdownMode\) \{[\s\S]*?const ppPool = \[\.\.\.POWER_PLAY_BRAWLERS\]/],

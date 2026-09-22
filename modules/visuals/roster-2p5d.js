@@ -37,7 +37,10 @@
   const skins = {
     'fightn-spice':['firekeeper','#b63753','#ffbd79'],
     'astral-portalo':['astronaut','#e8ecfa','#7a9cff'],
-    'neon-jacktrade':['dealer','#47377a','#74ffda']
+    'neon-jacktrade':['dealer','#47377a','#74ffda'],
+    'abyss-trapper':['diver','#071d3a','#42f5d7'],
+    'reactor-decayer':['hazmat','#27382f','#a8ff3e'],
+    'prism-seraph-angel':['seraph','#fff2b8','#79e9ff']
   };
   // Every fighter owns a visual identity assembled from kit-specific geometry.
   // The four fields are head feature, held weapon/prop, chest mark and build.
@@ -174,6 +177,21 @@
     if(type==='magnet'){poly([[19,17],[31,17],[31,30],[24,30]],'#ff6378');poly([[69,17],[81,17],[76,30],[69,30]],accent);}
     if(type==='hourglass'){poly([[28,8],[72,8],[56,24],[71,31],[29,31],[44,24]],accent);}
     if(type==='dealer'){poly([[75,55],[91,51],[95,73],[79,77]],'#eefbff');poly([[84,56],[88,64],[85,71],[81,64]],accent);}
+    if(type==='diver'){
+      rect(18,27,64,26,'#04111f');list.push(['ring',50,40,25,15,accent,4]);
+      poly([[8,61],[25,52],[34,69],[24,85],[7,77]],coat);poly([[92,61],[75,52],[66,69],[76,85],[93,77]],coat);
+      for(const x of [13,87]){poly([[x-7,61],[x,53],[x+7,61],[x,69]],accent);}
+    }
+    if(type==='hazmat'){
+      poly([[20,51],[24,19],[38,5],[62,5],[76,19],[80,51],[67,29],[50,22],[33,29]],'#16231c');
+      rect(26,31,48,17,'#08120c');rect(31,35,38,7,accent);
+      list.push(['ring',50,69,12,12,accent,3]);for(let i=0;i<3;i++){const a=-Math.PI/2+i*Math.PI*2/3;poly([[50+Math.cos(a)*4,69+Math.sin(a)*4],[50+Math.cos(a-.38)*12,69+Math.sin(a-.38)*12],[50+Math.cos(a+.38)*12,69+Math.sin(a+.38)*12]],accent);}
+    }
+    if(type==='seraph'){
+      list.push(['ring',50,10,27,7,accent,4]);
+      poly([[25,49],[4,31],[12,57],[2,72],[30,67]],'#d9fbff');poly([[75,49],[96,31],[88,57],[98,72],[70,67]],'#d9fbff');
+      poly([[50,2],[57,17],[50,28],[43,17]],'#ffffff');list.push(['ring',50,67,10,15,accent,3]);
+    }
     addPersonalGeometry(list,id,accent,coat);
     return list;
   }

@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
@@ -27,7 +27,12 @@ const expectedBlueprintIds = [
     'chain_reaction',
     'phase_stride',
     'executioner_lens',
-    'nanite_injector'
+    'nanite_injector',
+    'supercharger_core',
+    'frostfire_catalyst',
+    'titan_breaker',
+    'chrono_disruption',
+    'voltaic_overcharge'
 ];
 
 for (const id of expectedBlueprintIds) {
@@ -41,7 +46,7 @@ assert.match(game, /function updateArenaForgeBlueprintCombatantEffects\(/, 'upda
 assert.match(game, /function handleArenaForgeCombatHit\(/, 'handleArenaForgeCombatHit helper is present');
 
 // 3. Verify level threshold blueprint offerings
-assert.match(game, /ARENA_FORGE_BLUEPRINT_LEVELS\s*=\s*\[2,\s*4,\s*6,\s*8,\s*10,\s*12\]/, 'Blueprint milestone levels are [2, 4, 6, 8, 10, 12]');
+assert.match(game, /ARENA_FORGE_BLUEPRINT_LEVELS\s*=\s*\[2,\s*4,\s*6,\s*8,\s*10,\s*12,\s*14,\s*16,\s*18,\s*20\]/, 'Blueprint milestone levels are [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]');
 assert.match(game, /queueArenaForgeBlueprint\(entity,\s*entity\.arenaForgeBonusLevel\)/, 'Blueprint draft triggers on level up');
 
 // 4. Verify HUD Blueprint display
@@ -53,5 +58,10 @@ assert.match(game, /arenaForgePhaseStride/, 'Phase Drive triggers on Super cast'
 assert.match(game, /arenaForgeFlamePuddles/, 'Napalm Munitions / Scorched Earth flames are active');
 assert.match(game, /arenaForgeBountyMagnet/, 'Flux Magnet energy heal bonus is active');
 assert.match(game, /arenaForgeBeaconUntil/, 'Warlord Aura damage and speed are active');
+assert.match(game, /arenaForgeTitanBreaker/, 'Titan Breaker blueprint modifier is integrated');
+assert.match(game, /arenaForgeChronoDisruption/, 'Chrono Disruption blueprint modifier is integrated');
+assert.match(game, /arenaForgeFrostfire/, 'Frostfire Catalyst blueprint modifier is integrated');
+assert.match(game, /arenaForgeVoltaicOvercharge/, 'Voltaic Overcharge blueprint modifier is integrated');
+assert.match(game, /arenaForgeSupercharger/, 'Supercharger Core blueprint modifier is integrated');
 
 console.log('All Arena Forge Blueprints regression checks passed successfully!');

@@ -11,13 +11,19 @@ assert.match(game, /CUSTOM_BRAWLER_PORTRAITS[\s\S]{0,100}'upgradart'/, 'Upgradar
 assert.match(game, /playerData\.unlockedBrawlers\.rocketeer = true/, 'Rocketeer is unlocked by default along with Outlit and Fuser');
 
 // 2. Stages and Progress
-assert.match(game, /const UPGRADART_STAGE_THRESHOLDS = Object\.freeze\(\[[\s\S]{0,350}18000[\s\S]{0,100}22500[\s\S]{0,100}29000[\s\S]{0,100}38000/, 'Thresholds match specifications (18k, 22.5k, 29k, 38k)');
+assert.match(game, /const UPGRADART_STAGE_THRESHOLDS = Object\.freeze\(\[[\s\S]{0,350}12000[\s\S]{0,100}17000[\s\S]{0,100}23000[\s\S]{0,100}30000/, 'Buffed thresholds match 12k, 17k, 23k, and 30k');
 assert.match(game, /function getUpgradartStage\(totalDmg\)/, 'getUpgradartStage calculates active stage');
 assert.match(game, /function getUpgradartProgress\(totalDmg\)/, 'getUpgradartProgress calculates progress pct and labels');
 assert.match(game, /function recordUpgradartDamage\(entity, dmg\)/, 'recordUpgradartDamage increments progress and announces level ups');
 
 // 3. Main Attack firing
 assert.match(game, /\} else if \(brawler === 'upgradart'\) \{[\s\S]{0,1500}diagAngleOffset[\s\S]{0,500}centerCount/, 'Main attack implements stage-based dart counts and diagonal offsets');
+assert.match(game, /const baseDamage = stage === 1 \? 960 : 320/, 'Stage 1 dart damage is buffed by 200% to 960');
+assert.match(game, /const diagAngleOffset = 0\.14/, 'Diagonal dart spread is reduced by 50%');
+assert.match(game, /upgradartStage:\s*stage/, 'Darts carry their stage for custom visuals');
+assert.match(game, /if \(b\.isUpgradartDart\)[\s\S]{0,500}const colors = \['#00ff88', '#28d8ff', '#8b72ff', '#d85cff', '#ffd45c'\]/, 'Each stage has distinct dart visuals');
+assert.match(game, /damage:\s*dartDamage,[\s\S]{0,80}pierce:\s*hyper/, 'Hypercharge main attack darts pierce');
+assert.match(game, /hitboxMod:\s*1\.8/, 'Main attack dart size is increased by 80%');
 assert.match(game, /if \(hyper && isSuperActive\) \{[\s\S]{0,200}centerCount \+= 1;[\s\S]{0,100}leftCount \+= 1;[\s\S]{0,100}rightCount \+= 1;/, 'Core Surge adds +1 dart to every direction during Super');
 
 // 4. Super / Power Move

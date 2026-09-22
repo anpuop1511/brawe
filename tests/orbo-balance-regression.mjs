@@ -19,8 +19,9 @@ test('Orbo Super features animated charging windup state and update loop', () =>
   assert.match(gameCode, /updateOrboStates\(dt\)/);
 });
 
-test('Orbo Super has +30% hitbox size scaling (hitboxMod 14.87)', () => {
-  assert.match(gameCode, /hitboxMod:\s*14\.87/);
+test('Orbo Cosmic Candy Cannon uses its tuned normal and Hyper widths', () => {
+  assert.match(gameCode, /hitboxMod:\s*hyper\s*\?\s*11\.8\s*:\s*12\.6/);
+  assert.match(gameCode, /orboCandyRay:\s*true/);
 });
 
 test('Orbo Hypercharge Super has wider separated cone spread ([-0.38, 0, 0.38])', () => {
@@ -28,10 +29,17 @@ test('Orbo Hypercharge Super has wider separated cone spread ([-0.38, 0, 0.38])'
   assert.match(gameCode, /const superAngles=isHypercharged\?\[-0\.38,0,0\.38\]:\[0\]/);
 });
 
-test('Orbo Super rendering draws elongated ellipse (longer length 96/110 vs narrower width 38/44)', () => {
-  assert.match(gameCode, /const lengthRadius\s*=\s*hyper\s*\?\s*110\s*:\s*96/);
-  assert.match(gameCode, /const widthRadius\s*=\s*hyper\s*\?\s*44\s*:\s*38/);
+test('Orbo Super rendering draws a long narrow cosmic candy bolt', () => {
+  assert.match(gameCode, /const lengthRadius\s*=\s*hyper\s*\?\s*126\s*:\s*142/);
+  assert.match(gameCode, /const widthRadius\s*=\s*hyper\s*\?\s*34\s*:\s*38/);
   assert.match(gameCode, /ctx\.ellipse\(0,\s*0,\s*lengthRadius,\s*widthRadius,\s*0,\s*0,\s*Math\.PI\s*\*\s*2\)/);
+});
+
+test('Cosmic Candy Cannon is a fast, map-wide, wall-piercing power shot', () => {
+  assert.match(gameCode, /const speed = 1480/);
+  assert.match(gameCode, /damage:\s*owner\.id === player\.id \? \(hyper \? 2600 : 3700\)/);
+  assert.match(gameCode, /pierce:\s*true,[\s\S]{0,80}pierceWalls:\s*!isPowerPlay/);
+  assert.match(gameCode, /super:'Cosmic Candy Cannon'/);
 });
 
 test('Orbo Super windup draws cosmic orbital collapsing rings and glowing core', () => {

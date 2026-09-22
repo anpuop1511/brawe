@@ -32,7 +32,7 @@ if (legacyCanvas) legacyCanvas.style.display = 'block';
 if (hud) hud.style.display = 'none';
 if (homeScreen) homeScreen.style.display = '';
 
-const RELEASE_TOKEN = '20260917-forge-surge-repairs1';
+const RELEASE_TOKEN = '20260921-dash-hyper3';
 
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {

@@ -4,9 +4,8 @@ import assert from 'node:assert/strict';
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
 const checks = [
-  // 1. Ranked Rotation & Removal of arena_forge
-  ['arena_forge removed from RANKED_TEAM_MODE_POOL', !/RANKED_TEAM_MODE_POOL\s*=\s*\[[^\]]*'arena_forge'/.test(game)],
-  ['RANKED_TEAM_MODE_POOL includes brawe_ball and knockout_3v3', /RANKED_TEAM_MODE_POOL\s*=\s*\[[\s\S]*?'brawe_ball'[\s\S]*?'knockout_3v3'[\s\S]*?\]/],
+  // 1. Ranked Rotation: knock_donate, arena_forge, and brick_vault
+  ['RANKED_TEAM_MODE_POOL includes knock_donate, arena_forge, and brick_vault', /RANKED_TEAM_MODE_POOL\s*=\s*\[[^\]]*'knock_donate'[^\]]*'arena_forge'[^\]]*'brick_vault'[^\]]*\]/.test(game)],
   ['Showdown mode labels include Brawe Ball 3v3 and Knockout 3v3', /if\s*\(mode === 'brawe_ball'\)\s*return 'Brawe Ball 3v3';[\s\S]*?if\s*\(mode === 'knockout_3v3'\)\s*return 'Knockout 3v3';/],
   ['HOME_MODE_CARDS includes brawe_ball and knockout_3v3', /\['brawe_ball',\s*'⚽',\s*'Brawe Ball 3v3'[\s\S]*?\['knockout_3v3',\s*'🥊',\s*'Knockout 3v3'/],
   ['HOME_PERMANENT_MODE_IDS includes brawe_ball and knockout_3v3', /HOME_PERMANENT_MODE_IDS\s*=\s*\[[\s\S]*?'brawe_ball'[\s\S]*?'knockout_3v3'/],
